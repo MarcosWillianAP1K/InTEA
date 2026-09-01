@@ -1,0 +1,10 @@
+{
+  "token_sessao": "a1b2c3d4-token",
+  "id_terapeuta": "terapeuta-99",
+  "id_paciente": "paciente-99",
+  "contexto_paciente": {
+    "nivel_estresse_inicial": "medio",
+    "gatilhos_sensoriais_evitar": ["luz_piscante", "som_agudo"],
+    "objetivo_clinico": "foco_atencional"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "token_sessao": "a1b2c3d4-token",
+  "data_hora": "2026-09-01T15:30:22Z",
+  "tipo_evento": "interacao_paciente",
+  "dados": {
+    "id_metrica": "tempo_resposta",
+    "valor": 3.5
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "token_sessao": "a1b2c3d4-token",
+  "duracao_segundos": 1200,
+  "resumo": {
+    "taxa_conclusao": 85.5,
+    "intervencoes_dda": 4
+  },
+  "analises_ia": [
+    "O paciente demonstrou excelente regulação após os primeiros 5 minutos.",
+    "Houve necessidade de redução de dificuldade em estímulos sonoros."
+  ],
+  "metricas_agregadas": [
+    {
+      "id_metrica": "nivel_frustracao",
+      "valor_dominante": "baixo",
+      "tendencia": "estavel"
+    }
+  ]
+}

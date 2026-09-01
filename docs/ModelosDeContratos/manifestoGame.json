@@ -1,0 +1,20 @@
+{
+  "id_jogo": "game-core-01",
+  "nome": "Aventura Cognitiva",
+  "versao": "1.0.0",
+  "metricas_suportadas": [
+    {
+      "id_metrica": "tempo_resposta",
+      "tipo_metrica": "numerica",
+      "unidade": "segundos"
+    },
+    {
+      "id_metrica": "nivel_frustracao",
+      "tipo_metrica": "categorica",
+      "valores": ["baixo", "medio", "alto"]
+    }
+  ]
+}
+
+
+
