@@ -4,7 +4,7 @@
 # =============================================================================
 
 # Stage 1: Build do React com Vite
-FROM node:22-alpine AS builder
+FROM node:lts-alpine AS builder
 
 # Atualiza pacotes do SO para eliminar vulnerabilidades de segurança (CVEs)
 RUN apk update && apk upgrade --no-cache

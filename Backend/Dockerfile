@@ -4,7 +4,7 @@
 # =============================================================================
 
 # Stage 1: Build da aplicação TypeScript
-FROM node:22-alpine AS builder
+FROM node:lts-alpine AS builder
 
 # Atualiza pacotes do SO para eliminar vulnerabilidades de segurança (CVEs)
 RUN apk update && apk upgrade --no-cache
@@ -22,7 +22,7 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 # Stage 2: Imagem final de Produção
 # -----------------------------------------------------------------------------
-FROM node:22-alpine AS production
+FROM node:lts-alpine AS production
 
 # Atualiza SO e instala dumb-init para gerenciamento seguro de processos
 RUN apk update && apk upgrade --no-cache \
