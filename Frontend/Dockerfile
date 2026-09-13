@@ -54,9 +54,9 @@ RUN chown -R nginx:nginx /usr/share/nginx/html \
 
 USER nginx
 
-EXPOSE 80
+EXPOSE 5173
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget -qO- http://localhost:80/nginx-health || exit 1
+    CMD wget -qO- http://localhost:5173/nginx-health || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
