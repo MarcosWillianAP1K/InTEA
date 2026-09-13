@@ -100,8 +100,17 @@ jobs:
       - name: 📥 Checkout do repositório
         uses: actions/checkout@v4
 
+      - name: 📄 Preparar arquivos de ambiente (.env)
+        run: |
+          cp Backend/.env.example Backend/.env
+          cp Frontend/.env.example Frontend/.env
+
       - name: 🛠️ Validar sintaxe do Docker Compose
         run: docker compose config
+        env:
+          VITE_API_URL: /api
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://mock.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'mock-anon-key' }}
 
       - name: 📦 Build das imagens Docker
         run: docker compose build
