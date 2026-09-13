@@ -1,0 +1,133 @@
+# =============================================================================
+# GitHub Actions CI/CD — InTEA (Interface do Terapeuta)
+# Pipeline de Testes Automatizados, Validação e Deploy (apenas para branch main)
+# =============================================================================
+
+name: InTEA CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Testes e Validação do Backend (Node.js + TypeScript + Vitest)
+  # ---------------------------------------------------------------------------
+  backend-test:
+    name: "🔵 Backend: Testes & Build"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./Backend
+
+    steps:
+      - name: 📥 Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: 📦 Instalar dependências
+        run: npm ci
+
+      - name: 🔷 Typecheck (TypeScript)
+        run: npm run typecheck
+
+      - name: 🧪 Executar testes automatizados
+        run: npm test
+
+      - name: 🏗️ Compilar Backend
+        run: npm run build
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Testes e Validação do Frontend (React + Vite + Tailwind v4 + Vitest)
+  # ---------------------------------------------------------------------------
+  frontend-test:
+    name: "🟣 Frontend: Testes & Build"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./Frontend
+
+    steps:
+      - name: 📥 Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: 📦 Instalar dependências
+        run: npm ci
+
+      - name: 🔷 Typecheck (TypeScript)
+        run: npm run typecheck
+
+      - name: 🧪 Executar testes automatizados
+        run: npm test
+
+      - name: 🏗️ Build de produção (Vite)
+        run: npm run build
+        env:
+          VITE_API_URL: /api
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://mock.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'mock-anon-key' }}
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Validação de Build dos Containers Docker
+  # ---------------------------------------------------------------------------
+  docker-validation:
+    name: "🐳 Docker: Validação de Containers"
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
+
+    steps:
+      - name: 📥 Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Validar sintaxe do Docker Compose
+        run: docker compose config
+
+      - name: 📦 Build das imagens Docker
+        run: docker compose build
+        env:
+          VITE_API_URL: /api
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://mock.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'mock-anon-key' }}
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Deploy Automatizado (Apenas disparado no push para a branch main)
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: "🚀 Deploy Automatizado (Main)"
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test, docker-validation]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: 📥 Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: 📢 Notificação de Deploy
+        run: |
+          echo "====================================================="
+          echo "✅ Todos os testes e builds foram aprovados com sucesso!"
+          echo "🚀 Iniciando etapa de Deploy para a branch main..."
+          echo "Commit: ${{ github.sha }}"
+          echo "Autor: ${{ github.actor }}"
+          echo "====================================================="
