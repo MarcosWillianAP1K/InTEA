@@ -1,13 +1,14 @@
 {
   "name": "intea-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "doctor": "npx react-doctor@latest"
+    "doctor": "npx react-doctor@latest",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/dompurify": "^3.0.5",
