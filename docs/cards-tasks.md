@@ -245,7 +245,11 @@
 ### [CARD-FE-01] Estruturação da Feature Modular de Pacientes
 
 * **Tipo:** Arquitetura Front-end
+<<<<<<< HEAD
 * **Componente:** `Frontend / src/features/pacientes/`pessoa 
+=======
+* **Componente:** `Frontend / src/features/pacientes/`
+>>>>>>> ebbc03e (feat: add typecheck script to package.json and improve testing setup)
 * **Requisitos:** **Boas Práticas de Engenharia**
 * **Referência Documentação:** *Figura 24 (Arquitetura de Pastas do Front)*
 * **Descrição:**  
@@ -355,8 +359,13 @@
   * Caixa de Diálogo (`Modal / Dialog` acessível).
   * Tabela Básica (`Table` estilizada e responsiva).
 * **Critérios de Aceite:**
+<<<<<<< HEAD
   * [x] Componentes tipados em TypeScript sem erros de lint/typecheck.
   * [x] Estilização consistente em modo claro e escuro.
+=======
+  * [ ] Componentes tipados em TypeScript sem erros de lint/typecheck.
+  * [ ] Estilização consistente em modo claro e escuro.
+>>>>>>> ebbc03e (feat: add typecheck script to package.json and improve testing setup)
 
 ---
 
