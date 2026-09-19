@@ -302,12 +302,24 @@
 
 ---
 
-### Front: Integração de Jogos e Testes com Vitest (Tipo: Validação)
+### Front: Integração da API de Jogos (Tipo: Validação)
 
 * **Tipo:** Validação
-* **Requisitos:** RNF02, Qualidade
-* **Referência Documentação:** Contrato manifestoGame.json, Pipeline CI
-* **Descrição:** Integrar a biblioteca de jogos com a API, criar testes automatizados de componentes com Vitest e garantir execução limpa no GitHub Actions.
+* **Requisitos:** RNF02
+* **Referência Documentação:** Contrato manifestoGame.json, RNF02
+* **Descrição:** Integrar a biblioteca de jogos com o endpoint `GET /jogos` da API, tratando estados de loading, erro e exibição de dados com manifesto.
+* **Critérios de Aceite:**
+  * [ ] Consumo funcional do endpoint de jogos com fallback para mocks se offline.
+  * [ ] Dados do manifesto e métricas refletidos corretamente na interface.
+
+---
+
+### Front: Testes Automatizados com Vitest e Pipeline CI (Tipo: Validação)
+
+* **Tipo:** Validação
+* **Requisitos:** Não é um requisito formal (Garantia de Qualidade e CI)
+* **Referência Documentação:** Pipeline CI/CD, Sprint 6
+* **Descrição:** Criar testes automatizados unitários e de componentes com Vitest para as features de Pacientes e Jogos, garantindo execução limpa no GitHub Actions.
 * **Critérios de Aceite:**
   * [ ] Testes de componentes executando com sucesso no `npm test`.
   * [ ] Pipeline de CI validando tipagem e build sem falhas.
@@ -366,6 +378,18 @@
 
 ---
 
+### Docs: Coleta de Evidências de Teste e Telas (Tipo: Docs)
+
+* **Tipo:** Docs
+* **Requisitos:** Gestão de Qualidade / Relatório
+* **Referência Documentação:** Seção 7.7 do Relatório LaTeX
+* **Descrição:** Coletar e catalogar prints em alta resolução das telas implementadas (seleção, lista, cadastro, perfil e catálogo de jogos), tabelas do banco e chamadas de API via Postman/Insomnia com legendas numeradas.
+* **Critérios de Aceite:**
+  * [ ] Prints organizados na pasta `docs/figuras/` ou correspondente.
+  * [ ] Legendas e referências numeradas em conformidade com o relatório.
+
+---
+
 ### Docs: Casos de Teste e Critérios de Aceite Formais (Tipo: Validação)
 
 * **Tipo:** Validação
@@ -375,6 +399,30 @@
 * **Critérios de Aceite:**
   * [ ] Casos de teste estruturados com passos e validações.
   * [ ] Mapeamento entre cada caso de teste e seu respectivo requisito.
+
+---
+
+### Docs: Gestão do Quadro Kanban e Atas (Tipo: Docs)
+
+* **Tipo:** Docs
+* **Requisitos:** Metodologia de Desenvolvimento
+* **Referência Documentação:** Gestão de Projeto
+* **Descrição:** Manter o quadro do GitHub Projects atualizado com status em tempo real das tarefas, registrar atas das reuniões diárias e retrospectiva da sprint.
+* **Critérios de Aceite:**
+  * [ ] Quadro de tarefas 100% sincronizado com as entregas da equipe.
+  * [ ] Atas e notas arquivadas no repositório.
+
+---
+
+### Docs: Revisão Ortográfica e Normas ABNT/LaTeX (Tipo: Docs)
+
+* **Tipo:** Docs
+* **Requisitos:** Padrão Acadêmico UFPI
+* **Referência Documentação:** Relatório Oficial
+* **Descrição:** Realizar varredura ortográfica e gramatical, verificar numeração de seções e figuras, alinhar citações bibliográficas e compilar o PDF final sem warnings no LaTeX.
+* **Critérios de Aceite:**
+  * [ ] Documento PDF compila sem erros ou advertências graves.
+  * [ ] Conformidade com a estrutura estabelecida pelo orientador.
 
 ---
 

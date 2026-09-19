@@ -29,69 +29,69 @@ Com uma pessoa dedicada exclusivamente à documentação e qualidade técnica, o
 
 ### 2.1 Back-end: Pacientes e Vínculo
 
-| ID | Tarefa | Detalhe Técnico | Requisito / Regra |
+| ID | Card da Tarefa (GitHub Projects) | Detalhe Técnico | Requisito / Regra |
 | :--- | :--- | :--- | :--- |
-| **1.1** | Ajuste do schema | Adicionar campos do formulário (CPF, telefone, endereço, responsável, responsável extra, gatilhos, laudo) em `paciente`/`dados_clinicos`, com migração SQL. | **RF06** |
-| **1.2** | CRUD de pacientes | `POST /pacientes`, `GET /pacientes`, `GET /pacientes/:id`, `PUT /pacientes/:id`, `DELETE /pacientes/:id` (soft delete com inativação). | **RF06**, **RN05** |
-| **1.3** | Validação (DTOs) | Validar CPF, CEP, datas e campos obrigatórios; suporte a responsável extra opcional. | **RF06** |
-| **1.4** | Vínculo automático | Ao cadastrar paciente, criar automaticamente registro na tabela associativa `terapeuta_paciente` com o terapeuta autenticado. | **RF18**, **RF21** |
-| **1.5** | Gestão de vínculos | Endpoints `POST /pacientes/:id/terapeutas` e `DELETE /pacientes/:id/terapeutas` para associar ou desassociar terapeutas da mesma clínica. | **RF18** |
-| **1.6** | Busca e filtros | Suporte a query params em `GET /pacientes` (`nome`, `idade`, `estado_clinico`, paginação). | **RF19** |
-| **1.7** | Guard de visibilidade | Middleware de autorização que bloqueia acesso ao prontuário e dados do paciente caso o terapeuta não possua vínculo ativo (retornar 403/404). | **RN04** |
+| **1.1** | `BD: Ajuste e Migração do Schema de Pacientes (Tipo: Validação)` | Adicionar campos do formulário (CPF, telefone, endereço, responsável, responsável extra, gatilhos, laudo) em `paciente`/`dados_clinicos`, com migração SQL. | **RF06** |
+| **1.2** | `Back: CRUD de Pacientes com Soft Delete (Tipo: Feature)` | `POST /pacientes`, `GET /pacientes`, `GET /pacientes/:id`, `PUT /pacientes/:id`, `DELETE /pacientes/:id` (soft delete com inativação). | **RF06**, **RN05** |
+| **1.3** | `Back: Validação de DTOs para Pacientes (Tipo: Validação)` | Validar CPF, CEP, datas e campos obrigatórios; suporte a responsável extra opcional. | **RF06** |
+| **1.4** | `Back: Vínculo Automático do Terapeuta no Cadastro (Tipo: Feature)` | Ao cadastrar paciente, criar automaticamente registro na tabela associativa `terapeuta_paciente` com o terapeuta autenticado. | **RF18**, **RF21** |
+| **1.5** | `Back: Gestão de Vínculos Multi-terapeuta (Tipo: Feature)` | Endpoints `POST /pacientes/:id/terapeutas` e `DELETE /pacientes/:id/terapeutas` para associar ou desassociar terapeutas da mesma clínica. | **RF18** |
+| **1.6** | `Back: Busca e Filtros de Pacientes (Tipo: Feature)` | Suporte a query params em `GET /pacientes` (`nome`, `idade`, `estado_clinico`, paginação). | **RF19** |
+| **1.7** | `Back: Middleware de Visibilidade por Vínculo (Tipo: Validação)` | Middleware de autorização que bloqueia acesso ao prontuário e dados do paciente caso o terapeuta não possua vínculo ativo (retornar 403/404). | **RN04** |
 
 ---
 
 ### 2.2 Back-end: Jogos, Busca e Testes
 
-| ID | Tarefa | Detalhe Técnico | Requisito / Regra |
+| ID | Card da Tarefa (GitHub Projects) | Detalhe Técnico | Requisito / Regra |
 | :--- | :--- | :--- | :--- |
-| **2.1** | Endpoints de jogos | `GET /jogos` (catálogo geral) e `GET /jogos/:id` (detalhes e manifesto). | **RF09** |
-| **2.2** | Leitura do manifesto | Parse e validação do campo `manifesto_json` conforme contrato estabelecido (`metricas_suportadas`, `tipo_metrica`). | **RNF02** |
-| **2.3** | Validação estrita de métrica (Atualização RN02) | Métrica tem que estritamente ter um tipo definido. Métricas sem tipo não serão usadas nem tratadas como categóricas, sendo rejeitadas para evitar erros de tipagem incorreta em ambiente clínico. | **RN02** |
-| **2.4** | Seed de jogos | Popular banco com 3 jogos de exemplo (*Aventura das Cores*, *Formas Calmas*, *Som dos Animais*), incluindo versão, manifesto e `status_instalacao`. | **RF09** |
-| **2.5** | Busca e filtros | Query param em `GET /jogos` para filtragem por `objetivo` terapêutico, com suporte a paginação. | **RF19** |
-| **2.6** | Testes do back | Testes unitários e de integração cobrindo pacientes, regras de vínculo e catálogo de jogos via Vitest. | **Qualidade** |
+| **2.1** | `Back: Endpoints do Catálogo de Jogos (Tipo: Feature)` | `GET /jogos` (catálogo geral) e `GET /jogos/:id` (detalhes e manifesto). | **RF09** |
+| **2.2** | `Back: Leitura e Validação do Manifesto de Jogos (Tipo: Validação)` | Parse e validação do campo `manifesto_json` conforme contrato estabelecido (`metricas_suportadas`, `tipo_metrica`). | **RNF02** |
+| **2.3** | `Back: Validação Estrita de Tipagem de Métricas (Tipo: Validação)` | Métrica tem que estritamente ter um tipo definido. Métricas sem tipo não serão usadas nem tratadas como categóricas, sendo rejeitadas para evitar erros de tipagem incorreta em ambiente clínico. | **RN02** |
+| **2.4** | `BD: Seed com 3 Jogos de Exemplo (Tipo: Feature)` | Popular banco com 3 jogos de exemplo (*Aventura das Cores*, *Formas Calmas*, *Som dos Animais*), incluindo versão, manifesto e `status_instalacao`. | **RF09** |
+| **2.5** | `Back: Filtro por Objetivo e Paginação de Jogos (Tipo: Feature)` | Query param em `GET /jogos` para filtragem por `objetivo` terapêutico, com suporte a paginação. | **RF19** |
+| **2.6** | `Back: Testes Automatizados - Pacientes, Vínculos e Jogos (Tipo: Validação)` | Testes unitários e de integração cobrindo pacientes, regras de vínculo e catálogo de jogos via Vitest. | **Qualidade** |
 
 ---
 
 ### 2.3 Front-end: Pacientes
 
-| ID | Tarefa | Detalhe Técnico | Referência na Documentação |
+| ID | Card da Tarefa (GitHub Projects) | Detalhe Técnico | Referência na Documentação |
 | :--- | :--- | :--- | :--- |
-| **3.1** | Estrutura da feature | Criar estrutura modular em `features/pacientes/` contendo `components/`, `hooks/`, `pages/`, `service/` e `store/`. | **Fig. 24** |
-| **3.2** | Seleção de pacientes | Tela com cards de pacientes (foto, nome, idade, estado clínico) e card de ação "Novo Paciente". | **Fig. 9** |
-| **3.3** | Lista detalhada | Visualização em tabela com barra de busca rápida, filtros e atalho de ação para novo cadastro. | **Fig. 14** |
-| **3.4** | Cadastro de paciente | Formulário dividido em 4 blocos (dados do paciente, responsável principal, responsável extra opcional, gatilhos/laudo), com máscaras e validação de CPF/CEP. | **Fig. 15** |
-| **3.5** | Perfil do paciente | Tela consolidada de visualização do prontuário com dados sociodemográficos, responsáveis, histórico de gatilhos e laudos. | **Fig. 16** |
-| **3.6** | Integração da API | Consumir os endpoints da API de pacientes (iniciar com mocks tipados) e tratar adequadamente erros de permissão e não encontrado (403/404). | **RN04** |
+| **3.1** | `Front: Estrutura Modular da Feature de Pacientes (Tipo: Feature)` | Criar estrutura modular em `features/pacientes/` contendo `components/`, `hooks/`, `pages/`, `service/` e `store/`. | **Fig. 24** |
+| **3.2** | `Front: Tela de Seleção de Pacientes (Tipo: Feature)` | Tela com cards de pacientes (foto, nome, idade, estado clínico) e card de ação "Novo Paciente". | **Fig. 9** |
+| **3.3** | `Front: Lista Detalhada de Pacientes em Tabela (Tipo: Feature)` | Visualização em tabela com barra de busca rápida, filtros e atalho de ação para novo cadastro. | **Fig. 14** |
+| **3.4** | `Front: Formulário de Cadastro de Pacientes em 4 Blocos (Tipo: Feature)` | Formulário dividido em 4 blocos (dados do paciente, responsável principal, responsável extra opcional, gatilhos/laudo), com máscaras e validação de CPF/CEP. | **Fig. 15** |
+| **3.5** | `Front: Tela de Perfil e Prontuário do Paciente (Tipo: Feature)` | Tela consolidada de visualização do prontuário com dados sociodemográficos, responsáveis, histórico de gatilhos e laudos. | **Fig. 16** |
+| **3.6** | `Front: Integração com API de Pacientes (Tipo: Validação)` | Consumir os endpoints da API de pacientes (iniciar com mocks tipados) e tratar adequadamente erros de permissão e não encontrado (403/404). | **RN04** |
 
 ---
 
 ### 2.4 Front-end: Jogos, Componentes Compartilhados e Testes
 
-| ID | Tarefa | Detalhe Técnico | Referência na Documentação |
+| ID | Card da Tarefa (GitHub Projects) | Detalhe Técnico | Referência na Documentação |
 | :--- | :--- | :--- | :--- |
-| **4.1** | Componentes compartilhados | Implementar e padronizar botão, input, card, badge de status, modal, tabela e campo de busca em `shared/components/`. | **Fig. 24** |
-| **4.2** | Cliente HTTP | Configurar instância centralizada do Axios/Fetch (`endpoints.ts`), interceptors de autenticação e tratamento global de erros. | `core/` |
-| **4.3** | Biblioteca de Jogos | Grid de cards exibindo nome do jogo, versão, descrição clínica e badge de status de instalação. | **Fig. 10** |
-| **4.4** | Filtro e ações de jogos | Barra de filtro por objetivo clínico e botões de ação "Modo Livre" e "Iniciar Sessão" (camada de UI). | **RF09** |
-| **4.5** | Integração de jogos | Consumir endpoint `GET /jogos` da API de jogos (com manifesto mockado na fase inicial). | **RNF02** |
-| **4.6** | Testes e CI | Testes unitários com Vitest das duas features desenvolvidas e ajuste do pipeline do GitHub Actions para validação contínua. | **Sprint 6** |
+| **4.1** | `Front: Componentes Compartilhados shared/components (Tipo: Feature)` | Implementar e padronizar botão, input, card, badge de status, modal, tabela e campo de busca em `shared/components/`. | **Fig. 24** |
+| **4.2** | `Front: Cliente HTTP e Interceptors (Tipo: Validação)` | Configurar instância centralizada do Axios/Fetch (`endpoints.ts`), interceptors de autenticação e tratamento global de erros. | `core/` |
+| **4.3** | `Front: Tela da Biblioteca de Jogos (Tipo: Feature)` | Grid de cards exibindo nome do jogo, versão, descrição clínica e badge de status de instalação. | **Fig. 10** |
+| **4.4** | `Front: Filtros Clínicos e Ações nos Jogos (Tipo: Feature)` | Barra de filtro por objetivo clínico e botões de ação "Modo Livre" e "Iniciar Sessão" (camada de UI). | **RF09** |
+| **4.5** | `Front: Integração da API de Jogos (Tipo: Validação)` | Consumir endpoint `GET /jogos` da API de jogos (com manifesto mockado na fase inicial). | **RNF02** |
+| **4.6** | `Front: Testes Automatizados com Vitest e Pipeline CI (Tipo: Validação)` | Testes unitários com Vitest das duas features desenvolvidas e validação contínua no GitHub Actions. | **Sprint 6** |
 
 ---
 
 ### 2.5 Documentação e Relatórios
 
-| ID | Tarefa | Detalhe Técnico | Onde Entra |
+| ID | Card da Tarefa (GitHub Projects) | Detalhe Técnico | Onde Entra |
 | :--- | :--- | :--- | :--- |
-| **5.1** | Seção 7.7 do relatório | Redigir texto oficial da Sprint 7: objetivos, decisões arquiteturais, entregas realizadas e dificuldades encontradas. | Relatório LaTeX |
-| **5.2** | Documentação da API | Especificação Swagger/OpenAPI ou README completo com rotas, DTOs, payloads de exemplo e códigos de status HTTP. | Repositório |
-| **5.3** | Atualização dos diagramas | Atualizar Diagrama ER e Diagrama de Classes com os novos atributos de paciente; diagramas de sequência dos fluxos de cadastro e listagem. | Seção 5 |
-| **5.4** | Contratos JSON | Versionar e documentar o contrato formal do manifesto do jogo (`manifestoGame.json`). | Seção 7.4.2 |
-| **5.5** | Evidências de teste | Coletar prints das telas implementadas, das tabelas no banco de dados e das requisições via Postman/Insomnia com legendas numeradas. | Relatório LaTeX |
-| **5.6** | Casos de teste | Elaborar roteiro de testes manuais e critérios de aceite detalhados para cada requisito funcional e regra de negócio. | Relatório LaTeX |
-| **5.7** | Gestão do quadro | Manter o quadro de tarefas (Kanban) atualizado e arquivar atas das reuniões diárias/sprint. | Repositório |
-| **5.8** | Revisão final | Revisão ortográfica, conformidade da numeração de figuras, referências cruzadas e padronização das normas do documento em LaTeX. | Relatório LaTeX |
+| **5.1** | `Docs: Seção 7.7 do Relatório Oficial (Tipo: Docs)` | Redigir texto oficial da Sprint 7: objetivos, decisões arquiteturais, entregas realizadas e dificuldades encontradas. | Relatório LaTeX |
+| **5.2** | `Docs: Especificação da API OpenAPI e Rotas (Tipo: Docs)` | Especificação Swagger/OpenAPI ou README completo com rotas, DTOs, payloads de exemplo e códigos de status HTTP. | Repositório |
+| **5.3** | `Docs: Atualização dos Diagramas ER, Classes e Sequência (Tipo: Docs)` | Atualizar Diagrama ER e Diagrama de Classes com os novos atributos de paciente; diagramas de sequência dos fluxos de cadastro e listagem. | Seção 5 |
+| **5.4** | `Docs: Versionamento do Contrato do Manifesto (Tipo: Docs)` | Versionar e documentar o contrato formal do manifesto do jogo (`manifestoGame.json`). | Seção 7.4.2 |
+| **5.5** | `Docs: Coleta de Evidências de Teste e Telas (Tipo: Docs)` | Coletar prints das telas implementadas, das tabelas no banco de dados e das requisições via Postman/Insomnia com legendas numeradas. | Relatório LaTeX |
+| **5.6** | `Docs: Casos de Teste e Critérios de Aceite Formais (Tipo: Validação)` | Elaborar roteiro de testes manuais e critérios de aceite detalhados para cada requisito funcional e regra de negócio. | Relatório LaTeX |
+| **5.7** | `Docs: Gestão do Quadro Kanban e Atas (Tipo: Docs)` | Manter o quadro de tarefas (Kanban) atualizado e arquivar atas das reuniões diárias/sprint. | Repositório |
+| **5.8** | `Docs: Revisão Ortográfica e Normas ABNT/LaTeX (Tipo: Docs)` | Revisão ortográfica, conformidade da numeração de figuras, referências cruzadas e padronização das normas do documento em LaTeX. | Relatório LaTeX |
 
 ---
 
