@@ -133,10 +133,32 @@
 
 ### Back: Validação Estrita de Tipagem de Métricas (Tipo: Validação)
 
+<<<<<<< HEAD
 * **Tipo:** Validação
 * **Requisitos:** RN02
 * **Referência Documentação:** RN02, RNF04
 * **Descrição:** Toda métrica deve ter estritamente um tipo válido declarado no manifesto. Métricas sem tipo não serão usadas nem tratadas como categóricas, sendo sumariamente rejeitadas para evitar erros em dados de saúde humana.
+=======
+---
+
+### [CARD-FE-01] Estruturação da Feature Modular de Pacientes
+
+* **Tipo:** Arquitetura Front-end
+<<<<<<< HEAD
+* **Componente:** `Frontend / src/features/pacientes/`pessoa 
+=======
+* **Componente:** `Frontend / src/features/pacientes/`
+>>>>>>> ebbc03e (feat: add typecheck script to package.json and improve testing setup)
+* **Requisitos:** **Boas Práticas de Engenharia**
+* **Referência Documentação:** *Figura 24 (Arquitetura de Pastas do Front)*
+* **Descrição:**  
+  Organizar a pasta `features/pacientes/` seguindo a arquitetura limpa e desacoplada do projeto:
+  * `components/`: Componentes específicos de UI do paciente.
+  * `hooks/`: Custom hooks de consulta e mutação de dados.
+  * `pages/`: Telas de listagem, cadastro e perfil.
+  * `service/`: Comunicação HTTP com a API.
+  * `store/`: Estado global do paciente ativo (Zustand).
+>>>>>>> 2133c58 (feat: add typecheck script to package.json and improve testing setup)
 * **Critérios de Aceite:**
   * [ ] Sem conversão/fallback automático para categórica.
   * [ ] Métricas sem tipo são rejeitadas na validação do manifesto.
@@ -215,8 +237,18 @@
 * **Referência Documentação:** Figura 14 (Tela da Lista de Pacientes)
 * **Descrição:** Construir a visualização em tabela detalhada para gestão clínica, com barra de busca rápida, filtros e atalho para novo cadastro.
 * **Critérios de Aceite:**
+<<<<<<< HEAD
   * [ ] Tabela com ordenação e paginação.
   * [ ] Campo de busca com filtro em tempo real.
+=======
+<<<<<<< HEAD
+  * [x] Componentes tipados em TypeScript sem erros de lint/typecheck.
+  * [x] Estilização consistente em modo claro e escuro.
+=======
+  * [ ] Componentes tipados em TypeScript sem erros de lint/typecheck.
+  * [ ] Estilização consistente em modo claro e escuro.
+>>>>>>> ebbc03e (feat: add typecheck script to package.json and improve testing setup)
+>>>>>>> 2133c58 (feat: add typecheck script to package.json and improve testing setup)
 
 ---
 
