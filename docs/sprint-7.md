@@ -117,3 +117,24 @@ Com uma pessoa dedicada exclusivamente à documentação e qualidade técnica, o
 
 > [!IMPORTANT]
 > **Ponto de Atenção Crítico:** As frentes de Front-end compartilham a biblioteca de componentes. É indispensável que os componentes em `shared/components/` (botão, input, modal, tabela e card) sejam entregues e consolidados nos primeiros dois dias para não bloquear a construção das telas de Pacientes.
+
+---
+
+## 5. Diretrizes Clínicas Especializadas (Orientações da Terapeuta & Marcos)
+
+1. **Atualização da Regra RN02 (Tipagem Estrita sem Fallback):** Métricas clínicas sem tipo explícito não devem ser convertidas automaticamente em categóricas. Em conformidade com a segurança em saúde, métricas sem tipo são rejeitadas na validação para evitar diagnósticos ou gráficos distorcidos.
+2. **Humanização da Nomenclatura:** Substituição do termo "Co-Terapeuta" por termos não estigmatizantes (como "Facilitador Terapêutico" ou "Apoiador") na interface e mensagens.
+3. **Perfil Família e Modo Livre (RF11):** Adição de perfil familiar com acesso exclusivo a jogos em Modo Livre, sem interferência no algoritmo DDA do terapeuta, sem persistência de prontuário e com trava configurável de tempo de tela para evitar fadiga sensorial.
+4. **Vedação de Jogos Competitivos:** Exclusão mandatória de mecânicas punitivas, rankings eliminatórios ou contadores agressivos, priorizando cooperação, reforço positivo e autorregulação.
+5. **Integração com Realidade Virtual (VR/XR):** Contratos de dados preparados para suportar dispositivos e headsets de Realidade Virtual com métricas imersivas.
+6. **Jogos de Atividades da Vida Diária (AVD):** Inclusão de jogos de simulação de rotinas práticas (ex.: "Visita ao Dentista", "Supermercado / Atacadão") voltados à dessensibilização e autonomia no mundo real.
+
+---
+
+## 6. Recomendações do Tech Lead / Arquiteto Sênior
+
+* **Dia 1:** Congelar DTOs de Paciente e Jogos para liberar mocks tipados no Front-end imediatamente.
+* **Dia 2:** Executar a migração SQL do schema de Pacientes e Dados Clínicos no Supabase.
+* **Dias 2 a 3:** Front-end entrega `shared/components/` para não atrasar a montagem das telas de Pacientes.
+* **Dias 4 a 5:** Integração com endpoints reais e testes com Vitest em ambas as frentes.
+* **Dias 6 a 7:** Fechamento de documentação (Seção 7.7 LaTeX, OpenAPI e Casos de Teste).
