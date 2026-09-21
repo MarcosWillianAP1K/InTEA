@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { JogoModel } from '../models/jogo.model.js';
 import { ManifestoValidator } from '../validators/manifesto.validator.js';
+import { MetricaValidator } from '../validators/metrica.validator.js';
 
 export class JogoController {
   /**
@@ -93,6 +94,43 @@ export class JogoController {
     } catch (error) {
       console.error('[JogoController] Erro ao validar manifesto:', error);
       res.status(500).json({ error: 'Erro interno ao validar manifesto' });
+    }
+  }
+
+  /**
+   * POST /jogos/:id/validar-telemetria ou POST /api/jogos/:id/validar-telemetria
+   * Valida evento de telemetria contra a RN02 (bloqueia gravação no prontuário se a métrica não tiver tipagem estrita)
+   */
+  static async validarTelemetria(req: Request, res: Response): Promise<void> {
+    try {
+      const id = String(req.params.id);
+      const jogo = await JogoModel.buscarPorId(id);
+
+      if (!jogo) {
+        res.status(404).json({ error: 'Jogo não encontrado' });
+        return;
+      }
+
+      const evento = req.body;
+      const resultado = MetricaValidator.validarGravacaoProntuario(evento, jogo.manifesto_json);
+
+      if (!resultado.podeGravar) {
+        res.status(422).json({
+          podeGravar: false,
+          error: resultado.erro,
+          regraViolada: 'RN02 - Fallback de Métrica Proibido'
+        });
+        return;
+      }
+
+      res.status(200).json({
+        podeGravar: true,
+        tipoDetectado: resultado.tipoDetectado,
+        metricaHomologada: resultado.metricaHomologada
+      });
+    } catch (error) {
+      console.error('[JogoController] Erro ao validar telemetria:', error);
+      res.status(500).json({ error: 'Erro interno ao processar validação de telemetria' });
     }
   }
 }
