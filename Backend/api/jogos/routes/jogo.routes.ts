@@ -257,5 +257,10 @@ export const jogosRoutes = Router();
 
 // Endpoints do Catálogo de Jogos (RF09)
 jogosRoutes.get('/', JogoController.listar);
+jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
 jogosRoutes.get('/:id', JogoController.buscarPorId);
+<<<<<<< HEAD
 >>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
+=======
+jogosRoutes.get('/:id/manifesto', JogoController.obterManifesto);
+>>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)

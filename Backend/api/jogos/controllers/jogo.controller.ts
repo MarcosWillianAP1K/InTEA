@@ -24,6 +24,7 @@ export class JogoController {
       res.json(resultado);
 =======
 import { JogoModel } from '../models/jogo.model.js';
+import { ManifestoValidator } from '../validators/manifesto.validator.js';
 
 export class JogoController {
   /**
@@ -70,6 +71,7 @@ export class JogoController {
     }
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
   /**
    * Handles GET /api/jogos/:id/manifesto to inspect and validate game manifest compliance.
@@ -77,6 +79,12 @@ export class JogoController {
    * @param req - Express request containing the game ID in URL parameter `:id`.
    * @param res - Express response returning the manifest data and compliance validation results.
    * @returns Resolves when the HTTP response has been sent.
+=======
+
+  /**
+   * GET /jogos/:id/manifesto ou GET /api/jogos/:id/manifesto
+   * Retorna e valida a conformidade do manifesto de um jogo específico
+>>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
    */
   static async obterManifesto(req: Request, res: Response): Promise<void> {
     try {
@@ -104,11 +112,16 @@ export class JogoController {
   }
 
   /**
+<<<<<<< HEAD
    * Handles POST /api/jogos/validar-manifesto to validate an arbitrary game manifest against Contract 1 (RNF02).
    *
    * @param req - Express request containing the manifest object in body.
    * @param res - Express response returning status 200 on valid manifest or 400 with validation errors.
    * @returns Resolves when the HTTP response has been sent.
+=======
+   * POST /jogos/validar-manifesto ou POST /api/jogos/validar-manifesto
+   * Endpoint de validação de manifesto contra o Contrato 1 (RNF02)
+>>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
    */
   static async validarManifesto(req: Request, res: Response): Promise<void> {
     try {
@@ -134,6 +147,7 @@ export class JogoController {
       res.status(500).json({ error: 'Erro interno ao validar manifesto' });
     }
   }
+<<<<<<< HEAD
 
   /**
    * Handles POST /api/jogos/:id/validar-telemetria to validate telemetry events against RN02 rules.
@@ -177,4 +191,6 @@ export class JogoController {
   }
 =======
 >>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
+=======
+>>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
 }

@@ -10,10 +10,14 @@ export class ManifestoValidator {
   private static readonly TIPOS_METRICA_PERMITIDOS = ['numerica', 'categorica'];
 
   /**
+<<<<<<< HEAD
    * Validates the structural and clinical compliance of a game manifest JSON object according to Contract 1 (RNF02 & RN02).
    *
    * @param manifesto - The untyped game manifest payload to validate.
    * @returns Validation outcome including boolean status `valido`, array of error messages, and parsed `manifestoValido`.
+=======
+   * Valida a conformidade da estrutura do manifesto_json com o Contrato 1 (RNF02 e RN02)
+>>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
    */
   static validar(manifesto: unknown): ResultadoValidacaoManifesto {
     const erros: string[] = [];
@@ -71,12 +75,21 @@ export class ManifestoValidator {
           erros.push(`${prefixo}: 'id_metrica' é obrigatório e deve ser uma string não vazia.`);
         }
 
+<<<<<<< HEAD
         // 6.2. tipo_metrica (RN02: Validação Estrita sem Fallback)
         if (!metrica.tipo_metrica || typeof metrica.tipo_metrica !== 'string' || metrica.tipo_metrica.trim() === '') {
           erros.push(`Métrica ${idLabel}: 'tipo_metrica' é obrigatório e não pode ser nulo ou ausente (RN02: proibido fallback automático para categórica).`);
         } else if (!this.TIPOS_METRICA_PERMITIDOS.includes(metrica.tipo_metrica)) {
           erros.push(
             `Métrica ${idLabel}: tipo '${metrica.tipo_metrica}' inválido. Tipos permitidos: ${this.TIPOS_METRICA_PERMITIDOS.map(t => `'${t}'`).join(', ')} (RN02: tipagem estrita).`
+=======
+        // 6.2. tipo_metrica
+        if (!metrica.tipo_metrica || typeof metrica.tipo_metrica !== 'string') {
+          erros.push(`Métrica ${idLabel}: 'tipo_metrica' é obrigatório e não pode ser nulo ou ausente.`);
+        } else if (!this.TIPOS_METRICA_PERMITIDOS.includes(metrica.tipo_metrica)) {
+          erros.push(
+            `Métrica ${idLabel}: tipo '${metrica.tipo_metrica}' inválido. Tipos permitidos: ${this.TIPOS_METRICA_PERMITIDOS.map(t => `'${t}'`).join(', ')}.`
+>>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
           );
         } else {
           // 6.3. Validações específicas por tipo
