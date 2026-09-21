@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { JogoModel } from '../models/jogo.model.js';
+import { ManifestoValidator } from '../validators/manifesto.validator.js';
 
 export class JogoController {
   /**
@@ -34,6 +35,64 @@ export class JogoController {
     } catch (error) {
       console.error('[JogoController] Erro ao buscar jogo por ID:', error);
       res.status(500).json({ error: 'Erro ao buscar detalhes do jogo' });
+    }
+  }
+
+  /**
+   * GET /jogos/:id/manifesto ou GET /api/jogos/:id/manifesto
+   * Retorna e valida a conformidade do manifesto de um jogo específico
+   */
+  static async obterManifesto(req: Request, res: Response): Promise<void> {
+    try {
+      const id = String(req.params.id);
+      const jogo = await JogoModel.buscarPorId(id);
+
+      if (!jogo) {
+        res.status(404).json({ error: 'Jogo não encontrado' });
+        return;
+      }
+
+      const validacao = ManifestoValidator.validar(jogo.manifesto_json);
+
+      res.json({
+        data: jogo.manifesto_json,
+        validacao: {
+          valido: validacao.valido,
+          erros: validacao.erros
+        }
+      });
+    } catch (error) {
+      console.error('[JogoController] Erro ao obter manifesto:', error);
+      res.status(500).json({ error: 'Erro ao consultar manifesto do jogo' });
+    }
+  }
+
+  /**
+   * POST /jogos/validar-manifesto ou POST /api/jogos/validar-manifesto
+   * Endpoint de validação de manifesto contra o Contrato 1 (RNF02)
+   */
+  static async validarManifesto(req: Request, res: Response): Promise<void> {
+    try {
+      // Aceita tanto payload com { manifesto: {...} } quanto o manifesto diretamente no body
+      const manifesto = req.body?.manifesto ?? req.body;
+      const resultado = ManifestoValidator.validar(manifesto);
+
+      if (!resultado.valido) {
+        res.status(400).json({
+          valido: false,
+          error: 'Manifesto do jogo inválido',
+          erros: resultado.erros
+        });
+        return;
+      }
+
+      res.status(200).json({
+        valido: true,
+        data: resultado.manifestoValido
+      });
+    } catch (error) {
+      console.error('[JogoController] Erro ao validar manifesto:', error);
+      res.status(500).json({ error: 'Erro interno ao validar manifesto' });
     }
   }
 }
