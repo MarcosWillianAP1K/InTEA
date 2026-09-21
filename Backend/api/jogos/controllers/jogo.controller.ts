@@ -1,17 +1,23 @@
 import { Request, Response } from 'express';
-import { JogoModel } from '../models/jogo.model.js';
+import { JogoModel, FiltrosJogo } from '../models/jogo.model.js';
 import { ManifestoValidator } from '../validators/manifesto.validator.js';
 import { MetricaValidator } from '../validators/metrica.validator.js';
 
 export class JogoController {
   /**
-   * GET /jogos ou GET /api/jogos
-   * Lista todos os jogos disponíveis com informações básicas (nome, versão, descrição, status)
+   * GET /jogos?objetivo=foco_atencional&page=1&limit=10
+   * Lista jogos com suporte a filtro por objetivo clínico e paginação (RF19)
    */
-  static async listar(_req: Request, res: Response): Promise<void> {
+  static async listar(req: Request, res: Response): Promise<void> {
     try {
-      const jogos = await JogoModel.listar();
-      res.json({ data: jogos });
+      const filtros: FiltrosJogo = {
+        objetivo: req.query.objetivo as string | undefined,
+        page: req.query.page ? Number(req.query.page) : undefined,
+        limit: req.query.limit ? Number(req.query.limit) : undefined
+      };
+
+      const resultado = await JogoModel.listar(filtros);
+      res.json(resultado);
     } catch (error) {
       console.error('[JogoController] Erro ao listar jogos:', error);
       res.status(500).json({ error: 'Erro ao listar catálogo de jogos' });

@@ -7,7 +7,7 @@ describe('Card 2.4 — BD: Seed com 3 Jogos de Exemplo (RF09)', () => {
 
   describe('Critério 1: O seed cadastra os 3 jogos esperados', () => {
     it('deve listar exatamente os 3 jogos do seed nos dados do modelo', async () => {
-      const jogos = await JogoModel.listar();
+      const { data: jogos } = await JogoModel.listar();
       expect(jogos.length).toBeGreaterThanOrEqual(3);
       for (const nome of NOMES_ESPERADOS) {
         expect(jogos.some(j => j.nome === nome)).toBe(true);
@@ -15,7 +15,7 @@ describe('Card 2.4 — BD: Seed com 3 Jogos de Exemplo (RF09)', () => {
     });
 
     it('cada jogo deve ter nome, versão, descrição e status de instalação preenchidos', async () => {
-      const jogos = await JogoModel.listar();
+      const { data: jogos } = await JogoModel.listar();
       for (const jogo of jogos) {
         expect(jogo.nome).toBeTruthy();
         expect(jogo.versao).toBeTruthy();
@@ -95,7 +95,7 @@ describe('Card 2.4 — BD: Seed com 3 Jogos de Exemplo (RF09)', () => {
 
   describe('Critério 3: Idempotência — sem duplicação de registros', () => {
     it('o modelo não deve retornar jogos com o mesmo nome duplicado', async () => {
-      const jogos = await JogoModel.listar();
+      const { data: jogos } = await JogoModel.listar();
       const nomes = jogos.map(j => j.nome);
       const unique = new Set(nomes);
       expect(nomes.length).toBe(unique.size);
