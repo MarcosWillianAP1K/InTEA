@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { apiRouter } from "../api/index.js";
+import { jogosRoutes } from "../api/jogos/routes/jogo.routes.js";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.get("/", (_req: Request, res: Response) => {
 
 // Rotas da API (features MVC)
 app.use("/api", apiRouter);
+app.use("/jogos", jogosRoutes);
 
 app.listen(port, () => {
   console.log(`[Backend] Servidor rodando na porta ${port}`);
