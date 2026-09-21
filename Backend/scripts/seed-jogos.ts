@@ -17,7 +17,11 @@ const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
 if (!supabaseUrl || supabaseUrl.includes('placeholder') || supabaseUrl.includes('your-project')) {
+<<<<<<< HEAD
   console.error('[Seed] SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
+=======
+  console.error('[Seed] ❌ SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
+>>>>>>> fde3374 (feat: add database seed and backend script for therapeutic games with tests)
   process.exit(1);
 }
 
@@ -74,6 +78,7 @@ const JOGOS_SEED = [
   }
 ];
 
+<<<<<<< HEAD
 /**
  * Executes idempotent seeding of sample therapeutic games into the database (RF09).
  * Checks existing entries before insertion to prevent duplication.
@@ -83,6 +88,10 @@ const JOGOS_SEED = [
  */
 async function runSeed() {
   console.log('[Seed] Iniciando seed dos jogos terapêuticos...\n');
+=======
+async function runSeed() {
+  console.log('[Seed] 🌱 Iniciando seed dos jogos terapêuticos...\n');
+>>>>>>> fde3374 (feat: add database seed and backend script for therapeutic games with tests)
   let inseridos = 0;
   let ignorados = 0;
 
@@ -95,7 +104,11 @@ async function runSeed() {
       .maybeSingle();
 
     if (existente) {
+<<<<<<< HEAD
       console.log(`[Seed] Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
+=======
+      console.log(`[Seed] ⚠️  Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
+>>>>>>> fde3374 (feat: add database seed and backend script for therapeutic games with tests)
       ignorados++;
       continue;
     }
@@ -107,17 +120,31 @@ async function runSeed() {
       .single();
 
     if (error) {
+<<<<<<< HEAD
       console.error(`[Seed] Erro ao inserir "${jogo.nome}":`, error.message);
     } else {
       console.log(`[Seed] Jogo "${data.nome}" inserido com sucesso (id: ${data.id}, v${data.versao}).`);
+=======
+      console.error(`[Seed] ❌ Erro ao inserir "${jogo.nome}":`, error.message);
+    } else {
+      console.log(`[Seed] ✅ Jogo "${data.nome}" inserido com sucesso (id: ${data.id}, v${data.versao}).`);
+>>>>>>> fde3374 (feat: add database seed and backend script for therapeutic games with tests)
       inseridos++;
     }
   }
 
+<<<<<<< HEAD
   console.log(`\n[Seed] Concluído: ${inseridos} inserido(s), ${ignorados} ignorado(s) (já existente).`);
 }
 
 runSeed().catch(err => {
   console.error('[Seed] Falha inesperada no seed:', err);
+=======
+  console.log(`\n[Seed] 🏁 Concluído: ${inseridos} inserido(s), ${ignorados} ignorado(s) (já existente).`);
+}
+
+runSeed().catch(err => {
+  console.error('[Seed] ❌ Falha inesperada no seed:', err);
+>>>>>>> fde3374 (feat: add database seed and backend script for therapeutic games with tests)
   process.exit(1);
 });
