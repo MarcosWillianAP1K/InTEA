@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+<<<<<<< HEAD
 import { JogoModel, FiltrosJogo } from '../models/jogo.model.js';
 import { ManifestoValidator } from '../validators/manifesto.validator.js';
 import { MetricaValidator } from '../validators/metrica.validator.js';
@@ -21,6 +22,19 @@ export class JogoController {
 
       const resultado = await JogoModel.listar(filtros);
       res.json(resultado);
+=======
+import { JogoModel } from '../models/jogo.model.js';
+
+export class JogoController {
+  /**
+   * GET /jogos ou GET /api/jogos
+   * Lista todos os jogos disponíveis com informações básicas (nome, versão, descrição, status)
+   */
+  static async listar(_req: Request, res: Response): Promise<void> {
+    try {
+      const jogos = await JogoModel.listar();
+      res.json({ data: jogos });
+>>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
     } catch (error) {
       console.error('[JogoController] Erro ao listar jogos:', error);
       res.status(500).json({ error: 'Erro ao listar catálogo de jogos' });
@@ -28,11 +42,16 @@ export class JogoController {
   }
 
   /**
+<<<<<<< HEAD
    * Handles GET /api/jogos/:id to retrieve full game details including its manifest JSON.
    *
    * @param req - Express request containing the game ID in URL parameter `:id`.
    * @param res - Express response returning the game details or 404 if not found.
    * @returns Resolves when the HTTP response has been sent.
+=======
+   * GET /jogos/:id ou GET /api/jogos/:id
+   * Consulta detalhes de um jogo específico incluindo o manifesto_json
+>>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
@@ -50,6 +69,7 @@ export class JogoController {
       res.status(500).json({ error: 'Erro ao buscar detalhes do jogo' });
     }
   }
+<<<<<<< HEAD
 
   /**
    * Handles GET /api/jogos/:id/manifesto to inspect and validate game manifest compliance.
@@ -155,4 +175,6 @@ export class JogoController {
       res.status(500).json({ error: 'Erro interno ao processar validação de telemetria' });
     }
   }
+=======
+>>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
 }

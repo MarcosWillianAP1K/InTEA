@@ -45,4 +45,7 @@ desktop.ini
 *.temp
 # Documentação interna / Projetos
 BRAIN_PROJECT/
+<<<<<<< HEAD
 AGENTS.MD
+=======
+>>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)

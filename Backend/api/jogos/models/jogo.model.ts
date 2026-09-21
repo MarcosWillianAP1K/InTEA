@@ -34,6 +34,7 @@ export interface JogoResumo {
   status_instalacao: string;
 }
 
+<<<<<<< HEAD
 export interface FiltrosJogo {
   objetivo?: string;
   page?: number;
@@ -48,6 +49,8 @@ export interface ResultadoPaginado<T> {
   totalPages: number;
 }
 
+=======
+>>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
 export class JogoModel {
   // Base de dados em memória para fallback/testes/desenvolvimento local
   private static fallbackJogos: Jogo[] = [
@@ -133,6 +136,7 @@ export class JogoModel {
     return Boolean(url && !url.includes('placeholder') && !url.includes('your-project'));
   }
 
+<<<<<<< HEAD
   /**
    * Lists available games with optional filtering by clinical objective and pagination (RF19).
    * Queries Supabase if configured, otherwise falls back to local in-memory catalog.
@@ -174,12 +178,24 @@ export class JogoModel {
             limit,
             totalPages: Math.ceil(total / limit)
           };
+=======
+  static async listar(): Promise<JogoResumo[]> {
+    if (this.isSupabaseAvailable()) {
+      try {
+        const { data, error } = await supabase
+          .from('jogo')
+          .select('id, nome, descricao, versao, status_instalacao');
+
+        if (!error && data && data.length > 0) {
+          return data as JogoResumo[];
+>>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
         }
       } catch (err) {
         console.warn('[JogoModel] Falha ao consultar Supabase, utilizando dados locais de fallback.');
       }
     }
 
+<<<<<<< HEAD
     // Fallback local com suporte a filtro e paginação em memória
     let lista = this.fallbackJogos;
 
@@ -213,6 +229,18 @@ export class JogoModel {
    * @param id - Game identifier (numeric or string ID).
    * @returns The full game object if found, or undefined otherwise.
    */
+=======
+    // Retorna resumo dos jogos (sem o manifesto_json pesado na listagem)
+    return this.fallbackJogos.map(j => ({
+      id: j.id,
+      nome: j.nome,
+      descricao: j.descricao,
+      versao: j.versao,
+      status_instalacao: j.status_instalacao
+    }));
+  }
+
+>>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
   static async buscarPorId(id: number | string): Promise<Jogo | undefined> {
     if (this.isSupabaseAvailable()) {
       try {

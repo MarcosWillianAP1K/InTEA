@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { JogoController } from '../controllers/jogo.controller.js';
 
+<<<<<<< HEAD
 // ==============================================================================
 // ROTAS: /api/jogos (Catálogo de Jogos, Manifestos e Telemetria)
 // ==============================================================================
@@ -251,3 +252,10 @@ jogosRoutes.get('/:id/manifesto', JogoController.obterManifesto);
  *         description: Erro interno ao processar validação de telemetria
  */
 jogosRoutes.post('/:id/validar-telemetria', JogoController.validarTelemetria);
+=======
+export const jogosRoutes = Router();
+
+// Endpoints do Catálogo de Jogos (RF09)
+jogosRoutes.get('/', JogoController.listar);
+jogosRoutes.get('/:id', JogoController.buscarPorId);
+>>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
