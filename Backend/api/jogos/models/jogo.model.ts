@@ -34,6 +34,20 @@ export interface JogoResumo {
   status_instalacao: string;
 }
 
+export interface FiltrosJogo {
+  objetivo?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ResultadoPaginado<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export class JogoModel {
   // Base de dados em memória para fallback/testes/desenvolvimento local
   private static fallbackJogos: Jogo[] = [
@@ -119,29 +133,71 @@ export class JogoModel {
     return Boolean(url && !url.includes('placeholder') && !url.includes('your-project'));
   }
 
-  static async listar(): Promise<JogoResumo[]> {
+  static async listar(filtros: FiltrosJogo = {}): Promise<ResultadoPaginado<JogoResumo>> {
+    const page = Math.max(1, filtros.page ?? 1);
+    const limit = Math.min(100, Math.max(1, filtros.limit ?? 10));
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
     if (this.isSupabaseAvailable()) {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('jogo')
-          .select('id, nome, descricao, versao, status_instalacao');
+          .select('id, nome, descricao, versao, status_instalacao, manifesto_json', { count: 'exact' });
+
+        // Filtro por objetivo_clinico dentro do JSONB (RF19)
+        if (filtros.objetivo) {
+          query = query.eq('manifesto_json->>objetivo_clinico', filtros.objetivo);
+        }
+
+        const { data, error, count } = await query.range(from, to);
 
         if (!error && data && data.length > 0) {
-          return data as JogoResumo[];
+          const total = count ?? data.length;
+          return {
+            data: data.map(j => ({
+              id: j.id,
+              nome: j.nome,
+              descricao: j.descricao,
+              versao: j.versao,
+              status_instalacao: j.status_instalacao
+            })),
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+          };
         }
       } catch (err) {
         console.warn('[JogoModel] Falha ao consultar Supabase, utilizando dados locais de fallback.');
       }
     }
 
-    // Retorna resumo dos jogos (sem o manifesto_json pesado na listagem)
-    return this.fallbackJogos.map(j => ({
-      id: j.id,
-      nome: j.nome,
-      descricao: j.descricao,
-      versao: j.versao,
-      status_instalacao: j.status_instalacao
-    }));
+    // Fallback local com suporte a filtro e paginação em memória
+    let lista = this.fallbackJogos;
+
+    if (filtros.objetivo) {
+      lista = lista.filter(
+        j => j.manifesto_json?.objetivo_clinico === filtros.objetivo
+      );
+    }
+
+    const total = lista.length;
+    const paginada = lista.slice(from, from + limit);
+
+    return {
+      data: paginada.map(j => ({
+        id: j.id,
+        nome: j.nome,
+        descricao: j.descricao,
+        versao: j.versao,
+        status_instalacao: j.status_instalacao
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
   static async buscarPorId(id: number | string): Promise<Jogo | undefined> {
