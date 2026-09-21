@@ -5,10 +5,10 @@ import {
   Upload,
   Plus,
   Check,
-  X,
   User,
   FileText,
   Trash2,
+  Loader2,
 } from "lucide-react";
 
 import {
@@ -25,6 +25,68 @@ import type { Patient } from "../store/patients.store";
 interface PatientFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+
+function formatCpfCnpj(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 14);
+
+  if (digits.length <= 11) {
+    return digits
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  }
+
+  return digits
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+}
+
+function formatCep(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  return digits.replace(/(\d{5})(\d)/, "$1-$2");
+}
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 10) {
+    return digits
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  }
+  return digits
+    .replace(/(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
+}
+
+function formatDate(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  return digits
+    .replace(/(\d{2})(\d)/, "$1/$2")
+    .replace(/(\d{2})(\d)/, "$1/$2");
+}
+
+async function fetchAddressByCep(cepValue: string) {
+  const clean = cepValue.replace(/\D/g, "");
+  if (clean.length !== 8) return null;
+
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
+    const data = await res.json();
+    if (data.erro) return null;
+    return {
+      address: data.logradouro || "",
+      neighborhood: data.bairro || "",
+      city: data.localidade || "",
+      state: data.uf || "",
+    };
+  } catch (err) {
+    console.error("Erro ao consultar ViaCEP:", err);
+    return null;
+  }
 }
 
 const DEFAULT_TRIGGERS = [
@@ -65,6 +127,7 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
   const [address, setAddress] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
   const [number, setNumber] = useState("");
+  const [loadingCep, setLoadingCep] = useState(false);
 
   // Estados do Responsável 1
   const [respName, setRespName] = useState("");
@@ -78,6 +141,7 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
   const [respNeighborhood, setRespNeighborhood] = useState("");
   const [respNumber, setRespNumber] = useState("");
   const [respSameAddress, setRespSameAddress] = useState(false);
+  const [loadingRespCep, setLoadingRespCep] = useState(false);
 
   // Estados do Responsável Extra
   const [respExtraName, setRespExtraName] = useState("");
@@ -91,6 +155,7 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
   const [respExtraNeighborhood, setRespExtraNeighborhood] = useState("");
   const [respExtraNumber, setRespExtraNumber] = useState("");
   const [respExtraSameAddress, setRespExtraSameAddress] = useState(false);
+  const [loadingRespExtraCep, setLoadingRespExtraCep] = useState(false);
 
   // Gatilhos
   const [selectedTriggers, setSelectedTriggers] = useState<string[]>([]);
@@ -98,6 +163,58 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
 
   // Laudo
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+
+  // Handlers CEP com ViaCEP
+  const handlePatientCepChange = async (val: string) => {
+    const formatted = formatCep(val);
+    setCep(formatted);
+    const clean = formatted.replace(/\D/g, "");
+    if (clean.length === 8) {
+      setLoadingCep(true);
+      const addr = await fetchAddressByCep(clean);
+      setLoadingCep(false);
+      if (addr) {
+        if (addr.address) setAddress(addr.address);
+        if (addr.neighborhood) setNeighborhood(addr.neighborhood);
+        if (addr.city) setCity(addr.city);
+        if (addr.state) setState(addr.state);
+      }
+    }
+  };
+
+  const handleRespCepChange = async (val: string) => {
+    const formatted = formatCep(val);
+    setRespCep(formatted);
+    const clean = formatted.replace(/\D/g, "");
+    if (clean.length === 8) {
+      setLoadingRespCep(true);
+      const addr = await fetchAddressByCep(clean);
+      setLoadingRespCep(false);
+      if (addr) {
+        if (addr.address) setRespAddress(addr.address);
+        if (addr.neighborhood) setRespNeighborhood(addr.neighborhood);
+        if (addr.city) setRespCity(addr.city);
+        if (addr.state) setRespState(addr.state);
+      }
+    }
+  };
+
+  const handleRespExtraCepChange = async (val: string) => {
+    const formatted = formatCep(val);
+    setRespExtraCep(formatted);
+    const clean = formatted.replace(/\D/g, "");
+    if (clean.length === 8) {
+      setLoadingRespExtraCep(true);
+      const addr = await fetchAddressByCep(clean);
+      setLoadingRespExtraCep(false);
+      if (addr) {
+        if (addr.address) setRespExtraAddress(addr.address);
+        if (addr.neighborhood) setRespExtraNeighborhood(addr.neighborhood);
+        if (addr.city) setRespExtraCity(addr.city);
+        if (addr.state) setRespExtraState(addr.state);
+      }
+    }
+  };
 
   // Toggle gatilho
   const handleToggleTrigger = (trigger: string) => {
@@ -141,7 +258,6 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
       return;
     }
 
-    // Calcula idade aproximada se a data de nascimento for fornecida
     let calculatedAge = 7;
     if (birthDate.includes("/")) {
       const parts = birthDate.split("/");
@@ -265,7 +381,8 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                     <Input
                       placeholder="Data Nasc"
                       value={birthDate}
-                      onChange={(e) => setBirthDate(e.target.value)}
+                      onChange={(e) => setBirthDate(formatDate(e.target.value))}
+                      maxLength={10}
                       className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                     />
                   </div>
@@ -273,7 +390,8 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                     <Input
                       placeholder="Telefone de Contato"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(formatPhone(e.target.value))}
+                      maxLength={15}
                       className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                     />
                   </div>
@@ -285,17 +403,22 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                     <Input
                       placeholder="CPF"
                       value={cpf}
-                      onChange={(e) => setCpf(e.target.value)}
+                      onChange={(e) => setCpf(formatCpfCnpj(e.target.value))}
+                      maxLength={18}
                       className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                     />
                   </div>
-                  <div className="sm:col-span-3">
+                  <div className="sm:col-span-3 relative">
                     <Input
                       placeholder="CEP"
                       value={cep}
-                      onChange={(e) => setCep(e.target.value)}
+                      onChange={(e) => handlePatientCepChange(e.target.value)}
+                      maxLength={9}
                       className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                     />
+                    {loadingCep && (
+                      <Loader2 className="h-4 w-4 animate-spin text-[#0b3294] absolute right-3 top-1/2 -translate-y-1/2" />
+                    )}
                   </div>
                   <div className="sm:col-span-4">
                     <Input
@@ -371,7 +494,8 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                   <Input
                     placeholder="Data Nasc"
                     value={respBirthDate}
-                    onChange={(e) => setRespBirthDate(e.target.value)}
+                    onChange={(e) => setRespBirthDate(formatDate(e.target.value))}
+                    maxLength={10}
                     className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                   />
                 </div>
@@ -379,7 +503,8 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                   <Input
                     placeholder="Telefone de Contato"
                     value={respPhone}
-                    onChange={(e) => setRespPhone(e.target.value)}
+                    onChange={(e) => setRespPhone(formatPhone(e.target.value))}
+                    maxLength={15}
                     className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                   />
                 </div>
@@ -387,7 +512,8 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                   <Input
                     placeholder="CPF"
                     value={respCpf}
-                    onChange={(e) => setRespCpf(e.target.value)}
+                    onChange={(e) => setRespCpf(formatCpfCnpj(e.target.value))}
+                    maxLength={18}
                     className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                   />
                 </div>
@@ -395,14 +521,18 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
 
               {/* LINHA 2 */}
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 relative">
                   <Input
                     placeholder="CEP"
                     value={respSameAddress ? cep : respCep}
-                    onChange={(e) => setRespCep(e.target.value)}
+                    onChange={(e) => handleRespCepChange(e.target.value)}
                     disabled={respSameAddress}
+                    maxLength={9}
                     className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                   />
+                  {loadingRespCep && !respSameAddress && (
+                    <Loader2 className="h-4 w-4 animate-spin text-[#0b3294] absolute right-3 top-1/2 -translate-y-1/2" />
+                  )}
                 </div>
                 <div className="sm:col-span-3">
                   <Input
@@ -455,13 +585,13 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
               <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
-                  id="respSameAddress"
+                  id="respSameAddressModal"
                   checked={respSameAddress}
                   onChange={(e) => setRespSameAddress(e.target.checked)}
                   className="rounded border-border accent-[#0b3294] h-4 w-4"
                 />
                 <label
-                  htmlFor="respSameAddress"
+                  htmlFor="respSameAddressModal"
                   className="text-xs text-muted-foreground cursor-pointer select-none"
                 >
                   Residente no mesmo local do paciente.
@@ -495,7 +625,8 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                   <Input
                     placeholder="Data Nasc"
                     value={respExtraBirthDate}
-                    onChange={(e) => setRespExtraBirthDate(e.target.value)}
+                    onChange={(e) => setRespExtraBirthDate(formatDate(e.target.value))}
+                    maxLength={10}
                     className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                   />
                 </div>
@@ -503,7 +634,8 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                   <Input
                     placeholder="Telefone de Contato"
                     value={respExtraPhone}
-                    onChange={(e) => setRespExtraPhone(e.target.value)}
+                    onChange={(e) => setRespExtraPhone(formatPhone(e.target.value))}
+                    maxLength={15}
                     className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                   />
                 </div>
@@ -511,7 +643,8 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                   <Input
                     placeholder="CPF"
                     value={respExtraCpf}
-                    onChange={(e) => setRespExtraCpf(e.target.value)}
+                    onChange={(e) => setRespExtraCpf(formatCpfCnpj(e.target.value))}
+                    maxLength={18}
                     className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                   />
                 </div>
@@ -519,14 +652,18 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
 
               {/* LINHA 2 */}
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 relative">
                   <Input
                     placeholder="CEP"
                     value={respExtraSameAddress ? cep : respExtraCep}
-                    onChange={(e) => setRespExtraCep(e.target.value)}
+                    onChange={(e) => handleRespExtraCepChange(e.target.value)}
                     disabled={respExtraSameAddress}
+                    maxLength={9}
                     className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
                   />
+                  {loadingRespExtraCep && !respExtraSameAddress && (
+                    <Loader2 className="h-4 w-4 animate-spin text-[#0b3294] absolute right-3 top-1/2 -translate-y-1/2" />
+                  )}
                 </div>
                 <div className="sm:col-span-3">
                   <Input
@@ -579,13 +716,13 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
               <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
-                  id="respExtraSameAddress"
+                  id="respExtraSameAddressModal"
                   checked={respExtraSameAddress}
                   onChange={(e) => setRespExtraSameAddress(e.target.checked)}
                   className="rounded border-border accent-[#0b3294] h-4 w-4"
                 />
                 <label
-                  htmlFor="respExtraSameAddress"
+                  htmlFor="respExtraSameAddressModal"
                   className="text-xs text-muted-foreground cursor-pointer select-none"
                 >
                   Residente no mesmo local do paciente.

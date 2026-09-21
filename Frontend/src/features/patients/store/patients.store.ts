@@ -3,7 +3,11 @@ import { create } from "zustand";
 // ==========================================
 // TIPAGEM DO PACIENTE
 // ==========================================
-export type PatientStatus = "IN_PROGRESS" | "FINISHED" | "EVALUATION" | "ATTENTION";
+export type PatientStatus =
+  | "IN_PROGRESS"
+  | "FINISHED"
+  | "EVALUATION"
+  | "ATTENTION";
 
 export interface Patient {
   id: string;
@@ -24,6 +28,30 @@ export interface Patient {
   communicationStyle: string;
   sensorySensitivities: string[];
   notes: string;
+  phone?: string;
+  cpf?: string;
+  address?: {
+    cep: string;
+    city: string;
+    state: string;
+    street: string;
+    neighborhood: string;
+    number: string;
+  };
+  responsible?: {
+    name: string;
+    birthDate: string;
+    phone: string;
+    cpf: string;
+    address: Patient["address"];
+  };
+  extraResponsible?: {
+    name: string;
+    birthDate: string;
+    phone: string;
+    cpf: string;
+    address: Patient["address"];
+  };
 }
 
 // ==========================================
@@ -37,9 +65,11 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     age: 7,
     gender: "M",
     birthDate: "14/05/2019",
-    photoUrl: "https://images.unsplash.com/photo-1543332164-6e82f355badc?auto=format&fit=crop&q=80&w=400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1543332164-6e82f355badc?auto=format&fit=crop&q=80&w=400",
     category: "TEA Nível 1",
-    clinicalStatus: "Comunicação verbal fluente, hiperfoco em matemática e números",
+    clinicalStatus:
+      "Comunicação verbal fluente, hiperfoco em matemática e números",
     progress: 33,
     performanceScore: 33,
     lastSessionDate: "08/09, 14:08",
@@ -47,9 +77,14 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     responsibleName: "Mariana Silva (Mãe)",
     responsiblePhone: "(11) 98765-4321",
     therapist: "Dr. Hermeson Dantas",
-    communicationStyle: "Verbal expressivo com vocabulário rico; mediação social indicada",
-    sensorySensitivities: ["Hipersensibilidade a sons repentinos", "Sensibilidade à luz branca forte"],
-    notes: "Excelente adesão a atividades de raciocínio sequencial e jogos de tabuleiro adaptados.",
+    communicationStyle:
+      "Verbal expressivo com vocabulário rico; mediação social indicada",
+    sensorySensitivities: [
+      "Hipersensibilidade a sons repentinos",
+      "Sensibilidade à luz branca forte",
+    ],
+    notes:
+      "Excelente adesão a atividades de raciocínio sequencial e jogos de tabuleiro adaptados.",
   },
   "pac-002": {
     id: "pac-002",
@@ -57,7 +92,8 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     age: 5,
     gender: "F",
     birthDate: "22/11/2020",
-    photoUrl: "https://images.unsplash.com/photo-1595454223600-91fbdd77ae09?auto=format&fit=crop&q=80&w=400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1595454223600-91fbdd77ae09?auto=format&fit=crop&q=80&w=400",
     category: "TEA Nível 2",
     clinicalStatus: "Comunicação com suporte de PECS e gestos funcionais",
     progress: 100,
@@ -67,9 +103,14 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     responsibleName: "Renata Oliveira (Mãe)",
     responsiblePhone: "(11) 97654-3210",
     therapist: "Dra. Carolina Freitas",
-    communicationStyle: "Comunicação Aumentativa e Alternativa (CAA), frases curtas",
-    sensorySensitivities: ["Aversão a texturas pegajosas", "Busca de pressão proprioceptiva"],
-    notes: "Sessão concluída com alcance de metas em reconhecimento de emoções básicas.",
+    communicationStyle:
+      "Comunicação Aumentativa e Alternativa (CAA), frases curtas",
+    sensorySensitivities: [
+      "Aversão a texturas pegajosas",
+      "Busca de pressão proprioceptiva",
+    ],
+    notes:
+      "Sessão concluída com alcance de metas em reconhecimento de emoções básicas.",
   },
   "pac-003": {
     id: "pac-003",
@@ -77,9 +118,11 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     age: 9,
     gender: "M",
     birthDate: "03/03/2017",
-    photoUrl: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&q=80&w=400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&q=80&w=400",
     category: "TEA Nível 1",
-    clinicalStatus: "Desenvolvimento escolar ativo, rigidez cognitiva e transições moderadas",
+    clinicalStatus:
+      "Desenvolvimento escolar ativo, rigidez cognitiva e transições moderadas",
     progress: 100,
     performanceScore: 10,
     lastSessionDate: "02/09, 15:28",
@@ -97,9 +140,11 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     age: 8,
     gender: "F",
     birthDate: "10/08/2018",
-    photoUrl: "https://images.unsplash.com/photo-1517677129300-07b130802f46?auto=format&fit=crop&q=80&w=400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1517677129300-07b130802f46?auto=format&fit=crop&q=80&w=400",
     category: "TEA Nível 3",
-    clinicalStatus: "Comunicação não-verbal com prancha digital, necessidade de suporte substancial",
+    clinicalStatus:
+      "Comunicação não-verbal com prancha digital, necessidade de suporte substancial",
     progress: 100,
     performanceScore: 23,
     lastSessionDate: "27/08, 16:59",
@@ -107,8 +152,12 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     responsibleName: "Juliana Costa (Mãe)",
     responsiblePhone: "(31) 98456-7890",
     therapist: "Dra. Beatriz Albuquerque",
-    communicationStyle: "Não-verbal; utiliza tablet adaptado e comunicação por símbolos",
-    sensorySensitivities: ["Sobrecarga sensorial auditiva em locais cheios", "Gosta de balanço vestibular"],
+    communicationStyle:
+      "Não-verbal; utiliza tablet adaptado e comunicação por símbolos",
+    sensorySensitivities: [
+      "Sobrecarga sensorial auditiva em locais cheios",
+      "Gosta de balanço vestibular",
+    ],
     notes: "Grande engajamento em atividades com retorno audiovisual lúdico.",
   },
   "pac-005": {
@@ -117,9 +166,11 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     age: 6,
     gender: "M",
     birthDate: "30/01/2020",
-    photoUrl: "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&q=80&w=400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&q=80&w=400",
     category: "TEA Nível 2",
-    clinicalStatus: "Ecolalia funcional, processo de dessensibilização e contato visual",
+    clinicalStatus:
+      "Ecolalia funcional, processo de dessensibilização e contato visual",
     progress: 100,
     performanceScore: 20,
     lastSessionDate: "22/08, 16:16",
@@ -137,9 +188,11 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     age: 11,
     gender: "F",
     birthDate: "19/04/2015",
-    photoUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=400",
     category: "TEA Nível 1",
-    clinicalStatus: "Habilidades socioemocionais em desenvolvimento e reciprocidade social",
+    clinicalStatus:
+      "Habilidades socioemocionais em desenvolvimento e reciprocidade social",
     progress: 65,
     performanceScore: 78,
     lastSessionDate: "16/08, 11:30",
@@ -149,7 +202,8 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     therapist: "Dr. Hermeson Dantas",
     communicationStyle: "Fluente, com foco em treino de reciprocidade social",
     sensorySensitivities: ["Nenhuma sensibilidade severa"],
-    notes: "Boa capacidade de autorreflexão e interesse nas narrativas dos jogos.",
+    notes:
+      "Boa capacidade de autorreflexão e interesse nas narrativas dos jogos.",
   },
   "pac-007": {
     id: "pac-007",
@@ -157,9 +211,11 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     age: 4,
     gender: "M",
     birthDate: "05/09/2022",
-    photoUrl: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=400",
     category: "Em Avaliação",
-    clinicalStatus: "Sinais precoces de atraso no desenvolvimento da fala e interação social",
+    clinicalStatus:
+      "Sinais precoces de atraso no desenvolvimento da fala e interação social",
     progress: 25,
     performanceScore: 40,
     lastSessionDate: "12/08, 09:15",
@@ -169,7 +225,8 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
     therapist: "Dra. Carolina Freitas",
     communicationStyle: "Gestual e balbucio com intenção comunicativa",
     sensorySensitivities: ["Fixação em estímulos visuais rotatórios"],
-    notes: "Primeiras avaliações de resposta a estímulos lúdicos e contato visual.",
+    notes:
+      "Primeiras avaliações de resposta a estímulos lúdicos e contato visual.",
   },
 };
 
@@ -192,7 +249,7 @@ interface PatientsState {
   setStatusFilter: (status: string) => void;
   setSortOrder: (order: string) => void;
   resetFilters: () => void;
-  
+
   // Helpers
   getSelectedPatient: () => Patient | null;
   getFilteredPatients: () => Patient[];
@@ -221,7 +278,13 @@ export const usePatientsStore = create<PatientsState>((set, get) => ({
   setCategoryFilter: (categoryFilter: string) => set({ categoryFilter }),
   setStatusFilter: (statusFilter: string) => set({ statusFilter }),
   setSortOrder: (sortOrder: string) => set({ sortOrder }),
-  resetFilters: () => set({ searchTerm: "", categoryFilter: "all", statusFilter: "all", sortOrder: "recent" }),
+  resetFilters: () =>
+    set({
+      searchTerm: "",
+      categoryFilter: "all",
+      statusFilter: "all",
+      sortOrder: "recent",
+    }),
 
   getSelectedPatient: () => {
     const { patients, selectedPatientId } = get();
@@ -236,15 +299,20 @@ export const usePatientsStore = create<PatientsState>((set, get) => ({
   },
 
   getFilteredPatients: () => {
-    const { patients, searchTerm, categoryFilter, statusFilter, sortOrder } = get();
+    const { patients, searchTerm, categoryFilter, statusFilter, sortOrder } =
+      get();
     const all = Object.values(patients);
 
     const filtered = all.filter((patient) => {
       const matchesSearch =
         patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        patient.clinicalStatus.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        patient.clinicalStatus
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
         patient.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        patient.responsibleName.toLowerCase().includes(searchTerm.toLowerCase());
+        patient.responsibleName
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
 
       const matchesCategory =
         categoryFilter === "all" || patient.category === categoryFilter;
