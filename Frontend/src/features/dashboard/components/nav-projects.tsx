@@ -1,24 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { type LucideIcon } from "lucide-react";
 
-// import {
-//   DropdownMenu,
-//   DropdownMenuContent,
-//   DropdownMenuItem,
-//   DropdownMenuSeparator,
-//   DropdownMenuTrigger,
-// } from "@/shared/components/ui/dropdown-menu";
 import {
   SidebarGroup,
-  // SidebarGroupLabel,
   SidebarMenu,
-  // SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/shared/components/ui/sidebar";
 import { cn } from "@/shared/lib/utils";
+import { Link, useLocation } from "react-router-dom";
 
 export function NavProjects({
   projects,
@@ -29,35 +20,32 @@ export function NavProjects({
     icon: LucideIcon;
   }[];
 }) {
-  const [activeItem, setActiveItem] = useState(projects[0]?.name);
+  const { pathname } = useLocation();
 
   return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+    <SidebarGroup>
       <SidebarMenu className="gap-4">
         {projects.map((item) => {
-          const isActive = activeItem === item.name;
+          const isActive = pathname === item.url;
 
           return (
             <SidebarMenuItem key={item.name}>
               <SidebarMenuButton
                 asChild
+                tooltip={item.name}
                 className={cn(
-                    "!h-auto !p-4 text-[0.825rem] ",
+                  "!h-auto !p-4 text-[0.825rem]",
                   isActive
                     ? "bg-[#0b3294] text-white hover:bg-[#0b3294] hover:text-white"
                     : "hover:bg-[#0b3294] hover:text-white",
                 )}
               >
-                <a
-                  href={item.url}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveItem(item.name);
-                  }}
-                >
+                <Link to={item.url}>
                   <item.icon />
-                  <span>{item.name}</span>
-                </a>
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    {item.name}
+                  </span>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           );
