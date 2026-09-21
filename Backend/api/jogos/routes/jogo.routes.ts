@@ -263,4 +263,8 @@ jogosRoutes.get('/:id', JogoController.buscarPorId);
 >>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
 =======
 jogosRoutes.get('/:id/manifesto', JogoController.obterManifesto);
+<<<<<<< HEAD
 >>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
+=======
+jogosRoutes.post('/:id/validar-telemetria', JogoController.validarTelemetria);
+>>>>>>> 692f55d (feat: add game controller, routes, manifesto and metric validators, and telemetry tests)

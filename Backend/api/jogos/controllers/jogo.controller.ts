@@ -25,6 +25,7 @@ export class JogoController {
 =======
 import { JogoModel } from '../models/jogo.model.js';
 import { ManifestoValidator } from '../validators/manifesto.validator.js';
+import { MetricaValidator } from '../validators/metrica.validator.js';
 
 export class JogoController {
   /**
@@ -148,6 +149,7 @@ export class JogoController {
     }
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
   /**
    * Handles POST /api/jogos/:id/validar-telemetria to validate telemetry events against RN02 rules.
@@ -156,6 +158,12 @@ export class JogoController {
    * @param req - Express request containing game ID in `:id` and telemetry event in body.
    * @param res - Express response returning status 200 if recordable, or 422 with rejection details.
    * @returns Resolves when the HTTP response has been sent.
+=======
+
+  /**
+   * POST /jogos/:id/validar-telemetria ou POST /api/jogos/:id/validar-telemetria
+   * Valida evento de telemetria contra a RN02 (bloqueia gravação no prontuário se a métrica não tiver tipagem estrita)
+>>>>>>> 692f55d (feat: add game controller, routes, manifesto and metric validators, and telemetry tests)
    */
   static async validarTelemetria(req: Request, res: Response): Promise<void> {
     try {
@@ -189,8 +197,11 @@ export class JogoController {
       res.status(500).json({ error: 'Erro interno ao processar validação de telemetria' });
     }
   }
+<<<<<<< HEAD
 =======
 >>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
 =======
 >>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
+=======
+>>>>>>> 692f55d (feat: add game controller, routes, manifesto and metric validators, and telemetry tests)
 }

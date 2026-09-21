@@ -76,6 +76,7 @@ export class ManifestoValidator {
         }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         // 6.2. tipo_metrica (RN02: Validação Estrita sem Fallback)
         if (!metrica.tipo_metrica || typeof metrica.tipo_metrica !== 'string' || metrica.tipo_metrica.trim() === '') {
           erros.push(`Métrica ${idLabel}: 'tipo_metrica' é obrigatório e não pode ser nulo ou ausente (RN02: proibido fallback automático para categórica).`);
@@ -90,6 +91,14 @@ export class ManifestoValidator {
           erros.push(
             `Métrica ${idLabel}: tipo '${metrica.tipo_metrica}' inválido. Tipos permitidos: ${this.TIPOS_METRICA_PERMITIDOS.map(t => `'${t}'`).join(', ')}.`
 >>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
+=======
+        // 6.2. tipo_metrica (RN02: Validação Estrita sem Fallback)
+        if (!metrica.tipo_metrica || typeof metrica.tipo_metrica !== 'string' || metrica.tipo_metrica.trim() === '') {
+          erros.push(`Métrica ${idLabel}: 'tipo_metrica' é obrigatório e não pode ser nulo ou ausente (RN02: proibido fallback automático para categórica).`);
+        } else if (!this.TIPOS_METRICA_PERMITIDOS.includes(metrica.tipo_metrica)) {
+          erros.push(
+            `Métrica ${idLabel}: tipo '${metrica.tipo_metrica}' inválido. Tipos permitidos: ${this.TIPOS_METRICA_PERMITIDOS.map(t => `'${t}'`).join(', ')} (RN02: tipagem estrita).`
+>>>>>>> 692f55d (feat: add game controller, routes, manifesto and metric validators, and telemetry tests)
           );
         } else {
           // 6.3. Validações específicas por tipo
