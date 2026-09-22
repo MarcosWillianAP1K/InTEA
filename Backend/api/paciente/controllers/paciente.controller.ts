@@ -29,9 +29,12 @@ export class PacienteController {
       const pacientes = await PacienteModel.listar(incluirInativos);
 
       res.status(200).json({ data: pacientes });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[PacienteController.listar]', error);
-      res.status(500).json({ error: 'Erro interno ao listar pacientes.' });
+      res.status(500).json({
+        error: 'Erro interno ao listar pacientes.',
+        detalhes: error?.message || String(error),
+      });
     }
   }
 
