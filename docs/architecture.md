@@ -466,12 +466,24 @@ export function usePacientes() {
 | :--- | :--- | :--- |
 | Arquivos TypeScript/TSX | `kebab-case` | `paciente.model.ts`, `PacienteCard.tsx` |
 | Interfaces e Types | `PascalCase` | `CriarPacienteDTO`, `Paciente` |
-| Variáveis e funções | `camelCase` | `buscarPorId()`, `isPacienteAtivo` |
-| Constantes | `UPPER_SNAKE_CASE` | `MAX_UPLOAD_SIZE` |
+| **Funções e Métodos de Classe** | **`camelCase` ("nomeNome")** | `deletarHard()`, `buscarPorId()`, `desativar()`, `reativar()` |
+| Variáveis e instâncias | `camelCase` | `novoPaciente`, `isPacienteAtivo` |
+| Constantes globais | `UPPER_SNAKE_CASE` | `MAX_UPLOAD_SIZE`, `PORT` |
 | Componentes React | `PascalCase` | `PacienteCard`, `FormularioCadastro` |
 | Tabelas SQL | `snake_case` | `paciente`, `terapeuta_paciente` |
-| Colunas SQL | `snake_case` | `data_nascimento`, `status_ativo` |
-| Endpoints REST | `kebab-case` plural | `/api/pacientes`, `/api/terapeutas` |
+| Colunas SQL / DTO payload | `snake_case` | `data_nascimento`, `status_ativo`, `clinica_id` |
+| Endpoints REST (recursos) | `kebab-case` plural | `/api/pacientes`, `/api/terapeutas` |
+| Sub-rotas de ação específica | Ação no final da URL | `DELETE /api/pacientes/:id/hard`, `PATCH /api/pacientes/:id/reativar` |
+
+### Regra Estrita de `camelCase` no Código TypeScript
+
+- **Métodos em Controllers, Models e Services**: devem usar **obrigatoriamente `camelCase`** (`"nomeNome"`).
+  - ✅ **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
+  - ❌ **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
+- **Sub-rotas de ação**: quando um endpoint realiza uma ação secundária ou de exceção sobre um recurso (como reativação ou hard delete para testes), a ação vai no **final da URL após o `:id`**:
+  - ✅ `DELETE /api/pacientes/:id/hard`
+  - ✅ `PATCH /api/pacientes/:id/reativar`
+  - ❌ `/api/pacientes/hard/:id` (evitar inversão do padrão)
 
 ### Padrão de Arquivo por Camada (Backend)
 
