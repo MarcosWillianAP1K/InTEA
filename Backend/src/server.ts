@@ -20,6 +20,16 @@ const swaggerSpec = swaggerJsdoc({
       description: "Documentação da API REST do InTEA",
     },
     servers: [{ url: `http://localhost:${port}` }],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Insira o token JWT gerado no endpoint /api/terapeuta/login",
+        },
+      },
+    },
   },
   apis: [
     "./dist/api/**/*.routes.js",
