@@ -30,7 +30,7 @@ import {
   useSidebar,
 } from "@/shared/components/ui/sidebar"
 import { Dialog, DialogContent } from "@/shared/components/ui/dialog"
-import SettingsPage from "@/features/settings/pages/sattingsPage";
+import SettingsPage from "@/features/settings/pages/settingsPage";
 
 export function NavUser({
   user,

@@ -13,7 +13,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/shared/components/ui/sidebar";
-import { NewSection } from "./nav-buttom";
+import { NewSection } from "./nav-button";
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   activeSessionId: string | null;

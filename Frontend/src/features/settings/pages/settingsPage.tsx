@@ -26,7 +26,7 @@ import {
   SidebarProvider,
 } from "@/shared/components/ui/sidebar";
 
-import AppearanceSettings from "../sections/appearenceSetting";
+import AppearanceSettings from "../sections/appearanceSetting";
 
 
 const settingsNav = [

@@ -31,7 +31,7 @@ export function NewSection({
             disabled={isCreating}
           >
             {isCreating ? <Loader2 className="animate-spin" /> : <Plus />}
-            <span>{isCreating ? "Criando..." : "Novo Seção"}</span>
+            <span>{isCreating ? "Criando..." : "Nova Sessão"}</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
