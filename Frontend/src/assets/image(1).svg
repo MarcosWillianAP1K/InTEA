@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="600px" height="600px" viewBox="0 0 600 600" version="1.1">
+<defs>
+<linearGradient id="linear0" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1" y2="1" gradientTransform="matrix(270,0,0,270,180,120)">
+<stop offset="0" style="stop-color:rgb(0%,16.862745%,54.117647%);stop-opacity:1;"/>
+<stop offset="1" style="stop-color:rgb(0%,12.156863%,40.784314%);stop-opacity:1;"/>
+</linearGradient>
+<filter id="alpha" filterUnits="objectBoundingBox" x="0%" y="0%" width="100%" height="100%">
+  <feColorMatrix type="matrix" in="SourceGraphic" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"/>
+</filter>
+<mask id="mask0">
+  <g filter="url(#alpha)">
+<rect x="0" y="0" width="600" height="600" style="fill:rgb(0%,0%,0%);fill-opacity:0.85098;stroke:none;"/>
+  </g>
+</mask>
+<clipPath id="clip1">
+  <rect x="0" y="0" width="600" height="600"/>
+</clipPath>
+<g id="surface5" clip-path="url(#clip1)">
+<path style=" stroke:none;fill-rule:nonzero;fill:rgb(100%,100%,100%);fill-opacity:1;" d="M 237 210 C 237 203.371094 231.628906 198 225 198 C 218.371094 198 213 203.371094 213 210 C 213 216.628906 218.371094 222 225 222 C 231.628906 222 237 216.628906 237 210 Z M 237 210 "/>
+</g>
+<mask id="mask1">
+  <g filter="url(#alpha)">
+<rect x="0" y="0" width="600" height="600" style="fill:rgb(0%,0%,0%);fill-opacity:0.85098;stroke:none;"/>
+  </g>
+</mask>
+<clipPath id="clip2">
+  <rect x="0" y="0" width="600" height="600"/>
+</clipPath>
+<g id="surface8" clip-path="url(#clip2)">
+<path style=" stroke:none;fill-rule:nonzero;fill:rgb(100%,100%,100%);fill-opacity:1;" d="M 417 300 C 417 293.371094 411.628906 288 405 288 C 398.371094 288 393 293.371094 393 300 C 393 306.628906 398.371094 312 405 312 C 411.628906 312 417 306.628906 417 300 Z M 417 300 "/>
+</g>
+<mask id="mask2">
+  <g filter="url(#alpha)">
+<rect x="0" y="0" width="600" height="600" style="fill:rgb(0%,0%,0%);fill-opacity:0.65098;stroke:none;"/>
+  </g>
+</mask>
+<clipPath id="clip3">
+  <rect x="0" y="0" width="600" height="600"/>
+</clipPath>
+<g id="surface11" clip-path="url(#clip3)">
+<path style="fill-rule:nonzero;fill:rgb(0%,0%,0%);fill-opacity:1;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(100%,100%,100%);stroke-opacity:1;stroke-miterlimit:4;" d="M 40 35 L 70 50 " transform="matrix(3,0,0,3,105,105)"/>
+</g>
+<mask id="mask3">
+  <g filter="url(#alpha)">
+<rect x="0" y="0" width="600" height="600" style="fill:rgb(0%,0%,0%);fill-opacity:0.65098;stroke:none;"/>
+  </g>
+</mask>
+<clipPath id="clip4">
+  <rect x="0" y="0" width="600" height="600"/>
+</clipPath>
+<g id="surface14" clip-path="url(#clip4)">
+<path style="fill-rule:nonzero;fill:rgb(0%,0%,0%);fill-opacity:1;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke:rgb(100%,100%,100%);stroke-opacity:1;stroke-miterlimit:4;" d="M 100 65 L 70 50 " transform="matrix(3,0,0,3,105,105)"/>
+</g>
+</defs>
+<g id="surface1">
+<path style=" stroke:none;fill-rule:nonzero;fill:url(#linear0);" d="M 225 165 C 270 165 270 120 315 120 C 360 120 360 165 405 165 C 450 165 450 210 450 255 C 450 300 405 300 405 345 C 405 390 360 390 315 390 C 270 390 270 345 225 345 C 180 345 180 300 180 255 C 180 210 225 210 225 165 Z M 225 165 "/>
+<path style=" stroke:none;fill-rule:nonzero;fill:rgb(100%,100%,100%);fill-opacity:1;" d="M 345 255 C 345 238.429688 331.570312 225 315 225 C 298.429688 225 285 238.429688 285 255 C 285 271.570312 298.429688 285 315 285 C 331.570312 285 345 271.570312 345 255 Z M 345 255 "/>
+<path style=" stroke:none;fill-rule:nonzero;fill:rgb(0%,16.862746%,54.11765%);fill-opacity:1;" d="M 330 255 C 330 246.714844 323.285156 240 315 240 C 306.714844 240 300 246.714844 300 255 C 300 263.285156 306.714844 270 315 270 C 323.285156 270 330 263.285156 330 255 Z M 330 255 "/>
+<use xlink:href="#surface5" mask="url(#mask0)"/>
+<use xlink:href="#surface8" mask="url(#mask1)"/>
+<use xlink:href="#surface11" mask="url(#mask2)"/>
+<use xlink:href="#surface14" mask="url(#mask3)"/>
+</g>
+</svg>
