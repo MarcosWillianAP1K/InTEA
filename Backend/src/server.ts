@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
 import { apiRouter } from "../api/index.js";
+import { jogosRoutes } from "../api/jogos/routes/jogo.routes.js";
 
 dotenv.config();
 
@@ -68,6 +69,7 @@ app.use(
 
 // Rotas da API (features MVC)
 app.use("/api", apiRouter);
+app.use("/jogos", jogosRoutes);
 
 app.listen(port, () => {
   console.log(`[Backend] Servidor rodando na porta ${port}`);

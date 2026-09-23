@@ -43,3 +43,5 @@ desktop.ini
 # Temporários
 *.tmp
 *.temp
+# Documentação interna / Projetos
+BRAIN_PROJECT/
