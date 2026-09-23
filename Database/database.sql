@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS public.terapeuta_area_foco (
 );
 
 -- ==============================================================================
--- 5. TABELA: paciente (Com dados sociodemográficos e endereço - Fig. 15/16)
+-- 5. TABELA: paciente (Com dados sociodemográficos e endereço)
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.paciente (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

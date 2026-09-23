@@ -4,7 +4,7 @@
 -- OBJETIVO:
 -- 1. Padronizar todos os identificadores primários (PK) e estrangeiros (FK) para UUID.
 --    (Elimina enumeração sequencial, previne vazamento de dados e unifica com auth.users).
--- 2. Adicionar campos sociodemográficos e de endereço em `paciente` (Formulário Fig. 15/16).
+-- 2. Adicionar campos sociodemográficos e de endereço em `paciente`.
 -- 3. Criar tabelas `responsavel` e associativa `paciente_responsavel` (suporte a principal e extra).
 -- 4. Criar catálogo de `gatilhos` e relacionamento `paciente_gatilho` (com sementes iniciais).
 -- 5. Configurar armazenamento de laudos (PDF/DOCX/DOC) via Supabase Storage e tabela `laudo_clinico`.
