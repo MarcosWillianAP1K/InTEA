@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { PacienteController } from '../controllers/paciente.controller.js';
+import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
+import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/paciente
@@ -67,8 +69,10 @@ pacienteRoutes.get('/', PacienteController.listar);
  * @swagger
  * /api/paciente/{id}:
  *   get:
- *     summary: Busca um paciente pelo ID
+ *     summary: Busca dados e prontuário do paciente (com verificação de vínculo)
  *     tags: [Paciente]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -79,12 +83,18 @@ pacienteRoutes.get('/', PacienteController.listar);
  *     responses:
  *       200:
  *         description: Paciente encontrado com sucesso
+ *       400:
+ *         description: Identificador UUID inválido
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (sem vínculo ativo com o paciente)
  *       404:
  *         description: Paciente não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.get('/:id', PacienteController.buscarPorId);
+pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarPorId);
 
 // ------------------------------------------------------------------------------
 // 2. Persistência (Criação e Atualização de Pacientes)
@@ -129,8 +139,10 @@ pacienteRoutes.post('/', PacienteController.criar);
  * @swagger
  * /api/paciente/{id}:
  *   put:
- *     summary: Atualiza os dados de um paciente existente
+ *     summary: Atualiza os dados de um paciente existente (com verificação de vínculo)
  *     tags: [Paciente]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -151,12 +163,16 @@ pacienteRoutes.post('/', PacienteController.criar);
  *         description: Paciente atualizado com sucesso
  *       400:
  *         description: Erro de validação nos dados fornecidos
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (sem vínculo ativo com o paciente)
  *       404:
  *         description: Paciente não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.put('/:id', PacienteController.atualizar);
+pacienteRoutes.put('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.atualizar);
 
 // ------------------------------------------------------------------------------
 // 3. Exclusão e Reativação (Soft Delete e Hard Delete)
@@ -239,8 +255,10 @@ pacienteRoutes.patch('/:id/reativar', PacienteController.reativar);
  * @swagger
  * /api/paciente/{id}/terapeutas:
  *   get:
- *     summary: Lista todos os terapeutas vinculados ao paciente
+ *     summary: Lista todos os terapeutas vinculados ao paciente (com verificação de vínculo)
  *     tags: [Paciente]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -251,12 +269,16 @@ pacienteRoutes.patch('/:id/reativar', PacienteController.reativar);
  *     responses:
  *       200:
  *         description: Lista de terapeutas vinculados retornada com sucesso
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (sem vínculo ativo com o paciente)
  *       404:
  *         description: Paciente não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.get('/:id/terapeutas', PacienteController.listarTerapeutas);
+pacienteRoutes.get('/:id/terapeutas', authMiddleware, verificarVisibilidadePaciente, PacienteController.listarTerapeutas);
 
 /**
  * @swagger
@@ -264,6 +286,8 @@ pacienteRoutes.get('/:id/terapeutas', PacienteController.listarTerapeutas);
  *   post:
  *     summary: Vincula um novo terapeuta ao paciente (equipe multidisciplinar)
  *     tags: [Paciente]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -281,11 +305,15 @@ pacienteRoutes.get('/:id/terapeutas', PacienteController.listarTerapeutas);
  *       201:
  *         description: Terapeuta vinculado com sucesso
  *       400:
- *         description: Terapeuta de clínica diferente ou IDs inválidos
+ *         description: Terapeuta de clínica diferente, paciente inativo ou IDs inválidos
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       404:
+ *         description: Paciente ou terapeuta não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.post('/:id/terapeutas', PacienteController.vincularTerapeuta);
+pacienteRoutes.post('/:id/terapeutas', authMiddleware, PacienteController.vincularTerapeuta);
 
 /**
  * @swagger
@@ -293,6 +321,8 @@ pacienteRoutes.post('/:id/terapeutas', PacienteController.vincularTerapeuta);
  *   delete:
  *     summary: Remove o vínculo de um terapeuta com o paciente
  *     tags: [Paciente]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -309,9 +339,13 @@ pacienteRoutes.post('/:id/terapeutas', PacienteController.vincularTerapeuta);
  *     responses:
  *       200:
  *         description: Vínculo removido com sucesso
+ *       400:
+ *         description: Parâmetros UUID inválidos
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
  *       404:
- *         description: Vínculo não encontrado
+ *         description: Paciente não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', PacienteController.desvincularTerapeuta);
+pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, PacienteController.desvincularTerapeuta);

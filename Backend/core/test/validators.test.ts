@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   validarCPF,
   validarCEP,
+  validarUUID,
   validarTelefone,
   validarDataNascimento,
   validarCriarPacienteDTO,
@@ -46,6 +47,21 @@ describe('Core Utils: Validações (validators.ts)', () => {
       expect(validarCEP('123')).toBe(false);
       expect(validarCEP('01310-1000')).toBe(false);
       expect(validarCEP('')).toBe(false);
+    });
+  });
+
+  describe('validarUUID', () => {
+    it('deve aceitar UUIDs válidos (v4 e padrão)', () => {
+      expect(validarUUID('123e4567-e89b-12d3-a456-426614174000')).toBe(true);
+      expect(validarUUID('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')).toBe(true);
+      expect(validarUUID('A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11')).toBe(true);
+    });
+
+    it('deve rejeitar strings que não sejam UUIDs válidos', () => {
+      expect(validarUUID('123')).toBe(false);
+      expect(validarUUID('not-a-uuid')).toBe(false);
+      expect(validarUUID('')).toBe(false);
+      expect(validarUUID(null as any)).toBe(false);
     });
   });
 
