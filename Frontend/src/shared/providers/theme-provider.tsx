@@ -20,6 +20,12 @@ const initialState: ThemeProviderState = {
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
+/**
+ * Provides theme context (dark, light, system) and syncs theme classes to the document root element.
+ *
+ * @param props - ThemeProvider properties containing child elements and optional initial theme/storageKey.
+ * @returns React context provider wrapping child components.
+ */
 export function ThemeProvider({
   children,
   defaultTheme = "system",
@@ -63,6 +69,12 @@ export function ThemeProvider({
   )
 }
 
+/**
+ * Custom React hook to access and toggle the active application theme.
+ *
+ * @returns The current theme state and theme setter function.
+ * @throws {Error} If called outside of a `<ThemeProvider>` hierarchy.
+ */
 export const useTheme = () => {
   const context = useContext(ThemeProviderContext)
 

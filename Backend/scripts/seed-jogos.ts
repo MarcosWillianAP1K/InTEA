@@ -74,6 +74,13 @@ const JOGOS_SEED = [
   }
 ];
 
+/**
+ * Executes idempotent seeding of sample therapeutic games into the database (RF09).
+ * Checks existing entries before insertion to prevent duplication.
+ *
+ * @returns Resolves when database seeding completes.
+ * @throws {Error} If database interaction or network connection fails unexpectedly.
+ */
 async function runSeed() {
   console.log('[Seed] Iniciando seed dos jogos terapêuticos...\n');
   let inseridos = 0;
