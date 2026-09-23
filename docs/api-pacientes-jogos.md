@@ -1,3 +1,5 @@
+# API de Pacientes e Jogos
+
 > **Versão da API:** `v1.0.0` | **Base URL:** `http://localhost:3000/api` | **Swagger UI:** `http://localhost:3000/api/docs`
 
 ---
@@ -7,13 +9,16 @@
 A API REST do InTEA opera sob o padrão JSON sobre HTTP/HTTPS, seguindo a arquitetura MVC (Model-View-Controller) com Node.js, Express, TypeScript e persistência no PostgreSQL via Supabase.
 
 ### 1.1 Autenticação e Segurança
+
 - Os endpoints protegidos exigem o cabeçalho `Authorization: Bearer <TOKEN_JWT>`, validado pelo `authMiddleware` via Supabase Auth.
 - O controle de acesso clínico aos prontuários e dados confidenciais do paciente é reforçado pelo middleware `verificarVisibilidadePaciente` (**RN04**), que valida o vínculo ativo terapeuta-paciente e a mesma afiliação institucional clínica.
 
 ### 1.2 Padrão de Respostas HTTP e Tratamento de Erros
+
 Todas as respostas seguem formatos previsíveis:
 
-* **Sucesso (200 OK / 201 Created):**
+- **Sucesso (200 OK / 201 Created):**
+
   ```json
   {
     "data": { ... } | [ ... ],
@@ -22,7 +27,8 @@ Todas as respostas seguem formatos previsíveis:
   }
   ```
 
-* **Erro ou Rejeição de Validação (400, 401, 403, 404, 409, 422, 500):**
+- **Erro ou Rejeição de Validação (400, 401, 403, 404, 409, 422, 500):**
+
   ```json
   {
     "error": "Descrição resumida da falha",
@@ -70,10 +76,12 @@ Todas as respostas seguem formatos previsíveis:
 ### 2.2 Detalhamento de Rotas — Pacientes
 
 #### Rota 1: Listar Pacientes com Busca e Paginação
-* **Método:** `GET`
-* **URL:** `/api/paciente`
-* **Headers Requeridos:** `Content-Type: application/json`
-* **Query Parameters:**
+
+- **Método:** `GET`
+
+- **URL:** `/api/paciente`
+- **Headers Requeridos:** `Content-Type: application/json`
+- **Query Parameters:**
 
 | Parâmetro | Tipo | Obrigatório | Padrão | Descrição | Exemplo |
 | :--- | :---: | :---: | :---: | :--- | :--- |
@@ -81,18 +89,20 @@ Todas as respostas seguem formatos previsíveis:
 | `cpf` | `string` | Não | — | Busca exata por CPF (aceita com ou sem máscara) | `529.982.247-25` |
 | `idadeMin` | `integer` | Não | — | Idade mínima calculada sem drift de fuso horário | `4` |
 | `idadeMax` | `integer` | Não | — | Idade máxima calculada sem drift de fuso horário | `12` |
-| `incluirInativos`| `boolean` | Não | `false` | Se `true`, inclui pacientes inativados por soft delete | `false` |
+| `incluirInativos` | `boolean` | Não | `false` | Se `true`, inclui pacientes inativados por soft delete | `false` |
 | `page` | `integer` | Não | `1` | Índice da página atual (início em 1) | `1` |
 | `limit` | `integer` | Não | `10` | Registros por página (teto de segurança: máx 100) | `10` |
 
-* **Exemplo de Chamada:**
+- **Exemplo de Chamada:**
+
   ```http
   GET /api/paciente?nome=Pedro&idadeMin=4&idadeMax=10&page=1&limit=10 HTTP/1.1
   Host: localhost:3000
   ```
 
-* **Respostas:**
-  * **Status `200 OK`:**
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "data": [
@@ -134,7 +144,9 @@ Todas as respostas seguem formatos previsíveis:
       }
     }
     ```
-  * **Status `500 Internal Server Error`:**
+
+  - **Status `500 Internal Server Error`:**
+
     ```json
     {
       "error": "Erro interno ao listar pacientes.",
@@ -145,23 +157,28 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 2: Consultar Prontuário e Detalhes de um Paciente
-* **Método:** `GET`
-* **URL:** `/api/paciente/:id`
-* **Headers Requeridos:**
-  * `Authorization: Bearer <TOKEN_JWT>`
-* **Path Parameters:**
-  * `id` (`string`, UUID obrigatório): Identificador único do paciente.
-* **Segurança e Regras Clínicas:**
-  * Protegido por `authMiddleware` e `verificarVisibilidadePaciente` (**RN04**).
-  * O terapeuta só visualiza o prontuário caso possua vínculo ativo na tabela `terapeuta_paciente` e pertença à mesma clínica institucional. SuperAdmins possuem auditoria global.
-* **Exemplo de Chamada:**
+
+- **Método:** `GET`
+
+- **URL:** `/api/paciente/:id`
+- **Headers Requeridos:**
+  - `Authorization: Bearer <TOKEN_JWT>`
+- **Path Parameters:**
+  - `id` (`string`, UUID obrigatório): Identificador único do paciente.
+- **Segurança e Regras Clínicas:**
+  - Protegido por `authMiddleware` e `verificarVisibilidadePaciente` (**RN04**).
+  - O terapeuta só visualiza o prontuário caso possua vínculo ativo na tabela `terapeuta_paciente` e pertença à mesma clínica institucional. SuperAdmins possuem auditoria global.
+- **Exemplo de Chamada:**
+
   ```http
   GET /api/paciente/7c9e6679-7425-40de-944b-e07fc1f90ae7 HTTP/1.1
   Host: localhost:3000
   Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI...
   ```
-* **Respostas:**
-  * **Status `200 OK`:**
+
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "data": {
@@ -198,25 +215,33 @@ Todas as respostas seguem formatos previsíveis:
       }
     }
     ```
-  * **Status `400 Bad Request`:**
+
+  - **Status `400 Bad Request`:**
+
     ```json
     {
       "error": "O identificador do paciente deve ser um UUID válido."
     }
     ```
-  * **Status `401 Unauthorized`:**
+
+  - **Status `401 Unauthorized`:**
+
     ```json
     {
       "error": "Acesso não autorizado. Forneça um token no cabeçalho Authorization: Bearer <token>."
     }
     ```
-  * **Status `403 Forbidden` (RN04 - Sem Vínculo ou Clínica Conflitante):**
+
+  - **Status `403 Forbidden` (RN04 - Sem Vínculo ou Clínica Conflitante):**
+
     ```json
     {
       "error": "Acesso negado: o terapeuta não possui vínculo ativo com este paciente."
     }
     ```
-  * **Status `404 Not Found`:**
+
+  - **Status `404 Not Found`:**
+
     ```json
     {
       "error": "Paciente não encontrado."
@@ -226,31 +251,34 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 3: Cadastrar Novo Paciente e Responsável
-* **Método:** `POST`
-* **URL:** `/api/paciente`
-* **Headers Requeridos:** `Content-Type: application/json`
-* **Request Body (JSON):**
-  * Objeto `CriarPacienteDTO`:
-    * `nome` (`string`, obrigatório, mín. 3 caracteres)
-    * `data_nascimento` (`string`, obrigatório, formato `YYYY-MM-DD`, não pode ser futura)
-    * `cpf` (`string`, obrigatório, CPF válido com ou sem pontuação)
-    * `clinica_id` (`string`, opcional, UUID da clínica)
-    * `telefone` (`string`, opcional, telefone fixo ou celular com DDD)
-    * `cep` (`string`, opcional, CEP 8 dígitos)
-    * `cidade` (`string`, opcional)
-    * `estado` (`string`, opcional, UF 2 letras)
-    * `endereco` (`string`, opcional)
-    * `bairro` (`string`, opcional)
-    * `numero` (`string`, opcional)
-    * `complemento` (`string`, opcional)
-    * `responsavel` (`object`, opcional):
-      * `nome` (`string`, obrigatório se responsavel enviado)
-      * `telefone` (`string`, obrigatório)
-      * `cpf` (`string`, opcional, CPF válido)
-      * `email` (`string`, opcional, formato válido)
-      * `parentesco` (`string`, opcional, ex: "Mãe", "Pai", "Tutor Legal")
 
-* **Exemplo de Request Body:**
+- **Método:** `POST`
+
+- **URL:** `/api/paciente`
+- **Headers Requeridos:** `Content-Type: application/json`
+- **Request Body (JSON):**
+  - Objeto `CriarPacienteDTO`:
+    - `nome` (`string`, obrigatório, mín. 3 caracteres)
+    - `data_nascimento` (`string`, obrigatório, formato `YYYY-MM-DD`, não pode ser futura)
+    - `cpf` (`string`, obrigatório, CPF válido com ou sem pontuação)
+    - `clinica_id` (`string`, opcional, UUID da clínica)
+    - `telefone` (`string`, opcional, telefone fixo ou celular com DDD)
+    - `cep` (`string`, opcional, CEP 8 dígitos)
+    - `cidade` (`string`, opcional)
+    - `estado` (`string`, opcional, UF 2 letras)
+    - `endereco` (`string`, opcional)
+    - `bairro` (`string`, opcional)
+    - `numero` (`string`, opcional)
+    - `complemento` (`string`, opcional)
+    - `responsavel` (`object`, opcional):
+      - `nome` (`string`, obrigatório se responsavel enviado)
+      - `telefone` (`string`, obrigatório)
+      - `cpf` (`string`, opcional, CPF válido)
+      - `email` (`string`, opcional, formato válido)
+      - `parentesco` (`string`, opcional, ex: "Mãe", "Pai", "Tutor Legal")
+
+- **Exemplo de Request Body:**
+
   ```json
   {
     "nome": "Lucas Gabriel Santos",
@@ -274,8 +302,9 @@ Todas as respostas seguem formatos previsíveis:
   }
   ```
 
-* **Respostas:**
-  * **Status `201 Created`:**
+- **Respostas:**
+  - **Status `201 Created`:**
+
     ```json
     {
       "data": {
@@ -309,7 +338,9 @@ Todas as respostas seguem formatos previsíveis:
       "message": "Paciente cadastrado com sucesso."
     }
     ```
-  * **Status `400 Bad Request` (Erros de Validação DTO):**
+
+  - **Status `400 Bad Request` (Erros de Validação DTO):**
+
     ```json
     {
       "error": "Erro de validação nos dados do paciente.",
@@ -319,13 +350,17 @@ Todas as respostas seguem formatos previsíveis:
       ]
     }
     ```
-  * **Status `409 Conflict` (Unicidade de CPF):**
+
+  - **Status `409 Conflict` (Unicidade de CPF):**
+
     ```json
     {
       "error": "Já existe um paciente cadastrado com este CPF."
     }
     ```
-  * **Status `500 Internal Server Error`:**
+
+  - **Status `500 Internal Server Error`:**
+
     ```json
     {
       "error": "Erro interno ao cadastrar paciente.",
@@ -336,17 +371,20 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 4: Atualizar Dados de um Paciente
-* **Método:** `PUT`
-* **URL:** `/api/paciente/:id`
-* **Headers Requeridos:**
-  * `Authorization: Bearer <TOKEN_JWT>`
-  * `Content-Type: application/json`
-* **Path Parameters:**
-  * `id` (`string`, UUID obrigatório): ID do paciente a ser atualizado.
-* **Segurança e Validação:**
-  * Executa `authMiddleware` e `verificarVisibilidadePaciente` (**RN04**).
-  * Rejeita payloads com CPF inválido, datas futuras ou campos incorretos.
-* **Request Body (JSON):**
+
+- **Método:** `PUT`
+
+- **URL:** `/api/paciente/:id`
+- **Headers Requeridos:**
+  - `Authorization: Bearer <TOKEN_JWT>`
+  - `Content-Type: application/json`
+- **Path Parameters:**
+  - `id` (`string`, UUID obrigatório): ID do paciente a ser atualizado.
+- **Segurança e Validação:**
+  - Executa `authMiddleware` e `verificarVisibilidadePaciente` (**RN04**).
+  - Rejeita payloads com CPF inválido, datas futuras ou campos incorretos.
+- **Request Body (JSON):**
+
   ```json
   {
     "telefone": "(11) 99999-1122",
@@ -356,8 +394,10 @@ Todas as respostas seguem formatos previsíveis:
     "numero": "1500"
   }
   ```
-* **Respostas:**
-  * **Status `200 OK`:**
+
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "data": {
@@ -374,7 +414,9 @@ Todas as respostas seguem formatos previsíveis:
       "message": "Paciente atualizado com sucesso."
     }
     ```
-  * **Status `400 Bad Request`:**
+
+  - **Status `400 Bad Request`:**
+
     ```json
     {
       "error": "Erro de validação na atualização do paciente.",
@@ -383,25 +425,33 @@ Todas as respostas seguem formatos previsíveis:
       ]
     }
     ```
-  * **Status `401 Unauthorized`:**
+
+  - **Status `401 Unauthorized`:**
+
     ```json
     {
       "error": "Token JWT inválido ou expirado."
     }
     ```
-  * **Status `403 Forbidden`:**
+
+  - **Status `403 Forbidden`:**
+
     ```json
     {
       "error": "Acesso negado: o terapeuta não possui vínculo ativo com este paciente."
     }
     ```
-  * **Status `404 Not Found`:**
+
+  - **Status `404 Not Found`:**
+
     ```json
     {
       "error": "Paciente não encontrado para atualização."
     }
     ```
-  * **Status `409 Conflict`:**
+
+  - **Status `409 Conflict`:**
+
     ```json
     {
       "error": "Já existe outro paciente cadastrado com este CPF."
@@ -411,20 +461,25 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 5: Desativação de Paciente (Soft Delete - RN05)
-* **Método:** `DELETE`
-* **URL:** `/api/paciente/:id`
-* **Regra Clínica RN05:**
-  * Jamais apaga fisicamente registros de prontuários clínicos.
-  * Define `status_ativo = false` e atualiza `updated_at`.
-* **Path Parameters:**
-  * `id` (`string`, UUID obrigatório).
-* **Exemplo de Chamada:**
+
+- **Método:** `DELETE`
+
+- **URL:** `/api/paciente/:id`
+- **Regra Clínica RN05:**
+  - Jamais apaga fisicamente registros de prontuários clínicos.
+  - Define `status_ativo = false` e atualiza `updated_at`.
+- **Path Parameters:**
+  - `id` (`string`, UUID obrigatório).
+- **Exemplo de Chamada:**
+
   ```http
   DELETE /api/paciente/7c9e6679-7425-40de-944b-e07fc1f90ae7 HTTP/1.1
   Host: localhost:3000
   ```
-* **Respostas:**
-  * **Status `200 OK`:**
+
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "data": {
@@ -436,13 +491,17 @@ Todas as respostas seguem formatos previsíveis:
       "message": "Paciente desativado com sucesso (soft delete aplicado)."
     }
     ```
-  * **Status `400 Bad Request`:**
+
+  - **Status `400 Bad Request`:**
+
     ```json
     {
       "error": "O parâmetro ID deve ser um UUID válido."
     }
     ```
-  * **Status `404 Not Found`:**
+
+  - **Status `404 Not Found`:**
+
     ```json
     {
       "error": "Paciente não encontrado para desativação."
@@ -452,11 +511,14 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 6: Reativar Paciente Inativo
-* **Método:** `PATCH`
-* **URL:** `/api/paciente/:id/reativar`
-* **Path Parameters:** `id` (`string`, UUID obrigatório).
-* **Respostas:**
-  * **Status `200 OK`:**
+
+- **Método:** `PATCH`
+
+- **URL:** `/api/paciente/:id/reativar`
+- **Path Parameters:** `id` (`string`, UUID obrigatório).
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "data": {
@@ -467,7 +529,9 @@ Todas as respostas seguem formatos previsíveis:
       "message": "Paciente reativado com sucesso."
     }
     ```
-  * **Status `404 Not Found`:**
+
+  - **Status `404 Not Found`:**
+
     ```json
     {
       "error": "Paciente não encontrado para reativação."
@@ -477,18 +541,23 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 7: Exclusão Física Permanente (Hard Delete - DEV/Testes)
-* **Método:** `DELETE`
-* **URL:** `/api/paciente/:id/hard`
-* **Aviso de Segurança:**
-  * Restrito a testes unitários, automação em CI e testes locais. Não deve ser invocado em ambiente de produção clínica.
-* **Respostas:**
-  * **Status `200 OK`:**
+
+- **Método:** `DELETE`
+
+- **URL:** `/api/paciente/:id/hard`
+- **Aviso de Segurança:**
+  - Restrito a testes unitários, automação em CI e testes locais. Não deve ser invocado em ambiente de produção clínica.
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "message": "Paciente excluído fisicamente do banco com sucesso (hard delete para testes)."
     }
     ```
-  * **Status `404 Not Found`:**
+
+  - **Status `404 Not Found`:**
+
     ```json
     {
       "error": "Paciente não encontrado para exclusão física."
@@ -498,13 +567,16 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 8: Listar Terapeutas Vinculados ao Paciente (Equipe Multidisciplinar)
-* **Método:** `GET`
-* **URL:** `/api/paciente/:id/terapeutas`
-* **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
-* **Segurança:** `authMiddleware` + `verificarVisibilidadePaciente` (**RN04**).
-* **Path Parameters:** `id` (`string`, UUID do paciente).
-* **Respostas:**
-  * **Status `200 OK`:**
+
+- **Método:** `GET`
+
+- **URL:** `/api/paciente/:id/terapeutas`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Segurança:** `authMiddleware` + `verificarVisibilidadePaciente` (**RN04**).
+- **Path Parameters:** `id` (`string`, UUID do paciente).
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "data": [
@@ -533,13 +605,17 @@ Todas as respostas seguem formatos previsíveis:
       ]
     }
     ```
-  * **Status `403 Forbidden`:**
+
+  - **Status `403 Forbidden`:**
+
     ```json
     {
       "error": "Acesso negado: o terapeuta não possui vínculo ativo com este paciente."
     }
     ```
-  * **Status `404 Not Found`:**
+
+  - **Status `404 Not Found`:**
+
     ```json
     {
       "error": "Paciente não encontrado ao listar terapeutas vinculados."
@@ -549,42 +625,54 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 9: Vincular Novo Terapeuta ao Paciente (RF18)
-* **Método:** `POST`
-* **URL:** `/api/paciente/:id/terapeutas`
-* **Headers Requeridos:**
-  * `Authorization: Bearer <TOKEN_JWT>`
-  * `Content-Type: application/json`
-* **Path Parameters:**
-  * `id` (`string`, UUID do paciente).
-* **Request Body (JSON):**
+
+- **Método:** `POST`
+
+- **URL:** `/api/paciente/:id/terapeutas`
+- **Headers Requeridos:**
+  - `Authorization: Bearer <TOKEN_JWT>`
+  - `Content-Type: application/json`
+- **Path Parameters:**
+  - `id` (`string`, UUID do paciente).
+- **Request Body (JSON):**
+
   ```json
   {
     "terapeuta_id": "4bb67a12-88ef-4109-b132-7c8899aabbcc"
   }
   ```
-* **Regras de Validação:**
-  * Bloqueia vínculo caso o paciente ou o terapeuta esteja inativo.
-  * **Isolamento Multitenant Clínico:** Bloqueia a tentativa de associar profissionais pertencentes a clínicas distintas.
-* **Respostas:**
-  * **Status `201 Created`:**
+
+- **Regras de Validação:**
+  - Bloqueia vínculo caso o paciente ou o terapeuta esteja inativo.
+  - **Isolamento Multitenant Clínico:** Bloqueia a tentativa de associar profissionais pertencentes a clínicas distintas.
+
+- **Respostas:**
+  - **Status `201 Created`:**
+
     ```json
     {
       "message": "Terapeuta vinculado ao paciente com sucesso."
     }
     ```
-  * **Status `400 Bad Request` (Bloqueio Institucional / Inativo):**
+
+  - **Status `400 Bad Request` (Bloqueio Institucional / Inativo):**
+
     ```json
     {
       "error": "Bloqueio de segurança: Não é permitido vincular terapeutas de clínicas diferentes."
     }
     ```
-  * **Status `401 Unauthorized`:**
+
+  - **Status `401 Unauthorized`:**
+
     ```json
     {
       "error": "Acesso não autorizado. Forneça um token no cabeçalho Authorization: Bearer <token>."
     }
     ```
-  * **Status `404 Not Found`:**
+
+  - **Status `404 Not Found`:**
+
     ```json
     {
       "error": "Terapeuta não encontrado para vinculação."
@@ -594,26 +682,33 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 10: Desvincular Terapeuta do Paciente (RF18)
-* **Método:** `DELETE`
-* **URL:** `/api/paciente/:id/terapeutas/:terapeutaId`
-* **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
-* **Path Parameters:**
-  * `id` (`string`, UUID do paciente).
-  * `terapeutaId` (`string`, UUID do terapeuta a ser desvinculado).
-* **Respostas:**
-  * **Status `200 OK`:**
+
+- **Método:** `DELETE`
+
+- **URL:** `/api/paciente/:id/terapeutas/:terapeutaId`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Path Parameters:**
+  - `id` (`string`, UUID do paciente).
+  - `terapeutaId` (`string`, UUID do terapeuta a ser desvinculado).
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "message": "Vínculo do terapeuta com o paciente removido com sucesso."
     }
     ```
-  * **Status `400 Bad Request`:**
+
+  - **Status `400 Bad Request`:**
+
     ```json
     {
       "error": "O parâmetro \"terapeutaId\" deve ser um UUID válido."
     }
     ```
-  * **Status `404 Not Found`:**
+
+  - **Status `404 Not Found`:**
+
     ```json
     {
       "error": "Paciente não encontrado para desvincular terapeuta."
@@ -639,9 +734,11 @@ Todas as respostas seguem formatos previsíveis:
 ### 3.2 Detalhamento de Rotas — Jogos
 
 #### Rota 1: Catálogo Geral de Jogos (Biblioteca Terapêutica)
-* **Método:** `GET`
-* **URL:** `/api/jogos`
-* **Query Parameters:**
+
+- **Método:** `GET`
+
+- **URL:** `/api/jogos`
+- **Query Parameters:**
 
 | Parâmetro | Tipo | Obrigatório | Padrão | Descrição | Exemplo |
 | :--- | :---: | :---: | :---: | :--- | :--- |
@@ -649,13 +746,16 @@ Todas as respostas seguem formatos previsíveis:
 | `page` | `integer` | Não | `1` | Página atual dos resultados | `1` |
 | `limit` | `integer` | Não | `10` | Quantidade de jogos retornados por página | `10` |
 
-* **Exemplo de Chamada:**
+- **Exemplo de Chamada:**
+
   ```http
   GET /api/jogos?objetivo=foco_atencional&page=1&limit=10 HTTP/1.1
   Host: localhost:3000
   ```
-* **Respostas:**
-  * **Status `200 OK`:**
+
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "data": [
@@ -700,7 +800,9 @@ Todas as respostas seguem formatos previsíveis:
       "totalPages": 1
     }
     ```
-  * **Status `500 Internal Server Error`:**
+
+  - **Status `500 Internal Server Error`:**
+
     ```json
     {
       "error": "Erro ao listar catálogo de jogos"
@@ -710,17 +812,22 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 2: Consultar Detalhes de um Jogo Específico
-* **Método:** `GET`
-* **URL:** `/api/jogos/:id`
-* **Path Parameters:**
-  * `id` (`string`, obrigatório): Identificador numérico ou slug do jogo.
-* **Exemplo de Chamada:**
+
+- **Método:** `GET`
+
+- **URL:** `/api/jogos/:id`
+- **Path Parameters:**
+  - `id` (`string`, obrigatório): Identificador numérico ou slug do jogo.
+- **Exemplo de Chamada:**
+
   ```http
   GET /api/jogos/1 HTTP/1.1
   Host: localhost:3000
   ```
-* **Respostas:**
-  * **Status `200 OK`:**
+
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "data": {
@@ -749,7 +856,9 @@ Todas as respostas seguem formatos previsíveis:
       }
     }
     ```
-  * **Status `404 Not Found`:**
+
+  - **Status `404 Not Found`:**
+
     ```json
     {
       "error": "Jogo não encontrado"
@@ -759,12 +868,15 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 3: Obter Manifesto e Relatório de Conformidade do Jogo
-* **Método:** `GET`
-* **URL:** `/api/jogos/:id/manifesto`
-* **Finalidade:** Inspeciona o campo `manifesto_json` do jogo e avalia a conformidade com as regras de tipagem estrita (**RN02** e **RNF02**).
-* **Path Parameters:** `id` (`string`, obrigatório).
-* **Respostas:**
-  * **Status `200 OK`:**
+
+- **Método:** `GET`
+
+- **URL:** `/api/jogos/:id/manifesto`
+- **Finalidade:** Inspeciona o campo `manifesto_json` do jogo e avalia a conformidade com as regras de tipagem estrita (**RN02** e **RNF02**).
+- **Path Parameters:** `id` (`string`, obrigatório).
+- **Respostas:**
+  - **Status `200 OK`:**
+
     ```json
     {
       "data": {
@@ -785,7 +897,9 @@ Todas as respostas seguem formatos previsíveis:
       }
     }
     ```
-  * **Status `404 Not Found`:**
+
+  - **Status `404 Not Found`:**
+
     ```json
     {
       "error": "Jogo não encontrado"
@@ -795,13 +909,16 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 4: Validação Externa de Manifesto de Jogos (Contrato 1 - RNF02)
-* **Método:** `POST`
-* **URL:** `/api/jogos/validar-manifesto`
-* **Headers Requeridos:** `Content-Type: application/json`
-* **Descrição Técnica:**
-  * Submete um arquivo ou payload de manifesto para validação formal prévia à homologação no catálogo.
-  * Valida presença de `id_jogo`, `nome`, `versao`, `metricas_suportadas` e tipagem estrita de cada métrica (`numerica` ou `categorica`).
-* **Exemplo de Request Body Válido:**
+
+- **Método:** `POST`
+
+- **URL:** `/api/jogos/validar-manifesto`
+- **Headers Requeridos:** `Content-Type: application/json`
+- **Descrição Técnica:**
+  - Submete um arquivo ou payload de manifesto para validação formal prévia à homologação no catálogo.
+  - Valida presença de `id_jogo`, `nome`, `versao`, `metricas_suportadas` e tipagem estrita de cada métrica (`numerica` ou `categorica`).
+- **Exemplo de Request Body Válido:**
+
   ```json
   {
     "id_jogo": "som-dos-animais",
@@ -822,8 +939,10 @@ Todas as respostas seguem formatos previsíveis:
     ]
   }
   ```
-* **Respostas:**
-  * **Status `200 OK` (Manifesto Homologado):**
+
+- **Respostas:**
+  - **Status `200 OK` (Manifesto Homologado):**
+
     ```json
     {
       "valido": true,
@@ -846,7 +965,9 @@ Todas as respostas seguem formatos previsíveis:
       }
     }
     ```
-  * **Status `400 Bad Request` (Manifesto Inválido / Métricas Sem Tipo):**
+
+  - **Status `400 Bad Request` (Manifesto Inválido / Métricas Sem Tipo):**
+
     ```json
     {
       "valido": false,
@@ -860,23 +981,26 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 5: Validação de Telemetria com Tipagem Estrita (RN02)
-* **Método:** `POST`
-* **URL:** `/api/jogos/:id/validar-telemetria`
-* **Headers Requeridos:** `Content-Type: application/json`
-* **Contexto Clínico & Diretriz RN02:**
-  * **Regra Inviolável:** Métricas clínicas coletadas dos jogos sem tipo explícito ou com valores incompatíveis **NUNCA** devem ser gravadas no prontuário nem tratadas arbitrariamente como dados categóricos.
-  * Se a métrica violar o manifesto ou o domínio definido, o endpoint recusa a gravação retornando **`422 Unprocessable Entity`**, resguardando os relatórios médicos e algoritmos clínicos de dados espúrios.
-* **Path Parameters:**
-  * `id` (`string`, obrigatório): Identificador do jogo no catálogo.
-* **Request Body (JSON):**
-  * `token_sessao` (`string`, obrigatório): Token identificador da sessão ativa.
-  * `data_hora` (`string`, formato ISO 8601 UTC): Carimbo temporal do evento.
-  * `tipo_evento` (`string`, obrigatório): Ex: `coleta_metrica`, `interacao_paciente`.
-  * `dados` (`object`, obrigatório):
-    * `id_metrica` (`string`, obrigatório): Identificador registrado no manifesto.
-    * `valor` (`number` | `string`, obrigatório): Valor apurado no jogo.
 
-* **Exemplo 1 — Telemetria Aprovada (Métrica Numérica):**
+- **Método:** `POST`
+
+- **URL:** `/api/jogos/:id/validar-telemetria`
+- **Headers Requeridos:** `Content-Type: application/json`
+- **Contexto Clínico & Diretriz RN02:**
+  - **Regra Inviolável:** Métricas clínicas coletadas dos jogos sem tipo explícito ou com valores incompatíveis **NUNCA** devem ser gravadas no prontuário nem tratadas arbitrariamente como dados categóricos.
+  - Se a métrica violar o manifesto ou o domínio definido, o endpoint recusa a gravação retornando **`422 Unprocessable Entity`**, resguardando os relatórios médicos e algoritmos clínicos de dados espúrios.
+- **Path Parameters:**
+  - `id` (`string`, obrigatório): Identificador do jogo no catálogo.
+- **Request Body (JSON):**
+  - `token_sessao` (`string`, obrigatório): Token identificador da sessão ativa.
+  - `data_hora` (`string`, formato ISO 8601 UTC): Carimbo temporal do evento.
+  - `tipo_evento` (`string`, obrigatório): Ex: `coleta_metrica`, `interacao_paciente`.
+  - `dados` (`object`, obrigatório):
+    - `id_metrica` (`string`, obrigatório): Identificador registrado no manifesto.
+    - `valor` (`number` | `string`, obrigatório): Valor apurado no jogo.
+
+- **Exemplo 1 — Telemetria Aprovada (Métrica Numérica):**
+
   ```json
   {
     "token_sessao": "sessao-clinica-98a1-b2c3",
@@ -888,7 +1012,9 @@ Todas as respostas seguem formatos previsíveis:
     }
   }
   ```
-  * **Resposta `200 OK`:**
+
+  - **Resposta `200 OK`:**
+
     ```json
     {
       "podeGravar": true,
@@ -901,8 +1027,9 @@ Todas as respostas seguem formatos previsíveis:
     }
     ```
 
-* **Exemplo 2 — Telemetria Rejeitada por Violação da RN02 (Status 422):**
-  * Requisição com valor textual em métrica definida como numérica no manifesto:
+- **Exemplo 2 — Telemetria Rejeitada por Violação da RN02 (Status 422):**
+  - Requisição com valor textual em métrica definida como numérica no manifesto:
+
   ```json
   {
     "token_sessao": "sessao-clinica-98a1-b2c3",
@@ -914,7 +1041,9 @@ Todas as respostas seguem formatos previsíveis:
     }
   }
   ```
-  * **Resposta `422 Unprocessable Entity`:**
+
+  - **Resposta `422 Unprocessable Entity`:**
+
     ```json
     {
       "podeGravar": false,
@@ -923,8 +1052,9 @@ Todas as respostas seguem formatos previsíveis:
     }
     ```
 
-* **Exemplo 3 — Telemetria Rejeitada por Valor Fora do Domínio Categórico (Status 422):**
-  * Requisição para a métrica `nivel_frustracao` (domínio: `["baixo", "medio", "alto"]`) com valor `"desesperado"`:
+- **Exemplo 3 — Telemetria Rejeitada por Valor Fora do Domínio Categórico (Status 422):**
+  - Requisição para a métrica `nivel_frustracao` (domínio: `["baixo", "medio", "alto"]`) com valor `"desesperado"`:
+
   ```json
   {
     "token_sessao": "sessao-clinica-98a1-b2c3",
@@ -936,7 +1066,9 @@ Todas as respostas seguem formatos previsíveis:
     }
   }
   ```
-  * **Resposta `422 Unprocessable Entity`:**
+
+  - **Resposta `422 Unprocessable Entity`:**
+
     ```json
     {
       "podeGravar": false,
@@ -945,7 +1077,8 @@ Todas as respostas seguem formatos previsíveis:
     }
     ```
 
-* **Status `404 Not Found` (Jogo Inexistente):**
+- **Status `404 Not Found` (Jogo Inexistente):**
+
   ```json
   {
     "error": "Jogo não encontrado"
@@ -965,7 +1098,7 @@ Todas as respostas seguem formatos previsíveis:
 | **RF19** (Filtros e Busca) | `GET /api/paciente`, `GET /api/jogos` | `200`, `400` | Busca por nome/CPF, faixa etária calculada e objetivo clínico. |
 | **RF21** (Vínculo Automático) | `POST /api/paciente` | `201`, `400` | Associação automática do terapeuta logado via trigger/model. |
 | **RN02** (Tipagem Estrita) | `POST /api/jogos/:id/validar-telemetria` | `200`, `404`, `422` | Rejeição mandatória com status 422 para métricas sem tipo estrito. |
-| **RN04** (Visibilidade por Vínculo)| `GET`, `PUT /api/paciente/:id` | `200`, `401`, `403`, `404` | Middleware `verificarVisibilidadePaciente` bloqueia terapeutas sem vínculo. |
+| **RN04** (Visibilidade por Vínculo) | `GET`, `PUT /api/paciente/:id` | `200`, `401`, `403`, `404` | Middleware `verificarVisibilidadePaciente` bloqueia terapeutas sem vínculo. |
 | **RN05** (Soft Delete) | `DELETE /api/paciente/:id` | `200`, `404` | Inativação sem perda do histórico de prontuário médico. |
 | **RNF02** (Contrato e OpenAPI) | `POST /api/jogos/validar-manifesto` | `200`, `400`, `500` | Conformidade com `manifestoGame.json` e documentação interativa. |
 
@@ -974,6 +1107,7 @@ Todas as respostas seguem formatos previsíveis:
 ## 5. Como Executar e Acessar o Swagger UI
 
 1. **Instalação e Inicialização:**
+
    ```bash
    cd Backend
    npm install

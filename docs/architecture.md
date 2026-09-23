@@ -293,19 +293,21 @@ O projeto utiliza **Swagger UI** (`swagger-ui-express` + `swagger-jsdoc`) para d
   - As requisições usam **exemplos JSON diretos** (`example: { ... }`) facilitando o teste via botão *"Try it out"*.
   - A seção de Schemas no rodapé do Swagger UI é ocultada via `defaultModelsExpandDepth: -1`.
 - **Botão Authorize (JWT):**
-  - O Swagger possui o botão **`Authorize `** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
+  - O Swagger possui o botão **`Authorize`** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
   - Basta fazer login em `POST /api/terapeuta/login`, copiar o `access_token` retornado e colar no botão Authorize para testar rotas protegidas.
 
 ### 3.10 Autenticação JWT e Middleware de Segurança
 
 - O sistema utiliza **Tokens JWT** emitidos pelo Supabase Auth.
 - Para proteger uma rota privada, utiliza-se o middleware `authMiddleware`:
+
   ```typescript
   import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 
   // Rota protegida por autenticação JWT:
   authRoutes.get('/me', authMiddleware, AuthController.me);
   ```
+
 - O middleware:
   1. Extrai o token do cabeçalho `Authorization: Bearer <token>`.
   2. Valida o token com `supabase.auth.getUser(token)`.
@@ -380,6 +382,7 @@ Frontend/src/
 Todas as chamadas à API REST devem utilizar a infraestrutura corporativa do `HttpClient`, que encapsula resiliência e segurança:
 
 1. **Instanciação Padronizada:**
+
    ```typescript
    import { createHttpClient } from "@/shared/utils/request";
 
@@ -407,6 +410,7 @@ Todas as chamadas à API REST devem utilizar a infraestrutura corporativa do `Ht
 ### 4.4 Padrão de Layout e Sidebar (`layout/dashboardLayout.tsx`)
 
 O InTEA adota uma casca estrutural baseada no componente `Sidebar` do Radix UI / Shadcn:
+
 - **`SidebarProvider`:** Controla a abertura, colapso para ícones e responsividade móvel (`use-mobile.ts`).
 - **`AppSidebar`:** Centraliza a navegação primária (`Dashboard`, `Jogos`, `Meus Pacientes`, `Histórico`), o logo oficial do InTEA (`nav-header.tsx`), botão de ação rápida (`nav-button.tsx`) e o perfil do usuário logado (`nav-user.tsx`).
 - **`Header Dinâmico`:** Contém o trigger de expansão da sidebar e a saudação contextual do terapeuta.
@@ -437,6 +441,7 @@ export const useSettingStore = create<SettingState>()(
 ### 4.6 Roteamento Centralizado (`routes/index.tsx`)
 
 O roteamento da aplicação é desacoplado do `App.tsx`:
+
 ```tsx
 export function Routes() {
   return (
@@ -454,7 +459,6 @@ export function Routes() {
 O repositório possui 17 componentes de interface primitivos, acessíveis e customizados:
 `avatar`, `badge`, `breadcrumb`, `button`, `card`, `collapsible`, `dialog`, `dropdown-menu`, `input`, `label`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `table` e `tooltip`.
 Todo novo componente visual específico de uma tela deve compor esses blocos primitivos antes de criar estilos manuais.
-
 
 ---
 
@@ -478,12 +482,12 @@ Todo novo componente visual específico de uma tela deve compor esses blocos pri
 ### Regra Estrita de `camelCase` no Código TypeScript
 
 - **Métodos em Controllers, Models e Services**: devem usar **obrigatoriamente `camelCase`** (`"nomeNome"`).
-  -  **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
-  -  **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
+  - **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
+  - **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
 - **Sub-rotas de ação**: quando um endpoint realiza uma ação secundária ou de exceção sobre um recurso (como reativação ou hard delete para testes), a ação vai no **final da URL após o `:id`**:
-  -  `DELETE /api/paciente/:id/hard`
-  -  `PATCH /api/paciente/:id/reativar`
-  -  `/api/paciente/hard/:id` (evitar inversão do padrão)
+  - `DELETE /api/paciente/:id/hard`
+  - `PATCH /api/paciente/:id/reativar`
+  - `/api/paciente/hard/:id` (evitar inversão do padrão)
 
 ### Padrão de Arquivo por Camada (Backend)
 

@@ -15,8 +15,8 @@
 | **Tipo** | `Positivo` (fluxo feliz) ou `Negativo` (rejeição / segurança) |
 | **Precondição** | Estado inicial necessário antes da execução |
 | **Entrada** | Endpoint, payload ou ação do testador |
-| **Passos** | Sequência de ações a executar |
-| **Resultado Esperado** | Comportamento correto esperado do sistema |
+| #### Passos | Sequência de ações a executar |
+| #### Resultado Esperado | Comportamento correto esperado do sistema |
 | **Status** | `[ ] Passou` · `[ ] Falhou` · `[ ] Pendente` |
 
 > **Ferramenta sugerida:** Postman ou Insomnia. Base URL: `http://localhost:3000/api`
@@ -34,6 +34,7 @@
 | **Precondição** | API em execução; banco acessível |
 
 **Entrada — `POST /api/paciente`**
+
 ```json
 {
   "nome": "Lucas Gabriel Santos",
@@ -51,12 +52,14 @@
 }
 ```
 
-**Passos**
+#### Passos
+
 1. Abrir Postman/Insomnia.
 2. Configurar `POST /api/paciente` com o body acima.
 3. Executar a requisição.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **201 Created**
 - `data.id` presente (UUID gerado automaticamente)
 - `data.status_ativo: true`
@@ -77,12 +80,14 @@
 
 **Entrada — `POST /api/paciente`** com `"cpf": "111.111.111-11"` (todos os dígitos iguais)
 
-**Passos**
+#### Passos
+
 1. Configurar `POST /api/paciente`.
 2. Inserir CPF matematicamente inválido.
 3. Executar a requisição.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **400 Bad Request**
 - Campo `error` indicando falha de validação
 - Campo `erros[]` descrevendo o CPF como inválido
@@ -101,11 +106,13 @@
 
 **Entrada — `POST /api/paciente`** com o mesmo CPF do CT-P01
 
-**Passos**
+#### Passos
+
 1. Executar CT-P01 com sucesso.
 2. Repetir o mesmo `POST` sem alterar o CPF.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **409 Conflict**
 - Mensagem: _"Já existe um paciente cadastrado com este CPF."_
 
@@ -123,11 +130,13 @@
 
 **Entrada — `GET /api/paciente`** (sem parâmetros)
 
-**Passos**
+#### Passos
+
 1. Executar `GET /api/paciente`.
 2. Verificar os registros retornados.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - `data[]` somente com `status_ativo: true`
 - Metadados `meta.total`, `page`, `limit` e `totalPages` presentes
@@ -146,11 +155,13 @@
 
 **Entrada — `GET /api/paciente?nome=Lucas&idadeMin=4&idadeMax=10&page=1&limit=5`**
 
-**Passos**
+#### Passos
+
 1. Executar a `GET` com os parâmetros acima.
 2. Analisar os registros e metadados retornados.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - Apenas pacientes cujo nome contenha _Lucas_ (case-insensitive)
 - Idades entre 4 e 10 anos
@@ -169,16 +180,19 @@
 | **Precondição** | Terapeuta com token JWT válido e vínculo ativo em `terapeuta_paciente` |
 
 **Entrada — `GET /api/paciente/{uuid}`**
-```
+
+```http
 Authorization: Bearer {token}
 ```
 
-**Passos**
+#### Passos
+
 1. Obter token JWT via login.
 2. Garantir que o terapeuta possui vínculo com o paciente.
 3. Executar `GET /api/paciente/{id}`.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - `data` com dados completos, `responsaveis[]` e `terapeutas[]`
 
@@ -195,15 +209,18 @@ Authorization: Bearer {token}
 | **Precondição** | Terapeuta com token JWT válido **sem** vínculo com o paciente consultado |
 
 **Entrada — `GET /api/paciente/{uuid-sem-vinculo}`**
-```
+
+```http
 Authorization: Bearer {token}
 ```
 
-**Passos**
+#### Passos
+
 1. Autenticar terapeuta que **não** está vinculado ao paciente.
 2. Executar `GET /api/paciente/{id}`.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **403 Forbidden**
 - Mensagem: _"Acesso negado: o terapeuta não possui vínculo ativo com este paciente."_
 
@@ -221,10 +238,12 @@ Authorization: Bearer {token}
 
 **Entrada — `GET /api/paciente/{id}`** sem header `Authorization`
 
-**Passos**
+#### Passos
+
 1. Executar `GET /api/paciente/{id}` sem token.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **401 Unauthorized**
 - Mensagem: _"Acesso não autorizado. Forneça um token no cabeçalho Authorization: Bearer \<token\>."_
 
@@ -242,13 +261,15 @@ Authorization: Bearer {token}
 
 **Entrada — `DELETE /api/paciente/{id}`**
 
-**Passos**
+#### Passos
+
 1. Executar `DELETE /api/paciente/{id}`.
 2. Verificar `status_ativo` na resposta.
 3. Executar `GET /api/paciente` e confirmar ausência do paciente.
 4. Verificar **diretamente no banco** que o registro **não foi deletado fisicamente**.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - `data.status_ativo: false`
 - Paciente ausente da listagem padrão
@@ -268,12 +289,14 @@ Authorization: Bearer {token}
 
 **Entrada — `PATCH /api/paciente/{id}/reativar`**
 
-**Passos**
+#### Passos
+
 1. Inativar o paciente (CT-P09).
 2. Executar `PATCH /api/paciente/{id}/reativar`.
 3. Confirmar `status_ativo` e visibilidade na listagem.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - `data.status_ativo: true`
 - Mensagem: _"Paciente reativado com sucesso."_
@@ -292,16 +315,19 @@ Authorization: Bearer {token}
 | **Precondição** | Paciente ativo; terapeuta ativo com a mesma `clinica_id`; token JWT válido |
 
 **Entrada — `POST /api/paciente/{id}/terapeutas`**
+
 ```json
 { "terapeuta_id": "{uuid-do-terapeuta}" }
 ```
 
-**Passos**
+#### Passos
+
 1. Autenticar e obter token JWT.
 2. Executar `POST /api/paciente/{id}/terapeutas`.
 3. Confirmar com `GET /api/paciente/{id}/terapeutas`.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **201 Created**
 - Mensagem: _"Terapeuta vinculado ao paciente com sucesso."_
 - Registro criado em `terapeuta_paciente`
@@ -320,10 +346,12 @@ Authorization: Bearer {token}
 
 **Entrada — `POST /api/paciente/{id}/terapeutas`** com `terapeuta_id` de outra clínica
 
-**Passos**
+#### Passos
+
 1. Tentar vincular terapeuta de clínica diferente.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **400 Bad Request**
 - Mensagem: _"Bloqueio de segurança: Não é permitido vincular terapeutas de clínicas diferentes."_
 
@@ -341,11 +369,13 @@ Authorization: Bearer {token}
 
 **Entrada — `POST /api/paciente/{id-inativo}/terapeutas`**
 
-**Passos**
+#### Passos
+
 1. Inativar o paciente (CT-P09).
 2. Tentar vincular um terapeuta ao paciente inativo.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **400 Bad Request**
 - Mensagem: _"Não é possível vincular terapeuta a um paciente inativo."_
 
@@ -362,16 +392,19 @@ Authorization: Bearer {token}
 | **Precondição** | Paciente cadastrado; terapeuta vinculado com token válido |
 
 **Entrada — `PUT /api/paciente/{id}`**
+
 ```json
 { "telefone": "(11) 99999-1122", "cidade": "Campinas" }
 ```
 
-**Passos**
+#### Passos
+
 1. Autenticar terapeuta com vínculo ativo.
 2. Executar `PUT /api/paciente/{id}` com body parcial.
 3. Confirmar novos valores com `GET /api/paciente/{id}`.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - `telefone` e `cidade` atualizados; demais campos inalterados
 - `updated_at` renovado
@@ -390,10 +423,12 @@ Authorization: Bearer {token}
 
 **Entrada — `GET /api/paciente/nao-e-uuid-valido`**
 
-**Passos**
+#### Passos
+
 1. Executar `GET` com string arbitrária no lugar do UUID.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **400 Bad Request**
 - Mensagem: _"O parâmetro ID deve ser um UUID válido."_
 
@@ -413,11 +448,13 @@ Authorization: Bearer {token}
 
 **Entrada — `GET /api/jogos`**
 
-**Passos**
+#### Passos
+
 1. Executar `GET /api/jogos`.
 2. Verificar estrutura e quantidade de registros.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - `data[]` com ao menos 3 jogos, cada um com `nome`, `versao`, `descricao` e `status_instalacao`
 - Campo `manifesto_json` **ausente** na listagem resumida
@@ -435,16 +472,18 @@ Authorization: Bearer {token}
 | **Tipo** | Positivo |
 | **Precondição** | Seed executado; jogos com objetivos distintos |
 
-**Entradas**
+#### Entradas
+
 - `GET /api/jogos?objetivo=foco_atencional`
 - `GET /api/jogos?objetivo=regulacao_emocional`
 - `GET /api/jogos?objetivo=desenvolvimento_linguagem`
 
-**Passos**
+#### Passos
+
 1. Executar cada filtro separadamente.
 2. Verificar qual jogo é retornado em cada consulta.
 
-**Resultado Esperado**
+#### Resultado Esperado
 
 | Filtro | Jogo Esperado |
 | :--- | :--- |
@@ -468,10 +507,12 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 **Entrada — `GET /api/jogos?objetivo=objetivo_inexistente`**
 
-**Passos**
+#### Passos
+
 1. Executar a `GET` com objetivo que não existe no catálogo.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - `data: []`
 - `total: 0`
@@ -488,16 +529,19 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 | **Tipo** | Positivo |
 | **Precondição** | Seed com 3 jogos |
 
-**Entradas**
+#### Entradas
+
 - `GET /api/jogos?page=1&limit=2`
 - `GET /api/jogos?page=2&limit=2`
 
-**Passos**
+#### Passos
+
 1. Executar consulta da página 1.
 2. Executar consulta da página 2.
 3. Verificar que os jogos das duas páginas **não se repetem**.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - Página 1: 2 jogos; `totalPages ≥ 2`
 - Página 2: ao menos 1 jogo diferente dos da página 1
 
@@ -515,11 +559,13 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 **Entrada — `GET /api/jogos/1`**
 
-**Passos**
+#### Passos
+
 1. Executar `GET /api/jogos/1`.
 2. Verificar presença e estrutura do `manifesto_json`.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - `data.nome = "Aventura das Cores"`
 - `data.manifesto_json` com `id_jogo`, `versao` e `metricas_suportadas[]`
@@ -538,10 +584,12 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 **Entrada — `GET /api/jogos/999999`**
 
-**Passos**
+#### Passos
+
 1. Executar `GET` com ID inexistente.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **404 Not Found**
 - Mensagem: _"Jogo não encontrado"_
 
@@ -558,6 +606,7 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 | **Precondição** | API em execução |
 
 **Entrada — `POST /api/jogos/validar-manifesto`**
+
 ```json
 {
   "id_jogo": "jogo-novo",
@@ -573,10 +622,12 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 }
 ```
 
-**Passos**
+#### Passos
+
 1. Executar `POST /api/jogos/validar-manifesto` com o payload acima.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - `valido: true`
 - Campo `data` com o manifesto homologado
@@ -594,6 +645,7 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 | **Precondição** | API em execução |
 
 **Entrada — `POST /api/jogos/validar-manifesto`**
+
 ```json
 {
   "id_jogo": "jogo-invalido",
@@ -607,10 +659,12 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 > Note que `tipo_metrica` está ausente — isto viola a RN02.
 
-**Passos**
+#### Passos
+
 1. Executar `POST` com métrica sem `tipo_metrica`.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **400 Bad Request**
 - `valido: false`
 - `erros[]` mencionando **RN02** e proibição de fallback automático
@@ -628,6 +682,7 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 | **Precondição** | Jogo ID 1 no banco com métrica numérica `tempo_resposta` |
 
 **Entrada — `POST /api/jogos/1/validar-telemetria`**
+
 ```json
 {
   "token_sessao": "tok-001",
@@ -640,10 +695,12 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 }
 ```
 
-**Passos**
+#### Passos
+
 1. Executar `POST /api/jogos/1/validar-telemetria`.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - `podeGravar: true`
 - `tipoDetectado: "numerica"`
@@ -662,6 +719,7 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 | **Precondição** | Jogo ID 1 com `tempo_resposta` do tipo `numerica` |
 
 **Entrada — `POST /api/jogos/1/validar-telemetria`**
+
 ```json
 {
   "token_sessao": "tok-002",
@@ -676,10 +734,12 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 > Valor textual em métrica definida como numérica — viola RN02.
 
-**Passos**
+#### Passos
+
 1. Executar `POST` com valor de tipo incompatível.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **422 Unprocessable Entity**
 - `podeGravar: false`
 - `regraViolada: "RN02 - Fallback de Métrica Proibido"`
@@ -698,6 +758,7 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 | **Precondição** | Jogo ID 1 com `nivel_frustracao` do tipo `categorica` e domínio `["baixo", "medio", "alto"]` |
 
 **Entrada — `POST /api/jogos/1/validar-telemetria`**
+
 ```json
 {
   "token_sessao": "tok-003",
@@ -712,10 +773,12 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 > `"desesperado"` não pertence ao domínio `["baixo", "medio", "alto"]`.
 
-**Passos**
+#### Passos
+
 1. Executar `POST` com valor fora do domínio autorizado.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **422 Unprocessable Entity**
 - `podeGravar: false`
 - Mensagem indicando que `"desesperado"` não pertence ao domínio `[baixo, medio, alto]`
@@ -734,11 +797,13 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 **Entrada — `GET /api/jogos/1/manifesto`**
 
-**Passos**
+#### Passos
+
 1. Executar `GET /api/jogos/1/manifesto`.
 2. Analisar o objeto `validacao` na resposta.
 
-**Resultado Esperado**
+#### Resultado Esperado
+
 - HTTP **200 OK**
 - Campo `data` com o manifesto JSON completo
 - `validacao.valido: true`
