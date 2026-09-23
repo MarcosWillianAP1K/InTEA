@@ -5,18 +5,25 @@ interface AuthState {
   error: string | null;
 }
 
+/**
+ * Custom React hook managing user authentication state, credentials login, and session persistence.
+ *
+ * @returns Authentication controls and state observers.
+ */
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
     loading: false,
     error: null,
   });
 
-  /** Login
-   * @param data - object with a login request data
-   * @returns Promise com a resposta do login (dados de autenticação, tokens etc.)
-   * @throws Lança o erro capturado caso a requisição de login falhe
+  /**
+   * Authenticates user credentials against the API and initializes the session.
+   *
+   * @param username - User identifier or email address.
+   * @param password - Account password.
+   * @returns Resolves when authentication succeeds.
+   * @throws {Error} If authentication fails or network error occurs.
    */
-
   const login = useCallback(async (username: string, password: string) => {
     try {
       // setState({ loading: true, error: null });

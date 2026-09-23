@@ -1,18 +1,18 @@
 /**
  * ==============================================================================
- * UTILITÁRIOS DE FORMATAÇÃO (InTEA Core)
+ * FORMATTING UTILITIES (InTEA Core)
  * ==============================================================================
- * Funções para normalização e formatação de dados cadastrais:
+ * Normalization and formatting helpers for clinical and registry data:
  * - CPF: 000.000.000-00
  * - CEP: 00000-000
- * - Telefone: +55 (XX) 9XXXX-XXXX
+ * - Phone: +55 (XX) 9XXXX-XXXX
  */
 
 /**
- * Extrai apenas os dígitos numéricos de uma string.
- * 
- * @param valor - String a ser limpa
- * @returns Apenas os caracteres numéricos [0-9]
+ * Extracts only numerical digits from an input string.
+ *
+ * @param valor - The raw string to extract digits from.
+ * @returns String containing only numeric digits [0-9], or an empty string.
  */
 export function apenasDigitos(valor: string | null | undefined): string {
   if (!valor || typeof valor !== 'string') return '';
@@ -20,10 +20,11 @@ export function apenasDigitos(valor: string | null | undefined): string {
 }
 
 /**
- * Formata um CPF no padrão oficial brasileiro: 000.000.000-00.
- * Caso a string não possua exatamente 11 dígitos, retorna o valor original.
- * 
- * @param cpf - CPF com ou sem máscara
+ * Formats a Brazilian CPF string according to the standard pattern: 000.000.000-00.
+ * If the input does not contain exactly 11 digits, the original string is returned.
+ *
+ * @param cpf - The raw or partially formatted CPF string.
+ * @returns The formatted CPF string or the original value if invalid length.
  */
 export function formatarCPF(cpf: string | null | undefined): string {
   if (!cpf) return '';
@@ -33,10 +34,11 @@ export function formatarCPF(cpf: string | null | undefined): string {
 }
 
 /**
- * Formata um CEP no padrão brasileiro: 00000-000.
- * Caso a string não possua exatamente 8 dígitos, retorna o valor original.
- * 
- * @param cep - CEP com ou sem hífen
+ * Formats a Brazilian Postal Code (CEP) string according to the standard pattern: 00000-000.
+ * If the input does not contain exactly 8 digits, the original string is returned.
+ *
+ * @param cep - The raw or partially formatted CEP string.
+ * @returns The formatted CEP string or the original value if invalid length.
  */
 export function formatarCEP(cep: string | null | undefined): string {
   if (!cep) return '';
@@ -46,15 +48,10 @@ export function formatarCEP(cep: string | null | undefined): string {
 }
 
 /**
- * Formata um telefone celular brasileiro no padrão oficial internacional:
- * +55 (XX) 9XXXX-XXXX
- * 
- * Aceita números com ou sem DDI (55) e com ou sem máscara.
- * - Se enviado com 11 dígitos (DDD + 9 dígitos), adiciona o DDI +55.
- * - Se enviado com 13 dígitos começando com 55, formata com DDI.
- * - Garante que o nono dígito (9) esteja posicionado corretamente.
- * 
- * @param telefone - Telefone informado
+ * Formats a Brazilian mobile phone number into the international E.164-like standard: +55 (XX) 9XXXX-XXXX.
+ *
+ * @param telefone - The raw phone string with or without country code and masks.
+ * @returns The normalized and formatted phone number, or the original string if length is unhandled.
  */
 export function formatarTelefone(telefone: string | null | undefined): string {
   if (!telefone || typeof telefone !== 'string') return '';

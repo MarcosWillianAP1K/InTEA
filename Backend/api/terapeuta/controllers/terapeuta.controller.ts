@@ -10,8 +10,11 @@ import { formatarTelefone } from '../../../core/utils/formatters.js';
 
 export class TerapeutaController {
   /**
-   * GET /api/terapeuta
-   * Lista terapeutas cadastrados. Suporta ?incluirInativos=true.
+   * Handles GET /api/terapeuta to list registered therapists.
+   *
+   * @param req - Express request with optional query `incluirInativos=true`.
+   * @param res - Express response returning therapist list.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
@@ -25,8 +28,11 @@ export class TerapeutaController {
   }
 
   /**
-   * GET /api/terapeuta/:id
-   * Busca um terapeuta por UUID.
+   * Handles GET /api/terapeuta/:id to retrieve therapist details by UUID.
+   *
+   * @param req - Express request containing therapist UUID in `:id`.
+   * @param res - Express response returning therapist record or 404 if not found.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
@@ -52,8 +58,11 @@ export class TerapeutaController {
   }
 
   /**
-   * POST /api/terapeuta
-   * Cadastra um novo terapeuta e cria conta de autenticação no Supabase Auth.
+   * Handles POST /api/terapeuta to register a new therapist and create Supabase Auth credentials.
+   *
+   * @param req - Express request containing `CriarTerapeutaDTO` in body.
+   * @param res - Express response returning status 201 with created therapist.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async criar(req: Request, res: Response): Promise<void> {
     try {
@@ -104,8 +113,11 @@ export class TerapeutaController {
   }
 
   /**
-   * PUT /api/terapeuta/:id
-   * Atualiza dados de um terapeuta existente.
+   * Handles PUT /api/terapeuta/:id to update therapist details.
+   *
+   * @param req - Express request containing therapist UUID in `:id` and update fields in body.
+   * @param res - Express response returning status 200 with updated therapist.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async atualizar(req: Request, res: Response): Promise<void> {
     try {
@@ -144,8 +156,11 @@ export class TerapeutaController {
   }
 
   /**
-   * DELETE /api/terapeuta/:id
-   * SOFT DELETE: Inativa o terapeuta sem apagar seus dados ou histórico de sessões.
+   * Handles DELETE /api/terapeuta/:id applying soft deletion (RN05).
+   *
+   * @param req - Express request containing therapist UUID in `:id`.
+   * @param res - Express response returning status 200 with deactivated therapist.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async desativar(req: Request, res: Response): Promise<void> {
     try {
@@ -180,8 +195,11 @@ export class TerapeutaController {
   }
 
   /**
-   * PATCH /api/terapeuta/:id/reativar
-   * Reativa o cadastro de um terapeuta.
+   * Handles PATCH /api/terapeuta/:id/reativar to reactivate a therapist account.
+   *
+   * @param req - Express request containing therapist UUID in `:id`.
+   * @param res - Express response returning status 200 with reactivated therapist.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async reativar(req: Request, res: Response): Promise<void> {
     try {
@@ -211,8 +229,11 @@ export class TerapeutaController {
   }
 
   /**
-   * DELETE /api/terapeuta/:id/hard
-   * HARD DELETE (Apenas para Testes/DEV): Remove definitivamente de auth.users e do banco.
+   * Handles DELETE /api/terapeuta/:id/hard to permanently delete a therapist (testing/dev).
+   *
+   * @param req - Express request containing therapist UUID in `:id`.
+   * @param res - Express response acknowledging permanent removal.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async deletarHard(req: Request, res: Response): Promise<void> {
     try {
@@ -241,8 +262,11 @@ export class TerapeutaController {
   }
 
   /**
-   * POST /api/terapeuta/login
-   * Autentica o terapeuta e retorna o token JWT de acesso.
+   * Handles POST /api/terapeuta/login to authenticate therapist credentials and return a JWT access token.
+   *
+   * @param req - Express request containing email and password in body.
+   * @param res - Express response returning access token and therapist profile.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async login(req: Request, res: Response): Promise<void> {
     try {
@@ -271,8 +295,11 @@ export class TerapeutaController {
   }
 
   /**
-   * GET /api/terapeuta/me
-   * Retorna os dados do terapeuta autenticado a partir do token JWT.
+   * Handles GET /api/terapeuta/me to return authenticated therapist profile data.
+   *
+   * @param req - Authenticated Express request with user context in `req.user`.
+   * @param res - Express response returning therapist data.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async me(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {

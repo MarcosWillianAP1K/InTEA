@@ -1,20 +1,19 @@
 /**
  * ==============================================================================
- * UTILITÁRIOS DE VALIDAÇÃO (InTEA Core)
+ * VALIDATION UTILITIES (InTEA Core)
  * ==============================================================================
- * Funções reutilizáveis para validação rigorosa de dados clínicos e cadastrais:
- * - Algoritmo oficial de validação de CPF (Módulo 11)
- * - Validação de formato de CEP brasileiro
- * - Validação de datas de nascimento reais (calendário, sem datas futuras)
- * - Validação combinada de DTOs de Paciente e Responsável
+ * Reusable functions for validation of clinical and registration data:
+ * - Official Brazilian CPF verification algorithm (Modulo 11)
+ * - Brazilian Postal Code (CEP) format verification
+ * - Realistic birth date calendar verification
+ * - Comprehensive schema validation for Patient DTOs
  */
 
 /**
- * Valida se um CPF é matematicamente autêntico utilizando o algoritmo Módulo 11
- * da Receita Federal do Brasil.
- * 
- * @param cpf - Número do CPF com ou sem máscara (ex: "123.456.789-00" ou "12345678900")
- * @returns true se o CPF for válido, false caso contrário
+ * Validates whether a Brazilian CPF number is mathematically authentic using Modulo 11 algorithm.
+ *
+ * @param cpf - CPF string with or without formatting punctuation.
+ * @returns True if the CPF passes checksum verification, false otherwise.
  */
 export function validarCPF(cpf: string): boolean {
   if (!cpf || typeof cpf !== 'string') return false;
@@ -50,8 +49,10 @@ export function validarCPF(cpf: string): boolean {
 }
 
 /**
- * Valida o formato de CEP brasileiro (com ou sem hífen).
- * Exemplos válidos: "01310-100", "01310100"
+ * Validates the format of a Brazilian Postal Code (CEP), with or without hyphen.
+ *
+ * @param cep - The raw or masked postal code string (e.g., "01310-100" or "01310100").
+ * @returns True if the sanitized string contains exactly 8 digits, false otherwise.
  */
 export function validarCEP(cep: string): boolean {
   if (!cep || typeof cep !== 'string') return false;
@@ -60,10 +61,10 @@ export function validarCEP(cep: string): boolean {
 }
 
 /**
- * Valida se uma string é um UUID válido (formato canonical 8-4-4-4-12).
- * Evita erros de sintaxe 22P02 no PostgreSQL.
- * 
- * @param id - Identificador a ser validado
+ * Validates if a string matches the standard canonical UUID format (8-4-4-4-12 hex digits).
+ *
+ * @param id - The identifier candidate to inspect.
+ * @returns True if the string conforms to UUID v1-v5 format, false otherwise.
  */
 export function validarUUID(id: string | null | undefined): boolean {
   if (!id || typeof id !== 'string') return false;
@@ -72,15 +73,11 @@ export function validarUUID(id: string | null | undefined): boolean {
 }
 
 /**
- * Valida se um número de telefone é um celular brasileiro válido.
- * Deve possuir DDD válido (11 a 99) e o dígito 9 na frente do número de celular.
- * Aceita números com ou sem DDI (+55), com ou sem formatação.
- * 
- * Exemplos válidos:
- * - "+55 (11) 98765-4321"
- * - "11987654321"
- * - "+5511987654321"
- * - "(84) 99876-1234"
+ * Validates whether a phone number represents a valid Brazilian mobile phone.
+ * Checks for a 2-digit area code (DDD 11-99) followed by the mandatory 9 digit.
+ *
+ * @param telefone - The phone number string with or without country code and formatting.
+ * @returns True if the phone matches Brazilian mobile criteria, false otherwise.
  */
 export function validarTelefone(telefone: string): boolean {
   if (!telefone || typeof telefone !== 'string') return false;
@@ -101,8 +98,10 @@ export function validarTelefone(telefone: string): boolean {
 }
 
 /**
- * Valida uma data de nascimento no formato ISO (YYYY-MM-DD).
- * Garante que a data exista no calendário e não seja no futuro.
+ * Validates a birth date against the ISO 8601 format (YYYY-MM-DD), ensuring calendar reality and age bounds.
+ *
+ * @param dataStr - The date string candidate in YYYY-MM-DD format.
+ * @returns Object indicating validity and an optional error message in English or localized string.
  */
 export function validarDataNascimento(dataStr: string): { valida: boolean; erro?: string } {
   if (!dataStr || typeof dataStr !== 'string') {
@@ -143,7 +142,10 @@ export function validarDataNascimento(dataStr: string): { valida: boolean; erro?
 }
 
 /**
- * Validador completo para o DTO de criação de paciente (POST /api/paciente).
+ * Validates the complete payload DTO for creating a new patient record (POST /api/paciente).
+ *
+ * @param payload - The request body object containing patient and optional guardian details.
+ * @returns Object containing boolean status `valido` and array of validation errors `erros`.
  */
 export function validarCriarPacienteDTO(payload: any): { valido: boolean; erros: string[] } {
   const erros: string[] = [];
@@ -201,7 +203,10 @@ export function validarCriarPacienteDTO(payload: any): { valido: boolean; erros:
 }
 
 /**
- * Validador para o DTO de atualização de paciente (PUT /api/paciente/:id).
+ * Validates partial update payload DTO for an existing patient record (PUT /api/paciente/:id).
+ *
+ * @param payload - The request body object containing fields to update.
+ * @returns Object containing boolean status `valido` and array of validation errors `erros`.
  */
 export function validarAtualizarPacienteDTO(payload: any): { valido: boolean; erros: string[] } {
   const erros: string[] = [];

@@ -4,18 +4,23 @@ import { AuthenticatedRequest } from './auth.middleware.js';
 import { validarUUID } from '../utils/validators.js';
 
 /**
- * Middleware de autorização para controle de visibilidade de dados clínicos e prontuário do paciente.
- * 
- * Regras de autorização:
- * 1. O usuário requisitante deve estar autenticado via JWT (authMiddleware).
- * 2. O identificador do paciente (UUID) é extraído dos parâmetros da rota (:id ou :pacienteId).
- * 3. Se o paciente não existir no banco de dados, retorna status 404 Not Found.
- * 4. SuperAdministrador (is_super_admin = true) possui acesso irrestrito para auditoria institucional.
- * 5. Caso o terapeuta não seja SuperAdmin:
- *    - Deve ser um terapeuta ativo (status_ativo = true).
- *    - Deve pertencer à mesma clínica do paciente (se clínica estiver definida).
- *    - Deve possuir vínculo ativo cadastrado na tabela `terapeuta_paciente`.
- * 6. Caso não possua vínculo, retorna status 403 Forbidden.
+ * Authorization middleware for controlling access and visibility to clinical patient records (RN04).
+ *
+ * Enforces the following rules:
+ * 1. Requesting user must be authenticated via Supabase JWT (`authMiddleware`).
+ * 2. Target patient UUID is extracted from route parameters (`:id` or `:pacienteId`) or request body.
+ * 3. Returns HTTP 404 if the patient does not exist in the database.
+ * 4. Grants full auditing access if the user is a Super Administrator (`is_super_admin = true`).
+ * 5. If the therapist is not Super Admin:
+ *    - Must be an active therapist (`status_ativo = true`).
+ *    - Must belong to the same clinic as the patient (if patient belongs to a clinic).
+ *    - Must have an active association in the `terapeuta_paciente` relation table.
+ * 6. Returns HTTP 403 Forbidden if no active association or permission exists.
+ *
+ * @param req - Authenticated Express request containing user credentials and target patient ID.
+ * @param res - Express response object used to send authorization errors.
+ * @param next - Express next function to continue request pipeline on authorization success.
+ * @returns Resolves when authorization verification completes.
  */
 export async function verificarVisibilidadePaciente(
   req: AuthenticatedRequest,

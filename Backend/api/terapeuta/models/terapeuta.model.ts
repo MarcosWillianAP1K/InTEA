@@ -71,10 +71,11 @@ export interface LoginDTO {
 
 export class TerapeutaModel {
   /**
-   * Lista terapeutas cadastrados.
-   * Por padrão, filtra apenas terapeutas ativos (Soft Delete).
-   * 
-   * @param incluirInativos - Se true, inclui terapeutas desativados
+   * Lists therapists from the database, filtering active ones by default (RN05).
+   *
+   * @param incluirInativos - If true, deactivated therapists are included in the results.
+   * @returns Array of therapist entities including linked focus areas.
+   * @throws {Error} If querying the database fails.
    */
   static async listar(incluirInativos: boolean = false): Promise<Terapeuta[]> {
     let query = supabase
@@ -96,9 +97,11 @@ export class TerapeutaModel {
   }
 
   /**
-   * Busca um terapeuta pelo UUID.
-   * 
-   * @param id - UUID do terapeuta
+   * Retrieves a therapist record by their UUID.
+   *
+   * @param id - The UUID identifier of the therapist.
+   * @returns The therapist entity if found, or null otherwise.
+   * @throws {Error} If querying the database fails.
    */
   static async buscarPorId(id: string): Promise<Terapeuta | null> {
     const { data, error } = await supabase
@@ -115,9 +118,11 @@ export class TerapeutaModel {
   }
 
   /**
-   * Busca um terapeuta pelo endereço de e-mail.
-   * 
-   * @param email - E-mail cadastrado
+   * Retrieves a therapist record by their email address.
+   *
+   * @param email - The registered email address to query.
+   * @returns The therapist entity if found, or null otherwise.
+   * @throws {Error} If querying the database fails.
    */
   static async buscarPorEmail(email: string): Promise<Terapeuta | null> {
     const { data, error } = await supabase
@@ -134,11 +139,11 @@ export class TerapeutaModel {
   }
 
   /**
-   * Cadastra um novo terapeuta.
-   * Cria o usuário no Supabase Auth (auth.users), disparando o trigger handle_new_user()
-   * que insere o registro em public.terapeuta. Se áreas de foco forem informadas, realiza a vinculação.
-   * 
-   * @param dto - Dados de cadastro e credenciais
+   * Registers a new therapist, creating their Supabase Auth credentials and profile record.
+   *
+   * @param dto - Therapist registration details including email and password.
+   * @returns The newly created therapist profile entity.
+   * @throws {Error} If Supabase Auth account creation or profile lookup fails.
    */
   static async criar(dto: CriarTerapeutaDTO): Promise<Terapeuta> {
     // 1. Cria usuário autenticado no Supabase Auth via admin API
@@ -190,10 +195,12 @@ export class TerapeutaModel {
   }
 
   /**
-   * Atualiza os dados de um terapeuta existente.
-   * 
-   * @param id - UUID do terapeuta
-   * @param dto - Dados a atualizar
+   * Updates fields of an existing therapist and syncs focus area relations.
+   *
+   * @param id - The UUID identifier of the therapist.
+   * @param dto - Fields to update and optional array of focus area UUIDs.
+   * @returns The updated therapist profile entity.
+   * @throws {Error} If updating the database record fails.
    */
   static async atualizar(id: string, dto: AtualizarTerapeutaDTO): Promise<Terapeuta> {
     const payload: any = {
@@ -240,10 +247,11 @@ export class TerapeutaModel {
   }
 
   /**
-   * SOFT DELETE (Exclusão Lógica):
-   * Altera status_ativo para false preservando histórico clínico e relatórios associados.
-   * 
-   * @param id - UUID do terapeuta
+   * Deactivates a therapist account using soft deletion (RN05).
+   *
+   * @param id - The UUID identifier of the therapist to deactivate.
+   * @returns The updated therapist entity with `status_ativo = false`.
+   * @throws {Error} If updating the database record fails.
    */
   static async desativar(id: string): Promise<Terapeuta> {
     const { error } = await supabase
@@ -263,9 +271,11 @@ export class TerapeutaModel {
   }
 
   /**
-   * Reativa um terapeuta inativo.
-   * 
-   * @param id - UUID do terapeuta
+   * Reactivates an inactive therapist record.
+   *
+   * @param id - The UUID identifier of the therapist to reactivate.
+   * @returns The updated therapist entity with `status_ativo = true`.
+   * @throws {Error} If updating the database record fails.
    */
   static async reativar(id: string): Promise<Terapeuta> {
     const { error } = await supabase
@@ -285,11 +295,11 @@ export class TerapeutaModel {
   }
 
   /**
-   * HARD DELETE (Exclusão Física Permanente para DEV e Testes):
-   * Remove o usuário de auth.users, o que propaga a exclusão em cascata (ON DELETE CASCADE)
-   * para public.terapeuta e tabelas dependentes.
-   * 
-   * @param id - UUID do terapeuta
+   * Permanently deletes a therapist and their auth user credentials (hard delete for dev/tests).
+   *
+   * @param id - The UUID identifier of the therapist.
+   * @returns Resolves when the record is deleted.
+   * @throws {Error} If deletion fails.
    */
   static async deletarHard(id: string): Promise<void> {
     const { error } = await supabase.auth.admin.deleteUser(id);
@@ -304,9 +314,11 @@ export class TerapeutaModel {
   }
 
   /**
-   * Autentica um terapeuta com email e senha e retorna o token JWT de acesso.
-   * 
-   * @param dto - Credenciais de login (email e password)
+   * Authenticates a therapist and generates a JWT session.
+   *
+   * @param dto - Login credentials containing email and password.
+   * @returns Object containing user, session, access token, and therapist profile.
+   * @throws {Error} If credentials are invalid or the account is inactive.
    */
   static async login(dto: LoginDTO): Promise<{ user: any; session: any; access_token: string; terapeuta: Terapeuta | null }> {
     const { data, error } = await supabase.auth.signInWithPassword({

@@ -133,6 +133,13 @@ export class JogoModel {
     return Boolean(url && !url.includes('placeholder') && !url.includes('your-project'));
   }
 
+  /**
+   * Lists available games with optional filtering by clinical objective and pagination (RF19).
+   * Queries Supabase if configured, otherwise falls back to local in-memory catalog.
+   *
+   * @param filtros - Search, filter, and pagination options (objetivo, page, limit).
+   * @returns Paginated result containing game summary items and pagination metadata.
+   */
   static async listar(filtros: FiltrosJogo = {}): Promise<ResultadoPaginado<JogoResumo>> {
     const page = Math.max(1, filtros.page ?? 1);
     const limit = Math.min(100, Math.max(1, filtros.limit ?? 10));
@@ -200,6 +207,12 @@ export class JogoModel {
     };
   }
 
+  /**
+   * Retrieves full details of a specific therapeutic game including its manifest JSON.
+   *
+   * @param id - Game identifier (numeric or string ID).
+   * @returns The full game object if found, or undefined otherwise.
+   */
   static async buscarPorId(id: number | string): Promise<Jogo | undefined> {
     if (this.isSupabaseAvailable()) {
       try {

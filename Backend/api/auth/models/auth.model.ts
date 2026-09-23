@@ -26,10 +26,12 @@ export interface AuthResponse {
 
 export class AuthModel {
   /**
-   * Realiza login no Supabase Auth com email e senha.
-   * Valida se a conta do terapeuta associada está ativa.
-   * 
-   * @param dto - Credenciais de login
+   * Authenticates a user via Supabase Auth using email and password credentials.
+   * Verifies that the associated therapist record is active.
+   *
+   * @param dto - User credentials containing email and password.
+   * @returns Authentication bundle containing user, session, access token, and therapist profile.
+   * @throws {Error} If credentials are invalid or the account is deactivated.
    */
   static async login(dto: LoginDTO): Promise<AuthResponse> {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -61,10 +63,10 @@ export class AuthModel {
   }
 
   /**
-   * Endpoint de EXEMPLO para recuperação de senha (mock / em desenvolvimento).
-   * Não realiza disparo real de e-mail no momento.
-   * 
-   * @param email - E-mail informado para recuperação
+   * Mock endpoint for initiating a password recovery flow.
+   *
+   * @param email - Target email address for password reset.
+   * @returns Confirmation message detailing the mock recovery action.
    */
   static async recuperarSenha(email: string): Promise<{ message: string; exemplo: boolean }> {
     return {
@@ -74,9 +76,11 @@ export class AuthModel {
   }
 
   /**
-   * Recupera o perfil do usuário logado a partir do seu UUID do Auth.
-   * 
-   * @param userId - UUID do usuário autenticado (auth.users.id)
+   * Retrieves the therapist profile associated with an authenticated Supabase Auth user ID.
+   *
+   * @param userId - The UUID identifier from `auth.users`.
+   * @returns The therapist profile if found, or null otherwise.
+   * @throws {Error} If querying the database fails.
    */
   static async buscarPerfilPorId(userId: string): Promise<any | null> {
     const { data, error } = await supabase

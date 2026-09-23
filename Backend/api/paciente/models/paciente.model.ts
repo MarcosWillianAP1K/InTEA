@@ -112,9 +112,11 @@ export interface RespostaListagemPaciente {
 export class PacienteModel {
 
   /**
-   * Lista pacientes com suporte a busca textual, faixa etária e paginação.
-   * 
-   * @param filtros - Critérios de filtro e paginação
+   * Lists patients with support for text search (name and CPF), age range filtering, and pagination.
+   *
+   * @param filtros - Search, filter, and pagination options (page, limit, idadeMin, idadeMax, etc.).
+   * @returns Object containing patient records array and pagination metadata.
+   * @throws {Error} If the database query execution fails.
    */
   static async listar(filtros: FiltrosPacienteDTO = {}): Promise<RespostaListagemPaciente> {
     let query = supabase
@@ -194,7 +196,11 @@ export class PacienteModel {
   }
 
   /**
-   * Busca um paciente específico pelo identificador UUID.
+   * Retrieves a specific patient record by their UUID, including linked guardians and therapists.
+   *
+   * @param id - The UUID identifier of the target patient.
+   * @returns The patient entity if found, or null otherwise.
+   * @throws {Error} If the database query fails.
    */
   static async buscarPorId(id: string): Promise<Paciente | null> {
     const { data, error } = await supabase
@@ -211,7 +217,11 @@ export class PacienteModel {
   }
 
   /**
-   * Cadastra um novo paciente e opcionalmente seu responsável.
+   * Registers a new patient in the database, optionally linking an initial guardian.
+   *
+   * @param dto - Patient creation payload containing demographic and contact information.
+   * @returns The newly created patient entity with generated ID and timestamps.
+   * @throws {Error} If insertion into the patient table fails.
    */
   static async criar(dto: CriarPacienteDTO): Promise<Paciente> {
     const payloadPaciente = {
@@ -274,7 +284,12 @@ export class PacienteModel {
   }
 
   /**
-   * Atualiza dados cadastrais de um paciente.
+   * Updates registration fields of an existing patient.
+   *
+   * @param id - The UUID identifier of the patient to update.
+   * @param dto - Partial payload containing fields to modify.
+   * @returns The updated patient entity.
+   * @throws {Error} If updating the database record fails.
    */
   static async atualizar(id: string, dto: AtualizarPacienteDTO): Promise<Paciente> {
     const payload: any = {
@@ -310,7 +325,11 @@ export class PacienteModel {
   }
 
   /**
-   * SOFT DELETE: Inativa o paciente.
+   * Performs soft deletion on a patient, marking their status as inactive (RN05).
+   *
+   * @param id - The UUID identifier of the patient to deactivate.
+   * @returns The updated patient entity with `status_ativo = false`.
+   * @throws {Error} If updating the database record fails.
    */
   static async desativar(id: string): Promise<Paciente> {
     const { data, error } = await supabase
@@ -331,7 +350,11 @@ export class PacienteModel {
   }
 
   /**
-   * Reativa um paciente inativo.
+   * Reactivates an inactive patient record.
+   *
+   * @param id - The UUID identifier of the patient to reactivate.
+   * @returns The updated patient entity with `status_ativo = true`.
+   * @throws {Error} If updating the database record fails.
    */
   static async reativar(id: string): Promise<Paciente> {
     const { data, error } = await supabase
@@ -352,7 +375,11 @@ export class PacienteModel {
   }
 
   /**
-   * HARD DELETE: Exclusão física permanente (DEV e Testes).
+   * Permanently removes a patient record from the database (hard delete for dev/tests).
+   *
+   * @param id - The UUID identifier of the patient to permanently delete.
+   * @returns Resolves when the record is deleted.
+   * @throws {Error} If deletion fails.
    */
   static async deletarHard(id: string): Promise<void> {
     const { error } = await supabase
@@ -370,11 +397,12 @@ export class PacienteModel {
   // ============================================================================
 
   /**
-   * Vincula um terapeuta a um paciente.
-   * Valida se ambos pertencem à mesma clínica caso clinica_id esteja definido.
-   * 
-   * @param pacienteId - UUID do paciente
-   * @param terapeutaId - UUID do terapeuta
+   * Associates a therapist with a patient record, validating clinic affinity.
+   *
+   * @param pacienteId - The UUID identifier of the target patient.
+   * @param terapeutaId - The UUID identifier of the therapist to link.
+   * @returns Resolves when the association is created.
+   * @throws {Error} If patient/therapist does not exist, is inactive, or belongs to differing clinics.
    */
   static async vincularTerapeuta(pacienteId: string, terapeutaId: string): Promise<void> {
     // 1. Busca paciente
@@ -426,10 +454,12 @@ export class PacienteModel {
   }
 
   /**
-   * Remove o vínculo de um terapeuta com o paciente.
-   * 
-   * @param pacienteId - UUID do paciente
-   * @param terapeutaId - UUID do terapeuta
+   * Removes an association between a therapist and a patient.
+   *
+   * @param pacienteId - The UUID identifier of the target patient.
+   * @param terapeutaId - The UUID identifier of the therapist to unlink.
+   * @returns Resolves when the association is removed.
+   * @throws {Error} If the patient is not found or database deletion fails.
    */
   static async desvincularTerapeuta(pacienteId: string, terapeutaId: string): Promise<void> {
     const { data: paciente, error: pacError } = await supabase
@@ -454,9 +484,11 @@ export class PacienteModel {
   }
 
   /**
-   * Lista todos os terapeutas associados a um paciente.
-   * 
-   * @param pacienteId - UUID do paciente
+   * Retrieves all therapists currently associated with a given patient.
+   *
+   * @param pacienteId - The UUID identifier of the patient.
+   * @returns Array of associated therapist records.
+   * @throws {Error} If the patient does not exist or querying relations fails.
    */
   static async listarTerapeutasVinculados(pacienteId: string): Promise<any[]> {
     const { data: paciente, error: pacError } = await supabase
