@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ExemploModel } from '../api/exemplo/models/exemplo.model.js';
+import { ExemploModel } from '../models/exemplo.model.js';
 
 describe('Backend: ExemploModel (MVC)', () => {
   it('deve listar itens cadastrados', async () => {
