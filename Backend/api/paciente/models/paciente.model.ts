@@ -132,29 +132,42 @@ export class PacienteModel {
       query = query.ilike('nome', `%${filtros.nome.trim()}%`);
     }
 
-    // 3. Busca por CPF
+    // 3. Busca por CPF (busca com e sem máscara)
     if (filtros.cpf && filtros.cpf.trim() !== '') {
-      const cpfLimpo = filtros.cpf.replace(/\D/g, '');
-      query = query.or(`cpf.eq.${filtros.cpf},cpf.ilike.%${cpfLimpo}%`);
+      const digitosCpf = filtros.cpf.replace(/\D/g, '');
+      if (digitosCpf.length === 11) {
+        const cpfFormatado = `${digitosCpf.slice(0, 3)}.${digitosCpf.slice(3, 6)}.${digitosCpf.slice(6, 9)}-${digitosCpf.slice(9, 11)}`;
+        query = query.or(`cpf.eq."${cpfFormatado}",cpf.eq."${digitosCpf}"`);
+      } else if (digitosCpf.length > 0) {
+        query = query.ilike('cpf', `%${filtros.cpf.trim()}%`);
+      }
     }
 
-    // 4. Filtro por Faixa Etária (Calculado sobre data_nascimento)
+    // 4. Filtro por Faixa Etária (Calculado sobre data_nascimento sem drift de fuso horário)
+    const formatarDataLocalISO = (d: Date): string => {
+      const ano = d.getFullYear();
+      const mes = String(d.getMonth() + 1).padStart(2, '0');
+      const dia = String(d.getDate()).padStart(2, '0');
+      return `${ano}-${mes}-${dia}`;
+    };
+
     const hoje = new Date();
     if (filtros.idadeMin !== undefined && filtros.idadeMin >= 0) {
       // Data de nascimento máxima = hoje - idadeMin anos
       const maxNascimento = new Date(hoje.getFullYear() - filtros.idadeMin, hoje.getMonth(), hoje.getDate());
-      query = query.lte('data_nascimento', maxNascimento.toISOString().split('T')[0]);
+      query = query.lte('data_nascimento', formatarDataLocalISO(maxNascimento));
     }
 
     if (filtros.idadeMax !== undefined && filtros.idadeMax >= 0) {
       // Data de nascimento mínima = hoje - (idadeMax + 1) anos + 1 dia
-      const minNascimento = new Date(hoje.getFullYear() - filtros.idadeMax - 1, hoje.getMonth(), hoje.getDate());
-      query = query.gte('data_nascimento', minNascimento.toISOString().split('T')[0]);
+      const minNascimento = new Date(hoje.getFullYear() - filtros.idadeMax - 1, hoje.getMonth(), hoje.getDate() + 1);
+      query = query.gte('data_nascimento', formatarDataLocalISO(minNascimento));
     }
 
-    // 5. Paginação
-    const page = filtros.page && filtros.page > 0 ? Number(filtros.page) : 1;
-    const limit = filtros.limit && filtros.limit > 0 ? Number(filtros.limit) : 10;
+    // 5. Paginação segura (protegida contra DoS de memória)
+    const page = filtros.page && filtros.page > 0 ? Math.floor(Number(filtros.page)) : 1;
+    const rawLimit = filtros.limit && filtros.limit > 0 ? Math.floor(Number(filtros.limit)) : 10;
+    const limit = Math.min(rawLimit, 100); // Teto máximo de 100 registros por página
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
@@ -367,12 +380,16 @@ export class PacienteModel {
     // 1. Busca paciente
     const { data: paciente, error: pacError } = await supabase
       .from('paciente')
-      .select('id, clinica_id')
+      .select('id, clinica_id, status_ativo')
       .eq('id', pacienteId)
       .maybeSingle();
 
     if (pacError || !paciente) {
       throw new Error('Paciente não encontrado para vincular terapeuta.');
+    }
+
+    if (!paciente.status_ativo) {
+      throw new Error('Não é possível vincular terapeuta a um paciente inativo.');
     }
 
     // 2. Busca terapeuta
@@ -415,6 +432,16 @@ export class PacienteModel {
    * @param terapeutaId - UUID do terapeuta
    */
   static async desvincularTerapeuta(pacienteId: string, terapeutaId: string): Promise<void> {
+    const { data: paciente, error: pacError } = await supabase
+      .from('paciente')
+      .select('id')
+      .eq('id', pacienteId)
+      .maybeSingle();
+
+    if (pacError || !paciente) {
+      throw new Error('Paciente não encontrado para desvincular terapeuta.');
+    }
+
     const { error } = await supabase
       .from('terapeuta_paciente')
       .delete()
@@ -432,6 +459,16 @@ export class PacienteModel {
    * @param pacienteId - UUID do paciente
    */
   static async listarTerapeutasVinculados(pacienteId: string): Promise<any[]> {
+    const { data: paciente, error: pacError } = await supabase
+      .from('paciente')
+      .select('id')
+      .eq('id', pacienteId)
+      .maybeSingle();
+
+    if (pacError || !paciente) {
+      throw new Error('Paciente não encontrado ao listar terapeutas vinculados.');
+    }
+
     const { data, error } = await supabase
       .from('terapeuta_paciente')
       .select('created_at, terapeuta:terapeuta(*)')

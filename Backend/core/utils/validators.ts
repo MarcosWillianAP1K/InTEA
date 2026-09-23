@@ -60,6 +60,18 @@ export function validarCEP(cep: string): boolean {
 }
 
 /**
+ * Valida se uma string é um UUID válido (formato canonical 8-4-4-4-12).
+ * Evita erros de sintaxe 22P02 no PostgreSQL.
+ * 
+ * @param id - Identificador a ser validado
+ */
+export function validarUUID(id: string | null | undefined): boolean {
+  if (!id || typeof id !== 'string') return false;
+  const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return regexUUID.test(id.trim());
+}
+
+/**
  * Valida se um número de telefone é um celular brasileiro válido.
  * Deve possuir DDD válido (11 a 99) e o dígito 9 na frente do número de celular.
  * Aceita números com ou sem DDI (+55), com ou sem formatação.

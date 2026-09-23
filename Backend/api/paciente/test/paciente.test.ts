@@ -145,7 +145,7 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
 
     // Mock busca do paciente
     const mockSinglePac = vi.fn().mockResolvedValue({
-      data: { id: pacienteId, clinica_id: 'clinica-a' },
+      data: { id: pacienteId, clinica_id: 'clinica-a', status_ativo: true },
       error: null,
     });
     // Mock busca do terapeuta
@@ -178,7 +178,7 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
     const terapeutaId = 'uuid-terapeuta-2';
 
     const mockSinglePac = vi.fn().mockResolvedValue({
-      data: { id: pacienteId, clinica_id: 'clinica-a' },
+      data: { id: pacienteId, clinica_id: 'clinica-a', status_ativo: true },
       error: null,
     });
     const mockSingleTer = vi.fn().mockResolvedValue({
@@ -197,6 +197,25 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
     });
 
     await expect(PacienteModel.vincularTerapeuta(pacienteId, terapeutaId)).rejects.toThrow('Bloqueio de segurança');
+  });
+
+  it('deve bloquear vínculo se o paciente estiver inativo', async () => {
+    const pacienteId = 'uuid-paciente-inativo';
+    const terapeutaId = 'uuid-terapeuta-1';
+
+    const mockSinglePac = vi.fn().mockResolvedValue({
+      data: { id: pacienteId, clinica_id: 'clinica-a', status_ativo: false },
+      error: null,
+    });
+
+    vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
+      if (table === 'paciente') {
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: mockSinglePac }) }) } as any;
+      }
+      return {} as any;
+    });
+
+    await expect(PacienteModel.vincularTerapeuta(pacienteId, terapeutaId)).rejects.toThrow('paciente inativo');
   });
 
   describe('PacienteController: Validação e Formatação', () => {
@@ -252,6 +271,43 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         error: expect.stringContaining('Erro de validação'),
+      }));
+    });
+
+    it('deve rejeitar UUID inválido no PacienteController.buscarPorId', async () => {
+      const { PacienteController } = await import('../controllers/paciente.controller.js');
+      const req: any = {
+        params: { id: 'nao-e-uuid' },
+      };
+      const res: any = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      };
+
+      await PacienteController.buscarPorId(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        error: expect.stringContaining('UUID válido'),
+      }));
+    });
+
+    it('deve rejeitar UUID inválido no PacienteController.vincularTerapeuta', async () => {
+      const { PacienteController } = await import('../controllers/paciente.controller.js');
+      const req: any = {
+        params: { id: '123e4567-e89b-12d3-a456-426614174000' },
+        body: { terapeuta_id: 'invalido' },
+      };
+      const res: any = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      };
+
+      await PacienteController.vincularTerapeuta(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        error: expect.stringContaining('UUID válido'),
       }));
     });
   });

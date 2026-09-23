@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { PacienteModel, CriarPacienteDTO, AtualizarPacienteDTO, FiltrosPacienteDTO } from '../models/paciente.model.js';
-import { validarCriarPacienteDTO, validarAtualizarPacienteDTO } from '../../../core/utils/validators.js';
+import { validarCriarPacienteDTO, validarAtualizarPacienteDTO, validarUUID } from '../../../core/utils/validators.js';
 import { formatarCPF, formatarCEP, formatarTelefone } from '../../../core/utils/formatters.js';
 
 // ==============================================================================
@@ -49,6 +49,11 @@ export class PacienteController {
 
       if (!id || id === 'undefined') {
         res.status(400).json({ error: 'O parâmetro ID é obrigatório.' });
+        return;
+      }
+
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'O parâmetro ID deve ser um UUID válido.' });
         return;
       }
 
@@ -126,6 +131,11 @@ export class PacienteController {
         return;
       }
 
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'O parâmetro ID deve ser um UUID válido.' });
+        return;
+      }
+
       // Validação dos dados parciais
       const validacao = validarAtualizarPacienteDTO(dto);
       if (!validacao.valido) {
@@ -178,6 +188,11 @@ export class PacienteController {
         return;
       }
 
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'O parâmetro ID deve ser um UUID válido.' });
+        return;
+      }
+
       const existente = await PacienteModel.buscarPorId(id);
       if (!existente) {
         res.status(404).json({ error: 'Paciente não encontrado para desativação.' });
@@ -217,6 +232,11 @@ export class PacienteController {
         return;
       }
 
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'O parâmetro ID deve ser um UUID válido.' });
+        return;
+      }
+
       const existente = await PacienteModel.buscarPorId(id);
       if (!existente) {
         res.status(404).json({ error: 'Paciente não encontrado para reativação.' });
@@ -245,6 +265,11 @@ export class PacienteController {
 
       if (!id || id === 'undefined') {
         res.status(400).json({ error: 'O parâmetro ID é obrigatório.' });
+        return;
+      }
+
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'O parâmetro ID deve ser um UUID válido.' });
         return;
       }
 
@@ -285,8 +310,18 @@ export class PacienteController {
         return;
       }
 
+      if (!validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O ID do paciente deve ser um UUID válido.' });
+        return;
+      }
+
       if (!terapeuta_id || typeof terapeuta_id !== 'string') {
         res.status(400).json({ error: 'O campo "terapeuta_id" (UUID) é obrigatório.' });
+        return;
+      }
+
+      if (!validarUUID(terapeuta_id)) {
+        res.status(400).json({ error: 'O campo "terapeuta_id" deve ser um UUID válido.' });
         return;
       }
 
@@ -298,7 +333,12 @@ export class PacienteController {
     } catch (error: any) {
       console.error('[PacienteController.vincularTerapeuta]', error);
 
-      if (error?.message?.includes('Bloqueio de segurança')) {
+      if (error?.message?.includes('não encontrado')) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+
+      if (error?.message?.includes('Bloqueio de segurança') || error?.message?.includes('inativo')) {
         res.status(400).json({ error: error.message });
         return;
       }
@@ -324,6 +364,16 @@ export class PacienteController {
         return;
       }
 
+      if (!validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O parâmetro "id" deve ser um UUID válido.' });
+        return;
+      }
+
+      if (!validarUUID(terapeutaId)) {
+        res.status(400).json({ error: 'O parâmetro "terapeutaId" deve ser um UUID válido.' });
+        return;
+      }
+
       await PacienteModel.desvincularTerapeuta(pacienteId, terapeutaId);
 
       res.status(200).json({
@@ -331,6 +381,12 @@ export class PacienteController {
       });
     } catch (error: any) {
       console.error('[PacienteController.desvincularTerapeuta]', error);
+
+      if (error?.message?.includes('não encontrado')) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+
       res.status(500).json({
         error: 'Erro ao remover vínculo do terapeuta.',
         detalhes: error?.message,
@@ -351,11 +407,22 @@ export class PacienteController {
         return;
       }
 
+      if (!validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O parâmetro ID deve ser um UUID válido.' });
+        return;
+      }
+
       const terapeutas = await PacienteModel.listarTerapeutasVinculados(pacienteId);
 
       res.status(200).json({ data: terapeutas });
     } catch (error: any) {
       console.error('[PacienteController.listarTerapeutas]', error);
+
+      if (error?.message?.includes('não encontrado')) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+
       res.status(500).json({
         error: 'Erro ao listar terapeutas vinculados.',
         detalhes: error?.message,
