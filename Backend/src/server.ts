@@ -20,6 +20,11 @@ const swaggerSpec = swaggerJsdoc({
       description: "Documentação da API REST do InTEA",
     },
     servers: [{ url: `http://localhost:${port}` }],
+    tags: [
+      { name: "Autenticação", description: "Endpoints de login, sessão e recuperação de senha" },
+      { name: "Terapeuta", description: "Gerenciamento cadastral de terapeutas" },
+      { name: "Paciente", description: "Gerenciamento clínico de pacientes" },
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
