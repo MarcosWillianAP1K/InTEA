@@ -44,4 +44,5 @@ desktop.ini
 *.tmp
 *.temp
 
-/BRAIN_PROJECT
+# Documentação interna / Projetos
+/BRAIN_PROJECT/

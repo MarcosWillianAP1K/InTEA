@@ -11,7 +11,8 @@
     "build": "tsc",
     "start": "node dist/src/server.js",
     "dev": "tsx watch src/server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx scripts/seed-jogos.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
