@@ -6,4 +6,4 @@ export const apiRouter = Router();
 
 // Registra rotas das features da API
 apiRouter.use('/exemplo', exemploRoutes);
-apiRouter.use('/pacientes', pacienteRoutes);
+apiRouter.use('/paciente', pacienteRoutes);
