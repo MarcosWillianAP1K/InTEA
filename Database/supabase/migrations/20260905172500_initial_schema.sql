@@ -1,3 +1,9 @@
+-- ==============================================================================
+-- [LEGACY / OBSOLETO] Esquema rascunho inicial da branch joao-marcos
+-- ATENÇÃO: O esquema oficial e canônico do InTEA está definido em Database/database.sql
+-- (utilizando public.jogo, public.sessao e chaves padronizadas em UUID).
+-- ==============================================================================
+
 create extension if not exists "pgcrypto";
 
 create table if not exists public.jogos (

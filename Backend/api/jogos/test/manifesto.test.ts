@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { ManifestoValidator } from '../api/jogos/validators/manifesto.validator.js';
-import { JogoController } from '../api/jogos/controllers/jogo.controller.js';
+import { ManifestoValidator } from '../validators/manifesto.validator.js';
+import { JogoController } from '../controllers/jogo.controller.js';
 import { Request, Response } from 'express';
 
-describe('Card 2.2 — Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
+describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
   const manifestoValido = {
     id_jogo: 'game-core-01',
     nome: 'Aventura Cognitiva',

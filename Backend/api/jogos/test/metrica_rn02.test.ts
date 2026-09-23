@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { MetricaValidator } from '../api/jogos/validators/metrica.validator.js';
-import { ManifestoValidator } from '../api/jogos/validators/manifesto.validator.js';
-import { JogoController } from '../api/jogos/controllers/jogo.controller.js';
-import { ManifestoJogo } from '../api/jogos/models/jogo.model.js';
+import { MetricaValidator } from '../validators/metrica.validator.js';
+import { ManifestoValidator } from '../validators/manifesto.validator.js';
+import { JogoController } from '../controllers/jogo.controller.js';
+import { ManifestoJogo } from '../models/jogo.model.js';
 import { Request, Response } from 'express';
 
-describe('Card 2.3 — Validação Estrita de Tipagem de Métricas (RN02 / RNF04)', () => {
+describe('Validação Estrita de Tipagem de Métricas (RN02 / RNF04)', () => {
   const manifestoTeste: ManifestoJogo = {
     id_jogo: 'jogo-teste-tipagem',
     nome: 'Jogo Teste de Tipagem',
@@ -165,7 +165,7 @@ describe('Card 2.3 — Validação Estrita de Tipagem de Métricas (RN02 / RNF04
     });
   });
 
-  describe('Endpoint POST /jogos/:id/validar-telemetria', () => {
+  describe('Endpoint POST /api/jogos/:id/validar-telemetria', () => {
     it('deve retornar 200 OK com podeGravar: true para telemetria válida', async () => {
       let statusCode = 200;
       let responseJson: any = null;

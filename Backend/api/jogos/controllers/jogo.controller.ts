@@ -5,7 +5,7 @@ import { MetricaValidator } from '../validators/metrica.validator.js';
 
 export class JogoController {
   /**
-   * GET /jogos?objetivo=foco_atencional&page=1&limit=10
+   * GET /api/jogos?objetivo=foco_atencional&page=1&limit=10
    * Lista jogos com suporte a filtro por objetivo clínico e paginação (RF19)
    */
   static async listar(req: Request, res: Response): Promise<void> {
@@ -25,7 +25,7 @@ export class JogoController {
   }
 
   /**
-   * GET /jogos/:id ou GET /api/jogos/:id
+   * GET /api/jogos/:id
    * Consulta detalhes de um jogo específico incluindo o manifesto_json
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
@@ -46,7 +46,7 @@ export class JogoController {
   }
 
   /**
-   * GET /jogos/:id/manifesto ou GET /api/jogos/:id/manifesto
+   * GET /api/jogos/:id/manifesto
    * Retorna e valida a conformidade do manifesto de um jogo específico
    */
   static async obterManifesto(req: Request, res: Response): Promise<void> {
@@ -75,7 +75,7 @@ export class JogoController {
   }
 
   /**
-   * POST /jogos/validar-manifesto ou POST /api/jogos/validar-manifesto
+   * POST /api/jogos/validar-manifesto
    * Endpoint de validação de manifesto contra o Contrato 1 (RNF02)
    */
   static async validarManifesto(req: Request, res: Response): Promise<void> {
@@ -104,7 +104,7 @@ export class JogoController {
   }
 
   /**
-   * POST /jogos/:id/validar-telemetria ou POST /api/jogos/:id/validar-telemetria
+   * POST /api/jogos/:id/validar-telemetria
    * Valida evento de telemetria contra a RN02 (bloqueia gravação no prontuário se a métrica não tiver tipagem estrita)
    */
   static async validarTelemetria(req: Request, res: Response): Promise<void> {

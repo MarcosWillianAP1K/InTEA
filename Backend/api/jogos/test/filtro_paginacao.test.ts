@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { JogoModel } from '../api/jogos/models/jogo.model.js';
-import { JogoController } from '../api/jogos/controllers/jogo.controller.js';
+import { JogoModel } from '../models/jogo.model.js';
+import { JogoController } from '../controllers/jogo.controller.js';
 import { Request, Response } from 'express';
 
-describe('Card 2.5 — Back: Filtro por Objetivo e Paginação de Jogos (RF19)', () => {
+describe('Filtro por Objetivo e Paginação de Jogos (RF19)', () => {
 
   const mockRes = () => {
     let statusCode = 200;
@@ -94,7 +94,7 @@ describe('Card 2.5 — Back: Filtro por Objetivo e Paginação de Jogos (RF19)',
     });
   });
 
-  describe('JogoController — Endpoint GET /jogos com query params', () => {
+  describe('JogoController — Endpoint GET /api/jogos com query params', () => {
     it('deve retornar o payload paginado sem filtro (status 200)', async () => {
       const req = { query: {} } as unknown as Request;
       const { res, getStatus, getJson } = mockRes();
