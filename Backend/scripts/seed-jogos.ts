@@ -17,7 +17,7 @@ const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
 if (!supabaseUrl || supabaseUrl.includes('placeholder') || supabaseUrl.includes('your-project')) {
-  console.error('[Seed] ❌ SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
+  console.error('[Seed] SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
   process.exit(1);
 }
 
@@ -75,7 +75,7 @@ const JOGOS_SEED = [
 ];
 
 async function runSeed() {
-  console.log('[Seed] 🌱 Iniciando seed dos jogos terapêuticos...\n');
+  console.log('[Seed] Iniciando seed dos jogos terapêuticos...\n');
   let inseridos = 0;
   let ignorados = 0;
 
@@ -88,7 +88,7 @@ async function runSeed() {
       .maybeSingle();
 
     if (existente) {
-      console.log(`[Seed] ⚠️  Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
+      console.log(`[Seed] Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
       ignorados++;
       continue;
     }
@@ -100,17 +100,17 @@ async function runSeed() {
       .single();
 
     if (error) {
-      console.error(`[Seed] ❌ Erro ao inserir "${jogo.nome}":`, error.message);
+      console.error(`[Seed] Erro ao inserir "${jogo.nome}":`, error.message);
     } else {
-      console.log(`[Seed] ✅ Jogo "${data.nome}" inserido com sucesso (id: ${data.id}, v${data.versao}).`);
+      console.log(`[Seed] Jogo "${data.nome}" inserido com sucesso (id: ${data.id}, v${data.versao}).`);
       inseridos++;
     }
   }
 
-  console.log(`\n[Seed] 🏁 Concluído: ${inseridos} inserido(s), ${ignorados} ignorado(s) (já existente).`);
+  console.log(`\n[Seed] Concluído: ${inseridos} inserido(s), ${ignorados} ignorado(s) (já existente).`);
 }
 
 runSeed().catch(err => {
-  console.error('[Seed] ❌ Falha inesperada no seed:', err);
+  console.error('[Seed] Falha inesperada no seed:', err);
   process.exit(1);
 });
