@@ -185,4 +185,52 @@ describe('Backend: TerapeutaModel (CRUD, Soft Delete, Hard Delete e Auth)', () =
       password: loginDTO.password,
     });
   });
+
+  describe('TerapeutaController: Validação e Formatação de Telefone', () => {
+    it('deve validar e formatar telefone válido no TerapeutaController.criar', async () => {
+      const { TerapeutaController } = await import('../controllers/terapeuta.controller.js');
+      const req: any = {
+        body: {
+          nome: 'Dra. Maria Clara',
+          email: 'maria.clara@intea.com.br',
+          password: 'senhaSegura123',
+          telefone: '11987654321',
+        },
+      };
+      const res: any = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      };
+      vi.spyOn(TerapeutaModel, 'criar').mockResolvedValue({ id: 'uuid-terapeuta-1' } as any);
+
+      await TerapeutaController.criar(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(req.body.telefone).toBe('+55 (11) 98765-4321');
+    });
+
+    it('deve rejeitar telefone inválido no TerapeutaController.criar', async () => {
+      const { TerapeutaController } = await import('../controllers/terapeuta.controller.js');
+      const req: any = {
+        body: {
+          nome: 'Dra. Maria Clara',
+          email: 'maria.clara@intea.com.br',
+          password: 'senhaSegura123',
+          telefone: '1187654321', // 10 dígitos (sem 9)
+        },
+      };
+      const res: any = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      };
+
+      await TerapeutaController.criar(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        error: expect.stringContaining('telefone informado é inválido'),
+      }));
+    });
+  });
 });
+

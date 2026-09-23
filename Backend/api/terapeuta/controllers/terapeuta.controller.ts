@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { TerapeutaModel, CriarTerapeutaDTO, AtualizarTerapeutaDTO, LoginDTO } from '../models/terapeuta.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { validarTelefone } from '../../../core/utils/validators.js';
+import { formatarTelefone } from '../../../core/utils/formatters.js';
 
 // ==============================================================================
 // CONTROLLER: TerapeutaController
@@ -72,6 +74,17 @@ export class TerapeutaController {
         return;
       }
 
+      // Validação e formatação de telefone se informado
+      if (dto.telefone && typeof dto.telefone === 'string' && dto.telefone.trim() !== '') {
+        if (!validarTelefone(dto.telefone)) {
+          res.status(400).json({
+            error: 'O telefone informado é inválido. Deve conter DDD válido e o dígito 9 na frente (ex: +55 (11) 98765-4321 ou 11987654321).',
+          });
+          return;
+        }
+        dto.telefone = formatarTelefone(dto.telefone);
+      }
+
       const novoTerapeuta = await TerapeutaModel.criar(dto);
 
       res.status(201).json({
@@ -108,6 +121,17 @@ export class TerapeutaController {
       if (!existente) {
         res.status(404).json({ error: 'Terapeuta não encontrado para atualização.' });
         return;
+      }
+
+      // Validação e formatação de telefone se informado
+      if (dto.telefone !== undefined && dto.telefone !== null && dto.telefone.trim() !== '') {
+        if (!validarTelefone(dto.telefone)) {
+          res.status(400).json({
+            error: 'O telefone informado é inválido. Deve conter DDD válido e o dígito 9 na frente (ex: +55 (11) 98765-4321 ou 11987654321).',
+          });
+          return;
+        }
+        dto.telefone = formatarTelefone(dto.telefone);
       }
 
       const atualizado = await TerapeutaModel.atualizar(id, dto);

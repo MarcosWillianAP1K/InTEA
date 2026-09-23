@@ -1,34 +1,35 @@
 import { Request, Response } from 'express';
-import { PacienteModel, CriarPacienteDTO, AtualizarPacienteDTO } from '../models/paciente.model.js';
+import { PacienteModel, CriarPacienteDTO, AtualizarPacienteDTO, FiltrosPacienteDTO } from '../models/paciente.model.js';
+import { validarCriarPacienteDTO, validarAtualizarPacienteDTO } from '../../../core/utils/validators.js';
+import { formatarCPF, formatarCEP, formatarTelefone } from '../../../core/utils/formatters.js';
 
 // ==============================================================================
 // CONTROLLER: PacienteController
-// 
-// O que é o Controller no MVC?
-// É o "maestro" da rota. Ele não acessa o banco diretamente nem cuida de SQL.
-// A responsabilidade dele é:
-// 1. Receber a requisição HTTP (req: dados enviados pelo frontend na URL, query ou body)
-// 2. Fazer checagens básicas de entrada (ex: campos obrigatórios presentes)
-// 3. Chamar o Model para executar a operação necessária
-// 4. Responder ao cliente com o código HTTP adequado (res: 200, 201, 400, 404, 500)
 // ==============================================================================
 
 export class PacienteController {
   /**
-   * GET /api/pacientes
-   * Lista todos os pacientes cadastrados.
-   * 
-   * Suporta query param opcional: ?incluirInativos=true
-   * Por padrão, lista apenas pacientes ativos (status_ativo = true), respeitando a regra de Soft Delete.
+   * GET /api/paciente
+   * Lista pacientes com suporte a busca, filtros e paginação.
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
-      // Lê query param ?incluirInativos=true caso o frontend precise ver inativos
-      const incluirInativos = req.query.incluirInativos === 'true';
+      const filtros: FiltrosPacienteDTO = {
+        incluirInativos: req.query.incluirInativos === 'true',
+        nome: typeof req.query.nome === 'string' ? req.query.nome : undefined,
+        cpf: typeof req.query.cpf === 'string' ? req.query.cpf : undefined,
+        idadeMin: req.query.idadeMin !== undefined ? Number(req.query.idadeMin) : undefined,
+        idadeMax: req.query.idadeMax !== undefined ? Number(req.query.idadeMax) : undefined,
+        page: req.query.page !== undefined ? Number(req.query.page) : undefined,
+        limit: req.query.limit !== undefined ? Number(req.query.limit) : undefined,
+      };
 
-      const pacientes = await PacienteModel.listar(incluirInativos);
+      const resultado = await PacienteModel.listar(filtros);
 
-      res.status(200).json({ data: pacientes });
+      res.status(200).json({
+        data: resultado.data,
+        meta: resultado.meta,
+      });
     } catch (error: any) {
       console.error('[PacienteController.listar]', error);
       res.status(500).json({
@@ -39,7 +40,7 @@ export class PacienteController {
   }
 
   /**
-   * GET /api/pacientes/:id
+   * GET /api/paciente/:id
    * Busca um paciente específico pelo seu ID (UUID).
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
@@ -66,51 +67,54 @@ export class PacienteController {
   }
 
   /**
-   * POST /api/pacientes
-   * Cria um novo paciente.
-   * 
-   * Campos obrigatórios mínimos: nome e data_nascimento.
+   * POST /api/paciente
+   * Cria um novo paciente com validação de dados cadastrais.
    */
   static async criar(req: Request, res: Response): Promise<void> {
     try {
       const dto: CriarPacienteDTO = req.body;
 
-      // Validação básica dos campos obrigatórios
-      if (!dto.nome || dto.nome.trim() === '') {
-        res.status(400).json({ error: 'O campo "nome" é obrigatório.' });
+      // Validação dos dados do paciente e responsável
+      const validacao = validarCriarPacienteDTO(dto);
+      if (!validacao.valido) {
+        res.status(400).json({
+          error: 'Erro de validação nos dados do paciente.',
+          erros: validacao.erros,
+        });
         return;
       }
 
-      if (!dto.data_nascimento) {
-        res.status(400).json({ error: 'O campo "data_nascimento" é obrigatório.' });
-        return;
-      }
+      // Normalização e formatação de máscaras (CPF, CEP, Telefone)
+      dto.cpf = formatarCPF(dto.cpf);
+      if (dto.cep) dto.cep = formatarCEP(dto.cep);
+      if (dto.telefone) dto.telefone = formatarTelefone(dto.telefone);
 
-      if (!dto.cpf || dto.cpf.trim() === '') {
-        res.status(400).json({ error: 'O campo "cpf" é obrigatório.' });
-        return;
+      if (dto.responsavel) {
+        if (dto.responsavel.cpf) dto.responsavel.cpf = formatarCPF(dto.responsavel.cpf);
+        if (dto.responsavel.telefone) dto.responsavel.telefone = formatarTelefone(dto.responsavel.telefone);
       }
 
       const novoPaciente = await PacienteModel.criar(dto);
 
-      // 201: Created (indica que um novo recurso foi criado com sucesso)
-      res.status(201).json({ data: novoPaciente });
+      res.status(201).json({
+        data: novoPaciente,
+        message: 'Paciente cadastrado com sucesso.',
+      });
     } catch (error: any) {
       console.error('[PacienteController.criar]', error);
 
-      // Tratamento amigável para chave única violada (ex: CPF já cadastrado)
       if (error?.message?.includes('duplicate key') || error?.message?.includes('violates unique constraint')) {
         res.status(409).json({ error: 'Já existe um paciente cadastrado com este CPF.' });
         return;
       }
 
-      res.status(500).json({ error: 'Erro interno ao cadastrar paciente.' });
+      res.status(500).json({ error: 'Erro interno ao cadastrar paciente.', detalhes: error?.message });
     }
   }
 
   /**
-   * PUT /api/pacientes/:id
-   * Atualiza os dados de um paciente existente.
+   * PUT /api/paciente/:id
+   * Atualiza os dados de um paciente existente com validação.
    */
   static async atualizar(req: Request, res: Response): Promise<void> {
     try {
@@ -122,7 +126,21 @@ export class PacienteController {
         return;
       }
 
-      // Verifica se o paciente realmente existe antes de tentar atualizar
+      // Validação dos dados parciais
+      const validacao = validarAtualizarPacienteDTO(dto);
+      if (!validacao.valido) {
+        res.status(400).json({
+          error: 'Erro de validação na atualização do paciente.',
+          erros: validacao.erros,
+        });
+        return;
+      }
+
+      // Normalização e formatação de máscaras caso enviados
+      if (dto.cpf) dto.cpf = formatarCPF(dto.cpf);
+      if (dto.cep) dto.cep = formatarCEP(dto.cep);
+      if (dto.telefone) dto.telefone = formatarTelefone(dto.telefone);
+
       const existente = await PacienteModel.buscarPorId(id);
       if (!existente) {
         res.status(404).json({ error: 'Paciente não encontrado para atualização.' });
@@ -131,7 +149,10 @@ export class PacienteController {
 
       const pacienteAtualizado = await PacienteModel.atualizar(id, dto);
 
-      res.status(200).json({ data: pacienteAtualizado });
+      res.status(200).json({
+        data: pacienteAtualizado,
+        message: 'Paciente atualizado com sucesso.',
+      });
     } catch (error: any) {
       console.error('[PacienteController.atualizar]', error);
 
@@ -140,17 +161,13 @@ export class PacienteController {
         return;
       }
 
-      res.status(500).json({ error: 'Erro interno ao atualizar paciente.' });
+      res.status(500).json({ error: 'Erro interno ao atualizar paciente.', detalhes: error?.message });
     }
   }
 
   /**
-   * DELETE /api/pacientes/:id
-   * 
-   * SOFT DELETE (Exclusão Lógica):
-   * Atende à regra clínica RN05 (Inalterabilidade do Histórico).
-   * O paciente NÃO é apagado fisicamente do banco de dados. Em vez disso, seu campo
-   * `status_ativo` é definido como `false`.
+   * DELETE /api/paciente/:id
+   * Soft Delete: Inativa o paciente preservando os dados.
    */
   static async desativar(req: Request, res: Response): Promise<void> {
     try {
@@ -161,14 +178,12 @@ export class PacienteController {
         return;
       }
 
-      // Verifica se o paciente existe
       const existente = await PacienteModel.buscarPorId(id);
       if (!existente) {
         res.status(404).json({ error: 'Paciente não encontrado para desativação.' });
         return;
       }
 
-      // Se já estiver inativo, podemos avisar ou apenas confirmar
       if (!existente.status_ativo) {
         res.status(200).json({
           data: existente,
@@ -190,8 +205,8 @@ export class PacienteController {
   }
 
   /**
-   * PATCH /api/pacientes/:id/reativar
-   * Reativa um paciente que havia sido previamente inativado.
+   * PATCH /api/paciente/:id/reativar
+   * Reativa um paciente inativo.
    */
   static async reativar(req: Request, res: Response): Promise<void> {
     try {
@@ -221,12 +236,8 @@ export class PacienteController {
   }
 
   /**
-   * DELETE /api/pacientes/:id/hard
-   * 
-   * HARD DELETE (Exclusão Física Permanente):
-   * ATENÇÃO: Esta rota é restrita para ambiente de testes e desenvolvimento.
-   * Apaga definitivamente o registro do banco de dados (DELETE FROM paciente).
-   * Para ambiente de produção clínico, utilize sempre o Soft Delete (DELETE /api/pacientes/:id).
+   * DELETE /api/paciente/:id/hard
+   * Hard Delete: Exclusão definitiva do paciente.
    */
   static async deletarHard(req: Request, res: Response): Promise<void> {
     try {
@@ -243,16 +254,111 @@ export class PacienteController {
         return;
       }
 
-      const pacienteDeletado = await PacienteModel.deletarHard(id);
+      await PacienteModel.deletarHard(id);
 
       res.status(200).json({
-        data: pacienteDeletado,
         message: 'Paciente excluído fisicamente do banco com sucesso (hard delete para testes).',
       });
     } catch (error: any) {
       console.error('[PacienteController.deletarHard]', error);
       res.status(500).json({
         error: error?.message || 'Erro interno ao realizar exclusão física do paciente.',
+      });
+    }
+  }
+
+  // ============================================================================
+  // GESTÃO DE VÍNCULOS TERAPEUTA-PACIENTE
+  // ============================================================================
+
+  /**
+   * POST /api/paciente/:id/terapeutas
+   * Associa um terapeuta ao paciente.
+   */
+  static async vincularTerapeuta(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id);
+      const { terapeuta_id } = req.body;
+
+      if (!pacienteId || pacienteId === 'undefined') {
+        res.status(400).json({ error: 'O ID do paciente é obrigatório.' });
+        return;
+      }
+
+      if (!terapeuta_id || typeof terapeuta_id !== 'string') {
+        res.status(400).json({ error: 'O campo "terapeuta_id" (UUID) é obrigatório.' });
+        return;
+      }
+
+      await PacienteModel.vincularTerapeuta(pacienteId, terapeuta_id);
+
+      res.status(201).json({
+        message: 'Terapeuta vinculado ao paciente com sucesso.',
+      });
+    } catch (error: any) {
+      console.error('[PacienteController.vincularTerapeuta]', error);
+
+      if (error?.message?.includes('Bloqueio de segurança')) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
+      res.status(500).json({
+        error: 'Erro ao vincular terapeuta ao paciente.',
+        detalhes: error?.message,
+      });
+    }
+  }
+
+  /**
+   * DELETE /api/paciente/:id/terapeutas/:terapeutaId
+   * Remove o vínculo de um terapeuta com o paciente.
+   */
+  static async desvincularTerapeuta(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id);
+      const terapeutaId = String(req.params.terapeutaId);
+
+      if (!pacienteId || !terapeutaId) {
+        res.status(400).json({ error: 'Os parâmetros "id" e "terapeutaId" são obrigatórios.' });
+        return;
+      }
+
+      await PacienteModel.desvincularTerapeuta(pacienteId, terapeutaId);
+
+      res.status(200).json({
+        message: 'Vínculo do terapeuta com o paciente removido com sucesso.',
+      });
+    } catch (error: any) {
+      console.error('[PacienteController.desvincularTerapeuta]', error);
+      res.status(500).json({
+        error: 'Erro ao remover vínculo do terapeuta.',
+        detalhes: error?.message,
+      });
+    }
+  }
+
+  /**
+   * GET /api/paciente/:id/terapeutas
+   * Lista todos os terapeutas vinculados ao paciente.
+   */
+  static async listarTerapeutas(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id);
+
+      if (!pacienteId || pacienteId === 'undefined') {
+        res.status(400).json({ error: 'O parâmetro ID é obrigatório.' });
+        return;
+      }
+
+      const terapeutas = await PacienteModel.listarTerapeutasVinculados(pacienteId);
+
+      res.status(200).json({ data: terapeutas });
+    } catch (error: any) {
+      console.error('[PacienteController.listarTerapeutas]', error);
+      res.status(500).json({
+        error: 'Erro ao listar terapeutas vinculados.',
+        detalhes: error?.message,
       });
     }
   }
