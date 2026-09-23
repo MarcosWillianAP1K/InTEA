@@ -133,23 +133,25 @@ Database/
 ``` Pastes
 Backend/
 ├── src/
-│   └── server.ts             # Ponto de entrada: inicializa Express, middlewares globais e registra apiRouter
+│   └── server.ts             # Ponto de entrada: Express, CORS, Swagger UI e registro do apiRouter
 ├── api/
-│   ├── index.ts              # apiRouter central — registra todas as rotas das features
-│   └── {feature}/            # Ex: pacientes/, terapeutas/, jogos/
+│   ├── index.ts              # apiRouter central — registra rotas das features (/paciente, /terapeuta, etc.)
+│   └── {feature}/            # Ex: paciente/, terapeuta/, jogo/
 │       ├── controllers/
 │       │   └── {feature}.controller.ts
 │       ├── models/
 │       │   └── {feature}.model.ts
 │       ├── routes/
-│       │   └── {feature}.routes.ts
-│       ├── dtos/             # ← Data Transfer Objects (interfaces de validação)
+│       │   └── {feature}.routes.ts  # Endpoints REST e anotações Swagger @swagger
+│       ├── dtos/             # Data Transfer Objects
 │       │   └── {feature}.dto.ts
 │       └── test/
 │           └── {feature}.test.ts
 ├── core/
+│   ├── middlewares/
+│   │   └── auth.middleware.ts  # Validação de token Bearer JWT via Supabase Auth
 │   └── supabase/
-│       └── supabase.client.ts  # Instância singleton do Supabase
+│       └── supabase.client.ts  # Instância singleton do Supabase com SERVICE_ROLE_KEY
 └── package.json
 ```
 
@@ -263,20 +265,52 @@ export interface AtualizarPacienteDTO {
 
 ### 3.7 Registrar uma Nova Feature
 
-1. Criar pasta `api/{feature}/` com as 4 subcamadas (`controllers`, `models`, `routes`, `dtos`, `test`).
-2. Exportar as rotas em `api/{feature}/routes/{feature}.routes.ts`.
-3. **Importar e registrar** em `api/index.ts`:
+1. Criar pasta `api/{feature}/` com as subcamadas (`controllers`, `models`, `routes`, `test`).
+2. Exportar as rotas em `api/{feature}/routes/{feature}.routes.ts` com anotações `@swagger`.
+3. **Importar e registrar** em `api/index.ts` usando o nome do recurso no **singular**:
 
    ```typescript
-   apiRouter.use('/pacientes', pacienteRoutes);
+   apiRouter.use('/auth', authRoutes);
+   apiRouter.use('/paciente', pacienteRoutes);
+   apiRouter.use('/terapeuta', terapeutaRoutes);
    ```
 
-### 3.8 Testes
+### 3.8 Testes Automatizados
 
 - Framework: **Vitest**.
-- Todo Model deve ter ao menos um arquivo de teste em `api/{feature}/test/{feature}.test.ts`.
-- Testes unitários testam o Model de forma isolada (mock do Supabase quando necessário).
+- Todo Model deve ter seu arquivo de teste em `api/{feature}/test/{feature}.test.ts`.
+- Testes unitários validam lógica de CRUD, soft delete, hard delete e auth de forma isolada.
 - Executar com: `npm test` no diretório `Backend/`.
+
+### 3.9 Documentação Interativa com Swagger UI / OpenAPI
+
+O projeto utiliza **Swagger UI** (`swagger-ui-express` + `swagger-jsdoc`) para documentação viva e testes de endpoints.
+
+- **URL de Acesso:** `http://localhost:3000/api/docs`
+- **Regras de Documentação:**
+  - A documentação de cada rota vive **exclusivamente** em cima do método no arquivo `{feature}.routes.ts` usando blocos `/** @swagger ... */`.
+  - **Não poluir o `server.ts`** com definições manuais de schemas. O `server.ts` deve apenas carregar os arquivos via glob (`./dist/api/**/*.routes.js` e `./api/**/*.routes.ts`).
+  - As requisições usam **exemplos JSON diretos** (`example: { ... }`) facilitando o teste via botão *"Try it out"*.
+  - A seção de Schemas no rodapé do Swagger UI é ocultada via `defaultModelsExpandDepth: -1`.
+- **Botão Authorize (JWT):**
+  - O Swagger possui o botão **`Authorize 🔓`** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
+  - Basta fazer login em `POST /api/terapeuta/login`, copiar o `access_token` retornado e colar no botão Authorize para testar rotas protegidas.
+
+### 3.10 Autenticação JWT e Middleware de Segurança
+
+- O sistema utiliza **Tokens JWT** emitidos pelo Supabase Auth.
+- Para proteger uma rota privada, utiliza-se o middleware `authMiddleware`:
+  ```typescript
+  import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
+
+  // Rota protegida por autenticação JWT:
+  authRoutes.get('/me', authMiddleware, AuthController.me);
+  ```
+- O middleware:
+  1. Extrai o token do cabeçalho `Authorization: Bearer <token>`.
+  2. Valida o token com `supabase.auth.getUser(token)`.
+  3. Injeta os dados do usuário autenticado em `req.user`.
+  4. Retorna `401 Unauthorized` caso o token seja inválido, ausente ou expirado.
 
 ---
 
@@ -472,8 +506,8 @@ export function usePacientes() {
 | Componentes React | `PascalCase` | `PacienteCard`, `FormularioCadastro` |
 | Tabelas SQL | `snake_case` | `paciente`, `terapeuta_paciente` |
 | Colunas SQL / DTO payload | `snake_case` | `data_nascimento`, `status_ativo`, `clinica_id` |
-| Endpoints REST (recursos) | `kebab-case` plural | `/api/pacientes`, `/api/terapeutas` |
-| Sub-rotas de ação específica | Ação no final da URL | `DELETE /api/pacientes/:id/hard`, `PATCH /api/pacientes/:id/reativar` |
+| Endpoints REST (recursos) | `kebab-case` singular | `/api/paciente`, `/api/terapeuta`, `/api/jogo` |
+| Sub-rotas de ação específica | Ação no final da URL | `DELETE /api/paciente/:id/hard`, `PATCH /api/paciente/:id/reativar` |
 
 ### Regra Estrita de `camelCase` no Código TypeScript
 
@@ -481,9 +515,9 @@ export function usePacientes() {
   - ✅ **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
   - ❌ **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
 - **Sub-rotas de ação**: quando um endpoint realiza uma ação secundária ou de exceção sobre um recurso (como reativação ou hard delete para testes), a ação vai no **final da URL após o `:id`**:
-  - ✅ `DELETE /api/pacientes/:id/hard`
-  - ✅ `PATCH /api/pacientes/:id/reativar`
-  - ❌ `/api/pacientes/hard/:id` (evitar inversão do padrão)
+  - ✅ `DELETE /api/paciente/:id/hard`
+  - ✅ `PATCH /api/paciente/:id/reativar`
+  - ❌ `/api/paciente/hard/:id` (evitar inversão do padrão)
 
 ### Padrão de Arquivo por Camada (Backend)
 
@@ -589,14 +623,16 @@ VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-### Regras
+### Regras de Segurança e Arquitetura Híbrida
 
-| Regra | Detalhe |
-| :--- | :--- |
-| `.env` no `.gitignore` | **Nunca commitar `.env`.** Apenas `.env.example` vai ao repositório. |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Exclusivo do Backend.** Nunca expor ao Frontend. |
-| Variáveis do Frontend (`VITE_*`) | São públicas e embutidas no bundle. Nunca colocar secrets aqui. |
-| Supabase RLS | O Frontend usa a `anon_key`, portanto **toda tabela deve ter RLS ativo**. A `anon_key` sem RLS expõe todos os dados. |
+| Camada | Chave Utilizada | Papel e Segurança |
+| :--- | :--- | :--- |
+| **Back-end (Node.js)** | `SUPABASE_SERVICE_ROLE_KEY` | **Exclusiva do Backend.** O servidor é a autoridade de negócio; valida os dados via DTOs, aplica Soft Delete (RN05) e checa permissões via `authMiddleware` antes de persistir com poderes de servidor. Nunca expor ao Frontend. |
+| **Front-end (React)** | `VITE_SUPABASE_ANON_KEY` | Chave pública embutida no bundle do navegador. Usada exclusivamente para login direto no Supabase Auth e upload/download de laudos no Supabase Storage (onde as políticas de RLS garantem a proteção do bucket). |
+
+> [!IMPORTANT]
+> **Por que o Backend usa a SERVICE_ROLE_KEY?**
+> O Back-end é um ambiente seguro e privado. Se o Backend utilizasse a chave anônima (`anon_key`), o Supabase o enxergaria como um visitante anônimo não logado (`auth.uid() = NULL`) e o RLS bloquearia inserções no banco. A segurança do Backend é feita por seus próprios middlewares (`authMiddleware`) e validações de DTOs antes de persistir no banco.
 
 ### Supabase Storage (Laudos)
 
