@@ -1,4 +1,4 @@
-import DashboardPage from "@/features/dashboard/pages/dashboadPage";
+import DashboardPage from "@/features/dashboard/pages/dashboardPage";
 import { BibliotecaJogosPage } from "@/features/jogos/pages/BibliotecaJogosPage";
 import PatientsPage from "@/features/patients/pages/patientsPage";
 import { Route, Routes as RouterRoutes } from "react-router-dom";
