@@ -4,13 +4,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+// O Backend utiliza a SERVICE_ROLE_KEY para operações de servidor com permissão administrativa
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('[Supabase] Atenção: SUPABASE_URL ou SUPABASE_ANON_KEY não estão definidas no ambiente.');
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('[Supabase] Atenção: SUPABASE_URL ou chaves do Supabase não estão definidas no ambiente.');
 }
 
 export const supabase: SupabaseClient = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
+  supabaseKey || 'placeholder-key'
 );

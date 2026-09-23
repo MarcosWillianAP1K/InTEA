@@ -27,7 +27,12 @@ const swaggerSpec = swaggerJsdoc({
   ],
 });
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "*",
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Rota raiz — health check
@@ -36,7 +41,15 @@ app.get("/", (_req: Request, res: Response) => {
 });
 
 // Swagger UI
-app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(
+  "/api/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    swaggerOptions: {
+      defaultModelsExpandDepth: -1,
+    },
+  })
+);
 
 // Rotas da API (features MVC)
 app.use("/api", apiRouter);
