@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { JogoModel } from '../api/jogos/models/jogo.model.js';
-import { ManifestoValidator } from '../api/jogos/validators/manifesto.validator.js';
+import { JogoModel } from '../models/jogo.model.js';
+import { ManifestoValidator } from '../validators/manifesto.validator.js';
 
-describe('Card 2.4 — BD: Seed com 3 Jogos de Exemplo (RF09)', () => {
+describe('Seed do Catálogo de Jogos (RF09)', () => {
   const NOMES_ESPERADOS = ['Aventura das Cores', 'Formas Calmas', 'Som dos Animais'];
 
   describe('Critério 1: O seed cadastra os 3 jogos esperados', () => {

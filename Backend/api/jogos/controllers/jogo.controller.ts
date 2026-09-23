@@ -7,11 +7,16 @@ import { MetricaValidator } from '../validators/metrica.validator.js';
 
 export class JogoController {
   /**
+<<<<<<< HEAD
    * Handles GET /api/jogos to list games filtered by clinical objective with pagination (RF19).
    *
    * @param req - Express request with optional query parameters (objetivo, page, limit).
    * @param res - Express response returning paginated games catalog.
    * @returns Resolves when the HTTP response has been sent.
+=======
+   * GET /api/jogos?objetivo=foco_atencional&page=1&limit=10
+   * Lista jogos com suporte a filtro por objetivo clínico e paginação (RF19)
+>>>>>>> de4659f (refactor(jogos): unifica rotas sob /api/jogos, adiciona documentacao swagger e organiza testes)
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
@@ -60,6 +65,7 @@ export class JogoController {
 
   /**
 <<<<<<< HEAD
+<<<<<<< HEAD
    * Handles GET /api/jogos/:id to retrieve full game details including its manifest JSON.
    *
    * @param req - Express request containing the game ID in URL parameter `:id`.
@@ -67,6 +73,9 @@ export class JogoController {
    * @returns Resolves when the HTTP response has been sent.
 =======
    * GET /jogos/:id ou GET /api/jogos/:id
+=======
+   * GET /api/jogos/:id
+>>>>>>> de4659f (refactor(jogos): unifica rotas sob /api/jogos, adiciona documentacao swagger e organiza testes)
    * Consulta detalhes de um jogo específico incluindo o manifesto_json
 >>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
    */
@@ -98,7 +107,7 @@ export class JogoController {
 =======
 
   /**
-   * GET /jogos/:id/manifesto ou GET /api/jogos/:id/manifesto
+   * GET /api/jogos/:id/manifesto
    * Retorna e valida a conformidade do manifesto de um jogo específico
 >>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
    */
@@ -129,6 +138,7 @@ export class JogoController {
 
   /**
 <<<<<<< HEAD
+<<<<<<< HEAD
    * Handles POST /api/jogos/validar-manifesto to validate an arbitrary game manifest against Contract 1 (RNF02).
    *
    * @param req - Express request containing the manifest object in body.
@@ -136,6 +146,9 @@ export class JogoController {
    * @returns Resolves when the HTTP response has been sent.
 =======
    * POST /jogos/validar-manifesto ou POST /api/jogos/validar-manifesto
+=======
+   * POST /api/jogos/validar-manifesto
+>>>>>>> de4659f (refactor(jogos): unifica rotas sob /api/jogos, adiciona documentacao swagger e organiza testes)
    * Endpoint de validação de manifesto contra o Contrato 1 (RNF02)
 >>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
    */
@@ -176,7 +189,7 @@ export class JogoController {
 =======
 
   /**
-   * POST /jogos/:id/validar-telemetria ou POST /api/jogos/:id/validar-telemetria
+   * POST /api/jogos/:id/validar-telemetria
    * Valida evento de telemetria contra a RN02 (bloqueia gravação no prontuário se a métrica não tiver tipagem estrita)
 >>>>>>> 692f55d (feat: add game controller, routes, manifesto and metric validators, and telemetry tests)
    */

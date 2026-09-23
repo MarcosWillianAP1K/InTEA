@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { JogoModel } from '../api/jogos/models/jogo.model.js';
-import { JogoController } from '../api/jogos/controllers/jogo.controller.js';
+import { JogoModel } from '../models/jogo.model.js';
+import { JogoController } from '../controllers/jogo.controller.js';
 import { Request, Response } from 'express';
 
-describe('Card 2.1 — Endpoints do Catálogo de Jogos (RF09)', () => {
+describe('Catálogo de Jogos (RF09)', () => {
   describe('JogoModel', () => {
     it('deve listar os jogos com nome, versão, descrição e status de instalação', async () => {
       const resultado = await JogoModel.listar();
