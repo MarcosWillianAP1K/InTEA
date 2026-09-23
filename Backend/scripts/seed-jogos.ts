@@ -18,10 +18,14 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 
 if (!supabaseUrl || supabaseUrl.includes('placeholder') || supabaseUrl.includes('your-project')) {
 <<<<<<< HEAD
+<<<<<<< HEAD
   console.error('[Seed] SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
 =======
   console.error('[Seed] ❌ SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
 >>>>>>> fde3374 (feat: add database seed and backend script for therapeutic games with tests)
+=======
+  console.error('[Seed] SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
+>>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
   process.exit(1);
 }
 
@@ -90,8 +94,12 @@ async function runSeed() {
   console.log('[Seed] Iniciando seed dos jogos terapêuticos...\n');
 =======
 async function runSeed() {
+<<<<<<< HEAD
   console.log('[Seed] 🌱 Iniciando seed dos jogos terapêuticos...\n');
 >>>>>>> fde3374 (feat: add database seed and backend script for therapeutic games with tests)
+=======
+  console.log('[Seed] Iniciando seed dos jogos terapêuticos...\n');
+>>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
   let inseridos = 0;
   let ignorados = 0;
 
@@ -105,10 +113,14 @@ async function runSeed() {
 
     if (existente) {
 <<<<<<< HEAD
+<<<<<<< HEAD
       console.log(`[Seed] Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
 =======
       console.log(`[Seed] ⚠️  Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
 >>>>>>> fde3374 (feat: add database seed and backend script for therapeutic games with tests)
+=======
+      console.log(`[Seed] Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
+>>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
       ignorados++;
       continue;
     }
@@ -121,6 +133,7 @@ async function runSeed() {
 
     if (error) {
 <<<<<<< HEAD
+<<<<<<< HEAD
       console.error(`[Seed] Erro ao inserir "${jogo.nome}":`, error.message);
     } else {
       console.log(`[Seed] Jogo "${data.nome}" inserido com sucesso (id: ${data.id}, v${data.versao}).`);
@@ -129,10 +142,16 @@ async function runSeed() {
     } else {
       console.log(`[Seed] ✅ Jogo "${data.nome}" inserido com sucesso (id: ${data.id}, v${data.versao}).`);
 >>>>>>> fde3374 (feat: add database seed and backend script for therapeutic games with tests)
+=======
+      console.error(`[Seed] Erro ao inserir "${jogo.nome}":`, error.message);
+    } else {
+      console.log(`[Seed] Jogo "${data.nome}" inserido com sucesso (id: ${data.id}, v${data.versao}).`);
+>>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
       inseridos++;
     }
   }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   console.log(`\n[Seed] Concluído: ${inseridos} inserido(s), ${ignorados} ignorado(s) (já existente).`);
 }
@@ -146,5 +165,12 @@ runSeed().catch(err => {
 runSeed().catch(err => {
   console.error('[Seed] ❌ Falha inesperada no seed:', err);
 >>>>>>> fde3374 (feat: add database seed and backend script for therapeutic games with tests)
+=======
+  console.log(`\n[Seed] Concluído: ${inseridos} inserido(s), ${ignorados} ignorado(s) (já existente).`);
+}
+
+runSeed().catch(err => {
+  console.error('[Seed] Falha inesperada no seed:', err);
+>>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
   process.exit(1);
 });

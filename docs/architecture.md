@@ -1,4 +1,4 @@
-# InTEA — Regras de Arquitetura e Organização
+﻿# InTEA — Regras de Arquitetura e Organização
 
 > **Documento de referência obrigatório para todos os integrantes da equipe e agentes de IA que contribuírem com este projeto.**
 > Toda nova funcionalidade, migração ou refatoração deve seguir rigorosamente as convenções descritas aqui.
@@ -306,7 +306,11 @@ O projeto utiliza **Swagger UI** (`swagger-ui-express` + `swagger-jsdoc`) para d
   - As requisições usam **exemplos JSON diretos** (`example: { ... }`) facilitando o teste via botão *"Try it out"*.
   - A seção de Schemas no rodapé do Swagger UI é ocultada via `defaultModelsExpandDepth: -1`.
 - **Botão Authorize (JWT):**
+<<<<<<< HEAD
   - O Swagger possui o botão **`Authorize`** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
+=======
+  - O Swagger possui o botão **`Authorize `** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
+>>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
   - Basta fazer login em `POST /api/terapeuta/login`, copiar o `access_token` retornado e colar no botão Authorize para testar rotas protegidas.
 
 ### 3.10 Autenticação JWT e Middleware de Segurança
@@ -456,7 +460,18 @@ export const useSettingStore = create<SettingState>()(
 O roteamento da aplicação é desacoplado do `App.tsx`:
 
 ```tsx
+<<<<<<< HEAD
 export function Routes() {
+=======
+//  CORRETO: Componente com props tipadas, exportação nomeada
+interface PacienteCardProps {
+  nome: string;
+  idade: number;
+  statusAtivo: boolean;
+}
+
+export function PacienteCard({ nome, idade, statusAtivo }: PacienteCardProps) {
+>>>>>>> 7834ef3 (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
   return (
     <RouterRoutes>
       <Route path="/" element={<DashboardPage />} />
@@ -495,12 +510,21 @@ Todo novo componente visual específico de uma tela deve compor esses blocos pri
 ### Regra Estrita de `camelCase` no Código TypeScript
 
 - **Métodos em Controllers, Models e Services**: devem usar **obrigatoriamente `camelCase`** (`"nomeNome"`).
+<<<<<<< HEAD
   - **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
   - **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
 - **Sub-rotas de ação**: quando um endpoint realiza uma ação secundária ou de exceção sobre um recurso (como reativação ou hard delete para testes), a ação vai no **final da URL após o `:id`**:
   - `DELETE /api/paciente/:id/hard`
   - `PATCH /api/paciente/:id/reativar`
   - `/api/paciente/hard/:id` (evitar inversão do padrão)
+=======
+  -  **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
+  -  **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
+- **Sub-rotas de ação**: quando um endpoint realiza uma ação secundária ou de exceção sobre um recurso (como reativação ou hard delete para testes), a ação vai no **final da URL após o `:id`**:
+  -  `DELETE /api/paciente/:id/hard`
+  -  `PATCH /api/paciente/:id/reativar`
+  -  `/api/paciente/hard/:id` (evitar inversão do padrão)
+>>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
 
 ### Padrão de Arquivo por Camada (Backend)
 
