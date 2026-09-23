@@ -9,8 +9,11 @@ import { formatarCPF, formatarCEP, formatarTelefone } from '../../../core/utils/
 
 export class PacienteController {
   /**
-   * GET /api/paciente
-   * Lista pacientes com suporte a busca, filtros e paginação.
+   * Handles GET /api/paciente to list patients with optional filtering, search, and pagination.
+   *
+   * @param req - Express request with optional query filters (nome, cpf, idadeMin, idadeMax, page, limit).
+   * @param res - Express response returning patient list data and pagination metadata.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
@@ -40,8 +43,11 @@ export class PacienteController {
   }
 
   /**
-   * GET /api/paciente/:id
-   * Busca um paciente específico pelo seu ID (UUID).
+   * Handles GET /api/paciente/:id to retrieve a single patient by UUID.
+   *
+   * @param req - Express request containing the patient UUID in URL parameter `:id`.
+   * @param res - Express response returning the patient record or 404 if not found.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
@@ -72,8 +78,11 @@ export class PacienteController {
   }
 
   /**
-   * POST /api/paciente
-   * Cria um novo paciente com validação de dados cadastrais.
+   * Handles POST /api/paciente to create a new patient with sanitized and validated demographic data.
+   *
+   * @param req - Express request containing `CriarPacienteDTO` in body.
+   * @param res - Express response returning status 201 with newly created patient.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async criar(req: Request, res: Response): Promise<void> {
     try {
@@ -118,8 +127,11 @@ export class PacienteController {
   }
 
   /**
-   * PUT /api/paciente/:id
-   * Atualiza os dados de um paciente existente com validação.
+   * Handles PUT /api/paciente/:id to update fields of an existing patient.
+   *
+   * @param req - Express request with patient UUID in `:id` and update fields in body.
+   * @param res - Express response returning status 200 with the updated patient.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async atualizar(req: Request, res: Response): Promise<void> {
     try {
@@ -176,8 +188,11 @@ export class PacienteController {
   }
 
   /**
-   * DELETE /api/paciente/:id
-   * Soft Delete: Inativa o paciente preservando os dados.
+   * Handles DELETE /api/paciente/:id applying soft deletion (RN05).
+   *
+   * @param req - Express request with patient UUID in `:id`.
+   * @param res - Express response returning status 200 with deactivated patient info.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async desativar(req: Request, res: Response): Promise<void> {
     try {
@@ -220,8 +235,11 @@ export class PacienteController {
   }
 
   /**
-   * PATCH /api/paciente/:id/reativar
-   * Reativa um paciente inativo.
+   * Handles PATCH /api/paciente/:id/reativar to reactivate an inactive patient record.
+   *
+   * @param req - Express request with patient UUID in `:id`.
+   * @param res - Express response returning status 200 with reactivated patient.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async reativar(req: Request, res: Response): Promise<void> {
     try {
@@ -256,8 +274,11 @@ export class PacienteController {
   }
 
   /**
-   * DELETE /api/paciente/:id/hard
-   * Hard Delete: Exclusão definitiva do paciente.
+   * Handles DELETE /api/paciente/:id/hard to permanently delete a patient (testing/dev).
+   *
+   * @param req - Express request with patient UUID in `:id`.
+   * @param res - Express response confirming permanent deletion.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async deletarHard(req: Request, res: Response): Promise<void> {
     try {
@@ -297,8 +318,11 @@ export class PacienteController {
   // ============================================================================
 
   /**
-   * POST /api/paciente/:id/terapeutas
-   * Associa um terapeuta ao paciente.
+   * Handles POST /api/paciente/:id/terapeutas to associate a therapist with a patient.
+   *
+   * @param req - Express request with patient UUID in `:id` and `terapeuta_id` in body.
+   * @param res - Express response returning status 201 on success.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async vincularTerapeuta(req: Request, res: Response): Promise<void> {
     try {
@@ -351,8 +375,11 @@ export class PacienteController {
   }
 
   /**
-   * DELETE /api/paciente/:id/terapeutas/:terapeutaId
-   * Remove o vínculo de um terapeuta com o paciente.
+   * Handles DELETE /api/paciente/:id/terapeutas/:terapeutaId to unlink a therapist.
+   *
+   * @param req - Express request with patient UUID in `:id` and therapist UUID in `:terapeutaId`.
+   * @param res - Express response returning status 200 on unlinking.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async desvincularTerapeuta(req: Request, res: Response): Promise<void> {
     try {
@@ -395,8 +422,11 @@ export class PacienteController {
   }
 
   /**
-   * GET /api/paciente/:id/terapeutas
-   * Lista todos os terapeutas vinculados ao paciente.
+   * Handles GET /api/paciente/:id/terapeutas to retrieve all linked therapists.
+   *
+   * @param req - Express request with patient UUID in `:id`.
+   * @param res - Express response returning the array of linked therapists.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async listarTerapeutas(req: Request, res: Response): Promise<void> {
     try {

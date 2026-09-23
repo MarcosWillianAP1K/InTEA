@@ -8,8 +8,11 @@ import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.
 
 export class AuthController {
   /**
-   * POST /api/auth/login
-   * Realiza login e retorna o token JWT de acesso.
+   * Handles POST /api/auth/login to authenticate a user and generate a JWT access token.
+   *
+   * @param req - Express request containing email and password in body.
+   * @param res - Express response returning authentication tokens and user profile.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async login(req: Request, res: Response): Promise<void> {
     try {
@@ -44,8 +47,11 @@ export class AuthController {
   }
 
   /**
-   * POST /api/auth/recuperar-senha
-   * Envia instruções de redefinição de senha para o e-mail informado.
+   * Handles POST /api/auth/recuperar-senha to dispatch password reset instructions to the given email.
+   *
+   * @param req - Express request containing email address in body.
+   * @param res - Express response acknowledging password recovery request.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async recuperarSenha(req: Request, res: Response): Promise<void> {
     try {
@@ -66,8 +72,11 @@ export class AuthController {
   }
 
   /**
-   * GET /api/auth/me
-   * Retorna os dados do usuário autenticado através do token JWT Bearer.
+   * Handles GET /api/auth/me to return profile data for the authenticated caller.
+   *
+   * @param req - Authenticated Express request containing user credentials in `req.user`.
+   * @param res - Express response returning the current user and therapist profile.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async me(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {

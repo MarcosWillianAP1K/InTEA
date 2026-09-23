@@ -7,11 +7,16 @@ export interface AuthenticatedRequest extends Request {
 }
 
 /**
- * Middleware para validação do Token JWT do Supabase Auth.
- * 
- * Extrai o token do cabeçalho `Authorization: Bearer <token>`,
- * valida a autenticidade com o Supabase e injeta o `user` em `req.user`.
- * Caso o token seja ausente ou inválido, retorna 401 Unauthorized.
+ * Middleware for validating Supabase Auth JWT tokens.
+ *
+ * Extracts the bearer token from the `Authorization: Bearer <token>` HTTP header,
+ * verifies its authenticity via Supabase Auth, and attaches the decoded user object to `req.user`.
+ * Responds with HTTP 401 Unauthorized if the token is missing, malformed, or expired.
+ *
+ * @param req - Authenticated Express request object where `user` is attached upon success.
+ * @param res - Express response object used to send unauthorized or error responses.
+ * @param next - Express next function to advance to subsequent handlers.
+ * @returns Resolves when authentication processing is complete.
  */
 export async function authMiddleware(
   req: AuthenticatedRequest,

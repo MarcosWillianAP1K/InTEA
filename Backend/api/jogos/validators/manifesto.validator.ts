@@ -10,7 +10,10 @@ export class ManifestoValidator {
   private static readonly TIPOS_METRICA_PERMITIDOS = ['numerica', 'categorica'];
 
   /**
-   * Valida a conformidade da estrutura do manifesto_json com o Contrato 1 (RNF02 e RN02)
+   * Validates the structural and clinical compliance of a game manifest JSON object according to Contract 1 (RNF02 & RN02).
+   *
+   * @param manifesto - The untyped game manifest payload to validate.
+   * @returns Validation outcome including boolean status `valido`, array of error messages, and parsed `manifestoValido`.
    */
   static validar(manifesto: unknown): ResultadoValidacaoManifesto {
     const erros: string[] = [];
