@@ -323,172 +323,138 @@ O projeto utiliza **Swagger UI** (`swagger-ui-express` + `swagger-jsdoc`) para d
 | React | ^19.x | UI Framework |
 | TypeScript | ~5.9.x | Linguagem (strict mode) |
 | Vite | ^7.x | Build tool e dev server |
-| Tailwind CSS | ^4.x | Estilização utilitária |
-| React Router DOM | ^7.x | Roteamento SPA |
-| Zustand | ^5.x | Gerenciamento de estado global |
-| Supabase JS | ^2.x | Auth e Storage direto no cliente |
-| Radix UI + shadcn | ^1.x | Componentes acessíveis |
-| Vitest | ^5.x | Testes de componentes/hooks |
+| Tailwind CSS | ^4.x | Estilização utilitária com `@theme inline` |
+| React Router DOM | ^7.x | Roteamento declarativo SPA |
+| Zustand | ^5.x | Gerenciamento de estado global com middleware `persist` |
+| Radix UI + shadcn | ^1.x | Componentes primitivos acessíveis |
+| Lucide React | ^0.575.x | Biblioteca oficial de ícones |
+| Vitest | ^5.x | Testes unitários de componentes e hooks |
 
-### 4.2 Estrutura de Diretórios
-
-``` Paste
-Frontend/src/
-├── core/                       # Configuração global da aplicação
-│   ├── endpoints.ts            # Constantes das URLs da API (ex: /api/pacientes)
-│   ├── settings.ts             # Configurações globais (timeout, base URL)
-│   └── web.socket.ts           # Configuração do WebSocket (Socket.IO client)
-├── features/                   # Módulos por domínio de negócio
-│   ├── auth/
-│   │   ├── hooks/              # useAuth(), useSession()
-│   │   ├── service/            # auth.service.ts (chamadas Supabase Auth)
-│   │   └── store/              # authStore.ts (Zustand)
-│   └── {feature}/              # Ex: pacientes/, terapeutas/, jogos/
-│       ├── components/         # Componentes locais da feature
-│       ├── hooks/              # Hooks personalizados (useListarPacientes, etc.)
-│       ├── pages/              # Páginas da feature (rotas)
-│       ├── service/            # Chamadas à API Backend
-│       └── store/              # Estado Zustand da feature
-├── shared/                     # Compartilhado entre features
-│   ├── components/
-│   │   └── ui/                 # Componentes base (Button, Input, Card, Modal, Table...)
-│   ├── lib/                    # Utilitários (formatters, validators, cn())
-│   ├── providers/              # Providers globais (ThemeProvider, etc.)
-│   └── types/                  # Interfaces TypeScript globais
-│       ├── api/                # Tipos de respostas da API
-│       └── auth/               # Tipos de autenticação
-├── layout/                     # Estrutura de layout da aplicação
-│   └── LayoutExample.tsx
-├── App.tsx                     # Configuração de rotas e providers raiz
-├── main.tsx                    # Ponto de entrada React
-└── styles/                     # Estilos globais e tokens do Tailwind
-```
-
-### 4.3 Regras de Organização de Feature
-
-Toda nova feature **deve** seguir a estrutura modular abaixo. Nada de arquivos soltos na raiz de `features/`:
+### 4.2 Estrutura de Diretórios (Padrão Oficial)
 
 ``` Pastes
-features/pacientes/
-├── components/
-│   ├── PacienteCard.tsx
-│   └── PacienteForm.tsx
-├── hooks/
-│   └── usePacientes.ts
-├── pages/
-│   ├── PacientesListPage.tsx
-│   └── PacienteCadastroPage.tsx
-├── service/
-│   └── paciente.service.ts
-└── store/
-    └── pacienteStore.ts
+Frontend/src/
+├── routes/                     # Central de Roteamento SPA
+│   └── index.tsx               # Mapeamento declarativo de rotas com React Router DOM v7
+├── layout/                     # Casca estrutural e cascas visuais da aplicação
+│   ├── dashboardLayout.tsx     # Layout com SidebarProvider, AppSidebar, Header dinâmico e trigger
+│   └── LayoutExample.tsx       # BaseLayout reutilizável com scroll protegido
+├── features/                   # Módulos verticais por domínio de negócio
+│   ├── dashboard/              # Painel inicial, métricas gerais e navegação
+│   │   ├── components/         # app-sidebar.tsx, nav-header.tsx, nav-main.tsx, nav-button.tsx, nav-user.tsx
+│   │   └── pages/              # dashboardPage.tsx
+│   ├── patients/               # Gestão clínica e cadastral de pacientes
+│   │   ├── components/         # patientsList.tsx, patientsContent.tsx, patientFormDialog.tsx, patientCreateContent.tsx
+│   │   ├── pages/              # patientsPage.tsx
+│   │   └── store/              # patients.store.ts (Zustand com tipagem Patient e PatientStatus)
+│   ├── jogos/                  # Catálogo e Biblioteca de Jogos Terapêuticos
+│   │   ├── components/         # JogoCard.tsx, JogosFiltros.tsx
+│   │   ├── pages/              # BibliotecaJogosPage.tsx
+│   │   ├── services/           # jogosService.ts
+│   │   └── types.ts            # Interfaces de Jogos, Metadados e Manifestos
+│   ├── settings/               # Configurações do usuário e preferências da aplicação
+│   │   ├── pages/              # settingsPage.tsx
+│   │   ├── sections/           # appearanceSetting.tsx
+│   │   └── store/              # settingsStore.ts (Zustand com persistência em localStorage)
+│   └── auth/                   # Autenticação e sessão do terapeuta
+│       ├── hooks/              # useAuth.ts
+│       ├── service/            # auth.service.ts
+│       └── store/              # auth.store.ts
+├── shared/                     # Código e utilitários compartilhados entre features
+│   ├── components/
+│   │   └── ui/                 # 17 componentes primitivos (avatar, badge, breadcrumb, button, dialog, etc.)
+│   ├── hooks/                  # Hooks globais compartilhados (ex: use-mobile.ts)
+│   ├── lib/                    # Utilitários puros (ex: utils.ts com cn() usando clsx e twMerge)
+│   ├── providers/              # Provedores de contexto (ThemeProvider, etc.)
+│   ├── types/                  # Tipagens globais da API e Autenticação
+│   └── utils/
+│       └── request.ts          # Cliente HTTP resiliente (HttpClient) com CSRF, retry, timeout e refresh JWT
+├── assets/                     # SVGs, ícones e ilustrações da identidade visual do InTEA
+├── styles/                     # Folha de estilos raiz (index.css com Tailwind v4 e tw-animate-css)
+├── App.tsx                     # Ponto de montagem com ThemeProvider e Routes
+└── main.tsx                    # Ponto de entrada do React 19
 ```
 
-### 4.4 Regras de Componentes
+### 4.3 Cliente HTTP Resiliente (`shared/utils/request.ts`)
 
+Todas as chamadas à API REST devem utilizar a infraestrutura corporativa do `HttpClient`, que encapsula resiliência e segurança:
+
+1. **Instanciação Padronizada:**
+   ```typescript
+   import { createHttpClient } from "@/shared/utils/request";
+
+   export const http = createHttpClient({
+     baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api",
+     requestTimeoutMs: 15_000,
+     auth: {
+       getAccessToken: () => localStorage.getItem("access_token") ?? undefined,
+       refreshAccessToken: async () => {
+         // Lógica de renovação com o endpoint /api/auth/refresh
+       },
+       onAuthFailure: () => {
+         window.location.href = "/login";
+       },
+     },
+   });
+   ```
+
+2. **Garantias de Resiliência:**
+   - **Timeout Automático:** Aborta chamadas pendentes após 15 segundos (5 minutos para upload).
+   - **Retries Exponenciais:** Re-execução automática apenas de métodos idempotentes (`GET` e `HEAD`) em falhas de rede transitórias.
+   - **Fila de 401 (Token Refresh):** Quando múltiplos requests concorrentes recebem `401 Unauthorized`, apenas uma chamada de renovação de token é disparada; as demais requisições aguardam na fila e são re-executadas com o novo token sem deslogar o usuário.
+   - **Proteção CSRF:** Suporte nativo a tokens CSRF via header customizado (`X-CSRF-Token`).
+
+### 4.4 Padrão de Layout e Sidebar (`layout/dashboardLayout.tsx`)
+
+O InTEA adota uma casca estrutural baseada no componente `Sidebar` do Radix UI / Shadcn:
+- **`SidebarProvider`:** Controla a abertura, colapso para ícones e responsividade móvel (`use-mobile.ts`).
+- **`AppSidebar`:** Centraliza a navegação primária (`Dashboard`, `Jogos`, `Meus Pacientes`, `Histórico`), o logo oficial do InTEA (`nav-header.tsx`), botão de ação rápida (`nav-button.tsx`) e o perfil do usuário logado (`nav-user.tsx`).
+- **`Header Dinâmico`:** Contém o trigger de expansão da sidebar e a saudação contextual do terapeuta.
+- **`BaseLayout`:** Contêiner com rolagem protegida (`overflow-x-hidden`) onde as páginas filhas são renderizadas.
+
+### 4.5 Padrão de Estado com Zustand (`store/`)
+
+- **Estado Global:** Gerenciado exclusivamente via Zustand.
+- **Persistência Local:** Configurações de tema, idioma e preferências do usuário utilizam o middleware `persist` com armazenamento em `localStorage`.
+- **Tipagem Estrita:** Toda store define rigorosamente o tipo de seu estado e os métodos de mutação sem o uso de `any`.
+
+```typescript
+// Exemplo: features/settings/store/settingsStore.ts
+export const useSettingStore = create<SettingState>()(
+  persist(
+    (set) => ({
+      settings: { theme: "Sistema", language: "pt", autoDelete: "Nunca" },
+      updateSetting: (key, value) =>
+        set((state) => ({
+          settings: { ...state.settings, [key]: value },
+        })),
+    }),
+    { name: "app:preferences" }
+  )
+);
+```
+
+### 4.6 Roteamento Centralizado (`routes/index.tsx`)
+
+O roteamento da aplicação é desacoplado do `App.tsx`:
 ```tsx
-// ✅ CORRETO: Componente com props tipadas, exportação nomeada
-interface PacienteCardProps {
-  nome: string;
-  idade: number;
-  statusAtivo: boolean;
-}
-
-export function PacienteCard({ nome, idade, statusAtivo }: PacienteCardProps) {
+export function Routes() {
   return (
-    <div className="rounded-lg border p-4">
-      <h3 className="font-semibold">{nome}</h3>
-      <p>{idade} anos</p>
-    </div>
+    <RouterRoutes>
+      <Route path="/" element={<DashboardPage />} />
+      <Route path="/patients" element={<PatientsPage />} />
+      <Route path="/games" element={<BibliotecaJogosPage />} />
+    </RouterRoutes>
   );
 }
 ```
 
-- **Exportação nomeada** (não default) para todos os componentes.
-- Props sempre tipadas com `interface`.
-- Estilização **exclusivamente** via Tailwind CSS. Nada de `style={{}}` inline ou arquivos `.css` por componente.
-- Componentes de UI reutilizáveis vivem em `shared/components/ui/`.
-- Componentes específicos de uma feature vivem em `features/{feature}/components/`.
+### 4.7 Catálogo de Componentes Primitivos (`shared/components/ui/`)
 
-### 4.5 Regras de Service (chamadas à API)
+O repositório possui 17 componentes de interface primitivos, acessíveis e customizados:
+`avatar`, `badge`, `breadcrumb`, `button`, `card`, `collapsible`, `dialog`, `dropdown-menu`, `input`, `label`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `table` e `tooltip`.
+Todo novo componente visual específico de uma tela deve compor esses blocos primitivos antes de criar estilos manuais.
 
-```typescript
-// features/pacientes/service/paciente.service.ts
-const BASE = '/api/pacientes';
-
-export const PacienteService = {
-  async listar(): Promise<Paciente[]> {
-    const res = await fetch(`${BASE}`);
-    if (!res.ok) throw new Error('Erro ao listar pacientes');
-    const json = await res.json();
-    return json.data;
-  },
-
-  async criar(dto: CriarPacienteDTO): Promise<Paciente> {
-    const res = await fetch(`${BASE}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dto),
-    });
-    if (!res.ok) throw new Error('Erro ao criar paciente');
-    const json = await res.json();
-    return json.data;
-  },
-};
-```
-
-- URLs de API definidas em `core/endpoints.ts` como constantes.
-- Services são objetos com métodos, não classes.
-- Sempre verificar `res.ok` e lançar erro em caso de falha.
-- Nunca colocar lógica de fetch dentro de componentes ou hooks diretamente — encapsule no service.
-
-### 4.6 Regras de Store (Zustand)
-
-```typescript
-// features/pacientes/store/pacienteStore.ts
-interface PacienteState {
-  pacientes: Paciente[];
-  isLoading: boolean;
-  error: string | null;
-  setPacientes: (p: Paciente[]) => void;
-  setLoading: (v: boolean) => void;
-}
-
-export const usePacienteStore = create<PacienteState>((set) => ({
-  pacientes: [],
-  isLoading: false,
-  error: null,
-  setPacientes: (p) => set({ pacientes: p }),
-  setLoading: (v) => set({ isLoading: v }),
-}));
-```
-
-- Zustand para estado **global** (dados compartilhados entre páginas).
-- `useState` do React para estado **local** (visibilidade de modal, formulário controlado).
-- Nunca colocar lógica de fetch dentro da store — use hooks que chamam o service e atualizam a store.
-
-### 4.7 Regras de Hook
-
-```typescript
-// features/pacientes/hooks/usePacientes.ts
-export function usePacientes() {
-  const { setPacientes, setLoading } = usePacienteStore();
-
-  useEffect(() => {
-    setLoading(true);
-    PacienteService.listar()
-      .then(setPacientes)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
-
-  return usePacienteStore((s) => s.pacientes);
-}
-```
-
-- Hooks ficam em `features/{feature}/hooks/`.
-- Hooks de listagem seguem o padrão `use{Entidade}s()`.
-- Todo hook de dados deve gerenciar os estados `isLoading` e `error`.
 
 ---
 

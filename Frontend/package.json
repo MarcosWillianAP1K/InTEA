@@ -6,15 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "doctor": "npx react-doctor@latest",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/dompurify": "^3.0.5",
     "@types/node": "^25.3.0",
-    "@types/react": "^18.3.28",
+    "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^5.1.4",
     "shadcn": "^3.8.5",
