@@ -307,10 +307,14 @@ O projeto utiliza **Swagger UI** (`swagger-ui-express` + `swagger-jsdoc`) para d
   - A seção de Schemas no rodapé do Swagger UI é ocultada via `defaultModelsExpandDepth: -1`.
 - **Botão Authorize (JWT):**
 <<<<<<< HEAD
+<<<<<<< HEAD
   - O Swagger possui o botão **`Authorize`** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
 =======
   - O Swagger possui o botão **`Authorize `** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
 >>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
+=======
+  - O Swagger possui o botão **`Authorize`** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
+>>>>>>> 994d224 (Docs: Update docs .md and remove warnings markdownlint)
   - Basta fazer login em `POST /api/terapeuta/login`, copiar o `access_token` retornado e colar no botão Authorize para testar rotas protegidas.
 
 ### 3.10 Autenticação JWT e Middleware de Segurança
@@ -511,6 +515,7 @@ Todo novo componente visual específico de uma tela deve compor esses blocos pri
 
 - **Métodos em Controllers, Models e Services**: devem usar **obrigatoriamente `camelCase`** (`"nomeNome"`).
 <<<<<<< HEAD
+<<<<<<< HEAD
   - **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
   - **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
 - **Sub-rotas de ação**: quando um endpoint realiza uma ação secundária ou de exceção sobre um recurso (como reativação ou hard delete para testes), a ação vai no **final da URL após o `:id`**:
@@ -525,6 +530,14 @@ Todo novo componente visual específico de uma tela deve compor esses blocos pri
   -  `PATCH /api/paciente/:id/reativar`
   -  `/api/paciente/hard/:id` (evitar inversão do padrão)
 >>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
+=======
+  - **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
+  - **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
+- **Sub-rotas de ação**: quando um endpoint realiza uma ação secundária ou de exceção sobre um recurso (como reativação ou hard delete para testes), a ação vai no **final da URL após o `:id`**:
+  - `DELETE /api/paciente/:id/hard`
+  - `PATCH /api/paciente/:id/reativar`
+  - `/api/paciente/hard/:id` (evitar inversão do padrão)
+>>>>>>> 994d224 (Docs: Update docs .md and remove warnings markdownlint)
 
 ### Padrão de Arquivo por Camada (Backend)
 
