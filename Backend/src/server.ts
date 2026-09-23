@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
 import { apiRouter } from "../api/index.js";
-import { jogosRoutes } from "../api/jogos/routes/jogo.routes.js";
 
 dotenv.config();
 
@@ -25,6 +24,7 @@ const swaggerSpec = swaggerJsdoc({
       { name: "Autenticação", description: "Endpoints de login, sessão e recuperação de senha" },
       { name: "Terapeuta", description: "Gerenciamento cadastral de terapeutas" },
       { name: "Paciente", description: "Gerenciamento clínico de pacientes" },
+      { name: "Jogos", description: "Catálogo de jogos terapêuticos, manifestos e telemetria" },
     ],
     components: {
       securitySchemes: {
@@ -69,7 +69,6 @@ app.use(
 
 // Rotas da API (features MVC)
 app.use("/api", apiRouter);
-app.use("/jogos", jogosRoutes);
 
 app.listen(port, () => {
   console.log(`[Backend] Servidor rodando na porta ${port}`);
