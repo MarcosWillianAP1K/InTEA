@@ -1,4 +1,4 @@
-# InTEA — Regras de Arquitetura e Organização
+﻿# InTEA — Regras de Arquitetura e Organização
 
 > **Documento de referência obrigatório para todos os integrantes da equipe e agentes de IA que contribuírem com este projeto.**
 > Toda nova funcionalidade, migração ou refatoração deve seguir rigorosamente as convenções descritas aqui.
@@ -183,7 +183,7 @@ core/supabase/supabase.client.ts # Singleton do cliente Supabase
 ### 3.4 Regras de Controller
 
 ```typescript
-// ✅ CORRETO
+//  CORRETO
 export class PacienteController {
   static async criar(req: Request, res: Response): Promise<void> {
     try {
@@ -206,7 +206,7 @@ export class PacienteController {
 ### 3.5 Regras de Model
 
 ```typescript
-// ✅ CORRETO
+//  CORRETO
 export class PacienteModel {
   static async criar(dto: CriarPacienteDTO) {
     const { data, error } = await supabase
@@ -293,7 +293,7 @@ O projeto utiliza **Swagger UI** (`swagger-ui-express` + `swagger-jsdoc`) para d
   - As requisições usam **exemplos JSON diretos** (`example: { ... }`) facilitando o teste via botão *"Try it out"*.
   - A seção de Schemas no rodapé do Swagger UI é ocultada via `defaultModelsExpandDepth: -1`.
 - **Botão Authorize (JWT):**
-  - O Swagger possui o botão **`Authorize 🔓`** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
+  - O Swagger possui o botão **`Authorize `** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
   - Basta fazer login em `POST /api/terapeuta/login`, copiar o `access_token` retornado e colar no botão Authorize para testar rotas protegidas.
 
 ### 3.10 Autenticação JWT e Middleware de Segurança
@@ -387,7 +387,7 @@ features/pacientes/
 ### 4.4 Regras de Componentes
 
 ```tsx
-// ✅ CORRETO: Componente com props tipadas, exportação nomeada
+//  CORRETO: Componente com props tipadas, exportação nomeada
 interface PacienteCardProps {
   nome: string;
   idade: number;
@@ -512,12 +512,12 @@ export function usePacientes() {
 ### Regra Estrita de `camelCase` no Código TypeScript
 
 - **Métodos em Controllers, Models e Services**: devem usar **obrigatoriamente `camelCase`** (`"nomeNome"`).
-  - ✅ **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
-  - ❌ **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
+  -  **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
+  -  **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
 - **Sub-rotas de ação**: quando um endpoint realiza uma ação secundária ou de exceção sobre um recurso (como reativação ou hard delete para testes), a ação vai no **final da URL após o `:id`**:
-  - ✅ `DELETE /api/paciente/:id/hard`
-  - ✅ `PATCH /api/paciente/:id/reativar`
-  - ❌ `/api/paciente/hard/:id` (evitar inversão do padrão)
+  -  `DELETE /api/paciente/:id/hard`
+  -  `PATCH /api/paciente/:id/reativar`
+  -  `/api/paciente/hard/:id` (evitar inversão do padrão)
 
 ### Padrão de Arquivo por Camada (Backend)
 
