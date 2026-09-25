@@ -554,7 +554,7 @@
 
 ---
 
-### Back: Gerador de Session Token Seguro (Tipo: Feature)
+### Back: Gerador de Session Token Seguro e Amigável (Tipo: Feature)
 
 * **Tipo:** Feature
 * **Requisitos:** RF10, RNF03
@@ -592,7 +592,7 @@
 
 ---
 
-### Back: Endpoint de Handshake (acordo) de Pareamento Remoto (Tipo: Feature)
+### Back: Endpoint de Handshake de Pareamento Remoto (Tipo: Feature)
 
 * **Tipo:** Feature
 * **Requisitos:** RF10
