@@ -1,4 +1,4 @@
-﻿# InTEA — Regras de Arquitetura e Organização
+# InTEA — Regras de Arquitetura e Organização
 
 > **Documento de referência obrigatório para todos os integrantes da equipe e agentes de IA que contribuírem com este projeto.**
 > Toda nova funcionalidade, migração ou refatoração deve seguir rigorosamente as convenções descritas aqui.
@@ -58,10 +58,14 @@ flowchart LR
 ``` Pastes
 Database/
 ├── database.sql          # ← Schema mestre (Single Source of Truth para fresh deploy)
-└── migrations/
-    ├── 001_*.sql         # ← Migração 001: Pacientes, UUID
-    ├── 002_*.sql         # ← Migração 002: Terapeutas, Áreas de Foco
-    └── NNN_descricao.sql # ← Próximas migrações
+├── migrations/           # ← Migrações DDL sequenciais e idempotentes
+│   ├── 001_*.sql         # ← Migração 001: Pacientes, UUID
+│   ├── 002_*.sql         # ← Migração 002: Terapeutas, Áreas de Foco
+│   ├── 003_*.sql         # ← Migração 003: Esquema inicial de telemetria e sessões
+│   └── NNN_descricao.sql # ← Próximas migrações sequenciais
+└── seeds/                # ← Scripts DML de inserção/população de dados iniciais
+    ├── 01_seed_jogos.sql # ← Sementes de jogos terapêuticos
+    └── NN_seed_*.sql     # ← Novas sementes de dados
 ```
 
 ### 2.2 Regras de Schema
@@ -78,13 +82,22 @@ Database/
 
 ### 2.3 Regras de Migração
 
-1. **Nunca editar** uma migration já executada no Supabase. Crie sempre uma nova.
-2. O nome do arquivo segue o padrão: `NNN_descricao_snake_case.sql` (ex: `003_add_sessao_status.sql`).
-3. Toda migração deve ser **idempotente**: use `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`, blocos `DO $$ ... END $$` com verificações antes de alterar tipos.
-4. O arquivo `database.sql` é atualizado sincronamente com cada migration executada (é o schema para novos projetos do zero).
-5. Scripts de migração devem ter **comentários explicativos** em cada bloco (`PASSO 1`, `PASSO 2`...).
+1. **Diretório Unificado:** Todas as migrações devem residir exclusivamente em `Database/migrations/`. Diretórios fragmentados paralelos (como `Database/supabase/migrations/`) são proibidos para evitar divergência de schema.
+2. **Versionamento Sequencial:** O nome do arquivo segue rigorosamente o padrão com 3 dígitos sequenciais: `NNN_descricao_snake_case.sql` (ex: `001_add_dados_pacientes...sql`, `002_add_dados_terapeuta.sql`, `003_initial_schema.sql`).
+3. **Imutabilidade de Migrações:** Nunca editar uma migration já executada ou commitada na branch principal. Modificações ou ajustes de schema devem ser sempre implementados através de uma nova migração subsequente.
+4. **Idempotência Obrigatória:** Toda migração deve ser reexecutável com segurança: utilize sempre `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `DROP ... IF EXISTS`, `ON CONFLICT DO NOTHING` e blocos de validação condicional `DO $$ ... END $$` antes de conversões de tipo ou restrições.
+5. **Sincronia com o Schema Mestre:** O arquivo `Database/database.sql` deve ser mantido atualizado de forma sincronizada com cada migração executada (constituindo a base limpa para novas instalações do zero).
+6. **Documentação e Passos Explicativos:** Toda migração deve conter cabeçalho descritivo com contexto clínico/técnico e blocos de código categorizados em passos (`PASSO 0`, `PASSO 1`, `PASSO 2`...).
 
-### 2.4 Tabelas Existentes
+### 2.4 Regras de Seeds (Inserção de Dados)
+
+1. **Diretório e Escopo Exclusivo:** Scripts em `Database/seeds/` têm como objetivo estrito a carga e população de dados (DML), tais como catálogos fixos, configurações iniciais e sementes de demonstração para testes e homologação.
+2. **Separação de Responsabilidades:** Arquivos de seed **nunca** devem conter instruções DDL (`CREATE TABLE`, `ALTER TABLE`, etc.). Alterações estruturais pertencem unicamente às migrações (`Database/migrations/`).
+3. **Padrão de Nomenclatura:** Os arquivos seguem numeração sequencial de dois dígitos e prefixo semântico: `NN_seed_descricao.sql` (ex: `01_seed_jogos.sql`).
+4. **Idempotência Absoluta:** O script de seed deve garantir que sua execução repetida não gere duplicatas nem lance violações de integridade (`UNIQUE`). Utilize sempre verificações `WHERE NOT EXISTS (SELECT 1 FROM ...)` ou cláusulas `ON CONFLICT (...) DO NOTHING`.
+5. **Independência de Ambiente:** Seeds de demonstração devem ser compatíveis com deploys limpos de desenvolvimento e suportar testes de integração e ponta a ponta sem depender de IDs sequenciais fixos.
+
+### 2.5 Tabelas Existentes
 
 | Tabela | Responsabilidade |
 | :--- | :--- |
@@ -105,7 +118,7 @@ Database/
 | `anotacao_clinica` | Anotações de prontuário (soft delete, RN05) |
 | `relatorio_sessao` | Relatório consolidado de sessão (soft delete, RN05) |
 
-### 2.5 Funções e Helpers de RLS
+### 2.6 Funções e Helpers de RLS
 
 - `public.check_is_super_admin()` → Verifica se o usuário autenticado é super admin.
 - `public.terapeuta_tem_acesso_paciente(p_paciente_id UUID)` → Verifica vínculo ativo em `terapeuta_paciente`.
