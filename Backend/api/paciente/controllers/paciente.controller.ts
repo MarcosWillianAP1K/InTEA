@@ -117,12 +117,23 @@ export class PacienteController {
     } catch (error: any) {
       console.error('[PacienteController.criar]', error);
 
-      if (error?.message?.includes('duplicate key') || error?.message?.includes('violates unique constraint')) {
-        res.status(409).json({ error: 'Já existe um paciente cadastrado com este CPF.' });
+      const msg = error?.message || String(error);
+      const isDuplicate =
+        msg.includes('duplicate key') ||
+        msg.includes('violates unique constraint') ||
+        msg.includes('chave duplicada') ||
+        msg.includes('restrição de unicidade') ||
+        msg.includes('Já existe um paciente') ||
+        msg.includes('23505');
+
+      if (isDuplicate) {
+        res.status(409).json({
+          error: msg.includes('ativo') ? msg : 'Já existe um paciente cadastrado com este CPF.',
+        });
         return;
       }
 
-      res.status(500).json({ error: 'Erro interno ao cadastrar paciente.', detalhes: error?.message });
+      res.status(500).json({ error: 'Erro interno ao cadastrar paciente.', detalhes: msg });
     }
   }
 
@@ -178,7 +189,15 @@ export class PacienteController {
     } catch (error: any) {
       console.error('[PacienteController.atualizar]', error);
 
-      if (error?.message?.includes('duplicate key') || error?.message?.includes('violates unique constraint')) {
+      const msg = error?.message || '';
+      const isDuplicate =
+        error?.code === '23505' ||
+        msg.includes('duplicate key') ||
+        msg.includes('violates unique constraint') ||
+        msg.includes('chave duplicada') ||
+        msg.includes('restrição de unicidade');
+
+      if (isDuplicate) {
         res.status(409).json({ error: 'Já existe outro paciente cadastrado com este CPF.' });
         return;
       }

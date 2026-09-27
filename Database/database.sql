@@ -252,6 +252,28 @@ CREATE TRIGGER trg_bloqueio_delete_relatorio
 BEFORE DELETE ON public.relatorio_sessao
 FOR EACH ROW EXECUTE FUNCTION public.impedir_hard_delete_clinico();
 
+-- Trigger para limpeza automática de responsáveis órfãos em exclusões físicas de testes (Hard Delete)
+CREATE OR REPLACE FUNCTION public.fn_limpar_responsavel_orfaos()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM public.paciente_responsavel
+        WHERE responsavel_id = OLD.responsavel_id
+    ) THEN
+        DELETE FROM public.responsavel
+        WHERE id = OLD.responsavel_id;
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_limpar_responsavel_orfaos ON public.paciente_responsavel;
+
+CREATE TRIGGER trg_limpar_responsavel_orfaos
+AFTER DELETE ON public.paciente_responsavel
+FOR EACH ROW
+EXECUTE FUNCTION public.fn_limpar_responsavel_orfaos();
+
 -- ==============================================================================
 -- 16. SUPABASE STORAGE: BUCKET PRIVADO DE LAUDOS
 -- ==============================================================================

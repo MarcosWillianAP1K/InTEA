@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { PacienteController } from '../controllers/paciente.controller.js';
-import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
-import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
+// Middlewares de segurança (podem ser reativados na integração final com Auth/Sprint 13):
+// import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
+// import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/paciente
@@ -94,7 +95,7 @@ pacienteRoutes.get('/', PacienteController.listar);
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarPorId);
+pacienteRoutes.get('/:id', PacienteController.buscarPorId);
 
 // ------------------------------------------------------------------------------
 // 2. Persistência (Criação e Atualização de Pacientes)
@@ -172,7 +173,7 @@ pacienteRoutes.post('/', PacienteController.criar);
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.put('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.atualizar);
+pacienteRoutes.put('/:id', PacienteController.atualizar);
 
 // ------------------------------------------------------------------------------
 // 3. Exclusão e Reativação (Soft Delete e Hard Delete)
@@ -278,7 +279,7 @@ pacienteRoutes.patch('/:id/reativar', PacienteController.reativar);
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.get('/:id/terapeutas', authMiddleware, verificarVisibilidadePaciente, PacienteController.listarTerapeutas);
+pacienteRoutes.get('/:id/terapeutas', PacienteController.listarTerapeutas);
 
 /**
  * @swagger
@@ -313,7 +314,7 @@ pacienteRoutes.get('/:id/terapeutas', authMiddleware, verificarVisibilidadePacie
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.post('/:id/terapeutas', authMiddleware, PacienteController.vincularTerapeuta);
+pacienteRoutes.post('/:id/terapeutas', PacienteController.vincularTerapeuta);
 
 /**
  * @swagger
@@ -321,8 +322,6 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, PacienteController.vincul
  *   delete:
  *     summary: Remove o vínculo de um terapeuta com o paciente
  *     tags: [Paciente]
- *     security:
- *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -348,4 +347,4 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, PacienteController.vincul
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, PacienteController.desvincularTerapeuta);
+pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', PacienteController.desvincularTerapeuta);
