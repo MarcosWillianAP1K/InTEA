@@ -98,6 +98,98 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
     ]);
   });
 
+  it('deve reativar e atualizar paciente se ele já existia previamente como inativo (soft delete)', async () => {
+    const pacienteInativoDTO: CriarPacienteDTO = {
+      nome: 'Carlos Eduardo Atualizado',
+      data_nascimento: '2015-06-10',
+      cpf: '529.982.247-25',
+      telefone: '(11) 91111-2222',
+    };
+
+    const mockSelectPacienteExistente = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { id: 'uuid-existente', status_ativo: false, nome: 'Carlos Eduardo' },
+          error: null,
+        }),
+      }),
+    });
+
+    const mockSingleUpdate = vi.fn().mockResolvedValue({
+      data: { id: 'uuid-existente', ...pacienteInativoDTO, status_ativo: true },
+      error: null,
+    });
+    const mockSelectUpdate = vi.fn().mockReturnValue({ single: mockSingleUpdate });
+    const mockEqUpdate = vi.fn().mockReturnValue({ select: mockSelectUpdate });
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqUpdate });
+
+    vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
+      if (table === 'paciente') {
+        return {
+          select: mockSelectPacienteExistente,
+          update: mockUpdate,
+        } as any;
+      }
+      return {} as any;
+    });
+
+    vi.spyOn(PacienteModel, 'buscarPorId').mockResolvedValue({
+      id: 'uuid-existente',
+      nome: pacienteInativoDTO.nome,
+      data_nascimento: pacienteInativoDTO.data_nascimento,
+      cpf: pacienteInativoDTO.cpf,
+      telefone: pacienteInativoDTO.telefone ?? null,
+      status_ativo: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      clinica_id: null,
+      cidade: null,
+      estado: null,
+      cep: null,
+      endereco: null,
+      bairro: null,
+      numero: null,
+      complemento: null,
+    });
+
+    const reativado = await PacienteModel.criar(pacienteInativoDTO);
+
+    expect(reativado).toBeDefined();
+    expect(reativado.id).toBe('uuid-existente');
+    expect(reativado.status_ativo).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nome: 'Carlos Eduardo Atualizado',
+        status_ativo: true,
+      })
+    );
+  });
+
+  it('deve lançar erro de conflito se já existir um paciente ativo com o mesmo CPF', async () => {
+    const pacienteDuplicadoDTO: CriarPacienteDTO = {
+      nome: 'Outro Paciente',
+      data_nascimento: '2016-01-01',
+      cpf: '529.982.247-25',
+    };
+
+    const mockSelectPacienteAtivo = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { id: 'uuid-ativo', status_ativo: true, nome: 'Paciente Já Ativo' },
+          error: null,
+        }),
+      }),
+    });
+
+    vi.spyOn(supabase, 'from').mockReturnValue({
+      select: mockSelectPacienteAtivo,
+    } as any);
+
+    await expect(PacienteModel.criar(pacienteDuplicadoDTO)).rejects.toThrow(
+      'Já existe um paciente ativo cadastrado com este CPF'
+    );
+  });
+
   it('deve realizar exclusão lógica (soft delete) alterando status_ativo para false', async () => {
     const idPaciente = 'uuid-paciente-123';
 
