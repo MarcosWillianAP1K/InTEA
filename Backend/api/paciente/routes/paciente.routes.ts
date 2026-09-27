@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { PacienteController } from '../controllers/paciente.controller.js';
 // Middlewares de segurança (podem ser reativados na integração final com Auth/Sprint 13):
-// import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
-// import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
+import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
+import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
+import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/paciente
@@ -20,6 +21,8 @@ export const pacienteRoutes = Router();
  *   get:
  *     summary: Lista pacientes com busca, filtros e paginação
  *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: nome
@@ -64,7 +67,7 @@ export const pacienteRoutes = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.get('/', PacienteController.listar);
+pacienteRoutes.get('/', authMiddleware, PacienteController.listar);
 
 /**
  * @swagger
@@ -73,7 +76,7 @@ pacienteRoutes.get('/', PacienteController.listar);
  *     summary: Busca dados e prontuário do paciente (com verificação de vínculo)
  *     tags: [Paciente]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -95,7 +98,7 @@ pacienteRoutes.get('/', PacienteController.listar);
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.get('/:id', PacienteController.buscarPorId);
+pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarPorId);
 
 // ------------------------------------------------------------------------------
 // 2. Persistência (Criação e Atualização de Pacientes)
@@ -107,6 +110,8 @@ pacienteRoutes.get('/:id', PacienteController.buscarPorId);
  *   post:
  *     summary: Cadastra um novo paciente e opcionalmente seu responsável
  *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -134,7 +139,7 @@ pacienteRoutes.get('/:id', PacienteController.buscarPorId);
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.post('/', PacienteController.criar);
+pacienteRoutes.post('/', authMiddleware, PacienteController.criar);
 
 /**
  * @swagger
@@ -143,7 +148,7 @@ pacienteRoutes.post('/', PacienteController.criar);
  *     summary: Atualiza os dados de um paciente existente (com verificação de vínculo)
  *     tags: [Paciente]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -173,7 +178,7 @@ pacienteRoutes.post('/', PacienteController.criar);
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.put('/:id', PacienteController.atualizar);
+pacienteRoutes.put('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.atualizar);
 
 // ------------------------------------------------------------------------------
 // 3. Exclusão e Reativação (Soft Delete e Hard Delete)
@@ -185,6 +190,8 @@ pacienteRoutes.put('/:id', PacienteController.atualizar);
  *   delete:
  *     summary: "[DEV/TESTES] Exclusão física permanente do paciente"
  *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -200,7 +207,7 @@ pacienteRoutes.put('/:id', PacienteController.atualizar);
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.delete('/:id/hard', PacienteController.deletarHard);
+pacienteRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, PacienteController.deletarHard);
 
 /**
  * @swagger
@@ -208,6 +215,8 @@ pacienteRoutes.delete('/:id/hard', PacienteController.deletarHard);
  *   delete:
  *     summary: Soft Delete — Desativa um paciente (status_ativo = false)
  *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -223,7 +232,7 @@ pacienteRoutes.delete('/:id/hard', PacienteController.deletarHard);
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.delete('/:id', PacienteController.desativar);
+pacienteRoutes.delete('/:id', authMiddleware, adminMiddleware, PacienteController.desativar);
 
 /**
  * @swagger
@@ -231,6 +240,8 @@ pacienteRoutes.delete('/:id', PacienteController.desativar);
  *   patch:
  *     summary: Reativa um paciente previamente inativado
  *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -246,7 +257,7 @@ pacienteRoutes.delete('/:id', PacienteController.desativar);
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.patch('/:id/reativar', PacienteController.reativar);
+pacienteRoutes.patch('/:id/reativar', authMiddleware, adminMiddleware, PacienteController.reativar);
 
 // ------------------------------------------------------------------------------
 // 4. Gestão de Vínculos Terapeuta-Paciente
@@ -259,7 +270,7 @@ pacienteRoutes.patch('/:id/reativar', PacienteController.reativar);
  *     summary: Lista todos os terapeutas vinculados ao paciente (com verificação de vínculo)
  *     tags: [Paciente]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -288,7 +299,7 @@ pacienteRoutes.get('/:id/terapeutas', PacienteController.listarTerapeutas);
  *     summary: Vincula um novo terapeuta ao paciente (equipe multidisciplinar)
  *     tags: [Paciente]
  *     security:
- *       - BearerAuth: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -322,6 +333,8 @@ pacienteRoutes.post('/:id/terapeutas', PacienteController.vincularTerapeuta);
  *   delete:
  *     summary: Remove o vínculo de um terapeuta com o paciente
  *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
