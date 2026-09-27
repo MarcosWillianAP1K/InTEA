@@ -25,6 +25,7 @@ export class PacienteController {
         idadeMax: req.query.idadeMax !== undefined ? Number(req.query.idadeMax) : undefined,
         page: req.query.page !== undefined ? Number(req.query.page) : undefined,
         limit: req.query.limit !== undefined ? Number(req.query.limit) : undefined,
+        terapeutaId: typeof req.query.terapeutaId === 'string' ? req.query.terapeutaId : undefined,
       };
 
       const resultado = await PacienteModel.listar(filtros);
