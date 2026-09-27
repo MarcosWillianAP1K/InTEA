@@ -736,4 +736,4 @@ export class PacienteModel {
 
     return data || [];
   }
-}
+}
