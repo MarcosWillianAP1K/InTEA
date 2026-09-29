@@ -21,12 +21,49 @@ export interface DispositivoDesconectadoEvento {
   session_token: string;
   motivo: string;
   timestamp: string;
+  ultimo_heartbeat?: number;
+}
+
+export interface DispositivoReconectadoEvento {
+  session_token: string;
+  tempo_offline_ms: number;
+  reconectado_em: string;
+  status_sessao: string;
+  dispositivo_info?: Record<string, unknown> | null;
+}
+
+export interface PingPresencaPayload {
+  timestamp_cliente?: number;
+  bateria?: number;
+  qualidade_sinal?: 'excelente' | 'bom' | 'fraco' | string;
+}
+
+export interface PongPresencaResposta {
+  status: 'online';
+  timestamp_servidor: number;
+  timestamp_cliente?: number;
+  latencia_estimada_ms?: number;
+}
+
+export interface DispositivoPresenca {
+  session_token: string;
+  socket_id: string;
+  conectado: boolean;
+  ultimo_heartbeat: number;
+  conectado_em: string;
+  desconectado_em?: string;
+  desconectado_timestamp?: number;
+  tempo_offline_ms?: number;
+  bateria?: number;
+  latencia_ms?: number;
+  qualidade_sinal?: string;
 }
 
 export class SessaoGateway {
   private static instance?: SessaoGateway;
   private io: SocketIOServer;
   private sessaoNamespace: Namespace;
+  private presencas: Map<string, DispositivoPresenca> = new Map();
 
   constructor(io: SocketIOServer) {
     this.io = io;
@@ -56,10 +93,28 @@ export class SessaoGateway {
   }
 
   /**
+   * Limpa o mapa de presenças em memória (útil para suítes de testes).
+   */
+  resetarPresencas(): void {
+    this.presencas.clear();
+  }
+
+  /**
    * Conecta os eventos emitidos via HTTP pelo SessaoController com a sala Socket.IO da sessão.
    */
   private integrarComSessaoController(): void {
     SessaoController.registrarListenerPareamento((token, dados) => {
+      const tokenNormalizado = this.normalizarToken(token);
+
+      // Registra presença inicial no gateway
+      this.presencas.set(tokenNormalizado, {
+        session_token: tokenNormalizado,
+        socket_id: 'http_handshake',
+        conectado: true,
+        ultimo_heartbeat: Date.now(),
+        conectado_em: dados.pareado_em
+      });
+
       this.notificarDispositivoConectado(token, {
         sessao_id: dados.sessao_id,
         session_token: dados.session_token,
@@ -71,6 +126,8 @@ export class SessaoGateway {
         contexto_dda: dados.contexto_dda
       });
     });
+
+    SessaoController.registrarCallbackPresenca((token) => this.obterPresencaDispositivo(token));
   }
 
   /**
@@ -83,12 +140,9 @@ export class SessaoGateway {
         this.lidarEntradaSessao(socket, payload);
       });
 
-      // 2. Heartbeat e monitoramento de presença (Card 2.3 - ping/pong)
-      socket.on('ping_presenca', () => {
-        socket.emit('pong_presenca', {
-          timestamp: Date.now(),
-          status: 'online'
-        });
+      // 2. Heartbeat e monitoramento de presença ativo (Card 2.3 - ping/pong)
+      socket.on('ping_presenca', (payload?: PingPresencaPayload) => {
+        this.lidarPingPresenca(socket, payload);
       });
 
       // 3. Finalização de sessão solicitada pela interface web do terapeuta
@@ -133,17 +187,84 @@ export class SessaoGateway {
       role
     });
 
-    // Se o cliente conectando for o dispositivo do jogo, notifica imediatamente os terapeutas na sala
+    // Se o cliente conectando for o dispositivo do jogo:
     if (role === 'dispositivo') {
-      const evento: DispositivoConectadoEvento = {
-        session_token: tokenNormalizado,
-        status_sessao: 'em_andamento',
-        dispositivo_info: payload.dispositivo_info || null,
-        conectado_em: new Date().toISOString()
-      };
+      const presencaExistente = this.presencas.get(tokenNormalizado);
+      const agora = Date.now();
 
-      this.sessaoNamespace.to(sala).emit('dispositivo_conectado', evento);
+      // Checa se é uma RECONEXÃO após perda de sinal prévia (Card 2.3)
+      if (presencaExistente && !presencaExistente.conectado && presencaExistente.desconectado_timestamp) {
+        const tempoOfflineMs = agora - presencaExistente.desconectado_timestamp;
+
+        presencaExistente.conectado = true;
+        presencaExistente.socket_id = socket.id;
+        presencaExistente.ultimo_heartbeat = agora;
+        presencaExistente.tempo_offline_ms = tempoOfflineMs;
+        presencaExistente.desconectado_em = undefined;
+        presencaExistente.desconectado_timestamp = undefined;
+
+        const eventoReconexao: DispositivoReconectadoEvento = {
+          session_token: tokenNormalizado,
+          tempo_offline_ms: tempoOfflineMs,
+          reconectado_em: new Date(agora).toISOString(),
+          status_sessao: 'em_andamento',
+          dispositivo_info: payload.dispositivo_info || null
+        };
+
+        this.sessaoNamespace.to(sala).emit('dispositivo_reconectado', eventoReconexao);
+      } else {
+        // Primeira conexão do dispositivo
+        this.presencas.set(tokenNormalizado, {
+          session_token: tokenNormalizado,
+          socket_id: socket.id,
+          conectado: true,
+          ultimo_heartbeat: agora,
+          conectado_em: new Date(agora).toISOString(),
+          qualidade_sinal: 'bom'
+        });
+
+        const evento: DispositivoConectadoEvento = {
+          session_token: tokenNormalizado,
+          status_sessao: 'em_andamento',
+          dispositivo_info: payload.dispositivo_info || null,
+          conectado_em: new Date(agora).toISOString()
+        };
+
+        this.sessaoNamespace.to(sala).emit('dispositivo_conectado', evento);
+      }
     }
+  }
+
+  /**
+   * Processa o ping de presença com cálculo de latência e sincronização de relógio (Card 2.3).
+   */
+  private lidarPingPresenca(socket: Socket, payload?: PingPresencaPayload): void {
+    const token = socket.data.sessionToken as string | undefined;
+    const agora = Date.now();
+    let latenciaMs: number | undefined;
+
+    if (payload?.timestamp_cliente) {
+      latenciaMs = Math.max(0, agora - payload.timestamp_cliente);
+    }
+
+    if (token) {
+      const presenca = this.presencas.get(token);
+      if (presenca) {
+        presenca.ultimo_heartbeat = agora;
+        if (latenciaMs !== undefined) presenca.latencia_ms = latenciaMs;
+        if (payload?.bateria !== undefined) presenca.bateria = payload.bateria;
+        if (payload?.qualidade_sinal) presenca.qualidade_sinal = payload.qualidade_sinal;
+      }
+    }
+
+    const resposta: PongPresencaResposta = {
+      status: 'online',
+      timestamp_servidor: agora,
+      timestamp_cliente: payload?.timestamp_cliente,
+      latencia_estimada_ms: latenciaMs
+    };
+
+    socket.emit('pong_presenca', resposta);
   }
 
   /**
@@ -155,14 +276,35 @@ export class SessaoGateway {
 
     if (token && role === 'dispositivo') {
       const sala = `session_${token}`;
+      const agora = Date.now();
+      const presenca = this.presencas.get(token);
+
+      if (presenca) {
+        presenca.conectado = false;
+        presenca.desconectado_em = new Date(agora).toISOString();
+        presenca.desconectado_timestamp = agora;
+      }
+
       const evento: DispositivoDesconectadoEvento = {
         session_token: token,
         motivo,
-        timestamp: new Date().toISOString()
+        timestamp: new Date(agora).toISOString(),
+        ultimo_heartbeat: presenca?.ultimo_heartbeat
       };
 
       this.sessaoNamespace.to(sala).emit('dispositivo_desconectado', evento);
     }
+  }
+
+  /**
+   * Consulta o estado de presença e métricas do dispositivo remoto pareado à sessão (Card 2.3).
+   *
+   * @param sessionToken - Código PIN da sessão.
+   */
+  obterPresencaDispositivo(sessionToken: string): DispositivoPresenca | null {
+    const tokenNormalizado = this.normalizarToken(sessionToken);
+    const presenca = this.presencas.get(tokenNormalizado);
+    return presenca ? { ...presenca } : null;
   }
 
   /**
@@ -186,10 +328,20 @@ export class SessaoGateway {
   notificarDispositivoDesconectado(sessionToken: string, motivo: string = 'cliente_desconectado'): void {
     const tokenNormalizado = this.normalizarToken(sessionToken);
     const sala = `session_${tokenNormalizado}`;
+    const agora = Date.now();
+    const presenca = this.presencas.get(tokenNormalizado);
+
+    if (presenca) {
+      presenca.conectado = false;
+      presenca.desconectado_em = new Date(agora).toISOString();
+      presenca.desconectado_timestamp = agora;
+    }
+
     const evento: DispositivoDesconectadoEvento = {
       session_token: tokenNormalizado,
       motivo,
-      timestamp: new Date().toISOString()
+      timestamp: new Date(agora).toISOString(),
+      ultimo_heartbeat: presenca?.ultimo_heartbeat
     };
     this.sessaoNamespace.to(sala).emit('dispositivo_desconectado', evento);
   }

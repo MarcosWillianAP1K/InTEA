@@ -7,7 +7,7 @@ import { SessaoGateway } from '../websocket/sessao.gateway.js';
 import { sessaoRoutes } from '../../api/sessao/routes/sessao.routes.js';
 import { SessaoModel } from '../../api/sessao/models/sessao.model.js';
 
-describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao)', () => {
+describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao) & Heartbeat/Queda', () => {
   let app: Express;
   let httpServer: http.Server;
   let ioServer: SocketIOServer;
@@ -46,6 +46,7 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao)', () => {
 
   beforeEach(() => {
     SessaoModel.resetarMock();
+    SessaoGateway.obterInstancia().resetarPresencas();
   });
 
   // Helper para criar conexões cliente Socket.IO de teste
@@ -138,16 +139,24 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao)', () => {
     terapeutaSocket.disconnect();
   });
 
-  it('deve responder ao ping de presença com pong (Heartbeat - Card 2.3)', async () => {
+  it('deve responder ao ping de presença com timestamp e estimativa de latência (Heartbeat - Card 2.3)', async () => {
     const client = await createClientSocket();
 
+    const clienteTimestamp = Date.now() - 15; // simulando 15ms de tempo de trânsito
+
     const pong = await new Promise<any>((resolve) => {
-      client.emit('ping_presenca');
+      client.emit('ping_presenca', {
+        timestamp_cliente: clienteTimestamp,
+        bateria: 85,
+        qualidade_sinal: 'excelente'
+      });
       client.on('pong_presenca', (dados) => resolve(dados));
     });
 
     expect(pong.status).toBe('online');
-    expect(pong.timestamp).toBeGreaterThan(0);
+    expect(pong.timestamp_servidor).toBeGreaterThan(0);
+    expect(pong.timestamp_cliente).toBe(clienteTimestamp);
+    expect(pong.latencia_estimada_ms).toBeGreaterThanOrEqual(0);
 
     client.disconnect();
   });
@@ -189,7 +198,102 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao)', () => {
     expect(eventoDesconexao.motivo).toBeDefined();
     expect(eventoDesconexao.timestamp).toBeDefined();
 
+    // 6. Presença no gateway deve refletir conectado: false
+    const presenca = SessaoGateway.obterInstancia().obterPresencaDispositivo('849-291');
+    expect(presenca?.conectado).toBe(false);
+    expect(presenca?.desconectado_em).toBeDefined();
+
     terapeutaSocket.disconnect();
+  });
+
+  it('deve emitir dispositivo_reconectado com tempo_offline_ms quando o dispositivo restabelecer o link (Card 2.3)', async () => {
+    const terapeutaSocket = await createClientSocket();
+    let dispositivoSocket = await createClientSocket();
+
+    // 1. Terapeuta entra na sala
+    await new Promise<void>((resolve) => {
+      terapeutaSocket.emit('entrar_sessao', {
+        session_token: '849-291',
+        role: 'terapeuta'
+      });
+      terapeutaSocket.on('sessao_conectada', () => resolve());
+    });
+
+    // 2. Dispositivo conecta pela 1ª vez
+    await new Promise<void>((resolve) => {
+      dispositivoSocket.emit('entrar_sessao', {
+        session_token: '849-291',
+        role: 'dispositivo'
+      });
+      dispositivoSocket.on('sessao_conectada', () => resolve());
+    });
+
+    // 3. Dispositivo cai/desconecta
+    dispositivoSocket.disconnect();
+    await new Promise((resolve) => setTimeout(resolve, 50)); // Simula intervalo offline
+
+    // 4. Prepara listener do terapeuta para dispositivo_reconectado
+    const reconexaoPromise = new Promise<any>((resolve) => {
+      terapeutaSocket.on('dispositivo_reconectado', (dados) => resolve(dados));
+    });
+
+    // 5. Dispositivo restabelece conexão (novo socket com mesmo session_token)
+    dispositivoSocket = await createClientSocket();
+    dispositivoSocket.emit('entrar_sessao', {
+      session_token: '849-291',
+      role: 'dispositivo',
+      dispositivo_info: { modelo: 'Tablet Reconectado' }
+    });
+
+    // 6. Terapeuta recebe confirmação de link recuperado com métricas
+    const eventoReconexao = await reconexaoPromise;
+    expect(eventoReconexao.session_token).toBe('849-291');
+    expect(eventoReconexao.tempo_offline_ms).toBeGreaterThanOrEqual(40);
+    expect(eventoReconexao.reconectado_em).toBeDefined();
+    expect(eventoReconexao.status_sessao).toBe('em_andamento');
+
+    terapeutaSocket.disconnect();
+    dispositivoSocket.disconnect();
+  });
+
+  it('deve refletir o status de presença na consulta REST GET /api/sessao/:token/status (Card 2.3)', async () => {
+    const dispositivoSocket = await createClientSocket();
+
+    // 1. Dispositivo entra na sala
+    await new Promise<void>((resolve) => {
+      dispositivoSocket.emit('entrar_sessao', {
+        session_token: '849-291',
+        role: 'dispositivo',
+        dispositivo_info: { modelo: 'iPad 10th' }
+      });
+      dispositivoSocket.on('sessao_conectada', () => resolve());
+    });
+
+    // 2. Envia um ping com telemetria de bateria
+    await new Promise<void>((resolve) => {
+      dispositivoSocket.emit('ping_presenca', { bateria: 92 });
+      dispositivoSocket.on('pong_presenca', () => resolve());
+    });
+
+    // 3. Consulta via REST
+    const res = await fetch(`http://localhost:${port}/api/sessao/849-291/status`);
+    const json = (await res.json()) as {
+      data: {
+        presenca_dispositivo: {
+          conectado: boolean;
+          bateria: number;
+          ultimo_heartbeat: number;
+        };
+      };
+    };
+
+    expect(res.status).toBe(200);
+    expect(json.data.presenca_dispositivo).toBeDefined();
+    expect(json.data.presenca_dispositivo.conectado).toBe(true);
+    expect(json.data.presenca_dispositivo.bateria).toBe(92);
+    expect(json.data.presenca_dispositivo.ultimo_heartbeat).toBeGreaterThan(0);
+
+    dispositivoSocket.disconnect();
   });
 
   it('deve notificar encerramento da sessão para os clientes da sala', async () => {

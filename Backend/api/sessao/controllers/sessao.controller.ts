@@ -5,6 +5,8 @@ import { ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/sessao.dto.js';
 export class SessaoController {
   // Callback opcional injetado pelo gateway WebSocket (Card 2.2) para notificação em tempo real
   private static onDispositivoPareadoCallback?: (sessionToken: string, dadosPareamento: PareamentoRespostaDTO) => void;
+  // Callback opcional para consultar presença de dispositivo em tempo real (Card 2.3)
+  private static obterPresencaCallback?: (sessionToken: string) => unknown;
 
   /**
    * Permite que o WebSocket Gateway registre um listener para notificações reativas.
@@ -13,6 +15,15 @@ export class SessaoController {
     callback: (sessionToken: string, dadosPareamento: PareamentoRespostaDTO) => void
   ): void {
     SessaoController.onDispositivoPareadoCallback = callback;
+  }
+
+  /**
+   * Permite que o WebSocket Gateway forneça dados de presença em tempo real (Card 2.3).
+   */
+  static registrarCallbackPresenca(
+    callback: (sessionToken: string) => unknown
+  ): void {
+    SessaoController.obterPresencaCallback = callback;
   }
 
   /**
@@ -153,6 +164,10 @@ export class SessaoController {
         return;
       }
 
+      const presenca = SessaoController.obterPresencaCallback
+        ? SessaoController.obterPresencaCallback(sessao.session_token)
+        : null;
+
       res.status(200).json({
         data: {
           id: sessao.id,
@@ -160,6 +175,7 @@ export class SessaoController {
           status_sessao: sessao.status_sessao,
           modo_sessao: sessao.modo_sessao,
           dispositivo_info: sessao.dispositivo_info,
+          presenca_dispositivo: presenca || null,
           expira_em: sessao.expira_em,
           data_hora_inicio: sessao.data_hora_inicio
         }
