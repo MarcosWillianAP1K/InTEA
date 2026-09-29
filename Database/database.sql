@@ -193,7 +193,9 @@ CREATE TABLE IF NOT EXISTS public.sessao (
     session_token VARCHAR(20) UNIQUE NOT NULL, -- Código de pareamento (Ex: 849-291)
     modo_sessao VARCHAR(30) DEFAULT 'sessao_clinica' NOT NULL, -- 'sessao_clinica' ou 'modo_livre'
     contexto_dda_json JSONB DEFAULT '{}'::jsonb, -- Contrato 2: Parâmetros pré-sessão
-    status_sessao VARCHAR(30) DEFAULT 'aguardando_conexao' NOT NULL, -- aguardando_conexao, em_andamento, finalizada
+    status_sessao VARCHAR(30) DEFAULT 'aguardando_conexao' NOT NULL, -- aguardando_conexao, em_andamento, finalizada, cancelada
+    dispositivo_info JSONB DEFAULT '{}'::jsonb, -- Metadados do dispositivo remoto conectado (RF10)
+    expira_em TIMESTAMPTZ, -- Data/hora limite de validade do token de pareamento (RNF03)
     data_hora_inicio TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
     data_hora_fim TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
