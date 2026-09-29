@@ -324,9 +324,7 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-7 pt-2 text-sm">
-          {/* =========================================
-              1. DADOS BÁSICOS DO PACIENTE
-             ========================================= */}
+       
           <div>
             <div className="border-b-2 border-[#0b3294] pb-1.5 mb-4">
               <h2 className="text-[#0b3294] dark:text-blue-400 font-bold text-base">
@@ -364,7 +362,7 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                 <span className="text-[11px] text-muted-foreground">Foto (opcional)</span>
               </div>
 
-              {/* CAMPOS EM GRID */}
+              
               <div className="flex-1 w-full space-y-3">
                 {/* LINHA 1 */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
@@ -397,7 +395,7 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
                   </div>
                 </div>
 
-                {/* LINHA 2 */}
+  
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                   <div className="sm:col-span-3">
                     <Input
@@ -469,9 +467,6 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
             </div>
           </div>
 
-          {/* =========================================
-              2. DADOS DO RESPONSÁVEL
-             ========================================= */}
           <div>
             <div className="border-b-2 border-[#0b3294] pb-1.5 mb-4">
               <h2 className="text-[#0b3294] dark:text-blue-400 font-bold text-base">
