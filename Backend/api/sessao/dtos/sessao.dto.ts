@@ -37,5 +37,6 @@ export interface PareamentoRespostaDTO {
     url: string;
     canal: string;
   };
+  dispositivo_info?: DispositivoInfoDTO | null;
   pareado_em: string;
 }

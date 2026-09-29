@@ -107,6 +107,7 @@ export class SessaoController {
           url: wsUrl,
           canal: `session_${sessaoAtualizada.session_token}`
         },
+        dispositivo_info: sessaoAtualizada.dispositivo_info || null,
         pareado_em: sessaoAtualizada.data_hora_inicio
       };
 
