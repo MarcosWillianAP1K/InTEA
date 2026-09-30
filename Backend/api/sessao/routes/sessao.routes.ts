@@ -40,7 +40,7 @@ sessaoRoutes.get('/gerarCodigoPareamento', SessaoController.gerarCodigoPareament
 
 /**
  * @swagger
- * /api/sessao:
+ * /api/sessao/iniciar:
  *   post:
  *     summary: Inicia uma nova sessão clínica ou em modo livre (emite token de pareamento)
  *     description: Cria uma nova sessão no banco de dados com status 'aguardando_pareamento', gera ou associa o código único de pareamento (PIN) com TTL de 15 minutos e vincula o contexto DDA pré-sessão para a IA (RN03).
@@ -138,7 +138,6 @@ sessaoRoutes.get('/gerarCodigoPareamento', SessaoController.gerarCodigoPareament
  *                   type: string
  *                   example: "Erro interno ao iniciar sessão"
  */
-sessaoRoutes.post('/', SessaoController.iniciar);
 sessaoRoutes.post('/iniciar', SessaoController.iniciar);
 
 // Buscar sessão por ID interno
