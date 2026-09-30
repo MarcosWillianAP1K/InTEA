@@ -3,7 +3,7 @@
 // ==============================================================================
 
 import { Request, Response } from 'express';
-import { SessaoModel } from '../models/sessao.model.js';
+import { SessaoModel, CriarSessaoDTO } from '../models/sessao.model.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 
 export class SessaoController {
@@ -11,10 +11,50 @@ export class SessaoController {
    * Inicia uma nova sessão clínica ou em modo livre
    * POST /api/sessao
    */
-  static async iniciar(_req: Request, res: Response): Promise<void> {
+  static async iniciar(req: Request, res: Response): Promise<void> {
     try {
-      // Stub para desenvolvimento da lógica de criação
-      res.status(501).json({ mensagem: 'Endpoint de início de sessão pronto para implementação' });
+      const {
+        terapeuta_id,
+        jogo_id,
+        paciente_id,
+        modo_sessao = 'sessao_clinica',
+        contexto_dda_json = {},
+        codigo_pareamento,
+      } = req.body;
+
+      if (!terapeuta_id || !jogo_id) {
+        res.status(400).json({ error: 'Os campos terapeuta_id e jogo_id são obrigatórios' });
+        return;
+      }
+
+      // Validação da regra RN01 (Modo Livre sem paciente / Sessão Clínica com paciente)
+      if (modo_sessao === 'sessao_clinica' && !paciente_id) {
+        res.status(400).json({ error: 'O paciente_id é obrigatório para sessões clínicas (RN01)' });
+        return;
+      }
+
+      if (modo_sessao === 'modo_livre' && paciente_id) {
+        res.status(400).json({ error: 'Partidas em modo livre não podem ter paciente vinculado (RN01)' });
+        return;
+      }
+
+      const dadosSessao: CriarSessaoDTO = {
+        terapeuta_id,
+        jogo_id,
+        paciente_id: modo_sessao === 'modo_livre' ? null : paciente_id,
+        modo_sessao,
+        contexto_dda_json,
+        codigo_pareamento,
+      };
+
+      const novaSessao = await SessaoModel.criar(dadosSessao);
+
+      if (!novaSessao) {
+        res.status(500).json({ error: 'Erro ao criar a sessão no banco de dados' });
+        return;
+      }
+
+      res.status(201).json({ data: novaSessao });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao iniciar sessão' });
     }
@@ -60,15 +100,24 @@ export class SessaoController {
    * Finaliza uma sessão clínica
    * PATCH /api/sessao/:id/finalizar
    */
-  static async finalizar(_req: Request, res: Response): Promise<void> {
+  static async finalizar(req: Request, res: Response): Promise<void> {
     try {
-      // Stub para desenvolvimento da finalização
-      res.status(501).json({ mensagem: 'Endpoint de finalização de sessão pronto para implementação' });
+      const id = String(req.params.id);
+      const sessaoAtualizada = await SessaoModel.atualizarStatus(id, 'finalizada');
+      if (!sessaoAtualizada) {
+        res.status(404).json({ error: 'Sessão não encontrada para finalização' });
+        return;
+      }
+      res.json({ data: sessaoAtualizada });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao finalizar sessão' });
     }
   }
 
+  /**
+   * Gera um código de pareamento único para a sessão
+   * GET /api/sessao/gerarCodigoPareamento
+   */
   static async gerarCodigoPareamento(_req: Request, res: Response): Promise<void> {
     try {
       const maxTentativas = 10;
