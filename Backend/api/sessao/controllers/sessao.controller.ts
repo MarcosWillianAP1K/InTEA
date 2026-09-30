@@ -4,6 +4,7 @@
 
 import { Request, Response } from 'express';
 import { SessaoModel } from '../models/sessao.model.js';
+import { SessaoTokenService } from '../services/sessao-token.service.js';
 
 export class SessaoController {
   /**
@@ -65,6 +66,32 @@ export class SessaoController {
       res.status(501).json({ mensagem: 'Endpoint de finalização de sessão pronto para implementação' });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao finalizar sessão' });
+    }
+  }
+
+  static async gerarCodigoPareamento(_req: Request, res: Response): Promise<void> {
+    try {
+      const maxTentativas = 10;
+      let tentativasRestantes = maxTentativas;
+      let codigo = SessaoTokenService.gerarCodigoPareamento();
+
+      while (tentativasRestantes > 0) {
+        const sessaoExistente = await SessaoModel.buscarPorToken(codigo);
+        if (!sessaoExistente) {
+          break;
+        }
+        tentativasRestantes--;
+        codigo = SessaoTokenService.gerarCodigoPareamento();
+      }
+
+      if (tentativasRestantes === 0) {
+        res.status(500).json({ error: `Não foi possível gerar um código de pareamento único após ${maxTentativas} tentativas` });
+        return;
+      }
+
+      res.json({ codigo });
+    } catch (error) {
+      res.status(500).json({ error: 'Erro interno ao gerar código de pareamento' });
     }
   }
 }

@@ -60,4 +60,5 @@ export class SessaoModel {
   static async atualizarStatus(_id: string, _status: StatusSessao): Promise<Sessao | null> {
     return null;
   }
+  
 }
