@@ -281,26 +281,32 @@ describe("Card 4.1 — Integração do Cliente WebSocket / Socket.IO (core/web.s
     it("deve associar o sessionToken e entrar na sala automaticamente", () => {
       mockSocket.connected = true;
 
-      const { result } = renderHook(() =>
-        useSessionSocket({ sessionToken: "TEA-9988", autoConnect: true })
-      );
+      let hookResult!: ReturnType<typeof renderHook<ReturnType<typeof useSessionSocket>, unknown>>;
+      act(() => {
+        hookResult = renderHook(() =>
+          useSessionSocket({ sessionToken: "TEA-9988", autoConnect: true })
+        );
+      });
 
       expect(mockSocket.emit).toHaveBeenCalledWith("entrar_sala", {
         sessionToken: "TEA-9988",
       });
-      expect(result.current.status).toBe("aguardando_dispositivo");
+      expect(hookResult.result.current.status).toBe("aguardando_dispositivo");
     });
 
     it("deve atualizar estado e invocar callback ao conectar dispositivo", () => {
       const onConectado = vi.fn();
       mockSocket.connected = true;
 
-      const { result } = renderHook(() =>
-        useSessionSocket({
-          sessionToken: "TEA-9988",
-          onDispositivoConectado: onConectado,
-        })
-      );
+      let hookResult!: ReturnType<typeof renderHook<ReturnType<typeof useSessionSocket>, unknown>>;
+      act(() => {
+        hookResult = renderHook(() =>
+          useSessionSocket({
+            sessionToken: "TEA-9988",
+            onDispositivoConectado: onConectado,
+          })
+        );
+      });
 
       const payload: DispositivoConectadoPayload = {
         deviceId: "vr-oculus-quest2",
@@ -314,20 +320,23 @@ describe("Card 4.1 — Integração do Cliente WebSocket / Socket.IO (core/web.s
       });
 
       expect(onConectado).toHaveBeenCalledWith(payload);
-      expect(result.current.dispositivo).toEqual(payload);
-      expect(result.current.isDeviceConnected).toBe(true);
+      expect(hookResult.result.current.dispositivo).toEqual(payload);
+      expect(hookResult.result.current.isDeviceConnected).toBe(true);
     });
 
     it("deve resetar dispositivo e invocar callback ao desconectar dispositivo", () => {
       const onDesconectado = vi.fn();
       mockSocket.connected = true;
 
-      const { result } = renderHook(() =>
-        useSessionSocket({
-          sessionToken: "TEA-9988",
-          onDispositivoDesconectado: onDesconectado,
-        })
-      );
+      let hookResult!: ReturnType<typeof renderHook<ReturnType<typeof useSessionSocket>, unknown>>;
+      act(() => {
+        hookResult = renderHook(() =>
+          useSessionSocket({
+            sessionToken: "TEA-9988",
+            onDispositivoDesconectado: onDesconectado,
+          })
+        );
+      });
 
       const payloadConectado: DispositivoConectadoPayload = {
         deviceId: "vr-oculus-quest2",
@@ -337,7 +346,7 @@ describe("Card 4.1 — Integração do Cliente WebSocket / Socket.IO (core/web.s
       act(() => {
         mockSocket.triggerEvent("dispositivo_conectado", payloadConectado);
       });
-      expect(result.current.dispositivo).not.toBeNull();
+      expect(hookResult.result.current.dispositivo).not.toBeNull();
 
       const payloadDesconectado: DispositivoDesconectadoPayload = {
         deviceId: "vr-oculus-quest2",
@@ -350,18 +359,23 @@ describe("Card 4.1 — Integração do Cliente WebSocket / Socket.IO (core/web.s
       });
 
       expect(onDesconectado).toHaveBeenCalledWith(payloadDesconectado);
-      expect(result.current.dispositivo).toBeNull();
-      expect(result.current.isDeviceConnected).toBe(false);
+      expect(hookResult.result.current.dispositivo).toBeNull();
+      expect(hookResult.result.current.isDeviceConnected).toBe(false);
     });
 
     it("deve sair da sala ao desmontar o hook", () => {
       mockSocket.connected = true;
 
-      const { unmount } = renderHook(() =>
-        useSessionSocket({ sessionToken: "TEA-9988", autoConnect: true })
-      );
+      let hookResult!: ReturnType<typeof renderHook<ReturnType<typeof useSessionSocket>, unknown>>;
+      act(() => {
+        hookResult = renderHook(() =>
+          useSessionSocket({ sessionToken: "TEA-9988", autoConnect: true })
+        );
+      });
 
-      unmount();
+      act(() => {
+        hookResult.unmount();
+      });
 
       expect(mockSocket.emit).toHaveBeenCalledWith("sair_sala", {
         sessionToken: "TEA-9988",
