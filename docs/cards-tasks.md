@@ -9,18 +9,24 @@
 ## Índice Rápido
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 * [1. Banco de Dados e Back-end (Sprint 7)](#1-banco-de-dados-e-back-end)
 * [2. Front-end (Sprint 7)](#2-front-end)
 * [3. Documentação (Sprint 7)](#3-documentação)
 * [4. Diretrizes Clínicas da Terapeuta](#4-diretrizes-clínicas-da-terapeuta)
 * [5. Sprint 8 — Pareamento Remoto e Testes Prévios](#5-sprint-8--pareamento-remoto-e-testes-prévios)
 * [6. Cards Extras — Adiantamento (Autenticação, Segurança e Auditoria)](#6-cards-extras--adiantamento-autenticação-segurança-e-auditoria)
+<<<<<<< HEAD
 =======
 * [1. Banco de Dados e Back-end](#1-banco-de-dados-e-back-end)
 * [2. Front-end](#2-front-end)
 * [3. Documentação](#3-documentação)
 * [4. Diretrizes Clínicas da Terapeuta](#4-diretrizes-clínicas-da-terapeuta)
 >>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 
 ---
 
@@ -142,6 +148,7 @@
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 * **Tipo:** Validação
 * **Requisitos:** RN02
 * **Referência Documentação:** RN02, RNF04
@@ -149,6 +156,8 @@
 =======
 =======
 >>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 ---
 
 ### [CARD-FE-01] Estruturação da Feature Modular de Pacientes
@@ -169,15 +178,21 @@
   * `service/`: Comunicação HTTP com a API.
   * `store/`: Estado global do paciente ativo (Zustand).
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 2133c58 (feat: add typecheck script to package.json and improve testing setup)
 =======
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 =======
 * **Tipo:** Validação
 * **Requisitos:** RN02
 * **Referência Documentação:** RN02, RNF04
 * **Descrição:** Toda métrica deve ter estritamente um tipo válido declarado no manifesto. Métricas sem tipo não serão usadas nem tratadas como categóricas, sendo sumariamente rejeitadas para evitar erros em dados de saúde humana.
 >>>>>>> 0f24571 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
+<<<<<<< HEAD
 >>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 * **Critérios de Aceite:**
   * [ ] Sem conversão/fallback automático para categórica.
   * [ ] Métricas sem tipo são rejeitadas na validação do manifesto.
@@ -258,12 +273,15 @@
 * **Critérios de Aceite:**
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   * [ ] Tabela com ordenação e paginação.
   * [ ] Campo de busca com filtro em tempo real.
 =======
 =======
 >>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
 <<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   * [x] Componentes tipados em TypeScript sem erros de lint/typecheck.
   * [x] Estilização consistente em modo claro e escuro.
 =======
@@ -271,13 +289,19 @@
   * [ ] Estilização consistente em modo claro e escuro.
 >>>>>>> ebbc03e (feat: add typecheck script to package.json and improve testing setup)
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 2133c58 (feat: add typecheck script to package.json and improve testing setup)
 =======
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 =======
   * [ ] Tabela com ordenação e paginação.
   * [ ] Campo de busca com filtro em tempo real.
 >>>>>>> 0f24571 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
+<<<<<<< HEAD
 >>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 
 ---
 
@@ -366,6 +390,9 @@
 ---
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 ### Front: Integração da API de Jogos (Tipo: Validação)
 
 * **Tipo:** Validação
@@ -941,6 +968,7 @@
   * [ ] Rota protegida por guard de rota que restringe acesso apenas a usuários SuperAdmin.
   * [ ] Tabela com busca, paginação e filtros de eventos de auditoria.
   * [ ] Botão de exportação dos logs em formato estruturado (CSV/JSON) para relatórios institucionais.
+<<<<<<< HEAD
 =======
 ### Front: Integração de Jogos e Testes com Vitest (Tipo: Validação)
 
@@ -1093,3 +1121,5 @@
   * [ ] Categoria de simulação de rotinas disponível no catálogo.
   * [ ] Jogos de exemplo com dados e objetivos clínicos cadastrados.
 >>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f

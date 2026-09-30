@@ -3,13 +3,19 @@ import { JogoController } from '../controllers/jogo.controller.js';
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> de4659f (refactor(jogos): unifica rotas sob /api/jogos, adiciona documentacao swagger e organiza testes)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 // ==============================================================================
 // ROTAS: /api/jogos (Catálogo de Jogos, Manifestos e Telemetria)
 // ==============================================================================
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 export const jogosRoutes = Router();
 
 /**
@@ -256,6 +262,7 @@ jogosRoutes.get('/:id/manifesto', JogoController.obterManifesto);
  *         description: Erro interno ao processar validação de telemetria
  */
 jogosRoutes.post('/:id/validar-telemetria', JogoController.validarTelemetria);
+<<<<<<< HEAD
 =======
 =======
 >>>>>>> de4659f (refactor(jogos): unifica rotas sob /api/jogos, adiciona documentacao swagger e organiza testes)
@@ -516,3 +523,5 @@ jogosRoutes.get('/:id/manifesto', JogoController.obterManifesto);
 >>>>>>> de4659f (refactor(jogos): unifica rotas sob /api/jogos, adiciona documentacao swagger e organiza testes)
 jogosRoutes.post('/:id/validar-telemetria', JogoController.validarTelemetria);
 >>>>>>> 692f55d (feat: add game controller, routes, manifesto and metric validators, and telemetry tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f

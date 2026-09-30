@@ -21,9 +21,12 @@ export default defineConfig(() => {
     build: {
       chunkSizeWarningLimit: 1000,
     },
+<<<<<<< HEAD
     test: {
       environment: "happy-dom",
       globals: true,
     },
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   }
 })

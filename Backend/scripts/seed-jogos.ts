@@ -19,6 +19,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 if (!supabaseUrl || supabaseUrl.includes('placeholder') || supabaseUrl.includes('your-project')) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   console.error('[Seed] SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
 =======
   console.error('[Seed] ❌ SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
@@ -26,6 +27,9 @@ if (!supabaseUrl || supabaseUrl.includes('placeholder') || supabaseUrl.includes(
 =======
   console.error('[Seed] SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
 >>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
+=======
+  console.error('[Seed] SUPABASE_URL não configurada no .env. Configure antes de rodar o seed.');
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   process.exit(1);
 }
 
@@ -83,6 +87,9 @@ const JOGOS_SEED = [
 ];
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 /**
  * Executes idempotent seeding of sample therapeutic games into the database (RF09).
  * Checks existing entries before insertion to prevent duplication.
@@ -92,6 +99,7 @@ const JOGOS_SEED = [
  */
 async function runSeed() {
   console.log('[Seed] Iniciando seed dos jogos terapêuticos...\n');
+<<<<<<< HEAD
 =======
 async function runSeed() {
 <<<<<<< HEAD
@@ -100,6 +108,8 @@ async function runSeed() {
 =======
   console.log('[Seed] Iniciando seed dos jogos terapêuticos...\n');
 >>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   let inseridos = 0;
   let ignorados = 0;
 
@@ -114,6 +124,7 @@ async function runSeed() {
     if (existente) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       console.log(`[Seed] Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
 =======
       console.log(`[Seed] ⚠️  Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
@@ -121,6 +132,9 @@ async function runSeed() {
 =======
       console.log(`[Seed] Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
 >>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
+=======
+      console.log(`[Seed] Jogo "${jogo.nome}" já existe (id: ${existente.id}). Ignorado.`);
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
       ignorados++;
       continue;
     }
@@ -132,6 +146,7 @@ async function runSeed() {
       .single();
 
     if (error) {
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
       console.error(`[Seed] Erro ao inserir "${jogo.nome}":`, error.message);
@@ -147,17 +162,26 @@ async function runSeed() {
     } else {
       console.log(`[Seed] Jogo "${data.nome}" inserido com sucesso (id: ${data.id}, v${data.versao}).`);
 >>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
+=======
+      console.error(`[Seed] Erro ao inserir "${jogo.nome}":`, error.message);
+    } else {
+      console.log(`[Seed] Jogo "${data.nome}" inserido com sucesso (id: ${data.id}, v${data.versao}).`);
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
       inseridos++;
     }
   }
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   console.log(`\n[Seed] Concluído: ${inseridos} inserido(s), ${ignorados} ignorado(s) (já existente).`);
 }
 
 runSeed().catch(err => {
   console.error('[Seed] Falha inesperada no seed:', err);
+<<<<<<< HEAD
 =======
   console.log(`\n[Seed] 🏁 Concluído: ${inseridos} inserido(s), ${ignorados} ignorado(s) (já existente).`);
 }
@@ -172,5 +196,7 @@ runSeed().catch(err => {
 runSeed().catch(err => {
   console.error('[Seed] Falha inesperada no seed:', err);
 >>>>>>> 9f4b61e (Docs: Adicionado um arquivo MarkDown com o roteiro de testes que serão aplicados no futuro)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   process.exit(1);
 });

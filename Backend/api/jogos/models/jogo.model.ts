@@ -36,8 +36,11 @@ export interface JogoResumo {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> d5ca181 (feat(jogos): implement controller, model, and pagination tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 export interface FiltrosJogo {
   objetivo?: string;
   page?: number;
@@ -53,10 +56,13 @@ export interface ResultadoPaginado<T> {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
 =======
 >>>>>>> d5ca181 (feat(jogos): implement controller, model, and pagination tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 export class JogoModel {
   // Base de dados em memória para fallback/testes/desenvolvimento local
   private static fallbackJogos: Jogo[] = [
@@ -144,6 +150,9 @@ export class JogoModel {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   /**
    * Lists available games with optional filtering by clinical objective and pagination (RF19).
    * Queries Supabase if configured, otherwise falls back to local in-memory catalog.
@@ -151,8 +160,11 @@ export class JogoModel {
    * @param filtros - Search, filter, and pagination options (objetivo, page, limit).
    * @returns Paginated result containing game summary items and pagination metadata.
    */
+<<<<<<< HEAD
 =======
 >>>>>>> d5ca181 (feat(jogos): implement controller, model, and pagination tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   static async listar(filtros: FiltrosJogo = {}): Promise<ResultadoPaginado<JogoResumo>> {
     const page = Math.max(1, filtros.page ?? 1);
     const limit = Math.min(100, Math.max(1, filtros.limit ?? 10));
@@ -160,6 +172,9 @@ export class JogoModel {
     const to = from + limit - 1;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
     if (this.isSupabaseAvailable()) {
       try {
         let query = supabase
@@ -188,6 +203,7 @@ export class JogoModel {
             limit,
             totalPages: Math.ceil(total / limit)
           };
+<<<<<<< HEAD
 =======
   static async listar(): Promise<JogoResumo[]> {
 =======
@@ -225,6 +241,8 @@ export class JogoModel {
             totalPages: Math.ceil(total / limit)
           };
 >>>>>>> d5ca181 (feat(jogos): implement controller, model, and pagination tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
         }
       } catch (err) {
         console.warn('[JogoModel] Falha ao consultar Supabase, utilizando dados locais de fallback.');
@@ -233,8 +251,11 @@ export class JogoModel {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> d5ca181 (feat(jogos): implement controller, model, and pagination tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
     // Fallback local com suporte a filtro e paginação em memória
     let lista = this.fallbackJogos;
 
@@ -261,6 +282,9 @@ export class JogoModel {
       totalPages: Math.ceil(total / limit)
     };
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   }
 
   /**
@@ -269,6 +293,7 @@ export class JogoModel {
    * @param id - Game identifier (numeric or string ID).
    * @returns The full game object if found, or undefined otherwise.
    */
+<<<<<<< HEAD
 =======
     // Retorna resumo dos jogos (sem o manifesto_json pesado na listagem)
     return this.fallbackJogos.map(j => ({
@@ -283,6 +308,8 @@ export class JogoModel {
   }
 
 >>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   static async buscarPorId(id: number | string): Promise<Jogo | undefined> {
     if (this.isSupabaseAvailable()) {
       try {

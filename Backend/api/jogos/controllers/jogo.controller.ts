@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 import { JogoModel, FiltrosJogo } from '../models/jogo.model.js';
 import { ManifestoValidator } from '../validators/manifesto.validator.js';
 import { MetricaValidator } from '../validators/metrica.validator.js';
@@ -8,15 +11,21 @@ import { MetricaValidator } from '../validators/metrica.validator.js';
 export class JogoController {
   /**
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    * Handles GET /api/jogos to list games filtered by clinical objective with pagination (RF19).
    *
    * @param req - Express request with optional query parameters (objetivo, page, limit).
    * @param res - Express response returning paginated games catalog.
    * @returns Resolves when the HTTP response has been sent.
+<<<<<<< HEAD
 =======
    * GET /api/jogos?objetivo=foco_atencional&page=1&limit=10
    * Lista jogos com suporte a filtro por objetivo clínico e paginação (RF19)
 >>>>>>> de4659f (refactor(jogos): unifica rotas sob /api/jogos, adiciona documentacao swagger e organiza testes)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
@@ -28,6 +37,7 @@ export class JogoController {
 
       const resultado = await JogoModel.listar(filtros);
       res.json(resultado);
+<<<<<<< HEAD
 =======
 import { JogoModel } from '../models/jogo.model.js';
 =======
@@ -57,6 +67,8 @@ export class JogoController {
       const resultado = await JogoModel.listar(filtros);
       res.json(resultado);
 >>>>>>> d5ca181 (feat(jogos): implement controller, model, and pagination tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
     } catch (error) {
       console.error('[JogoController] Erro ao listar jogos:', error);
       res.status(500).json({ error: 'Erro ao listar catálogo de jogos' });
@@ -66,11 +78,15 @@ export class JogoController {
   /**
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    * Handles GET /api/jogos/:id to retrieve full game details including its manifest JSON.
    *
    * @param req - Express request containing the game ID in URL parameter `:id`.
    * @param res - Express response returning the game details or 404 if not found.
    * @returns Resolves when the HTTP response has been sent.
+<<<<<<< HEAD
 =======
    * GET /jogos/:id ou GET /api/jogos/:id
 =======
@@ -78,6 +94,8 @@ export class JogoController {
 >>>>>>> de4659f (refactor(jogos): unifica rotas sob /api/jogos, adiciona documentacao swagger e organiza testes)
    * Consulta detalhes de um jogo específico incluindo o manifesto_json
 >>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
@@ -97,6 +115,9 @@ export class JogoController {
   }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 
   /**
    * Handles GET /api/jogos/:id/manifesto to inspect and validate game manifest compliance.
@@ -104,12 +125,15 @@ export class JogoController {
    * @param req - Express request containing the game ID in URL parameter `:id`.
    * @param res - Express response returning the manifest data and compliance validation results.
    * @returns Resolves when the HTTP response has been sent.
+<<<<<<< HEAD
 =======
 
   /**
    * GET /api/jogos/:id/manifesto
    * Retorna e valida a conformidade do manifesto de um jogo específico
 >>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    */
   static async obterManifesto(req: Request, res: Response): Promise<void> {
     try {
@@ -139,11 +163,15 @@ export class JogoController {
   /**
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    * Handles POST /api/jogos/validar-manifesto to validate an arbitrary game manifest against Contract 1 (RNF02).
    *
    * @param req - Express request containing the manifest object in body.
    * @param res - Express response returning status 200 on valid manifest or 400 with validation errors.
    * @returns Resolves when the HTTP response has been sent.
+<<<<<<< HEAD
 =======
    * POST /jogos/validar-manifesto ou POST /api/jogos/validar-manifesto
 =======
@@ -151,6 +179,8 @@ export class JogoController {
 >>>>>>> de4659f (refactor(jogos): unifica rotas sob /api/jogos, adiciona documentacao swagger e organiza testes)
    * Endpoint de validação de manifesto contra o Contrato 1 (RNF02)
 >>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    */
   static async validarManifesto(req: Request, res: Response): Promise<void> {
     try {
@@ -178,6 +208,9 @@ export class JogoController {
   }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 
   /**
    * Handles POST /api/jogos/:id/validar-telemetria to validate telemetry events against RN02 rules.
@@ -186,12 +219,15 @@ export class JogoController {
    * @param req - Express request containing game ID in `:id` and telemetry event in body.
    * @param res - Express response returning status 200 if recordable, or 422 with rejection details.
    * @returns Resolves when the HTTP response has been sent.
+<<<<<<< HEAD
 =======
 
   /**
    * POST /api/jogos/:id/validar-telemetria
    * Valida evento de telemetria contra a RN02 (bloqueia gravação no prontuário se a métrica não tiver tipagem estrita)
 >>>>>>> 692f55d (feat: add game controller, routes, manifesto and metric validators, and telemetry tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    */
   static async validarTelemetria(req: Request, res: Response): Promise<void> {
     try {
@@ -226,10 +262,13 @@ export class JogoController {
     }
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 344a4d4 (feat: implement games catalog feature with server setup, MVC architecture, and unit tests)
 =======
 >>>>>>> 182f985 (feat: add game manifest validation, controller, routes, and unit tests)
 =======
 >>>>>>> 692f55d (feat: add game controller, routes, manifesto and metric validators, and telemetry tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 }

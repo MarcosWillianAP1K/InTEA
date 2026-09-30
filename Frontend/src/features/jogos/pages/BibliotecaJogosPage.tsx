@@ -5,7 +5,10 @@ import type { Jogo, FiltrosJogos } from "../types";
 import { jogosService, JOGOS_MOCK } from "../services/jogosService";
 import { JogoCard } from "../components/JogoCard";
 import { JogosFiltros } from "../components/JogosFiltros";
+<<<<<<< HEAD
 import { useSessionStore, ModalPreSessao } from "@/features/sessao";
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 
 export function BibliotecaJogosPage() {
   const [jogos, setJogos] = useState<Jogo[]>([]);
@@ -16,8 +19,11 @@ export function BibliotecaJogosPage() {
     status: "todos",
   });
 
+<<<<<<< HEAD
   const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
 
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   const objetivosDisponiveis = useMemo(() => {
     const list = JOGOS_MOCK.map((j) => j.objetivoTerapeutico);
     return Array.from(new Set(list));
@@ -40,11 +46,15 @@ export function BibliotecaJogosPage() {
   }, [filtros]);
 
   function handleIniciarSessao(jogo: Jogo) {
+<<<<<<< HEAD
     abrirModalPreSessao({
       id: jogo.id,
       titulo: jogo.titulo,
     });
     toast.info(`Configurando sessão clínica para "${jogo.titulo}"`);
+=======
+    toast.success(`A iniciar sessão clínica com "${jogo.titulo}"`);
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
   }
 
   function handleModoLivre(jogo: Jogo) {
@@ -92,9 +102,12 @@ export function BibliotecaJogosPage() {
           </div>
         )}
       </div>
+<<<<<<< HEAD
 
       {/* Modal de Pré-Sessão e Pareamento Remoto (Sprint 8 - Card 4.3) */}
       <ModalPreSessao />
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
     </DashboardLayout>
   );
 }

@@ -22,15 +22,21 @@ export class MetricaValidator {
 
   /**
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    * Strictly validates whether a metric definition has an authorized type (RN02).
    * Refuses any automatic fallback to 'categorica' or other types when undefined.
    *
    * @param metrica - Raw metric definition object from a game manifest.
    * @returns Validation result with boolean `valido` and error message if invalid.
+<<<<<<< HEAD
 =======
    * RN02: Valida estritamente se a métrica possui tipo homologado.
    * Não aplica NENHUM fallback automático para 'categorica' ou qualquer outro tipo.
 >>>>>>> 692f55d (feat: add game controller, routes, manifesto and metric validators, and telemetry tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    */
   static validarTipagemEstrita(metrica: any): { valido: boolean; erro?: string } {
     if (!metrica || typeof metrica !== 'object') {
@@ -62,17 +68,23 @@ export class MetricaValidator {
 
   /**
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    * Validates whether a telemetry event can be safely persisted to a patient's clinical medical record (RN02 / RNF04).
    * Telemetry from untyped or mismatched metrics is strictly rejected to prevent record corruption.
    *
    * @param evento - Telemetry event payload containing session token, metric ID, and value.
    * @param manifesto - Approved game manifest containing clinical specifications.
    * @returns Object indicating if writing is permitted (`podeGravar`), detected type, and error if blocked.
+<<<<<<< HEAD
 =======
    * RN02 / RNF04: Valida se um evento de telemetria pode ser gravado no prontuário do paciente.
    * Telemetrias de métricas sem tipo válido no manifesto são sumariamente REJEITADAS para
    * proteger o prontuário contra dados corrompidos ou diagnósticos clínicos distorcidos.
 >>>>>>> 692f55d (feat: add game controller, routes, manifesto and metric validators, and telemetry tests)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f
    */
   static validarGravacaoProntuario(
     evento: any,
