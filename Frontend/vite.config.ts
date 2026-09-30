@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
@@ -19,6 +20,10 @@ export default defineConfig(() => {
     },
     build: {
       chunkSizeWarningLimit: 1000,
+    },
+    test: {
+      environment: "happy-dom",
+      globals: true,
     },
   }
 })
