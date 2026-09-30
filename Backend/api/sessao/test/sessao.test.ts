@@ -101,4 +101,155 @@ describe('Feature Sessão - Estrutura e Serviços Base', () => {
     expect(statusCode).toBe(400);
     expect((jsonResult as { error: string }).error).toContain('inválido');
   });
+
+  it('deve rejeitar iniciar sessão sem terapeuta_id ou jogo_id', async () => {
+    let statusCode = 200;
+    let jsonResult: unknown = null;
+
+    const mockReq = {
+      body: { terapeuta_id: 'terapeuta-1', codigo_pareamento: '4M5S-8U7B' }
+    } as unknown as import('express').Request;
+
+    const mockRes = {
+      status(code: number) {
+        statusCode = code;
+        return this;
+      },
+      json(data: unknown) {
+        jsonResult = data;
+        return this;
+      }
+    } as unknown as import('express').Response;
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(statusCode).toBe(400);
+    expect((jsonResult as { error: string }).error).toContain('obrigatórios');
+  });
+
+  it('deve rejeitar iniciar sessão sem codigo_pareamento', async () => {
+    let statusCode = 200;
+    let jsonResult: unknown = null;
+
+    const mockReq = {
+      body: {
+        terapeuta_id: 'terapeuta-1',
+        jogo_id: 'jogo-1',
+        paciente_id: 'paciente-1'
+      }
+    } as unknown as import('express').Request;
+
+    const mockRes = {
+      status(code: number) {
+        statusCode = code;
+        return this;
+      },
+      json(data: unknown) {
+        jsonResult = data;
+        return this;
+      }
+    } as unknown as import('express').Response;
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(statusCode).toBe(400);
+    expect((jsonResult as { error: string }).error).toContain('codigo_pareamento');
+  });
+
+  it('deve rejeitar modo_sessao inválido ao iniciar sessão', async () => {
+    let statusCode = 200;
+    let jsonResult: unknown = null;
+
+    const mockReq = {
+      body: {
+        terapeuta_id: 'terapeuta-1',
+        jogo_id: 'jogo-1',
+        codigo_pareamento: '4M5S-8U7B',
+        modo_sessao: 'modo_inexistente'
+      }
+    } as unknown as import('express').Request;
+
+    const mockRes = {
+      status(code: number) {
+        statusCode = code;
+        return this;
+      },
+      json(data: unknown) {
+        jsonResult = data;
+        return this;
+      }
+    } as unknown as import('express').Response;
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(statusCode).toBe(400);
+    expect((jsonResult as { error: string }).error).toContain('Modo de sessão inválido');
+  });
+
+  it('deve rejeitar sessão clínica sem paciente_id (RN01)', async () => {
+    let statusCode = 200;
+    let jsonResult: unknown = null;
+
+    const mockReq = {
+      body: {
+        terapeuta_id: 'terapeuta-1',
+        jogo_id: 'jogo-1',
+        codigo_pareamento: '4M5S-8U7B',
+        modo_sessao: 'sessao_clinica',
+        paciente_id: null
+      }
+    } as unknown as import('express').Request;
+
+    const mockRes = {
+      status(code: number) {
+        statusCode = code;
+        return this;
+      },
+      json(data: unknown) {
+        jsonResult = data;
+        return this;
+      }
+    } as unknown as import('express').Response;
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(statusCode).toBe(400);
+    expect((jsonResult as { error: string }).error).toContain('RN01');
+  });
+
+  it('deve rejeitar modo livre com paciente_id vinculado (RN01)', async () => {
+    let statusCode = 200;
+    let jsonResult: unknown = null;
+
+    const mockReq = {
+      body: {
+        terapeuta_id: 'terapeuta-1',
+        jogo_id: 'jogo-1',
+        codigo_pareamento: '4M5S-8U7B',
+        modo_sessao: 'modo_livre',
+        paciente_id: 'paciente-123'
+      }
+    } as unknown as import('express').Request;
+
+    const mockRes = {
+      status(code: number) {
+        statusCode = code;
+        return this;
+      },
+      json(data: unknown) {
+        jsonResult = data;
+        return this;
+      }
+    } as unknown as import('express').Response;
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(statusCode).toBe(400);
+    expect((jsonResult as { error: string }).error).toContain('RN01');
+  });
 });

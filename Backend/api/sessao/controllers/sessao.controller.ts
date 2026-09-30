@@ -22,8 +22,15 @@ export class SessaoController {
         codigo_pareamento,
       } = req.body;
 
-      if (!terapeuta_id || !jogo_id) {
-        res.status(400).json({ error: 'Os campos terapeuta_id e jogo_id são obrigatórios' });
+      const codigoFinal = codigo_pareamento || req.body.codigo;
+
+      if (!terapeuta_id || !jogo_id || !codigoFinal) {
+        res.status(400).json({ error: 'Os campos terapeuta_id, jogo_id e codigo_pareamento são obrigatórios' });
+        return;
+      }
+
+      if (modo_sessao && !Object.values(MODO_SESSAO).includes(modo_sessao)) {
+        res.status(400).json({ error: 'Modo de sessão inválido. Escolha entre: ' + Object.values(MODO_SESSAO).join(', ') });
         return;
       }
 
@@ -44,7 +51,7 @@ export class SessaoController {
         paciente_id: modo_sessao === MODO_SESSAO.MODO_LIVRE ? null : paciente_id,
         modo_sessao,
         contexto_dda_json,
-        codigo_pareamento,
+        codigo_pareamento: codigoFinal,
       };
 
       const novaSessao = await SessaoModel.criar(dadosSessao);

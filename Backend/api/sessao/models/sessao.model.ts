@@ -47,7 +47,7 @@ export interface Sessao {
 }
 
 export interface CriarSessaoDTO {
-  codigo_pareamento?: string;
+  codigo_pareamento: string;
   terapeuta_id: string;
   jogo_id: string;
   paciente_id?: string | null;
@@ -61,7 +61,7 @@ export class SessaoModel {
    */
   static async criar(dados: CriarSessaoDTO): Promise<Sessao | null> {
     try {
-      const sessionToken = dados.codigo_pareamento || SessaoTokenService.gerarCodigoPareamento();
+      const sessionToken = dados.codigo_pareamento;
       const modoSessao = dados.modo_sessao || MODO_SESSAO.SESSAO_CLINICA;
       const pacienteId = modoSessao === MODO_SESSAO.MODO_LIVRE ? null : (dados.paciente_id || null);
       const expiraEm = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // TTL de 15 minutos (Card 530/556)
