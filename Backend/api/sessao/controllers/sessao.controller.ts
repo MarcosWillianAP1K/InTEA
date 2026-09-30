@@ -3,7 +3,7 @@
 // ==============================================================================
 
 import { Request, Response } from 'express';
-import { SessaoModel, CriarSessaoDTO } from '../models/sessao.model.js';
+import { SessaoModel, CriarSessaoDTO, STATUS_SESSAO, MODO_SESSAO } from '../models/sessao.model.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 
 export class SessaoController {
@@ -17,7 +17,7 @@ export class SessaoController {
         terapeuta_id,
         jogo_id,
         paciente_id,
-        modo_sessao = 'sessao_clinica',
+        modo_sessao = MODO_SESSAO.SESSAO_CLINICA,
         contexto_dda_json = {},
         codigo_pareamento,
       } = req.body;
@@ -28,12 +28,12 @@ export class SessaoController {
       }
 
       // Validação da regra RN01 (Modo Livre sem paciente / Sessão Clínica com paciente)
-      if (modo_sessao === 'sessao_clinica' && !paciente_id) {
+      if (modo_sessao === MODO_SESSAO.SESSAO_CLINICA && !paciente_id) {
         res.status(400).json({ error: 'O paciente_id é obrigatório para sessões clínicas (RN01)' });
         return;
       }
 
-      if (modo_sessao === 'modo_livre' && paciente_id) {
+      if (modo_sessao === MODO_SESSAO.MODO_LIVRE && paciente_id) {
         res.status(400).json({ error: 'Partidas em modo livre não podem ter paciente vinculado (RN01)' });
         return;
       }
@@ -41,7 +41,7 @@ export class SessaoController {
       const dadosSessao: CriarSessaoDTO = {
         terapeuta_id,
         jogo_id,
-        paciente_id: modo_sessao === 'modo_livre' ? null : paciente_id,
+        paciente_id: modo_sessao === MODO_SESSAO.MODO_LIVRE ? null : paciente_id,
         modo_sessao,
         contexto_dda_json,
         codigo_pareamento,
@@ -103,7 +103,7 @@ export class SessaoController {
   static async finalizar(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
-      const sessaoAtualizada = await SessaoModel.atualizarStatus(id, 'finalizada');
+      const sessaoAtualizada = await SessaoModel.atualizarStatus(id, STATUS_SESSAO.FINALIZADA);
       if (!sessaoAtualizada) {
         res.status(404).json({ error: 'Sessão não encontrada para finalização' });
         return;
@@ -141,6 +141,40 @@ export class SessaoController {
       res.json({ codigo });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao gerar código de pareamento' });
+    }
+  }
+
+
+  /**
+   * Atualiza o status de uma sessão
+   * PATCH /api/sessao/:id/status
+   */
+  static async atualizarStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const id = String(req.params.id);
+      const { status } = req.body;
+
+      if (!status) {
+        res.status(400).json({ error: 'O campo status é obrigatório' });
+        return;
+      }
+      
+
+      if (!Object.values(STATUS_SESSAO).includes(status)) {
+        res.status(400).json({ error: 'O status informado é inválido, deve conter algum desses valores: ' + Object.values(STATUS_SESSAO).join(', ') });
+        return;
+      }
+
+      const sessaoAtualizada = await SessaoModel.atualizarStatus(id, status);
+
+      if (!sessaoAtualizada) {
+        res.status(404).json({ error: 'Sessão não encontrada para atualização de status' });
+        return;
+      }
+
+      res.status(200).json({ data: sessaoAtualizada });
+    } catch (error) {
+      res.status(500).json({ error: 'Erro interno ao atualizar status da sessão' });
     }
   }
 }

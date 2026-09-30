@@ -5,15 +5,23 @@
 import { supabase } from "../../../core/supabase/supabase.client.js";
 import { SessaoTokenService } from "../services/sessao-token.service.js";
 
-export type ModoSessao = 'sessao_clinica' | 'modo_livre';
+export const MODO_SESSAO = {
+  SESSAO_CLINICA: 'sessao_clinica',
+  MODO_LIVRE: 'modo_livre',
+} as const;
 
-export type StatusSessao =
-  | 'aguardando_pareamento'
-  | 'conectado'
-  | 'em_andamento'
-  | 'finalizada'
-  | 'expirada'
-  | 'cancelada';
+export type ModoSessao = (typeof MODO_SESSAO)[keyof typeof MODO_SESSAO];
+
+export const STATUS_SESSAO = {
+  AGUARDANDO_PAREAMENTO: 'aguardando_pareamento',
+  CONECTADO: 'conectado',
+  EM_ANDAMENTO: 'em_andamento',
+  FINALIZADA: 'finalizada',
+  EXPIRADA: 'expirada',
+  CANCELADA: 'cancelada',
+} as const;
+
+export type StatusSessao = (typeof STATUS_SESSAO)[keyof typeof STATUS_SESSAO];
 
 export interface ContextoDDA {
   estresse_inicial?: number;
@@ -54,8 +62,8 @@ export class SessaoModel {
   static async criar(dados: CriarSessaoDTO): Promise<Sessao | null> {
     try {
       const sessionToken = dados.codigo_pareamento || SessaoTokenService.gerarCodigoPareamento();
-      const modoSessao = dados.modo_sessao || 'sessao_clinica';
-      const pacienteId = modoSessao === 'modo_livre' ? null : (dados.paciente_id || null);
+      const modoSessao = dados.modo_sessao || MODO_SESSAO.SESSAO_CLINICA;
+      const pacienteId = modoSessao === MODO_SESSAO.MODO_LIVRE ? null : (dados.paciente_id || null);
       const expiraEm = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // TTL de 15 minutos (Card 530/556)
 
       const { data, error } = await supabase
@@ -67,7 +75,7 @@ export class SessaoModel {
           session_token: sessionToken,
           modo_sessao: modoSessao,
           contexto_dda_json: dados.contexto_dda_json || {},
-          status_sessao: 'aguardando_pareamento' as StatusSessao,
+          status_sessao: STATUS_SESSAO.AGUARDANDO_PAREAMENTO,
           expira_em: expiraEm,
         }])
         .select('*')
@@ -136,6 +144,7 @@ export class SessaoModel {
         .single();
 
       if (error || !data) return null;
+      
       return data as Sessao;
     } catch (error) {
       console.error('Erro ao atualizar status da sessão:', error);
