@@ -8,25 +8,13 @@
 
 ## Índice Rápido
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 * [1. Banco de Dados e Back-end (Sprint 7)](#1-banco-de-dados-e-back-end)
 * [2. Front-end (Sprint 7)](#2-front-end)
 * [3. Documentação (Sprint 7)](#3-documentação)
 * [4. Diretrizes Clínicas da Terapeuta](#4-diretrizes-clínicas-da-terapeuta)
 * [5. Sprint 8 — Pareamento Remoto e Testes Prévios](#5-sprint-8--pareamento-remoto-e-testes-prévios)
 * [6. Cards Extras — Adiantamento (Autenticação, Segurança e Auditoria)](#6-cards-extras--adiantamento-autenticação-segurança-e-auditoria)
-<<<<<<< HEAD
-=======
-* [1. Banco de Dados e Back-end](#1-banco-de-dados-e-back-end)
-* [2. Front-end](#2-front-end)
-* [3. Documentação](#3-documentação)
-* [4. Diretrizes Clínicas da Terapeuta](#4-diretrizes-clínicas-da-terapeuta)
->>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
-=======
->>>>>>> 6296a4521e302191b50e8b217744faf91969530f
+
 
 ---
 
@@ -146,53 +134,10 @@
 
 ### Back: Validação Estrita de Tipagem de Métricas (Tipo: Validação)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 * **Tipo:** Validação
 * **Requisitos:** RN02
 * **Referência Documentação:** RN02, RNF04
 * **Descrição:** Toda métrica deve ter estritamente um tipo válido declarado no manifesto. Métricas sem tipo não serão usadas nem tratadas como categóricas, sendo sumariamente rejeitadas para evitar erros em dados de saúde humana.
-=======
-=======
->>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
-=======
->>>>>>> 6296a4521e302191b50e8b217744faf91969530f
----
-
-### [CARD-FE-01] Estruturação da Feature Modular de Pacientes
-
-* **Tipo:** Arquitetura Front-end
-<<<<<<< HEAD
-* **Componente:** `Frontend / src/features/pacientes/`pessoa 
-=======
-* **Componente:** `Frontend / src/features/pacientes/`
->>>>>>> ebbc03e (feat: add typecheck script to package.json and improve testing setup)
-* **Requisitos:** **Boas Práticas de Engenharia**
-* **Referência Documentação:** *Figura 24 (Arquitetura de Pastas do Front)*
-* **Descrição:**  
-  Organizar a pasta `features/pacientes/` seguindo a arquitetura limpa e desacoplada do projeto:
-  * `components/`: Componentes específicos de UI do paciente.
-  * `hooks/`: Custom hooks de consulta e mutação de dados.
-  * `pages/`: Telas de listagem, cadastro e perfil.
-  * `service/`: Comunicação HTTP com a API.
-  * `store/`: Estado global do paciente ativo (Zustand).
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 2133c58 (feat: add typecheck script to package.json and improve testing setup)
-=======
-=======
->>>>>>> 6296a4521e302191b50e8b217744faf91969530f
-=======
-* **Tipo:** Validação
-* **Requisitos:** RN02
-* **Referência Documentação:** RN02, RNF04
-* **Descrição:** Toda métrica deve ter estritamente um tipo válido declarado no manifesto. Métricas sem tipo não serão usadas nem tratadas como categóricas, sendo sumariamente rejeitadas para evitar erros em dados de saúde humana.
->>>>>>> 0f24571 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
-<<<<<<< HEAD
->>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
-=======
->>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 * **Critérios de Aceite:**
   * [ ] Sem conversão/fallback automático para categórica.
   * [ ] Métricas sem tipo são rejeitadas na validação do manifesto.
@@ -271,37 +216,9 @@
 * **Referência Documentação:** Figura 14 (Tela da Lista de Pacientes)
 * **Descrição:** Construir a visualização em tabela detalhada para gestão clínica, com barra de busca rápida, filtros e atalho para novo cadastro.
 * **Critérios de Aceite:**
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
   * [ ] Tabela com ordenação e paginação.
   * [ ] Campo de busca com filtro em tempo real.
-=======
-=======
->>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
-<<<<<<< HEAD
-=======
->>>>>>> 6296a4521e302191b50e8b217744faf91969530f
-  * [x] Componentes tipados em TypeScript sem erros de lint/typecheck.
-  * [x] Estilização consistente em modo claro e escuro.
-=======
-  * [ ] Componentes tipados em TypeScript sem erros de lint/typecheck.
-  * [ ] Estilização consistente em modo claro e escuro.
->>>>>>> ebbc03e (feat: add typecheck script to package.json and improve testing setup)
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 2133c58 (feat: add typecheck script to package.json and improve testing setup)
-=======
-=======
->>>>>>> 6296a4521e302191b50e8b217744faf91969530f
-=======
-  * [ ] Tabela com ordenação e paginação.
-  * [ ] Campo de busca com filtro em tempo real.
->>>>>>> 0f24571 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
-<<<<<<< HEAD
->>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
-=======
->>>>>>> 6296a4521e302191b50e8b217744faf91969530f
+
 
 ---
 

@@ -1,5 +1,5 @@
 import { useSessionStore } from "../store/sessionStore";
-import { useSessionSocket, UseSessionSocketReturn } from "@/core/web.socket";
+import { useSessionSocket, type UseSessionSocketReturn } from "@/core/web.socket";
 
 /**
  * ============================================================================

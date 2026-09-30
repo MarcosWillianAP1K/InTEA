@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useSessionStore } from "../store/sessionStore";
-import { DispositivoConectadoPayload } from "@/core/web.socket";
+import type { DispositivoConectadoPayload } from "@/core/web.socket";
 
 describe("Card 4.2 — Store Reativa de Sessão e Pareamento (features/sessao/store/sessionStore.ts)", () => {
   beforeEach(() => {

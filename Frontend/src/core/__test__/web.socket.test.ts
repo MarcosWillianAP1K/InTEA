@@ -4,9 +4,9 @@ import {
   SessionSocketManager,
   getSocketUrl,
   useSessionSocket,
-  DispositivoConectadoPayload,
-  DispositivoDesconectadoPayload,
-  ErroSessaoPayload,
+  type DispositivoConectadoPayload,
+  type DispositivoDesconectadoPayload,
+  type ErroSessaoPayload,
 } from "../web.socket";
 import { io } from "socket.io-client";
 

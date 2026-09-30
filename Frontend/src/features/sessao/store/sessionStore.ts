@@ -1,10 +1,10 @@
 import { create } from "zustand";
-import {
+import type {
   SessionStore,
   SessionState,
   ConfiguracaoSessao,
 } from "../types";
-import { DispositivoConectadoPayload } from "@/core/web.socket";
+import type { DispositivoConectadoPayload } from "@/core/web.socket";
 
 /**
  * ============================================================================

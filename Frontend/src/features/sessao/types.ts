@@ -1,4 +1,4 @@
-import { DispositivoConectadoPayload } from "@/core/web.socket";
+import type { DispositivoConectadoPayload } from "@/core/web.socket";
 
 /**
  * ============================================================================
