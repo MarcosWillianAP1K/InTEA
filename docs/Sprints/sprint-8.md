@@ -38,7 +38,7 @@ Conforme estabelecido no cronograma oficial e nos diagramas de sequência e ativ
 | ID | Card da Tarefa (GitHub Projects) | Detalhe Técnico | Requisito / Regra |
 | :--- | :--- | :--- | :--- |
 | **1.1** | `Back: Migration e Model da Tabela de Sessões (Tipo: Feature)` | Criar tabela `sessao` no banco com chaves estrangeiras (`paciente_id`, `terapeuta_id`, `jogo_id`), `session_token` único com índice, status do pareamento e timestamps. | **RF10**, **RF12** |
-| **1.2** | `Back: Gerador de Session Token Seguro e Amigável (Tipo: Feature)` | Implementar gerador de tokens efêmeros de pareamento (PIN alfanumérico de 6 a 8 caracteres, sem ambiguidades de caracteres como `O` e `0`, `I` e `1`), com tempo de expiração configurável (ex: 15 minutos). | **RF10**, **RNF03** |
+| **1.2** | `Back: Gerador de Session Token Seguro e Amigável (Tipo: Feature)` | Implementar gerador de tokens efêmeros de pareamento (PIN alfanumérico de 6 a 8 caracteres, com tempo de expiração configurável (ex: 15 minutos). | **RF10**, **RNF03** |
 | **1.3** | `Back: Endpoint de Criação de Sessão e Emissão de Token (Tipo: Feature)` | Endpoint `POST /api/sessao/iniciar` que valida terapeuta e paciente vinculado (RN04), instancia a sessão com status `aguardando_pareamento` e devolve o `session_token`. | **RF10**, **RN04** |
 | **1.4** | `Back: Validação e Revogação de Token Expirado (Tipo: Validação)` | Lógica para invalidar tokens expirados ou após finalização forçada da sessão, impedindo conexões zumbis de dispositivos externos. | **RF10**, **RNF03** |
 

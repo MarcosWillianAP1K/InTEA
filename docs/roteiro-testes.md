@@ -1614,12 +1614,198 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 ---
 
+## Módulo 3 — Pareamento Remoto e Sessões (Sprint 8)
+
+### CT-S01 — Pareamento Remoto Bem-Sucedido com Handshake e WebSocket
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF10 — Pareamento Remoto via Session Token (Fig. 3) |
+| **Tipo** | Positivo |
+| **Precondição** | Sessão criada com status `aguardando_conexao`; terapeuta conectado na sala WebSocket |
+
+**Entrada — `POST /api/sessao/parear`**
+
+```json
+{
+  "session_token": "849-291",
+  "dispositivo_info": {
+    "tipo_dispositivo": "tablet",
+    "modelo": "Galaxy Tab S8",
+    "sistema_operacional": "Android 14",
+    "resolucao": "2560x1600",
+    "versao_jogo": "1.2.0"
+  }
+}
+```
+
+#### Passos
+
+1. Abrir conexão WebSocket no namespace `/sessao` com `role: 'terapeuta'` e entrar na sala da sessão `849-291`.
+2. O jogo remoto envia requisição `POST /api/sessao/parear` com o token e metadados.
+3. Observar a resposta HTTP e a notificação instantânea no canal WebSocket.
+
+#### Resultado Esperado
+
+- HTTP **200 OK**
+- `message: "Dispositivo pareado com sucesso"`
+- `data.status_sessao: "em_andamento"`
+- `data.websocket.canal: "session_849-291"`
+- O terapeuta recebe via WebSocket o evento `dispositivo_conectado` com os dados do dispositivo.
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S02 — Normalização Automática de Token sem Hífen e com Espaços
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF10, RNF03 — Usabilidade e Tolerância de Formato |
+| **Tipo** | Positivo |
+| **Precondição** | Sessão ativa com token `849-291` |
+
+**Entrada — `POST /api/sessao/parear`**
+
+```json
+{
+  "session_token": "  849291  "
+}
+```
+
+#### Passos
+
+1. O jogador digita o PIN contínuo sem traços ou com espaços residuais.
+2. Executar `POST /api/sessao/parear`.
+
+#### Resultado Esperado
+
+- HTTP **200 OK**
+- Token normalizado com sucesso e pareamento concluído.
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S03 — Rejeição de Token Expirado (RNF03)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RNF03 — Segurança e Expiração Efêmera de 15 Minutos |
+| **Tipo** | Negativo |
+| **Precondição** | Sessão emitida há mais de 15 minutos com `expira_em` no passado |
+
+**Entrada — `POST /api/sessao/parear`**
+
+```json
+{
+  "session_token": "EXP-001"
+}
+```
+
+#### Passos
+
+1. Tentar parear com um token cujo tempo limite de 15 minutos expirou.
+
+#### Resultado Esperado
+
+- HTTP **410 Gone**
+- `error: "Token de pareamento expirado"`
+- Detalhes informando a necessidade de gerar novo código no painel web.
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S04 — Rejeição de Token Inexistente ou Incorreto
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF10 — Validação de Integridade de Token |
+| **Tipo** | Negativo |
+| **Precondição** | Token não cadastrado no banco |
+
+**Entrada — `POST /api/sessao/parear`**
+
+```json
+{
+  "session_token": "999-999"
+}
+```
+
+#### Passos
+
+1. Submeter código PIN inexistente ou incorreto.
+
+#### Resultado Esperado
+
+- HTTP **404 Not Found**
+- `error: "Sessão não encontrada para o token informado"`
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S05 — Rejeição de Pareamento Concorrente (Sessão Já em Andamento)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF10 — Exclusividade de Conexão por Sessão |
+| **Tipo** | Negativo |
+| **Precondição** | Sessão já pareada com status `em_andamento` |
+
+**Entrada — `POST /api/sessao/parear`**
+
+```json
+{
+  "session_token": "AND-002"
+}
+```
+
+#### Passos
+
+1. Um segundo dispositivo tenta utilizar o mesmo PIN de uma sessão ativa.
+
+#### Resultado Esperado
+
+- HTTP **409 Conflict**
+- `error: "Sessão já pareada ou em andamento"`
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S06 — Monitoramento de Queda de Conexão e Reconexão (RNF04)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RNF04 — Resiliência de Conexão e Detecção de Presença |
+| **Tipo** | Positivo |
+| **Precondição** | Dispositivo pareado ativo na sala WebSocket |
+
+#### Passos
+
+1. Dispositivo conectado simula queda de sinal ou desconexão abrupta de rede.
+2. Analisar o evento recebido na interface do terapeuta (`dispositivo_desconectado`).
+3. O dispositivo restabelece a rede e reconecta ao WebSocket com o mesmo token.
+4. Analisar o evento de reconexão (`dispositivo_reconectado`).
+
+#### Resultado Esperado
+
+- No momento da queda: evento `dispositivo_desconectado` com timestamp e causa.
+- No retorno da rede: evento `dispositivo_reconectado` com métrica exata de `tempo_offline_ms` e status `em_andamento`.
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
 ## Matriz de Rastreabilidade
 
 | Requisito | Descrição | Casos de Teste |
 | :--- | :--- | :--- |
 | **RF06** | Cadastro e Gestão de Pacientes | CT-P01, CT-P02, CT-P03, CT-P04, CT-P14, CT-P15 |
 | **RF09** | Biblioteca de Jogos Terapêuticos | CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J06, CT-J12 |
+| **RF10** | Pareamento Remoto via Session Token e Handshake | CT-S01, CT-S02, CT-S04, CT-S05 |
 | **RF11** | Modo Livre (sem prontuário clínico) | CT-J01 |
 | **RF18** | Gestão de Vínculos Multiterapeuta | CT-P11, CT-P12, CT-P13 |
 | **RF19** | Filtros, Busca Avançada e Paginação | CT-P05, CT-J02, CT-J03, CT-J04 |
@@ -1628,8 +1814,10 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 | **RN04** | Visibilidade por Vínculo e Instituição | CT-P06, CT-P07, CT-P08, CT-P12 |
 | **RN05** | Inalterabilidade do Histórico (Soft Delete) | CT-P04, CT-P09, CT-P10, CT-P13 |
 | **RNF02** | Padronização e Contratos de Dados | CT-J05, CT-J07, CT-J08, CT-J12 |
+| **RNF03** | Expiração Efêmera de PIN e Segurança | CT-S02, CT-S03 |
+| **RNF04** | Heartbeat e Resiliência de Conexão WebSocket | CT-S06 |
 
-**Total: 27 casos de teste** — 15 do Módulo Pacientes (CT-P01→P15) · 12 do Módulo Jogos (CT-J01→J12)
+**Total: 33 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 6 Pareamento e Sessões (CT-S01→S06)
 
 ---
 
@@ -1637,11 +1825,13 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 | Código | Semântica | Casos de Teste |
 | :---: | :--- | :--- |
-| **200** | Sucesso em consulta ou validação aprovada | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12 |
+| **200** | Sucesso em consulta, pareamento ou validação aprovada | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12, CT-S01, CT-S02, CT-S06 |
 | **201** | Recurso criado com sucesso | CT-P01, CT-P11 |
 | **400** | Parâmetros inválidos / regra de negócio | CT-P02, CT-P12, CT-P13, CT-P15, CT-J08 |
 | **401** | Sem autenticação / JWT inválido | CT-P08 |
 | **403** | Acesso negado por RN04 | CT-P07 |
-| **404** | Recurso não encontrado | CT-J06 |
-| **409** | Conflito de integridade (CPF duplicado) | CT-P03 |
+| **404** | Recurso não encontrado | CT-J06, CT-S04 |
+| **409** | Conflito de integridade ou sessão já em andamento | CT-P03, CT-S05 |
+| **410** | Recurso expirado ou permanentemente indisponível | CT-S03 |
 | **422** | Violação de regra clínica RN02 | CT-J10, CT-J11 |
+

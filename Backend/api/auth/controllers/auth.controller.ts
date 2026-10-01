@@ -42,6 +42,10 @@ export class AuthController {
       });
     } catch (error: any) {
       console.error('[AuthController.login]', error);
+      if (error?.message?.includes('inativada')) {
+        res.status(403).json({ error: error.message });
+        return;
+      }
       res.status(401).json({ error: error?.message || 'Credenciais inválidas.' });
     }
   }

@@ -38,7 +38,7 @@ export async function authMiddleware(
     if (!token || token.trim() === '') {
       res.status(401).json({ error: 'Token JWT não informado após Bearer.' });
       return;
-    }
+    } 
 
     // Valida o token diretamente no serviço de Auth do Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);

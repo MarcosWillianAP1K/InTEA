@@ -28,7 +28,12 @@ export async function verificarVisibilidadePaciente(
   next: NextFunction
 ): Promise<void> {
   try {
-    // 1. Extração do identificador do paciente a partir dos parâmetros da requisição
+    // 1. Partidas em modo livre (RN01) não possuem paciente vinculado
+    if (req.body?.modo_sessao === 'modo_livre' && !req.body?.paciente_id) {
+      return next();
+    }
+
+    // 2. Extração do identificador do paciente a partir dos parâmetros da requisição
     const pacienteId = String(req.params.id || req.params.pacienteId || req.body?.paciente_id || '');
 
     if (!pacienteId || pacienteId === 'undefined') {
