@@ -17,6 +17,9 @@ export class PacienteController {
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
+      const verTodosPacientes = req.query.all === 'true';
+      const usuarioLogado = (req as any).user;
+
       const filtros: FiltrosPacienteDTO = {
         incluirInativos: req.query.incluirInativos === 'true',
         nome: typeof req.query.nome === 'string' ? req.query.nome : undefined,
@@ -25,7 +28,21 @@ export class PacienteController {
         idadeMax: req.query.idadeMax !== undefined ? Number(req.query.idadeMax) : undefined,
         page: req.query.page !== undefined ? Number(req.query.page) : undefined,
         limit: req.query.limit !== undefined ? Number(req.query.limit) : undefined,
+        terapeutaId: undefined,
       };
+
+      const isSuperAdmin =
+        usuarioLogado?.is_super_admin === true ||
+        usuarioLogado?.user_metadata?.is_super_admin === true;
+
+      if (usuarioLogado && !(isSuperAdmin && verTodosPacientes)) {
+        filtros.terapeutaId = usuarioLogado.id;
+      }
+      // else {
+      //   // Cenário de DEV/Testes manuais sem autenticação ativa:
+      //   // Permite passar ?terapeutaId= na URL pelo Swagger/Postman
+      //   filtros.terapeutaId = typeof req.query.terapeutaId === 'string' ? req.query.terapeutaId : undefined;
+      // }
 
       const resultado = await PacienteModel.listar(filtros);
 

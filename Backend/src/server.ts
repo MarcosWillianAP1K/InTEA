@@ -25,6 +25,7 @@ const swaggerSpec = swaggerJsdoc({
       { name: "Terapeuta", description: "Gerenciamento cadastral de terapeutas" },
       { name: "Paciente", description: "Gerenciamento clínico de pacientes" },
       { name: "Jogos", description: "Catálogo de jogos terapêuticos, manifestos e telemetria" },
+      { name: "Sessão", description: "Gerenciamento de sessões clínicas e pareamento remoto" },
     ],
     components: {
       securitySchemes: {
