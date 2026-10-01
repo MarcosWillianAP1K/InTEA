@@ -47,9 +47,73 @@ describe('Card 2.4 - Testes E2E de Pareamento Remoto e Não-Regressão (CT-S01 a
     });
   });
 
+  const mockSessoesBanco: Record<string, any> = {
+    '849-291': {
+      id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
+      terapeuta_id: '11111111-1111-1111-1111-111111111111',
+      paciente_id: '22222222-2222-2222-2222-222222222222',
+      jogo_id: '33333333-3333-3333-3333-333333333333',
+      session_token: '849-291',
+      modo_sessao: 'sessao_clinica',
+      contexto_dda_json: { nivel_estresse_inicial: 2, gatilhos_a_evitar: ['som_alto'], objetivo_clinico: 'Foco Atencional' },
+      status_sessao: 'aguardando_pareamento',
+      expira_em: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      data_hora_inicio: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      jogo: { id: '33333333-3333-3333-3333-333333333333', nome: 'Aventura das Cores', versao: '1.2.0' }
+    },
+    'EXP-001': {
+      id: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e',
+      terapeuta_id: '11111111-1111-1111-1111-111111111111',
+      paciente_id: '22222222-2222-2222-2222-222222222222',
+      jogo_id: '33333333-3333-3333-3333-333333333333',
+      session_token: 'EXP-001',
+      modo_sessao: 'sessao_clinica',
+      contexto_dda_json: {},
+      status_sessao: 'aguardando_pareamento',
+      expira_em: new Date(Date.now() - 60 * 1000).toISOString(),
+      data_hora_inicio: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+      created_at: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 20 * 60 * 1000).toISOString()
+    },
+    'AND-002': {
+      id: 'c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f',
+      terapeuta_id: '11111111-1111-1111-1111-111111111111',
+      paciente_id: '22222222-2222-2222-2222-222222222222',
+      jogo_id: '33333333-3333-3333-3333-333333333333',
+      session_token: 'AND-002',
+      modo_sessao: 'sessao_clinica',
+      contexto_dda_json: {},
+      status_sessao: 'em_andamento',
+      expira_em: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      data_hora_inicio: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  };
+
   beforeEach(() => {
-    SessaoModel.resetarMock();
     SessaoGateway.obterInstancia().resetarPresencas();
+
+    vi.spyOn(SessaoModel, 'buscarPorToken').mockImplementation(async (token: string) => {
+      const clean = token.trim().toUpperCase();
+      const semHifen = clean.replace(/[^A-Z0-9]/g, '');
+      if (mockSessoesBanco[clean]) return { ...mockSessoesBanco[clean] };
+      if (semHifen === '849291') return { ...mockSessoesBanco['849-291'] };
+      return null;
+    });
+
+    vi.spyOn(SessaoModel, 'parearDispositivo').mockImplementation(async (id: string, dispositivoInfo?: any) => {
+      const sessao = Object.values(mockSessoesBanco).find((s) => s.id === id);
+      if (!sessao) return null;
+      return {
+        ...sessao,
+        status_sessao: 'em_andamento',
+        dispositivo_info: dispositivoInfo || null,
+        data_hora_inicio: new Date().toISOString()
+      };
+    });
   });
 
   function createClientSocket(): Promise<ClientSocket> {

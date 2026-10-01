@@ -3,10 +3,34 @@
 // ==============================================================================
 
 import { Request, Response } from 'express';
-import { SessaoModel, CriarSessaoDTO, STATUS_SESSAO, MODO_SESSAO } from '../models/sessao.model.js';
+import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, StatusSessao } from '../models/sessao.model.js';
+import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/sessao.dto.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 
 export class SessaoController {
+  // Callback opcional injetado pelo gateway WebSocket (Card 2.2) para notificação em tempo real
+  private static onDispositivoPareadoCallback?: (sessionToken: string, dadosPareamento: PareamentoRespostaDTO) => void;
+  // Callback opcional para consultar presença de dispositivo em tempo real (Card 2.3)
+  private static obterPresencaCallback?: (sessionToken: string) => unknown;
+
+  /**
+   * Permite que o WebSocket Gateway registre um listener para notificações reativas.
+   */
+  static registrarListenerPareamento(
+    callback: (sessionToken: string, dadosPareamento: PareamentoRespostaDTO) => void
+  ): void {
+    SessaoController.onDispositivoPareadoCallback = callback;
+  }
+
+  /**
+   * Permite que o WebSocket Gateway forneça dados de presença em tempo real (Card 2.3).
+   */
+  static registrarCallbackPresenca(
+    callback: (sessionToken: string) => unknown
+  ): void {
+    SessaoController.obterPresencaCallback = callback;
+  }
+
   /**
    * Inicia uma nova sessão clínica ou em modo livre
    * POST /api/sessao/iniciar
@@ -44,7 +68,6 @@ export class SessaoController {
         res.status(400).json({ error: 'Partidas em modo livre não podem ter paciente vinculado (RN01)' });
         return;
       }
-
 
       const dadosSessao: CriarSessaoDTO = {
         terapeuta_id,
@@ -175,35 +198,49 @@ export class SessaoController {
   }
 
   /**
-   * Handshake de pareamento remoto: jogo externo confirma conexão via session_token
-   * POST /api/sessao/parear (Card 563)
+   * Handshake de pareamento remoto: jogo externo confirma conexão via session_token (RF10, Card 563)
+   * POST /api/sessao/parear
    */
   static async parear(req: Request, res: Response): Promise<void> {
     try {
-      const { session_token, jogo_id } = req.body;
+      const { session_token, jogo_id, dispositivo_info }: ParearSessaoDTO = req.body || {};
 
-      if (!session_token) {
-        res.status(400).json({ error: 'O campo session_token é obrigatório' });
-        return;
-      }
-
-      const sessao = await SessaoModel.buscarPorToken(session_token);
-
-      if (!sessao) {
-        res.status(404).json({ error: 'Token de sessão inválido ou não encontrado' });
-        return;
-      }
-
-      // Verifica expiração pelo TTL de 15 minutos (Card 551 — retorno 410 Gone)
-      if (new Date(sessao.expira_em) < new Date()) {
-        res.status(410).json({
-          error: 'Token de pareamento expirado. Solicite um novo código ao terapeuta.',
+      // 1. Validação de presença e tipo do session_token
+      if (!session_token || typeof session_token !== 'string' || session_token.trim().length === 0) {
+        res.status(400).json({
+          error: 'Parâmetro obrigatório ausente ou inválido: session_token',
+          detalhes: 'Informe o código PIN de pareamento exibido no painel do terapeuta.',
         });
         return;
       }
 
-      // Verificação opcional de consistência de jogo:
-      // se o launcher informar o próprio jogo_id, garante que é o mesmo selecionado pelo terapeuta
+      // 2. Busca a sessão correspondente ao token
+      const sessao = await SessaoModel.buscarPorToken(session_token);
+
+      if (!sessao) {
+        res.status(404).json({
+          error: 'Sessão não encontrada para o token informado',
+          detalhes: 'Verifique se o PIN foi digitado corretamente ou solicite um novo código.',
+        });
+        return;
+      }
+
+      // 3. Validação de expiração pelo TTL de 15 minutos (Card 551 — retorno 410 Gone)
+      if (sessao.expira_em) {
+        const agora = Date.now();
+        const dataExpiracao = new Date(sessao.expira_em).getTime();
+
+        if (agora > dataExpiracao) {
+          res.status(410).json({
+            error: 'Token de pareamento expirado. Solicite um novo código ao terapeuta.',
+            detalhes: 'O tempo limite de 15 minutos para pareamento foi ultrapassado. Solicite ao terapeuta a emissão de um novo código.',
+            expirado_em: sessao.expira_em,
+          });
+          return;
+        }
+      }
+
+      // 4. Verificação de consistência de jogo (se launcher informar jogo_id)
       if (jogo_id && jogo_id !== sessao.jogo_id) {
         res.status(409).json({
           error: 'O jogo informado não corresponde ao jogo selecionado pelo terapeuta para esta sessão.',
@@ -211,7 +248,31 @@ export class SessaoController {
         return;
       }
 
-      // Apenas sessões em 'aguardando_pareamento' podem transicionar para 'conectado'
+      // 5. Validação da máquina de estados:
+      if (sessao.status_sessao === STATUS_SESSAO.EM_ANDAMENTO) {
+        res.status(409).json({
+          error: 'Sessão já pareada ou em andamento',
+          detalhes: 'Esta sessão já foi iniciada por outro dispositivo.',
+        });
+        return;
+      }
+
+      if (sessao.status_sessao === STATUS_SESSAO.FINALIZADA) {
+        res.status(410).json({
+          error: 'Sessão já finalizada',
+          detalhes: 'Esta intervenção clínica já foi encerrada.',
+        });
+        return;
+      }
+
+      if (sessao.status_sessao === STATUS_SESSAO.CANCELADA) {
+        res.status(410).json({
+          error: 'Sessão cancelada',
+          detalhes: 'Esta sessão foi cancelada previamente no painel do terapeuta.',
+        });
+        return;
+      }
+
       if (sessao.status_sessao !== STATUS_SESSAO.AGUARDANDO_PAREAMENTO) {
         res.status(400).json({
           error: `Pareamento inválido: a sessão está no status '${sessao.status_sessao}'.`,
@@ -219,27 +280,98 @@ export class SessaoController {
         return;
       }
 
-      // Transição atômica: aguardando_pareamento → conectado
-      const sessaoPareada = await SessaoModel.atualizarStatus(sessao.id, STATUS_SESSAO.CONECTADO);
+      // 6. Efetivação do pareamento
+      const sessaoAtualizada = await SessaoModel.parearDispositivo(sessao.id, dispositivo_info);
 
-      if (!sessaoPareada) {
+      if (!sessaoAtualizada) {
         res.status(500).json({ error: 'Erro ao registrar pareamento no banco de dados' });
         return;
       }
 
-      // Retorna os parâmetros essenciais para o jogo externo
+      const porta = process.env.PORT || 3000;
+      const wsUrl = process.env.WS_URL || `ws://localhost:${porta}/sessao`;
+
+      const respostaPayload: PareamentoRespostaDTO = {
+        sessao_id: sessaoAtualizada.id,
+        session_token: sessaoAtualizada.session_token,
+        status_sessao: sessaoAtualizada.status_sessao,
+        modo_sessao: sessaoAtualizada.modo_sessao,
+        jogo: {
+          id: sessaoAtualizada.jogo?.id || sessaoAtualizada.jogo_id,
+          nome: sessaoAtualizada.jogo?.nome || 'Jogo Terapêutico',
+          versao: sessaoAtualizada.jogo?.versao || '1.0.0',
+        },
+        jogo_id: sessaoAtualizada.jogo_id,
+        paciente_id: sessaoAtualizada.paciente_id,
+        contexto_dda: sessaoAtualizada.contexto_dda_json || {},
+        websocket: {
+          url: wsUrl,
+          canal: `session_${sessaoAtualizada.session_token}`,
+        },
+        dispositivo_info: sessaoAtualizada.dispositivo_info || null,
+        pareado_em: sessaoAtualizada.data_hora_inicio,
+      };
+
+      // Dispara listener reativo WebSocket (Card 2.2)
+      if (SessaoController.onDispositivoPareadoCallback) {
+        try {
+          SessaoController.onDispositivoPareadoCallback(sessaoAtualizada.session_token, respostaPayload);
+        } catch (wsError) {
+          console.error('[SessaoController] Falha ao disparar evento WebSocket:', wsError);
+        }
+      }
+
       res.status(200).json({
+        message: 'Dispositivo pareado com sucesso',
         data: {
-          session_id: sessaoPareada.id,
-          session_token: sessaoPareada.session_token,
-          status_sessao: sessaoPareada.status_sessao,
-          jogo_id: sessaoPareada.jogo_id,
-          paciente_id: sessaoPareada.paciente_id,
-          contexto_dda_json: sessaoPareada.contexto_dda_json,
+          ...respostaPayload,
+          session_id: sessaoAtualizada.id,
+          contexto_dda_json: sessaoAtualizada.contexto_dda_json,
         },
       });
     } catch (error) {
+      console.error('[SessaoController] Erro no handshake de pareamento:', error);
       res.status(500).json({ error: 'Erro interno ao realizar pareamento' });
+    }
+  }
+
+  /**
+   * Consulta o status atual de pareamento da sessão (RF10, Card 2.3)
+   * GET /api/sessao/:token/status
+   */
+  static async consultarStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const token = String(req.params.token || '');
+      if (!token) {
+        res.status(400).json({ error: 'Token não fornecido' });
+        return;
+      }
+
+      const sessao = await SessaoModel.buscarPorToken(token);
+      if (!sessao) {
+        res.status(404).json({ error: 'Sessão não encontrada' });
+        return;
+      }
+
+      const presenca = SessaoController.obterPresencaCallback
+        ? SessaoController.obterPresencaCallback(sessao.session_token)
+        : null;
+
+      res.status(200).json({
+        data: {
+          id: sessao.id,
+          session_token: sessao.session_token,
+          status_sessao: sessao.status_sessao,
+          modo_sessao: sessao.modo_sessao,
+          dispositivo_info: sessao.dispositivo_info || null,
+          presenca_dispositivo: presenca || null,
+          expira_em: sessao.expira_em,
+          data_hora_inicio: sessao.data_hora_inicio,
+        },
+      });
+    } catch (error) {
+      console.error('[SessaoController] Erro ao consultar status da sessão:', error);
+      res.status(500).json({ error: 'Erro ao consultar status da sessão' });
     }
   }
 
@@ -292,7 +424,7 @@ export class SessaoController {
         return;
       }
 
-      const sessaoAtualizada = await SessaoModel.atualizarStatus(id, status);
+      const sessaoAtualizada = await SessaoModel.atualizarStatus(id, status as StatusSessao);
 
       if (!sessaoAtualizada) {
         res.status(404).json({ error: 'Sessão não encontrada para atualização de status' });

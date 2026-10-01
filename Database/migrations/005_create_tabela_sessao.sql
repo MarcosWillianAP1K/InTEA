@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.sessao (
     session_token VARCHAR(20) UNIQUE NOT NULL, -- Código de pareamento (Ex: PIN 849-291)
     modo_sessao VARCHAR(30) DEFAULT 'sessao_clinica' NOT NULL, -- 'sessao_clinica' ou 'modo_livre'
     contexto_dda_json JSONB DEFAULT '{}'::jsonb, -- Contrato 2: Parâmetros pré-sessão para a IA (RN03)
+    dispositivo_info JSONB DEFAULT '{}'::jsonb, -- Metadados de hardware do dispositivo pareado (RF10)
     status_sessao VARCHAR(30) DEFAULT 'aguardando_pareamento' NOT NULL, -- Máquina de estados da sessão
     data_hora_inicio TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
     expira_em TIMESTAMPTZ DEFAULT (TIMEZONE('utc', NOW()) + INTERVAL '15 minutes') NOT NULL, -- TTL de 15 minutos (Card 530/556)
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.sessao (
 -- 2. ALTER TABLE Idempotente (Garante campos caso a tabela já existisse no banco)
 -- ------------------------------------------------------------------------------
 ALTER TABLE public.sessao
+    ADD COLUMN IF NOT EXISTS dispositivo_info JSONB DEFAULT '{}'::jsonb,
     ADD COLUMN IF NOT EXISTS expira_em TIMESTAMPTZ DEFAULT (TIMEZONE('utc', NOW()) + INTERVAL '15 minutes'),
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW());
 
@@ -80,6 +82,7 @@ CREATE INDEX IF NOT EXISTS idx_sessao_jogo ON public.sessao(jogo_id);
 CREATE INDEX IF NOT EXISTS idx_sessao_token ON public.sessao(session_token);
 CREATE INDEX IF NOT EXISTS idx_sessao_status ON public.sessao(status_sessao);
 CREATE INDEX IF NOT EXISTS idx_sessao_expira_em ON public.sessao(expira_em);
+CREATE INDEX IF NOT EXISTS idx_sessao_status_expira ON public.sessao(status_sessao, expira_em);
 
 -- ------------------------------------------------------------------------------
 -- 4. Trigger para atualização automática de updated_at

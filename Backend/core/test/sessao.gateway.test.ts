@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import http from 'node:http';
 import express, { Express } from 'express';
 import { Server as SocketIOServer } from 'socket.io';
@@ -45,8 +45,48 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao) & Heartbeat/Que
   });
 
   beforeEach(() => {
-    SessaoModel.resetarMock();
     SessaoGateway.obterInstancia().resetarPresencas();
+
+    vi.spyOn(SessaoModel, 'buscarPorToken').mockImplementation(async (token: string) => {
+      const clean = token.trim().toUpperCase();
+      if (clean === '849-291' || clean === '849291') {
+        return {
+          id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
+          terapeuta_id: '11111111-1111-1111-1111-111111111111',
+          paciente_id: '22222222-2222-2222-2222-222222222222',
+          jogo_id: '33333333-3333-3333-3333-333333333333',
+          session_token: '849-291',
+          modo_sessao: 'sessao_clinica',
+          contexto_dda_json: {},
+          status_sessao: 'aguardando_pareamento',
+          expira_em: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          data_hora_inicio: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          jogo: { id: '33333333-3333-3333-3333-333333333333', nome: 'Jogo Teste', versao: '1.0.0' }
+        } as any;
+      }
+      return null;
+    });
+
+    vi.spyOn(SessaoModel, 'parearDispositivo').mockImplementation(async (id: string, dispositivoInfo?: any) => {
+      return {
+        id,
+        terapeuta_id: '11111111-1111-1111-1111-111111111111',
+        paciente_id: '22222222-2222-2222-2222-222222222222',
+        jogo_id: '33333333-3333-3333-3333-333333333333',
+        session_token: '849-291',
+        modo_sessao: 'sessao_clinica',
+        contexto_dda_json: {},
+        status_sessao: 'em_andamento',
+        dispositivo_info: dispositivoInfo || null,
+        expira_em: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        data_hora_inicio: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        jogo: { id: '33333333-3333-3333-3333-333333333333', nome: 'Jogo Teste', versao: '1.0.0' }
+      } as any;
+    });
   });
 
   // Helper para criar conexões cliente Socket.IO de teste
