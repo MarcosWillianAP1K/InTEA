@@ -121,4 +121,3 @@ runSeed().catch(err => {
   console.error('[Seed] Falha inesperada no seed:', err);
   process.exit(1);
 });
-

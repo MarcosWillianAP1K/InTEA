@@ -251,4 +251,3 @@ jogosRoutes.get('/:id/manifesto', JogoController.obterManifesto);
  *         description: Erro interno ao processar validação de telemetria
  */
 jogosRoutes.post('/:id/validar-telemetria', JogoController.validarTelemetria);
-
