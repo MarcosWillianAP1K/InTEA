@@ -306,10 +306,6 @@
 
 ---
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 6296a4521e302191b50e8b217744faf91969530f
 ### Front: Integração da API de Jogos (Tipo: Validação)
 
 * **Tipo:** Validação
@@ -885,8 +881,9 @@
   * [ ] Rota protegida por guard de rota que restringe acesso apenas a usuários SuperAdmin.
   * [ ] Tabela com busca, paginação e filtros de eventos de auditoria.
   * [ ] Botão de exportação dos logs em formato estruturado (CSV/JSON) para relatórios institucionais.
-<<<<<<< HEAD
-=======
+
+---
+
 ### Front: Integração de Jogos e Testes com Vitest (Tipo: Validação)
 
 * **Tipo:** Validação
