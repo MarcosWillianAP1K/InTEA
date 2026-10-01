@@ -43,6 +43,17 @@ desktop.ini
 # Temporários
 *.tmp
 *.temp
+<<<<<<< HEAD
+<<<<<<< HEAD
 # Documentação interna / Projetos
 BRAIN_PROJECT/
 AGENTS.MD
+=======
+
+/BRAIN_PROJECT
+>>>>>>> 0489ecf (ignore)
+=======
+
+# Documentação interna / Projetos
+/BRAIN_PROJECT/
+>>>>>>> 760fcf0746c8d20489b4a3ad672bf82167b1c031

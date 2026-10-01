@@ -3,7 +3,7 @@
 // ==============================================================================
 
 import { supabase } from "../../../core/supabase/supabase.client.js";
-import { SessaoTokenService } from "../services/sessao-token.service.js";
+import { CriarSessaoDTO, DispositivoInfoDTO } from "../dtos/sessao.dto.js";
 
 export const MODO_SESSAO = {
   SESSAO_CLINICA: 'sessao_clinica',
@@ -38,21 +38,18 @@ export interface Sessao {
   session_token: string;
   modo_sessao: ModoSessao;
   contexto_dda_json: ContextoDDA;
+  dispositivo_info?: DispositivoInfoDTO | null;
   status_sessao: StatusSessao;
   data_hora_inicio: string;
   expira_em: string;
   data_hora_fim: string | null;
   created_at: string;
   updated_at: string;
-}
-
-export interface CriarSessaoDTO {
-  codigo_pareamento: string;
-  terapeuta_id: string;
-  jogo_id: string;
-  paciente_id?: string | null;
-  modo_sessao?: ModoSessao;
-  contexto_dda_json?: ContextoDDA;
+  jogo?: {
+    id: string;
+    nome: string;
+    versao: string;
+  };
 }
 
 export class SessaoModel {
@@ -113,20 +110,68 @@ export class SessaoModel {
   }
 
   /**
-   * Busca sessão ativa pelo código/token de pareamento único
+   * Busca sessão ativa pelo código/token de pareamento único (suporta formatos com ou sem hífen)
    */
   static async buscarPorToken(token: string): Promise<Sessao | null> {
     try {
+      const tokenLimpo = token.trim().toUpperCase();
+
+      // 1. Busca direta pelo token fornecido
       const { data, error } = await supabase
         .from('sessao')
         .select('*')
-        .eq('session_token', token)
+        .eq('session_token', tokenLimpo)
+        .maybeSingle();
+
+      if (!error && data) return data as Sessao;
+
+      // 2. Se não encontrou, tenta normalizar inserindo o hífen correspondente
+      const semHifen = tokenLimpo.replace(/[^A-Z0-9]/g, '');
+      let tokenFormatado: string | null = null;
+
+      if (semHifen.length === 6 && !tokenLimpo.includes('-')) {
+        tokenFormatado = `${semHifen.slice(0, 3)}-${semHifen.slice(3)}`;
+      } else if (semHifen.length === 8 && !tokenLimpo.includes('-')) {
+        tokenFormatado = `${semHifen.slice(0, 4)}-${semHifen.slice(4)}`;
+      }
+
+      if (tokenFormatado) {
+        const { data: dataFormatada, error: errFormatada } = await supabase
+          .from('sessao')
+          .select('*')
+          .eq('session_token', tokenFormatado)
+          .maybeSingle();
+
+        if (!errFormatada && dataFormatada) return dataFormatada as Sessao;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Erro ao buscar sessão por token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Efetiva o pareamento remoto, registrando os metadados do dispositivo
+   * e alterando o status da sessão para 'em_andamento'.
+   */
+  static async parearDispositivo(id: string, dispositivoInfo?: DispositivoInfoDTO): Promise<Sessao | null> {
+    try {
+      const { data, error } = await supabase
+        .from('sessao')
+        .update({
+          status_sessao: STATUS_SESSAO.EM_ANDAMENTO,
+          dispositivo_info: dispositivoInfo || {},
+        })
+        .eq('id', id)
+        .select('*')
         .single();
 
       if (error || !data) return null;
       return data as Sessao;
     } catch (error) {
-      console.error('Erro ao buscar sessão por token:', error);
+      console.error('Erro ao parear dispositivo no Supabase:', error);
       return null;
     }
   }
@@ -144,7 +189,6 @@ export class SessaoModel {
         .single();
 
       if (error || !data) return null;
-      
       return data as Sessao;
     } catch (error) {
       console.error('Erro ao atualizar status da sessão:', error);
