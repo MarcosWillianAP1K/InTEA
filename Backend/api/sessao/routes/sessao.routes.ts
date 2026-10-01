@@ -5,8 +5,9 @@
 import { Router } from 'express';
 import { SessaoController } from '../controllers/sessao.controller.js';
 
-// Middleware de autenticação JWT via Supabase Auth
+// Middlewares de autenticação JWT e validação de vínculo clínico (RN04)
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
+import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 
 export const sessaoRoutes = Router();
 
@@ -146,10 +147,12 @@ sessaoRoutes.get('/gerarCodigoPareamento', authMiddleware, SessaoController.gera
  *                   example: "O paciente_id é obrigatório para sessões clínicas (RN01)"
  *       401:
  *         description: Token JWT ausente ou inválido
+ *       403:
+ *         description: Acesso negado — terapeuta sem vínculo ativo com o paciente (RN04) ou de clínica divergente
  *       500:
  *         description: Erro interno ao criar sessão
  */
-sessaoRoutes.post('/iniciar', authMiddleware, SessaoController.iniciar);
+sessaoRoutes.post('/iniciar', authMiddleware, verificarVisibilidadePaciente, SessaoController.iniciar);
 
 /**
  * @swagger
@@ -255,16 +258,16 @@ sessaoRoutes.post('/parear', SessaoController.parear);
 
 // =============================================================================
 // ROTAS COM PARÂMETROS DINÂMICOS
-// REGRA: /token/:token ANTES de /:id — o Express avalia rotas em ordem de registro.
-// Se /:id vier primeiro, a string "token" seria capturada como valor de :id.
+// REGRA: /buscarPorToken/:token ANTES de /:id — o Express avalia rotas em ordem de registro.
+// Se /:id vier primeiro, a string "buscarPorToken" seria capturada como valor de :id.
 // =============================================================================
 
 /**
  * @swagger
- * /api/sessao/token/{token}:
+ * /api/sessao/buscarPorToken/{token}:
  *   get:
- *     summary: Busca uma sessão pelo código/token de pareamento
- *     description: Utilizado pelo jogo externo para consultar os dados de uma sessão a partir do código de pareamento digitado. Retorna a sessão completa incluindo status e configurações.
+ *     summary: Busca uma sessão pelo código/token de pareamento (PIN)
+ *     description: Consulta os dados de uma sessão ativa a partir do código alfanumérico de pareamento digitado. Retorna a sessão completa incluindo status e configurações.
  *     tags: [Sessão]
  *     security:
  *       - bearerAuth: []
@@ -324,7 +327,7 @@ sessaoRoutes.post('/parear', SessaoController.parear);
  *       500:
  *         description: Erro interno ao buscar sessão por token
  */
-sessaoRoutes.get('/token/:token', authMiddleware, SessaoController.buscarPorToken);
+sessaoRoutes.get('/buscarPorToken/:token', authMiddleware, SessaoController.buscarPorToken);
 
 /**
  * @swagger

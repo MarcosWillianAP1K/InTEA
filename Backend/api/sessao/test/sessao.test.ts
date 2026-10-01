@@ -42,6 +42,7 @@ describe('Feature Sessão - Estrutura e Serviços Base', () => {
     expect(typeof SessaoModel.buscarPorId).toBe('function');
     expect(typeof SessaoModel.buscarPorToken).toBe('function');
     expect(typeof SessaoModel.atualizarStatus).toBe('function');
+    expect(typeof SessaoModel.finalizarSessao).toBe('function');
   });
 
   it('deve expor métodos cancelar e parear no SessaoController', async () => {
@@ -163,6 +164,123 @@ describe('SessaoController.iniciar', () => {
 
     expect(getStatus()).toBe(400);
     expect((getJson() as { error: string }).error).toContain('RN01');
+  });
+
+  it('deve permitir iniciar sessão com dados válidos', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalCriar = SessaoModel.criar;
+
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.criar = async () => ({
+      id: 'sessao-criada-123',
+      session_token: '4M5S-8U7B',
+      status_sessao: 'aguardando_pareamento',
+      modo_sessao: 'sessao_clinica',
+      paciente_id: 'paciente-123',
+      expira_em: new Date().toISOString(),
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      terapeuta_id: 'terapeuta-valido',
+      jogo_id: 'jogo-1',
+      codigo_pareamento: '4M5S-8U7B',
+      modo_sessao: 'sessao_clinica',
+      paciente_id: 'paciente-123',
+    });
+
+    await SessaoController.iniciar(mockReq, mockRes);
+    SessaoModel.criar = originalCriar;
+
+    expect(getStatus()).toBe(201);
+    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('sessao-criada-123');
+  });
+
+  it('verificarVisibilidadePaciente deve permitir modo_livre sem paciente_id (RN01)', async () => {
+    const { verificarVisibilidadePaciente } = await import('../../../core/middlewares/visibilidade.middleware.js');
+    let nextChamado = false;
+    const req = { body: { modo_sessao: 'modo_livre' } } as any;
+    const res = {} as any;
+    const next = () => { nextChamado = true; };
+
+    await verificarVisibilidadePaciente(req, res, next);
+    expect(nextChamado).toBe(true);
+  });
+});
+
+// =============================================================================
+// finalizar — encerramento clínico e persistência de data_hora_fim
+// =============================================================================
+describe('SessaoController.finalizar', () => {
+  it('deve finalizar sessão e retornar data_hora_fim preenchido', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalFinalizar = SessaoModel.finalizarSessao;
+
+    const agora = new Date().toISOString();
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.finalizarSessao = async (id: string) => ({
+      id,
+      status_sessao: 'finalizada',
+      data_hora_fim: agora,
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'sessao-1' });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.finalizarSessao = originalFinalizar;
+
+    expect(getStatus()).toBe(200);
+    expect((getJson() as { data: { data_hora_fim: string } }).data.data_hora_fim).toBe(agora);
+  });
+
+  it('deve retornar 404 se a sessão não for encontrada para finalização', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalFinalizar = SessaoModel.finalizarSessao;
+    SessaoModel.finalizarSessao = async () => null;
+
+    const { mockReq, mockRes, getStatus } = criarMocks({}, { id: 'id-inexistente' });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.finalizarSessao = originalFinalizar;
+
+    expect(getStatus()).toBe(404);
+  });
+});
+
+// =============================================================================
+// buscarPorToken — consulta de sessão por PIN de pareamento
+// =============================================================================
+describe('SessaoController.buscarPorToken', () => {
+  it('deve retornar a sessão quando encontrada por token', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorToken;
+
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.buscarPorToken = async (token: string) => ({
+      id: 'sessao-token-1',
+      session_token: token,
+      status_sessao: 'aguardando_pareamento',
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { token: '4M5S-8U7B' });
+    await SessaoController.buscarPorToken(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(200);
+    expect((getJson() as { data: { session_token: string } }).data.session_token).toBe('4M5S-8U7B');
+  });
+
+  it('deve retornar 404 quando o token não for encontrado', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorToken;
+    SessaoModel.buscarPorToken = async () => null;
+
+    const { mockReq, mockRes, getStatus } = criarMocks({}, { token: 'INEXISTENTE' });
+    await SessaoController.buscarPorToken(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(404);
   });
 });
 

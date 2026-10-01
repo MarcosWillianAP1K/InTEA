@@ -151,4 +151,29 @@ export class SessaoModel {
       return null;
     }
   }
+
+  /**
+   * Finaliza formalmente uma sessão clínica, atualizando o status para 'finalizada'
+   * e gravando o timestamp exato de encerramento em data_hora_fim.
+   */
+  static async finalizarSessao(id: string): Promise<Sessao | null> {
+    try {
+      const dataHoraFim = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('sessao')
+        .update({
+          status_sessao: STATUS_SESSAO.FINALIZADA,
+          data_hora_fim: dataHoraFim,
+        })
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error || !data) return null;
+      return data as Sessao;
+    } catch (error) {
+      console.error('Erro ao finalizar sessão no Supabase:', error);
+      return null;
+    }
+  }
 }

@@ -45,6 +45,7 @@ export class SessaoController {
         return;
       }
 
+
       const dadosSessao: CriarSessaoDTO = {
         terapeuta_id,
         jogo_id,
@@ -96,8 +97,8 @@ export class SessaoController {
   }
 
   /**
-   * Busca sessão pelo token de pareamento (utilizado pelo jogo externo)
-   * GET /api/sessao/token/:token
+   * Busca sessão pelo token de pareamento (utilizado pelo jogo externo ou painel)
+   * GET /api/sessao/buscarPorToken/:token
    */
   static async buscarPorToken(req: Request, res: Response): Promise<void> {
     try {
@@ -120,7 +121,7 @@ export class SessaoController {
   static async finalizar(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
-      const sessaoAtualizada = await SessaoModel.atualizarStatus(id, STATUS_SESSAO.FINALIZADA);
+      const sessaoAtualizada = await SessaoModel.finalizarSessao(id);
       if (!sessaoAtualizada) {
         res.status(404).json({ error: 'Sessão não encontrada para finalização' });
         return;
@@ -193,7 +194,7 @@ export class SessaoController {
         return;
       }
 
-      // Verifica expiração pelo TTL de 15 minutos (retorno 410 Gone)
+      // Verifica expiração pelo TTL de 15 minutos (Card 551 — retorno 410 Gone)
       if (new Date(sessao.expira_em) < new Date()) {
         res.status(410).json({
           error: 'Token de pareamento expirado. Solicite um novo código ao terapeuta.',
