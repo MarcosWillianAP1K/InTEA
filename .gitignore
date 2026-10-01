@@ -37,6 +37,8 @@ desktop.ini
 *.swo
 *.suo
 
+docs/figma
+
 # Docker
 .docker/
 
@@ -46,5 +48,4 @@ desktop.ini
 
 # Documentação interna / Projetos
 BRAIN_PROJECT/
-
 AGENTS.md

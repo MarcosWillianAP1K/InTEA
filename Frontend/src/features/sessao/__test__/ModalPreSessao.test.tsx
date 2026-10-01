@@ -34,7 +34,7 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
     expect(container.firstChild).toBeNull();
   });
 
-  it("deve renderizar a etapa inicial de configuração com título e ID do jogo", () => {
+  it("deve renderizar a tela de configuração pré-sessão com Contexto DDA e Pareamento Remoto", () => {
     act(() => {
       useSessionStore.getState().abrirModalPreSessao({
         id: "jogo-calmo-1",
@@ -44,15 +44,16 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
 
     render(<ModalPreSessao />);
 
-    expect(screen.getByText("Configuração Pré-Sessão Clínica")).toBeDefined();
-    expect(screen.getByTestId("sessao-jogo-titulo").textContent).toBe("Formas Calmas");
-    expect(screen.getByTestId("sessao-jogo-id").textContent).toContain("jogo-calmo-1");
-    expect(screen.getByText("Paciente Atendido")).toBeDefined();
-    expect(screen.getByText("Duração Estimada")).toBeDefined();
-    expect(screen.getByText("Gatilhos a Evitar no DDA (RN03)")).toBeDefined();
+    expect(screen.getByText("Configuração Pré-Sessão")).toBeDefined();
+    expect(screen.getByText("Ajuste os parâmetros DDA antes de iniciar a intervenção.")).toBeDefined();
+    expect(screen.getByText("Contexto DDA")).toBeDefined();
+    expect(screen.getByText("Nível de Estresse Inicial")).toBeDefined();
+    expect(screen.getByText("Gatilhos a Evitar")).toBeDefined();
+    expect(screen.getByText("Pareamento Remoto")).toBeDefined();
+    expect(screen.getByText("Código de Pareamento")).toBeDefined();
   });
 
-  it("deve manter o botão de avançar desabilitado até que um paciente seja selecionado", () => {
+  it("deve permitir alterar o nível de estresse e alternar gatilhos a evitar", () => {
     act(() => {
       useSessionStore.getState().abrirModalPreSessao({
         id: "jogo-1",
@@ -62,76 +63,19 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
 
     render(<ModalPreSessao />);
 
-    const botaoAvancar = screen.getByRole("button", {
-      name: /Gerar Código de Pareamento/i,
-    });
-    expect((botaoAvancar as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId("valor-estresse").textContent).toBe("1");
 
-    // Seleciona um paciente no dropdown
-    const select = screen.getByTestId("select-paciente");
-    fireEvent.change(select, { target: { value: "pac-001" } }); // ID do primeiro paciente do mock
+    // Alterna gatilho "Pressão de Tempo"
+    const gatilhoPressao = screen.getByRole("button", { name: /Pressão de Tempo/i });
+    fireEvent.click(gatilhoPressao);
 
-    // Agora o botão deve estar habilitado
-    expect((botaoAvancar as HTMLButtonElement).disabled).toBe(false);
-  });
+    expect(useSessionStore.getState().config?.gatilhosEvitar).toContain("Pressão de Tempo");
 
-  it("deve permitir configurar a duração planejada e alternar gatilhos sensoriais (RN03)", () => {
-    act(() => {
-      useSessionStore.getState().abrirModalPreSessao({
-        id: "jogo-1",
-        titulo: "Aventura das Cores",
-      });
-    });
+    // Desativa gatilho "Som Alto"
+    const gatilhoSom = screen.getByRole("button", { name: /Som Alto/i });
+    fireEvent.click(gatilhoSom);
 
-    render(<ModalPreSessao />);
-
-    // Seleciona duração de 30 min
-    const botao30min = screen.getByRole("button", { name: "30 min" });
-    fireEvent.click(botao30min);
-
-    expect(useSessionStore.getState().config?.duracaoPlanejadaMinutos).toBe(30);
-
-    // Alterna gatilho "Luzes estroboscópicas"
-    const gatilhoLuzes = screen.getByRole("button", { name: /\+ Luzes estroboscópicas/i });
-    fireEvent.click(gatilhoLuzes);
-
-    expect(
-      useSessionStore.getState().config?.gatilhosEvitar,
-    ).toContain("Luzes estroboscópicas");
-  });
-
-  it("deve avançar para a tela de pareamento remoto com PIN gerado", () => {
-    act(() => {
-      useSessionStore.getState().abrirModalPreSessao({
-        id: "jogo-1",
-        titulo: "Aventura das Cores",
-      });
-    });
-
-    render(<ModalPreSessao />);
-
-    // Seleciona paciente
-    const select = screen.getByTestId("select-paciente");
-    fireEvent.change(select, { target: { value: "pac-001" } });
-
-    // Clica em Gerar Código de Pareamento
-    const botaoAvancar = screen.getByRole("button", {
-      name: /Gerar Código de Pareamento/i,
-    });
-    fireEvent.click(botaoAvancar);
-
-    // Valida transição de estado da store
-    const state = useSessionStore.getState();
-    expect(state.status).toBe("aguardando_pareamento");
-    expect(state.pareamento?.sessionToken).toMatch(/^TEA-[A-Z0-9]{4}$/);
-
-    // Valida elementos visuais da tela de Pareamento
-    expect(screen.getByText("Pareamento Remoto da Sessão")).toBeDefined();
-    expect(screen.getByTestId("pin-display")).toBeDefined();
-    expect(screen.getByText("Aguardando Conexão do Tablet/VR...")).toBeDefined();
-    expect(toast.info).toHaveBeenCalledWith(
-      expect.stringContaining("PIN de pareamento gerado:"),
-    );
+    expect(useSessionStore.getState().config?.gatilhosEvitar).not.toContain("Som Alto");
   });
 
   it("deve permitir copiar o PIN de pareamento para o clipboard com feedback", async () => {
@@ -141,21 +85,21 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
         titulo: "Aventura das Cores",
       });
       useSessionStore.getState().iniciarPareamento({
-        sessionToken: "TEA-9999",
+        sessionToken: "849 - 291",
         tempoValidadeSegundos: 900,
       });
     });
 
     render(<ModalPreSessao />);
 
-    expect(screen.getByText("TEA-9999")).toBeDefined();
+    expect(screen.getByText("849 - 291")).toBeDefined();
 
     const botaoCopiar = screen.getByTitle("Copiar Código");
     await act(async () => {
       fireEvent.click(botaoCopiar);
     });
 
-    expect(mockWriteText).toHaveBeenCalledWith("TEA-9999");
+    expect(mockWriteText).toHaveBeenCalledWith("849 - 291");
     expect(toast.success).toHaveBeenCalledWith("Código de pareamento copiado!");
   });
 
@@ -166,7 +110,7 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
         titulo: "Aventura das Cores",
       });
       useSessionStore.getState().iniciarPareamento({
-        sessionToken: "TEA-4321",
+        sessionToken: "849 - 291",
         tempoValidadeSegundos: 900,
       });
     });
@@ -174,7 +118,7 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
     render(<ModalPreSessao />);
 
     const botaoIniciar = screen.getByRole("button", {
-      name: /Iniciar Intervenção Clínica/i,
+      name: /Confirmar e Iniciar Intervenção/i,
     });
     expect((botaoIniciar as HTMLButtonElement).disabled).toBe(true);
 
@@ -193,10 +137,8 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
     // O status muda para pareado
     expect(useSessionStore.getState().status).toBe("pareado");
 
-    // UI atualiza exibindo detalhes do tablet
-    expect(screen.getByText("Dispositivo Pareado com Sucesso!")).toBeDefined();
-    expect(screen.getByText(/Galaxy Tab S9 FE\+/i)).toBeDefined();
-    expect(screen.getByText(/88%/i)).toBeDefined();
+    // UI atualiza exibindo sucesso
+    expect(screen.getByText("Dispositivo Conectado com Sucesso!")).toBeDefined();
 
     // Botão é liberado
     expect((botaoIniciar as HTMLButtonElement).disabled).toBe(false);
@@ -217,7 +159,7 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
         titulo: "Aventura das Cores",
       });
       useSessionStore.getState().iniciarPareamento({
-        sessionToken: "TEA-1234",
+        sessionToken: "849 - 291",
         tempoValidadeSegundos: 900,
       });
     });

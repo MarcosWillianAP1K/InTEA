@@ -27,6 +27,7 @@ export interface ConfiguracaoSessao {
   pacienteNome: string;
   objetivoClinico?: string;
   gatilhosEvitar?: string[];
+  nivelEstresseInicial?: number;
   observacoesIniciais?: string;
   duracaoPlanejadaMinutos?: number;
 }
