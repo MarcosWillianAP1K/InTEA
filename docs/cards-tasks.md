@@ -15,6 +15,7 @@
 * [5. Sprint 8 — Pareamento Remoto e Testes Prévios](#5-sprint-8--pareamento-remoto-e-testes-prévios)
 * [6. Cards Extras — Adiantamento (Autenticação, Segurança e Auditoria)](#6-cards-extras--adiantamento-autenticação-segurança-e-auditoria)
 
+
 ---
 
 ## 1. Banco de Dados e Back-end
@@ -217,6 +218,7 @@
 * **Critérios de Aceite:**
   * [ ] Tabela com ordenação e paginação.
   * [ ] Campo de busca com filtro em tempo real.
+
 
 ---
 
@@ -879,3 +881,159 @@
   * [ ] Rota protegida por guard de rota que restringe acesso apenas a usuários SuperAdmin.
   * [ ] Tabela com busca, paginação e filtros de eventos de auditoria.
   * [ ] Botão de exportação dos logs em formato estruturado (CSV/JSON) para relatórios institucionais.
+
+---
+
+### Front: Integração de Jogos e Testes com Vitest (Tipo: Validação)
+
+* **Tipo:** Validação
+* **Requisitos:** RNF02, Qualidade
+* **Referência Documentação:** Contrato manifestoGame.json, Pipeline CI
+* **Descrição:** Integrar a biblioteca de jogos com a API, criar testes automatizados de componentes com Vitest e garantir execução limpa no GitHub Actions.
+* **Critérios de Aceite:**
+  * [ ] Testes de componentes executando com sucesso no `npm test`.
+  * [ ] Pipeline de CI validando tipagem e build sem falhas.
+
+---
+
+## 3. Documentação
+
+---
+
+### Docs: Seção 7.7 do Relatório Oficial (Tipo: Docs)
+
+* **Tipo:** Docs
+* **Requisitos:** Gestão de Projeto
+* **Referência Documentação:** Seção 7.7 (Sprint 7)
+* **Descrição:** Escrever o texto oficial da Sprint 7 para o relatório acadêmico/técnico do InTEA em LaTeX, documentando objetivos, decisões técnicas, entregas e retrospectiva.
+* **Critérios de Aceite:**
+  * [ ] Texto redigido nas normas do documento do projeto.
+  * [ ] Rastreabilidade clara com os requisitos da sprint.
+
+---
+
+### Docs: Especificação da API OpenAPI e Rotas (Tipo: Docs)
+
+* **Tipo:** Docs
+* **Requisitos:** RNF02
+* **Referência Documentação:** Repositório / Contratos
+* **Descrição:** Documentar detalhadamente todas as rotas de pacientes e jogos, com exemplos de request body, query params, status de resposta e mensagens de erro.
+* **Critérios de Aceite:**
+  * [ ] Exemplos práticos para todas as rotas criadas.
+  * [ ] Códigos de resposta (200, 201, 400, 403, 404, 422) especificados.
+
+---
+
+### Docs: Atualização dos Diagramas ER, Classes e Sequência (Tipo: Docs)
+
+* **Tipo:** Docs
+* **Requisitos:** Não é um requisito formal (Modelagem de Sistema)
+* **Referência Documentação:** Seção 5, Figura 1, Figura 3, Figura 4
+* **Descrição:** Atualizar os diagramas oficiais do projeto para contemplar os novos atributos de paciente, dados clínicos e os fluxos de cadastro e consulta com guard.
+* **Critérios de Aceite:**
+  * [ ] Diagramas atualizados e inseridos no relatório.
+  * [ ] Numeração e referências cruzadas alinhadas com o documento.
+
+---
+
+### Docs: Versionamento do Contrato do Manifesto (Tipo: Docs)
+
+* **Tipo:** Docs
+* **Requisitos:** RNF02
+* **Referência Documentação:** Seção 7.4.2 (Design de Contratos JSON)
+* **Descrição:** Especificar e documentar o JSON Schema oficial do `manifestoGame.json`, detalhando versionamento e formatos de métricas permitidos.
+* **Critérios de Aceite:**
+  * [ ] Schema formal documentado no repositório.
+  * [ ] Exemplos práticos de manifestos incluídos.
+
+---
+
+### Docs: Casos de Teste e Critérios de Aceite Formais (Tipo: Validação)
+
+* **Tipo:** Validação
+* **Requisitos:** Não é um requisito formal (Garantia de Qualidade e Validação Clínica)
+* **Referência Documentação:** Seção de Testes do Relatório
+* **Descrição:** Criar planilha com roteiro de testes manuais para validação dos fluxos de pacientes e catálogo de jogos, mapeando requisitos e resultados esperados.
+* **Critérios de Aceite:**
+  * [ ] Casos de teste estruturados com passos e validações.
+  * [ ] Mapeamento entre cada caso de teste e seu respectivo requisito.
+
+---
+
+## 4. Diretrizes Clínicas da Terapeuta
+
+---
+
+### Front: Humanização de Termos - Substituição de Co-Terapeuta (Tipo: Feature)
+
+* **Tipo:** Feature
+* **Requisitos:** Não é um requisito formal (Diretriz clínica de humanização)
+* **Referência Documentação:** Orientação Terapeuta
+* **Descrição:** Substituir na interface e tooltips o termo clínico "Co-Terapeuta" por nomenclaturas mais neutras e acolhedoras, como "Facilitador Terapêutico" ou "Apoiador", evitando rotulação excessiva.
+* **Critérios de Aceite:**
+  * [ ] Rótulos e textos da interface atualizados sem termos estigmatizantes.
+  * [ ] Permissões de sistema mantidas normalmente por baixo dos panos.
+
+---
+
+### Back/Front: Perfil Família com Limite de Tempo e Modo Livre (Tipo: Feature)
+
+* **Tipo:** Feature
+* **Requisitos:** RF11 (Modo Livre)
+* **Referência Documentação:** Orientação Terapeuta & Marcos, RF11
+* **Descrição:** Criar perfil de acesso para a família que permite acessar a biblioteca de jogos unicamente em Modo Livre (sem DDA e sem prontuário clínico), com controle de limite de tempo de tela.
+* **Critérios de Aceite:**
+  * [ ] Perfil família não tem acesso a prontuários e laudos confidenciais.
+  * [ ] Jogos executam em Modo Livre sem gravar telemetria clínica.
+  * [ ] Temporizador bloqueia o jogo ao atingir o tempo estipulado.
+
+---
+
+### Back: Proteção e Sigilo de Dados Clínicos Sensíveis (Tipo: Validação)
+
+* **Tipo:** Validação
+* **Requisitos:** RNF06 (LGPD), RN04
+* **Referência Documentação:** RNF06, RN04
+* **Descrição:** Garantir blindagem rígida de segurança com Row Level Security (RLS) no banco de dados para proteger dados inseridos pelo terapeuta (laudos, diagnósticos e gatilhos sensoriais).
+* **Critérios de Aceite:**
+  * [ ] Acesso aos dados clínicos bloqueado para perfis não autorizados e familiares.
+  * [ ] Políticas de RLS ativas e testadas no banco de dados.
+
+---
+
+### Back: Validação Ética de Jogos Não Competitivos (Tipo: Validação)
+
+* **Tipo:** Validação
+* **Requisitos:** Não é um requisito formal (Diretriz Clínica de Não-Competitividade)
+* **Referência Documentação:** Orientação Terapeuta
+* **Descrição:** Implementar validação no catálogo e no manifesto para barrar jogos com mecânicas competitivas punitivas ou rankings, assegurando foco exclusivo em cooperação e autorregulação.
+* **Critérios de Aceite:**
+  * [ ] Rejeição de jogos que declarem mecânicas competitivas eliminatórias.
+  * [ ] Catálogo focado em estímulos positivos e adaptativos.
+
+---
+
+### Docs/Back: Suporte a Jogos em Realidade Virtual VR (Tipo: Feature)
+
+* **Tipo:** Feature
+* **Requisitos:** RNF02 (Modularidade por Contrato)
+* **Referência Documentação:** Orientação Terapeuta & Marcos, RNF02
+* **Descrição:** Adequar a arquitetura de contratos do manifesto e o fluxo de pareamento para permitir integração com jogos executados em dispositivos de Realidade Virtual (VR/XR).
+* **Critérios de Aceite:**
+  * [ ] Manifesto suporta especificação de plataforma VR.
+  * [ ] Contrato documentado com exemplo de métricas imersivas.
+
+---
+
+### BD: Jogos de Atividades de Vida Diária AVD (Tipo: Feature)
+
+* **Tipo:** Feature
+* **Requisitos:** RF09, RF17
+* **Referência Documentação:** Orientação Terapeuta & Marcos, RF09
+* **Descrição:** Cadastrar na biblioteca de jogos categorias voltadas a atividades práticas do cotidiano (ex: "Visita ao Dentista", "Ida ao Supermercado / Atacadão"), preparando o indivíduo para situações do mundo real.
+* **Critérios de Aceite:**
+  * [ ] Categoria de simulação de rotinas disponível no catálogo.
+  * [ ] Jogos de exemplo com dados e objetivos clínicos cadastrados.
+>>>>>>> c8144a8 (docs: update sprint-7 with clinical guidelines and tech lead recommendations)
+=======
+>>>>>>> 6296a4521e302191b50e8b217744faf91969530f

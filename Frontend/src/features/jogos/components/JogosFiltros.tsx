@@ -1,46 +1,78 @@
-import { SlidersHorizontal } from "lucide-react";
-import type { FiltrosJogos } from "../types";
+import { Search } from "lucide-react";
+import { Input } from "@/shared/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
+import type { FiltrosJogos, StatusInstalacao } from "../types";
 
 interface JogosFiltrosProps {
   filtros: FiltrosJogos;
+  onFiltroBusca: (busca: string) => void;
   onFiltroObjetivo: (objetivo: string) => void;
+  onFiltroStatus?: (status: StatusInstalacao | "todos") => void;
   objetivosDisponiveis: string[];
 }
 
 export function JogosFiltros({
   filtros,
+  onFiltroBusca,
   onFiltroObjetivo,
+  onFiltroStatus,
   objetivosDisponiveis,
 }: JogosFiltrosProps) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      {/* Título e Subtítulo clínicos conforme o design */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-          Biblioteca de Jogos
-        </h1>
-        <p className="text-sm text-slate-500">
-          Selecione uma atividade para iniciar a sessão clínica.
-        </p>
+    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 w-full">
+      {/* BUSCA À ESQUERDA (igual a Pacientes) */}
+      <div className="relative w-full md:w-80">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar jogo por nome ou objetivo..."
+          value={filtros.busca || ""}
+          onChange={(e) => onFiltroBusca(e.target.value)}
+          className="pl-9 bg-card text-foreground border-border focus-visible:border-[#0b3294] focus-visible:ring-[#0b3294]/30"
+        />
       </div>
 
-      {/* Botão e menu de seleção "Filtrar por..." */}
-      <div className="relative inline-block self-start sm:self-auto">
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 shadow-sm text-xs font-medium text-slate-600 transition hover:border-slate-300">
-          <SlidersHorizontal className="h-3.5 w-3.5 text-slate-500" />
-          <select
-            value={filtros.objetivo ?? "todos"}
-            onChange={(e) => onFiltroObjetivo(e.target.value)}
-            className="bg-transparent outline-none cursor-pointer pr-2 text-xs font-medium text-slate-700"
-          >
-            <option value="todos">Filtrar por...</option>
+      {/* FILTROS À DIREITA (igual a Pacientes) */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        {/* SELECT OBJETIVO TERAPÊUTICO */}
+        <Select
+          value={filtros.objetivo || "todos"}
+          onValueChange={onFiltroObjetivo}
+        >
+          <SelectTrigger className="w-48 bg-card text-foreground border-border focus:border-[#0b3294]">
+            <SelectValue placeholder="Todos os objetivos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os objetivos</SelectItem>
             {objetivosDisponiveis.map((obj) => (
-              <option key={obj} value={obj}>
+              <SelectItem key={obj} value={obj}>
                 {obj}
-              </option>
+              </SelectItem>
             ))}
-          </select>
-        </div>
+          </SelectContent>
+        </Select>
+
+        {/* SELECT STATUS / INSTALAÇÃO */}
+        {onFiltroStatus && (
+          <Select
+            value={filtros.status || "todos"}
+            onValueChange={(v) => onFiltroStatus(v as StatusInstalacao | "todos")}
+          >
+            <SelectTrigger className="w-40 bg-card text-foreground border-border focus:border-[#0b3294]">
+              <SelectValue placeholder="Todos os status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os status</SelectItem>
+              <SelectItem value="instalado">Instalado</SelectItem>
+              <SelectItem value="disponivel">Disponível</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
     </div>
   );

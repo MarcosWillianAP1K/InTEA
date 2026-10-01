@@ -5,6 +5,9 @@ import type { Jogo, FiltrosJogos } from "../types";
 import { jogosService, JOGOS_MOCK } from "../services/jogosService";
 import { JogoCard } from "../components/JogoCard";
 import { JogosFiltros } from "../components/JogosFiltros";
+import { useSessionStore, ModalPreSessao } from "@/features/sessao";
+import { Gamepad2 } from "lucide-react";
+import { Badge } from "@/shared/components/ui/badge";
 
 export function BibliotecaJogosPage() {
   const [jogos, setJogos] = useState<Jogo[]>([]);
@@ -14,6 +17,8 @@ export function BibliotecaJogosPage() {
     objetivo: "todos",
     status: "todos",
   });
+
+  const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
 
   const objetivosDisponiveis = useMemo(() => {
     const list = JOGOS_MOCK.map((j) => j.objetivoTerapeutico);
@@ -37,7 +42,11 @@ export function BibliotecaJogosPage() {
   }, [filtros]);
 
   function handleIniciarSessao(jogo: Jogo) {
-    toast.success(`A iniciar sessão clínica com "${jogo.titulo}"`);
+    abrirModalPreSessao({
+      id: jogo.id,
+      titulo: jogo.titulo,
+    });
+    toast.info(`Configurando sessão clínica para "${jogo.titulo}"`);
   }
 
   function handleModoLivre(jogo: Jogo) {
@@ -48,29 +57,33 @@ export function BibliotecaJogosPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-1 flex-col gap-6 p-6 max-w-7xl w-full">
-        {/* Cabeçalho com título, subtítulo e filtro */}
+      <div className="flex flex-1 flex-col gap-6 mt-4  w-full mx-auto">
+      
+
+        {/* BARRA DE FILTROS E BUSCA */}
         <JogosFiltros
           filtros={filtros}
+          onFiltroBusca={(busca) => setFiltros((prev) => ({ ...prev, busca }))}
           onFiltroObjetivo={(objetivo) =>
             setFiltros((prev) => ({ ...prev, objetivo }))
           }
+          onFiltroStatus={(status) => setFiltros((prev) => ({ ...prev, status }))}
           objetivosDisponiveis={objetivosDisponiveis}
         />
 
-        {/* Lista de Jogos */}
+        {/* LISTA DE JOGOS */}
         {loading ? (
           <div className="flex flex-col gap-3.5">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-24 w-full animate-pulse rounded-2xl bg-slate-100 border border-slate-100"
+                className="h-24 w-full animate-pulse rounded-2xl bg-muted/60 border border-border"
               />
             ))}
           </div>
         ) : jogos.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 py-16 text-center text-sm text-slate-400">
-            Nenhum jogo encontrado para o filtro selecionado.
+          <div className="rounded-2xl border border-dashed border-border bg-card/50 py-16 text-center text-sm text-muted-foreground">
+            Nenhum jogo encontrado para os filtros selecionados.
           </div>
         ) : (
           <div className="flex flex-col gap-3.5">
@@ -85,6 +98,10 @@ export function BibliotecaJogosPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de Pré-Sessão e Pareamento Remoto (Sprint 8) */}
+      <ModalPreSessao />
     </DashboardLayout>
   );
 }
+
