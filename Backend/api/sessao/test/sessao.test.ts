@@ -1,171 +1,504 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import express, { Express } from 'express';
+// ==============================================================================
+// InTEA: Testes Básicos de Inicialização e Serviços da Feature Sessão
+// ==============================================================================
+
+import { describe, it, expect } from 'vitest';
 import { sessaoRoutes } from '../routes/sessao.routes.js';
+import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { SessaoModel } from '../models/sessao.model.js';
-import { SessaoController } from '../controllers/sessao.controller.js';
-import { ParearSessaoDTO } from '../dtos/sessao.dto.js';
 
-describe('Card 2.1 - Handshake de Pareamento Remoto (/api/sessao/parear)', () => {
-  let app: Express;
+// Helper para criar mocks de request/response de forma padronizada
+function criarMocks(body: Record<string, unknown> = {}, params: Record<string, string> = {}) {
+  let statusCode = 200;
+  let jsonResult: unknown = null;
 
-  beforeEach(() => {
-    SessaoModel.resetarMock();
-    app = express();
-    app.use(express.json());
-    app.use('/api/sessao', sessaoRoutes);
+  const mockReq = { body, params } as unknown as import('express').Request;
+  const mockRes = {
+    status(code: number) {
+      statusCode = code;
+      return this;
+    },
+    json(data: unknown) {
+      jsonResult = data;
+      return this;
+    },
+  } as unknown as import('express').Response;
+
+  return { mockReq, mockRes, getStatus: () => statusCode, getJson: () => jsonResult };
+}
+
+describe('Feature Sessão - Estrutura e Serviços Base', () => {
+  it('deve exportar as rotas de sessão corretamente', () => {
+    expect(sessaoRoutes).toBeDefined();
   });
 
-  // Helper simples para disparar requisições contra o app Express sem depender de libs externas pesadas
-  async function makeRequest(
-    method: 'GET' | 'POST',
-    path: string,
-    body?: unknown
-  ): Promise<{ status: number; body: any }> {
-    return new Promise((resolve) => {
-      const server = app.listen(0, async () => {
-        const address = server.address();
-        const port = typeof address === 'object' && address ? address.port : 3000;
-        const url = `http://localhost:${port}${path}`;
+  it('deve gerar código de pareamento no formato alfanumérico XXXX-XXXX', () => {
+    const token = SessaoTokenService.gerarCodigoPareamento();
+    expect(token).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+  });
 
-        try {
-          const res = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: body ? JSON.stringify(body) : undefined
-          });
+  it('deve expor métodos estáticos do SessaoModel', () => {
+    expect(typeof SessaoModel.criar).toBe('function');
+    expect(typeof SessaoModel.buscarPorId).toBe('function');
+    expect(typeof SessaoModel.buscarPorToken).toBe('function');
+    expect(typeof SessaoModel.atualizarStatus).toBe('function');
+    expect(typeof SessaoModel.finalizarSessao).toBe('function');
+  });
 
-          const json = await res.json();
-          server.close(() => resolve({ status: res.status, body: json }));
-        } catch {
-          server.close(() => resolve({ status: 500, body: {} }));
-        }
-      });
-    });
-  }
+  it('deve expor métodos cancelar e parear no SessaoController', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    expect(typeof SessaoController.cancelar).toBe('function');
+    expect(typeof SessaoController.parear).toBe('function');
+  });
 
-  it('deve parear com sucesso um dispositivo remoto com token válido formatado ("849-291")', async () => {
-    const payload: ParearSessaoDTO = {
-      session_token: '849-291',
-      dispositivo_info: {
-        tipo_dispositivo: 'tablet',
-        modelo: 'iPad 10th Gen',
-        sistema_operacional: 'iPadOS 17.4',
-        resolucao: '2160x1620',
-        versao_jogo: '1.2.0',
-        identificador_dispositivo: 'device-test-001'
+  it('deve responder com o código de pareamento no formato XXXX-XXXX via controller', async () => {
+    const originalBuscar = SessaoModel.buscarPorToken;
+    SessaoModel.buscarPorToken = async () => null; // Mock: simula que o código está livre no banco (sem chamada de rede)
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks();
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.gerarCodigoPareamento(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(200);
+    expect(getJson()).toBeDefined();
+    expect((getJson() as { codigo: string }).codigo).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+  });
+
+  it('deve tentar gerar outro código caso ocorra colisão no banco de dados', async () => {
+    const originalBuscar = SessaoModel.buscarPorToken;
+    let chamadas = 0;
+
+    // Simula 1 colisão seguida de sucesso
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.buscarPorToken = async () => {
+      chamadas++;
+      if (chamadas === 1) {
+        return { id: 'sessao-existente' };
       }
+      return null;
     };
 
-    const res = await makeRequest('POST', '/api/sessao/parear', payload);
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks();
 
-    expect(res.status).toBe(200);
-    expect(res.body.message).toBe('Dispositivo pareado com sucesso');
-    expect(res.body.data).toBeDefined();
-    expect(res.body.data.session_token).toBe('849-291');
-    expect(res.body.data.status_sessao).toBe('em_andamento');
-    expect(res.body.data.modo_sessao).toBe('sessao_clinica');
-    expect(res.body.data.jogo).toBeDefined();
-    expect(res.body.data.jogo.nome).toBe('Aventura das Cores');
-    expect(res.body.data.contexto_dda).toBeDefined();
-    expect(res.body.data.contexto_dda.objetivo_clinico).toBe('Foco Atencional');
-    expect(res.body.data.websocket).toBeDefined();
-    expect(res.body.data.websocket.canal).toBe('session_849-291');
-    expect(res.body.data.pareado_em).toBeDefined();
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.gerarCodigoPareamento(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(200);
+    expect(chamadas).toBe(2);
+    expect((getJson() as { codigo: string }).codigo).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+  });
+});
+
+// =============================================================================
+// atualizarStatus — validações de entrada
+// =============================================================================
+describe('SessaoController.atualizarStatus', () => {
+  it('deve rejeitar quando o campo status estiver ausente', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'sessao-123' });
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.atualizarStatus(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('obrigatório');
   });
 
-  it('deve aceitar e normalizar token sem hífen digitado pelo jogador ("849291")', async () => {
-    const payload: ParearSessaoDTO = {
-      session_token: '849291'
-    };
+  it('deve rejeitar status com valor fora dos permitidos', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({ status: 'status_inventado' }, { id: 'sessao-123' });
 
-    const res = await makeRequest('POST', '/api/sessao/parear', payload);
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.atualizarStatus(mockReq, mockRes);
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.session_token).toBe('849-291');
-    expect(res.body.data.status_sessao).toBe('em_andamento');
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('inválido');
   });
+});
 
-  it('deve rejeitar com 400 Bad Request se session_token não for informado', async () => {
-    const res = await makeRequest('POST', '/api/sessao/parear', {});
-
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain('Parâmetro obrigatório ausente ou inválido');
-  });
-
-  it('deve rejeitar com 400 Bad Request se session_token for vazio ou apenas espaços', async () => {
-    const res = await makeRequest('POST', '/api/sessao/parear', { session_token: '   ' });
-
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain('Parâmetro obrigatório ausente ou inválido');
-  });
-
-  it('deve rejeitar com 404 Not Found se session_token for inexistente', async () => {
-    const res = await makeRequest('POST', '/api/sessao/parear', { session_token: '999-999' });
-
-    expect(res.status).toBe(404);
-    expect(res.body.error).toContain('Sessão não encontrada');
-  });
-
-  it('deve rejeitar com 410 Gone se o token de pareamento estiver expirado (RNF03)', async () => {
-    const res = await makeRequest('POST', '/api/sessao/parear', { session_token: 'EXP-001' });
-
-    expect(res.status).toBe(410);
-    expect(res.body.error).toContain('Token de pareamento expirado');
-    expect(res.body.expirado_em).toBeDefined();
-  });
-
-  it('deve rejeitar com 409 Conflict se a sessão já estiver em andamento/pareada', async () => {
-    const res = await makeRequest('POST', '/api/sessao/parear', { session_token: 'AND-002' });
-
-    expect(res.status).toBe(409);
-    expect(res.body.error).toContain('Sessão já pareada ou em andamento');
-  });
-
-  it('deve rejeitar com 410 Gone se a sessão já estiver finalizada', async () => {
-    const res = await makeRequest('POST', '/api/sessao/parear', { session_token: 'FIN-003' });
-
-    expect(res.status).toBe(410);
-    expect(res.body.error).toContain('Sessão já finalizada');
-  });
-
-  it('deve rejeitar com 410 Gone se a sessão foi cancelada pelo terapeuta', async () => {
-    const res = await makeRequest('POST', '/api/sessao/parear', { session_token: 'CNC-004' });
-
-    expect(res.status).toBe(410);
-    expect(res.body.error).toContain('Sessão cancelada');
-  });
-
-  it('deve disparar o listener reativo de pareamento quando registrado (preparação Card 2.2)', async () => {
-    let eventoRecebido: { token: string; sessaoId: string } | null = null;
-
-    SessaoController.registrarListenerPareamento((token, dados) => {
-      eventoRecebido = { token, sessaoId: dados.sessao_id };
+// =============================================================================
+// iniciar — validações de entrada e regras RN01
+// =============================================================================
+describe('SessaoController.iniciar', () => {
+  it('deve rejeitar sem terapeuta_id ou jogo_id', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      terapeuta_id: 'terapeuta-1',
+      codigo_pareamento: '4M5S-8U7B',
     });
 
-    const payload: ParearSessaoDTO = {
-      session_token: '849-291'
-    };
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
 
-    const res = await makeRequest('POST', '/api/sessao/parear', payload);
-
-    expect(res.status).toBe(200);
-    expect(eventoRecebido).not.toBeNull();
-    const evento = eventoRecebido as unknown as { token: string; sessaoId: string };
-    expect(evento.token).toBe('849-291');
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('obrigatórios');
   });
 
-  it('deve consultar o status atual da sessão via GET /api/sessao/:token/status', async () => {
-    const res = await makeRequest('GET', '/api/sessao/849-291/status');
+  it('deve rejeitar sem codigo_pareamento', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      terapeuta_id: 'terapeuta-1',
+      jogo_id: 'jogo-1',
+      paciente_id: 'paciente-1',
+    });
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.session_token).toBe('849-291');
-    expect(res.body.data.status_sessao).toBe('aguardando_conexao');
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('codigo_pareamento');
   });
 
-  it('deve retornar 404 ao consultar status de token inexistente', async () => {
-    const res = await makeRequest('GET', '/api/sessao/INEXISTENTE/status');
+  it('deve rejeitar modo_sessao inválido', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      terapeuta_id: 'terapeuta-1',
+      jogo_id: 'jogo-1',
+      codigo_pareamento: '4M5S-8U7B',
+      modo_sessao: 'modo_inexistente',
+    });
 
-    expect(res.status).toBe(404);
-    expect(res.body.error).toContain('Sessão não encontrada');
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('Modo de sessão inválido');
+  });
+
+  it('deve rejeitar sessão clínica sem paciente_id (RN01)', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      terapeuta_id: 'terapeuta-1',
+      jogo_id: 'jogo-1',
+      codigo_pareamento: '4M5S-8U7B',
+      modo_sessao: 'sessao_clinica',
+      paciente_id: null,
+    });
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('RN01');
+  });
+
+  it('deve rejeitar modo livre com paciente_id vinculado (RN01)', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      terapeuta_id: 'terapeuta-1',
+      jogo_id: 'jogo-1',
+      codigo_pareamento: '4M5S-8U7B',
+      modo_sessao: 'modo_livre',
+      paciente_id: 'paciente-123',
+    });
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('RN01');
+  });
+
+  it('deve permitir iniciar sessão com dados válidos', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalCriar = SessaoModel.criar;
+
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.criar = async () => ({
+      id: 'sessao-criada-123',
+      session_token: '4M5S-8U7B',
+      status_sessao: 'aguardando_pareamento',
+      modo_sessao: 'sessao_clinica',
+      paciente_id: 'paciente-123',
+      expira_em: new Date().toISOString(),
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      terapeuta_id: 'terapeuta-valido',
+      jogo_id: 'jogo-1',
+      codigo_pareamento: '4M5S-8U7B',
+      modo_sessao: 'sessao_clinica',
+      paciente_id: 'paciente-123',
+    });
+
+    await SessaoController.iniciar(mockReq, mockRes);
+    SessaoModel.criar = originalCriar;
+
+    expect(getStatus()).toBe(201);
+    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('sessao-criada-123');
+  });
+
+  it('verificarVisibilidadePaciente deve permitir modo_livre sem paciente_id (RN01)', async () => {
+    const { verificarVisibilidadePaciente } = await import('../../../core/middlewares/visibilidade.middleware.js');
+    let nextChamado = false;
+    const req = { body: { modo_sessao: 'modo_livre' } } as any;
+    const res = {} as any;
+    const next = () => { nextChamado = true; };
+
+    await verificarVisibilidadePaciente(req, res, next);
+    expect(nextChamado).toBe(true);
+  });
+});
+
+// =============================================================================
+// finalizar — encerramento clínico e persistência de data_hora_fim
+// =============================================================================
+describe('SessaoController.finalizar', () => {
+  it('deve finalizar sessão e retornar data_hora_fim preenchido', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalFinalizar = SessaoModel.finalizarSessao;
+
+    const agora = new Date().toISOString();
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.finalizarSessao = async (id: string) => ({
+      id,
+      status_sessao: 'finalizada',
+      data_hora_fim: agora,
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'sessao-1' });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.finalizarSessao = originalFinalizar;
+
+    expect(getStatus()).toBe(200);
+    expect((getJson() as { data: { data_hora_fim: string } }).data.data_hora_fim).toBe(agora);
+  });
+
+  it('deve retornar 404 se a sessão não for encontrada para finalização', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalFinalizar = SessaoModel.finalizarSessao;
+    SessaoModel.finalizarSessao = async () => null;
+
+    const { mockReq, mockRes, getStatus } = criarMocks({}, { id: 'id-inexistente' });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.finalizarSessao = originalFinalizar;
+
+    expect(getStatus()).toBe(404);
+  });
+});
+
+// =============================================================================
+// buscarPorToken — consulta de sessão por PIN de pareamento
+// =============================================================================
+describe('SessaoController.buscarPorToken', () => {
+  it('deve retornar a sessão quando encontrada por token', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorToken;
+
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.buscarPorToken = async (token: string) => ({
+      id: 'sessao-token-1',
+      session_token: token,
+      status_sessao: 'aguardando_pareamento',
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { token: '4M5S-8U7B' });
+    await SessaoController.buscarPorToken(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(200);
+    expect((getJson() as { data: { session_token: string } }).data.session_token).toBe('4M5S-8U7B');
+  });
+
+  it('deve retornar 404 quando o token não for encontrado', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorToken;
+    SessaoModel.buscarPorToken = async () => null;
+
+    const { mockReq, mockRes, getStatus } = criarMocks({}, { token: 'INEXISTENTE' });
+    await SessaoController.buscarPorToken(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(404);
+  });
+});
+
+// =============================================================================
+// cancelar — validações de entrada
+// =============================================================================
+describe('SessaoController.cancelar', () => {
+  it('deve rejeitar cancelamento de sessão já finalizada', async () => {
+    // Simula buscarPorId retornando sessão finalizada
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorId;
+
+    // @ts-expect-error — substituição temporária para teste unitário
+    SessaoModel.buscarPorId = async () => ({ id: 'sessao-1', status_sessao: 'finalizada' });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'sessao-1' });
+    await SessaoController.cancelar(mockReq, mockRes);
+
+    SessaoModel.buscarPorId = originalBuscar;
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('finalizada');
+  });
+
+  it('deve rejeitar cancelamento de sessão já cancelada', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorId;
+
+    // @ts-expect-error — substituição temporária para teste unitário
+    SessaoModel.buscarPorId = async () => ({ id: 'sessao-2', status_sessao: 'cancelada' });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'sessao-2' });
+    await SessaoController.cancelar(mockReq, mockRes);
+
+    SessaoModel.buscarPorId = originalBuscar;
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('cancelada');
+  });
+
+  it('deve retornar 404 quando a sessão não existe', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorId;
+
+    SessaoModel.buscarPorId = async () => null;
+
+    const { mockReq, mockRes, getStatus } = criarMocks({}, { id: 'id-inexistente' });
+    await SessaoController.cancelar(mockReq, mockRes);
+
+    SessaoModel.buscarPorId = originalBuscar;
+
+    expect(getStatus()).toBe(404);
+  });
+});
+
+// =============================================================================
+// parear — validações de entrada e verificação de expiração
+// =============================================================================
+describe('SessaoController.parear', () => {
+  it('deve rejeitar pareamento sem session_token', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({});
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.parear(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('session_token');
+  });
+
+  it('deve retornar 404 para token de sessão inexistente', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorToken;
+
+    SessaoModel.buscarPorToken = async () => null;
+
+    const { mockReq, mockRes, getStatus } = criarMocks({ session_token: 'TOKEN-INVALIDO' });
+    await SessaoController.parear(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(404);
+  });
+
+  it('deve retornar 410 Gone para token de sessão expirado (Card 551)', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorToken;
+
+    // @ts-expect-error — substituição temporária para teste unitário
+    SessaoModel.buscarPorToken = async () => ({
+      id: 'sessao-exp',
+      status_sessao: 'aguardando_pareamento',
+      expira_em: new Date(Date.now() - 60_000).toISOString(), // expirado há 1 minuto
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({ session_token: 'EXPIRADO-1' });
+    await SessaoController.parear(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(410);
+    expect((getJson() as { error: string }).error).toContain('expirado');
+  });
+
+  it('deve rejeitar pareamento de sessão que não está aguardando (ex: já conectada)', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorToken;
+
+    // @ts-expect-error — substituição temporária para teste unitário
+    SessaoModel.buscarPorToken = async () => ({
+      id: 'sessao-conectada',
+      status_sessao: 'conectado',
+      expira_em: new Date(Date.now() + 900_000).toISOString(), // válido por 15min
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({ session_token: 'JA-CONECTADO' });
+    await SessaoController.parear(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('conectado');
+  });
+
+  it('deve retornar 409 Conflict quando jogo_id informado não corresponde ao da sessão', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorToken;
+
+    // @ts-expect-error — substituição temporária para teste unitário
+    SessaoModel.buscarPorToken = async () => ({
+      id: 'sessao-jogo-errado',
+      jogo_id: 'uuid-jogo-correto-do-terapeuta',
+      status_sessao: 'aguardando_pareamento',
+      expira_em: new Date(Date.now() + 900_000).toISOString(),
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      session_token: 'ABCD-1234',
+      jogo_id: 'uuid-de-outro-jogo-diferente', // ← jogo errado
+    });
+    await SessaoController.parear(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(409);
+    expect((getJson() as { error: string }).error).toContain('não corresponde');
+  });
+});
+
+// =============================================================================
+// SessaoTokenService — Card: Gerador de Session Token Seguro e Amigável
+// Cobre todos os critérios de aceite (RF10, RNF03)
+// =============================================================================
+describe('SessaoTokenService — Geração e Validação de Token', () => {
+  it('deve gerar token no formato XXXX-XXXX (alfanumérico maiúsculo)', () => {
+    const token = SessaoTokenService.gerarCodigoPareamento();
+    expect(token).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  });
+
+  it('deve ter comprimento exato de 9 caracteres (4 + hífen + 4)', () => {
+    const token = SessaoTokenService.gerarCodigoPareamento();
+    expect(token).toHaveLength(9);
+  });
+
+  it('deve gerar tokens distintos — verificação de entropia (100 amostras)', () => {
+    // Com ~36^8 combinações possíveis, 100 amostras têm probabilidade ínfima de colisão
+    const amostras = new Set(Array.from({ length: 100 }, () => SessaoTokenService.gerarCodigoPareamento()));
+    expect(amostras.size).toBe(100);
+  });
+
+  it('validarToken deve rejeitar token fora do formato esperado', () => {
+    const expiraEm = new Date(Date.now() + 900_000).toISOString();
+    const resultado = SessaoTokenService.validarToken('TOKEN_INVALIDO', expiraEm);
+    expect(resultado.valido).toBe(false);
+    expect(resultado.motivo).toContain('formato');
+  });
+
+  it('validarToken deve rejeitar token com prazo de validade vencido (expirado)', () => {
+    const expirado = new Date(Date.now() - 60_000).toISOString(); // expirou há 1 min
+    const resultado = SessaoTokenService.validarToken('AB1C-2D3E', expirado);
+    expect(resultado.valido).toBe(false);
+    expect(resultado.motivo).toContain('expirado');
+  });
+
+  it('validarToken deve aceitar token no formato correto e dentro do prazo', () => {
+    const valido = new Date(Date.now() + 900_000).toISOString(); // válido por 15 min
+    const resultado = SessaoTokenService.validarToken('AB1C-2D3E', valido);
+    expect(resultado.valido).toBe(true);
+    expect(resultado.motivo).toBeUndefined();
   });
 });

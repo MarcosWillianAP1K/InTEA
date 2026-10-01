@@ -45,6 +45,41 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
     expect(mockEq).toHaveBeenCalledWith('status_ativo', true);
   });
 
+  it('deve listar pacientes filtrando por terapeutaId consultando vinculos', async () => {
+    const terapeutaId = 'uuid-terapeuta-teste';
+    const mockVinculos = [{ paciente_id: 'uuid-1' }];
+
+    const mockRange = vi.fn().mockResolvedValue({
+      data: [{ id: 'uuid-1', nome: 'Paciente Vinculado', status_ativo: true }],
+      error: null,
+      count: 1,
+    });
+    const mockEqStatus = vi.fn().mockReturnValue({ range: mockRange });
+    const mockIn = vi.fn().mockReturnValue({ eq: mockEqStatus });
+    const mockOrder = vi.fn().mockReturnValue({ in: mockIn });
+    const mockSelectPaciente = vi.fn().mockReturnValue({ order: mockOrder });
+
+    const mockEqTerapeuta = vi.fn().mockResolvedValue({
+      data: mockVinculos,
+      error: null,
+    });
+    const mockSelectVinculos = vi.fn().mockReturnValue({ eq: mockEqTerapeuta });
+
+    vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
+      if (table === 'terapeuta_paciente') {
+        return { select: mockSelectVinculos } as any;
+      }
+      return { select: mockSelectPaciente } as any;
+    });
+
+    const resultado = await PacienteModel.listar({ terapeutaId });
+
+    expect(resultado.data).toHaveLength(1);
+    expect(mockSelectVinculos).toHaveBeenCalledWith('paciente_id');
+    expect(mockEqTerapeuta).toHaveBeenCalledWith('terapeuta_id', terapeutaId);
+    expect(mockIn).toHaveBeenCalledWith('id', ['uuid-1']);
+  });
+
   it('deve criar um paciente e retornar os dados persistidos', async () => {
     const novoPacienteDTO: CriarPacienteDTO = {
       nome: 'Carlos Eduardo',

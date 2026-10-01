@@ -3,6 +3,7 @@ import { authRoutes } from './auth/routes/auth.routes.js';
 import { exemploRoutes } from './exemplo/routes/exemplo.routes.js';
 import { jogosRoutes } from './jogos/routes/jogo.routes.js';
 import { pacienteRoutes } from './paciente/routes/paciente.routes.js';
+import { sessaoRoutes } from './sessao/routes/sessao.routes.js';
 import { terapeutaRoutes } from './terapeuta/routes/terapeuta.routes.js';
 import { sessaoRoutes } from './sessao/routes/sessao.routes.js';
 
@@ -12,6 +13,7 @@ export const apiRouter = Router();
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/paciente', pacienteRoutes);
 apiRouter.use('/terapeuta', terapeutaRoutes);
+apiRouter.use('/sessao', sessaoRoutes);
 apiRouter.use('/exemplo', exemploRoutes);
 apiRouter.use('/jogos', jogosRoutes);
 apiRouter.use('/sessao', sessaoRoutes);
