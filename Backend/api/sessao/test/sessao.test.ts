@@ -52,13 +52,44 @@ describe('Feature Sessão - Estrutura e Serviços Base', () => {
   });
 
   it('deve responder com o código de pareamento no formato XXXX-XXXX via controller', async () => {
+    const originalBuscar = SessaoModel.buscarPorToken;
+    SessaoModel.buscarPorToken = async () => null; // Mock: simula que o código está livre no banco (sem chamada de rede)
+
     const { mockReq, mockRes, getStatus, getJson } = criarMocks();
 
     const { SessaoController } = await import('../controllers/sessao.controller.js');
     await SessaoController.gerarCodigoPareamento(mockReq, mockRes);
 
+    SessaoModel.buscarPorToken = originalBuscar;
+
     expect(getStatus()).toBe(200);
     expect(getJson()).toBeDefined();
+    expect((getJson() as { codigo: string }).codigo).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+  });
+
+  it('deve tentar gerar outro código caso ocorra colisão no banco de dados', async () => {
+    const originalBuscar = SessaoModel.buscarPorToken;
+    let chamadas = 0;
+
+    // Simula 1 colisão seguida de sucesso
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.buscarPorToken = async () => {
+      chamadas++;
+      if (chamadas === 1) {
+        return { id: 'sessao-existente' };
+      }
+      return null;
+    };
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks();
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.gerarCodigoPareamento(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscar;
+
+    expect(getStatus()).toBe(200);
+    expect(chamadas).toBe(2);
     expect((getJson() as { codigo: string }).codigo).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
   });
 });
