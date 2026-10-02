@@ -811,6 +811,161 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
+
+## Módulo 3 — Sessão e Pareamento Remoto (Sprint 8)
+
+> **Tarefa:** 5.3 — `Docs: Roteiro de Testes Manuais de Pareamento Remoto`
+> **Módulo coberto:** Pareamento Remoto via Session Token
+> **Requisitos rastreados:** RF10, RN04, RNF03, RNF04
+
+---
+
+### CT-S01 — Pareamento Bem-Sucedido (Fluxo Feliz)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF10 — Pareamento Remoto |
+| **Tipo** | Positivo |
+| **Precondição** | Terapeuta autenticado com JWT válido e vínculo ativo com o paciente |
+
+**Passo 1 — `POST /api/sessao/iniciar`**
+
+```http
+Authorization: Bearer {token}
+```
+
+```json
+{ "paciente_id": "{uuid}", "jogo_id": 1 }
+```
+
+**Passo 2 — Conectar WebSocket** em `/sessao/{token_recebido}`
+
+**Passo 3 — `POST /api/sessao/parear`** (simulando o dispositivo externo)
+
+```json
+{ "session_token": "{token_recebido}", "dispositivo": "tablet-android" }
+```
+
+#### Resultado Esperado
+
+- Passo 1: HTTP **201 Created** com `session_token` e `expires_at`
+- Passo 2: conexão WebSocket estabelecida com sucesso
+- Passo 3: HTTP **200 OK** com parâmetros iniciais da sessão; evento `dispositivo_conectado` recebido no WebSocket
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S02 — Rejeição por Token Expirado
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF10; RNF03 — Expiração de Token |
+| **Tipo** | Negativo |
+| **Precondição** | Token gerado há mais de 15 minutos (ou forçado a expirar no banco) |
+
+**Entrada — `POST /api/sessao/parear`**
+
+```json
+{ "session_token": "{token_expirado}", "dispositivo": "tablet-android" }
+```
+
+#### Resultado Esperado
+
+- HTTP **410 Gone**
+- Mensagem: _"Session token expirado. Solicite um novo código ao terapeuta."_
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S03 — Rejeição por Token Incorreto
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF10; RNF03 |
+| **Tipo** | Negativo |
+| **Precondição** | API em execução |
+
+**Entrada — `POST /api/sessao/parear`**
+
+```json
+{ "session_token": "ZZZZZZ", "dispositivo": "tablet-android" }
+```
+
+#### Resultado Esperado
+
+- HTTP **404 Not Found**
+- Mensagem: _"Session token inválido ou não encontrado."_
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S04 — Bloqueio de Reutilização de Token Já Consumido
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF10; RNF03 — Uso Único |
+| **Tipo** | Negativo — segurança |
+| **Precondição** | Token já consumido por pareamento anterior bem-sucedido (executar CT-S01 antes) |
+
+**Entrada — `POST /api/sessao/parear`** com o mesmo token do CT-S01
+
+#### Resultado Esperado
+
+- HTTP **410 Gone**
+- Mensagem: _"Session token já foi utilizado e está revogado."_
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S05 — Detecção de Desconexão Abrupta do Dispositivo
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF10; RNF04 — Heartbeat e Tolerância a Falhas |
+| **Tipo** | Negativo — resiliência |
+| **Precondição** | Sessão pareada e ativa; WebSocket do terapeuta conectado |
+
+#### Passos
+
+1. Completar o fluxo de CT-S01 com sucesso.
+2. Encerrar abruptamente a conexão do dispositivo remoto (fechar o processo/aba).
+3. Aguardar o intervalo de heartbeat (≥ 10 segundos).
+
+#### Resultado Esperado
+
+- Evento `conexao_perdida` recebido no WebSocket do terapeuta
+- Status da sessão revertido para `aguardando_pareamento` no banco
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S06 — Cancelamento de Sessão Pendente pelo Terapeuta
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF10; RF12 — Ciclo de Vida da Sessão |
+| **Tipo** | Positivo |
+| **Precondição** | Sessão criada com status `aguardando_pareamento` (CT-S01, Passo 1 apenas) |
+
+**Entrada — `DELETE /api/sessao/{sessao_id}`**
+
+```http
+Authorization: Bearer {token}
+```
+
+#### Resultado Esperado
+
+- HTTP **200 OK**
+- Status da sessão atualizado para `cancelada`
+- Tentativa posterior de parear com o mesmo token retorna **410 Gone**
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
 ---
 
 ## Matriz de Rastreabilidade
@@ -819,16 +974,20 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 | :--- | :--- | :--- |
 | **RF06** | Cadastro e Gestão de Pacientes | CT-P01, CT-P02, CT-P03, CT-P04, CT-P14, CT-P15 |
 | **RF09** | Biblioteca de Jogos Terapêuticos | CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J06, CT-J12 |
+| **RF10** | Pareamento Remoto via Session Token | CT-S01, CT-S02, CT-S03, CT-S04, CT-S05, CT-S06 |
 | **RF11** | Modo Livre (sem prontuário clínico) | CT-J01 |
+| **RF12** | Ciclo de Vida da Sessão | CT-S06 |
 | **RF18** | Gestão de Vínculos Multiterapeuta | CT-P11, CT-P12, CT-P13 |
 | **RF19** | Filtros, Busca Avançada e Paginação | CT-P05, CT-J02, CT-J03, CT-J04 |
 | **RF21** | Vínculo Automático no Cadastro | CT-P11 |
 | **RN02** | Tipagem Estrita de Métricas (sem fallback) | CT-J07, CT-J08, CT-J09, CT-J10, CT-J11 |
-| **RN04** | Visibilidade por Vínculo e Instituição | CT-P06, CT-P07, CT-P08, CT-P12 |
+| **RN04** | Visibilidade por Vínculo e Instituição | CT-P06, CT-P07, CT-P08, CT-P12, CT-S01 |
 | **RN05** | Inalterabilidade do Histórico (Soft Delete) | CT-P04, CT-P09, CT-P10, CT-P13 |
 | **RNF02** | Padronização e Contratos de Dados | CT-J05, CT-J07, CT-J08, CT-J12 |
+| **RNF03** | Segurança e Expiração de Tokens | CT-S02, CT-S03, CT-S04 |
+| **RNF04** | Tolerância a Falhas e Heartbeat | CT-S05 |
 
-**Total: 27 casos de teste** — 15 do Módulo Pacientes (CT-P01→P15) · 12 do Módulo Jogos (CT-J01→J12)
+**Total: 33 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 6 Pareamento (CT-S01→S06)
 
 ---
 
@@ -836,11 +995,13 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 | Código | Semântica | Casos de Teste |
 | :---: | :--- | :--- |
-| **200** | Sucesso em consulta ou validação aprovada | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12 |
-| **201** | Recurso criado com sucesso | CT-P01, CT-P11 |
+| **200** | Sucesso em consulta ou validação aprovada | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12, CT-S01, CT-S06 |
+| **201** | Recurso criado com sucesso | CT-P01, CT-P11, CT-S01 |
 | **400** | Parâmetros inválidos / regra de negócio | CT-P02, CT-P12, CT-P13, CT-P15, CT-J08 |
 | **401** | Sem autenticação / JWT inválido | CT-P08 |
 | **403** | Acesso negado por RN04 | CT-P07 |
-| **404** | Recurso não encontrado | CT-J06 |
+| **404** | Recurso não encontrado | CT-J06, CT-S03 |
 | **409** | Conflito de integridade (CPF duplicado) | CT-P03 |
+| **410** | Token expirado ou revogado | CT-S02, CT-S04 |
 | **422** | Violação de regra clínica RN02 | CT-J10, CT-J11 |
+
