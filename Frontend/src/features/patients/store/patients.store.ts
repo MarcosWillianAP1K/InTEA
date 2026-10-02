@@ -256,6 +256,9 @@ interface PatientsState {
   getCategories: () => string[];
 }
 
+/**
+ * Zustand store hook for managing patients state, active filters, selected records, and search queries.
+ */
 export const usePatientsStore = create<PatientsState>((set, get) => ({
   patients: PATIENTS_DICTIONARY,
   selectedPatientId: "pac-001",
@@ -264,6 +267,11 @@ export const usePatientsStore = create<PatientsState>((set, get) => ({
   statusFilter: "all",
   sortOrder: "recent",
 
+  /**
+   * Adds a new patient to the local dictionary and marks them as selected.
+   *
+   * @param patient - Patient record to insert.
+   */
   addPatient: (patient: Patient) => {
     set((state) => ({
       patients: {
@@ -298,6 +306,11 @@ export const usePatientsStore = create<PatientsState>((set, get) => ({
     return Array.from(setCategory);
   },
 
+  /**
+   * Filters and sorts the patient dictionary based on current search term, status, category, and order.
+   *
+   * @returns Array of matching patient objects.
+   */
   getFilteredPatients: () => {
     const { patients, searchTerm, categoryFilter, statusFilter, sortOrder } =
       get();

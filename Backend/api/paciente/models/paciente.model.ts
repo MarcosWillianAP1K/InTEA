@@ -316,7 +316,12 @@ export class PacienteModel {
   }
 
   /**
-   * Helper para reativar e atualizar os dados cadastrais de um paciente previamente inativado.
+   * Reactivates and updates clinical and demographic data for a previously deactivated patient.
+   *
+   * @param id - The UUID identifier of the deactivated patient.
+   * @param dto - Patient creation payload with updated demographic and contact information.
+   * @returns The reactivated and updated patient entity.
+   * @throws {Error} If updating the database record fails.
    */
   private static async reativarEAtualizar(id: string, dto: CriarPacienteDTO): Promise<Paciente> {
     const { data: pacienteReativado, error: reativarError } = await supabase
@@ -353,7 +358,11 @@ export class PacienteModel {
   }
 
   /**
-   * Salva ou vincula responsável prevenindo conflitos de unicidade em CPF de responsáveis existentes.
+   * Persists or links a guardian to a patient, preventing uniqueness constraint conflicts on existing guardian CPFs.
+   *
+   * @param pacienteId - The UUID identifier of the target patient.
+   * @param responsavelDTO - Guardian data payload containing demographic and contact details.
+   * @returns Resolves when the guardian is saved and linked.
    */
   private static async salvarOuVincularResponsavel(pacienteId: string, responsavelDTO: CriarResponsavelDTO): Promise<void> {
     try {

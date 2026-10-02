@@ -87,6 +87,12 @@ export const JOGOS_MOCK: Jogo[] = [
 ];
 
 export const jogosService = {
+  /**
+   * Lists available therapeutic games, applying optional text search and therapeutic goal filters.
+   *
+   * @param filtros - Optional search query and therapeutic objective filters.
+   * @returns List of matching therapeutic games.
+   */
   listar: async (filtros?: FiltrosJogos): Promise<Jogo[]> => {
     try {
       // Quando o backend disponibilizar o endpoint /jogos, descomente a linha abaixo:
@@ -113,6 +119,12 @@ export const jogosService = {
     }
   },
 
+  /**
+   * Retrieves a specific therapeutic game by its unique identifier.
+   *
+   * @param id - Game identifier.
+   * @returns The matching game object if found, or undefined otherwise.
+   */
   buscarPorId: async (id: string): Promise<Jogo | undefined> => {
     return JOGOS_MOCK.find((j) => j.id === id);
   },

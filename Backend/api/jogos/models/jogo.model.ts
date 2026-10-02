@@ -128,6 +128,12 @@ export class JogoModel {
     }
   ];
 
+  /**
+   * Checks whether a valid Supabase connection is configured in the environment.
+   * Prevents accidental queries against placeholder or unconfigured URLs.
+   *
+   * @returns True if `SUPABASE_URL` is set and does not contain placeholder values.
+   */
   private static isSupabaseAvailable(): boolean {
     const url = process.env.SUPABASE_URL;
     return Boolean(url && !url.includes('placeholder') && !url.includes('your-project'));

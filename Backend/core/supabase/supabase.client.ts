@@ -11,6 +11,10 @@ if (!supabaseUrl || !supabaseKey) {
   console.warn('[Supabase] Atenção: SUPABASE_URL ou chaves do Supabase não estão definidas no ambiente.');
 }
 
+/**
+ * Supabase client instance configured with service role or anon key.
+ * Used across the backend services and models for database interactions and authentication.
+ */
 export const supabase: SupabaseClient = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseKey || 'placeholder-key'
