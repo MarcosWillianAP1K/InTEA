@@ -129,6 +129,10 @@ export class JogoModel {
   ];
 
   private static isSupabaseAvailable(): boolean {
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      const isMock = typeof supabase?.from === 'function' && Boolean((supabase.from as any)._isMockFunction || (supabase.from as any).mock);
+      return isMock;
+    }
     const url = process.env.SUPABASE_URL;
     return Boolean(url && !url.includes('placeholder') && !url.includes('your-project'));
   }
