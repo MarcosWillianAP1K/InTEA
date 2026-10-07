@@ -6,6 +6,7 @@ import { Request, Response } from 'express';
 import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, StatusSessao } from '../models/sessao.model.js';
 import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/sessao.dto.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
+import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 
 export class SessaoController {
   // Callback opcional injetado pelo gateway WebSocket (Card 2.2) para notificação em tempo real
@@ -138,19 +139,54 @@ export class SessaoController {
   }
 
   /**
-   * Finaliza uma sessão clínica
+   * Finaliza uma sessão clínica ou em modo livre
    * PATCH /api/sessao/:id/finalizar
    */
   static async finalizar(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
+
+      // 1. Atualização atômica da máquina de estados: 'finalizada' e carimbo de 'data_hora_fim'
       const sessaoAtualizada = await SessaoModel.finalizarSessao(id);
       if (!sessaoAtualizada) {
         res.status(404).json({ error: 'Sessão não encontrada para finalização' });
         return;
       }
-      res.json({ data: sessaoAtualizada });
+
+      // 2. Conformidade com RN01 (Modo Livre sem Persistência Clínica / Sem IA)
+      // Partidas em modo livre não gravam telemetria em prontuário, não acionam IA e paciente_id = NULL
+      if (sessaoAtualizada.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessaoAtualizada.paciente_id) {
+        res.status(200).json({ data: sessaoAtualizada });
+        return;
+      }
+
+      // 3. Síntese do Relatório com o Motor de IA segundo o Contrato 4 (docs/ModelosDeContratos/relatorio.json)
+      const relatorioIA = SessaoTokenService.gerarRelatorioIA(sessaoAtualizada);
+
+      // 4. Persistência do relatório no prontuário do paciente (tabela 'relatorio_sessao')
+      if (relatorioIA) {
+        try {
+          await RelatorioSessaoModel.criar({
+            sessao_id: sessaoAtualizada.id,
+            terapeuta_id: sessaoAtualizada.terapeuta_id,
+            paciente_id: sessaoAtualizada.paciente_id,
+            conteudo: relatorioIA.analises_ia.join('\n'),
+            dados_ia_json: relatorioIA,
+          });
+        } catch (errPersistencia) {
+          console.error('[SessaoController] Falha ao persistir relatório na tabela relatorio_sessao:', errPersistencia);
+        }
+      }
+
+      // 5. Retorna a sessão finalizada contendo o relatório da IA para exibição imediata no front
+      res.status(200).json({
+        data: {
+          ...sessaoAtualizada,
+          relatorio: relatorioIA || undefined,
+        },
+      });
     } catch (error) {
+      console.error('[SessaoController] Erro ao finalizar sessão:', error);
       res.status(500).json({ error: 'Erro interno ao finalizar sessão' });
     }
   }

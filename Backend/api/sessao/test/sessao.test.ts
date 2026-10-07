@@ -263,6 +263,92 @@ describe('SessaoController.finalizar', () => {
     expect((getJson() as { data: { data_hora_fim: string } }).data.data_hora_fim).toBe(agora);
   });
 
+  it('deve finalizar sessão clínica, sintetizar relatório no formato Contrato 4 e chamar persistência', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const { RelatorioSessaoModel } = await import('../models/relatorio.model.js');
+    const originalFinalizar = SessaoModel.finalizarSessao;
+    const originalCriarRelatorio = RelatorioSessaoModel.criar;
+
+    const inicio = new Date(Date.now() - 1200_000).toISOString();
+    const fim = new Date().toISOString();
+    let relatorioPersistido: any = null;
+
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.finalizarSessao = async (id: string) => ({
+      id,
+      session_token: '4M5S-8U7B',
+      terapeuta_id: '11111111-1111-1111-1111-111111111111',
+      paciente_id: '33333333-3333-3333-3333-333333333333',
+      modo_sessao: 'sessao_clinica',
+      status_sessao: 'finalizada',
+      data_hora_inicio: inicio,
+      data_hora_fim: fim,
+    });
+
+    RelatorioSessaoModel.criar = async (dto: any) => {
+      relatorioPersistido = dto;
+      return { id: 'relatorio-uuid-1', ...dto };
+    };
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'sessao-clinica-1' });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.finalizarSessao = originalFinalizar;
+    RelatorioSessaoModel.criar = originalCriarRelatorio;
+
+    expect(getStatus()).toBe(200);
+    const resposta = getJson() as any;
+    expect(resposta.data.status_sessao).toBe('finalizada');
+    expect(resposta.data.relatorio).toBeDefined();
+    expect(resposta.data.relatorio.token_sessao).toBe('4M5S-8U7B');
+    expect(resposta.data.relatorio.duracao_segundos).toBeGreaterThanOrEqual(1199);
+    expect(resposta.data.relatorio.resumo.taxa_conclusao).toBe(85.5);
+    expect(resposta.data.relatorio.resumo.intervencoes_dda).toBe(4);
+    expect(Array.isArray(resposta.data.relatorio.analises_ia)).toBe(true);
+    expect(resposta.data.relatorio.metricas_agregadas[0].id_metrica).toBe('nivel_frustracao');
+
+    // Valida persistência no banco
+    expect(relatorioPersistido).not.toBeNull();
+    expect(relatorioPersistido.sessao_id).toBe('sessao-clinica-1');
+    expect(relatorioPersistido.paciente_id).toBe('33333333-3333-3333-3333-333333333333');
+    expect(relatorioPersistido.dados_ia_json.token_sessao).toBe('4M5S-8U7B');
+  });
+
+  it('deve finalizar sessão em modo livre sem gerar relatório de IA (RN01)', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const { RelatorioSessaoModel } = await import('../models/relatorio.model.js');
+    const originalFinalizar = SessaoModel.finalizarSessao;
+    const originalCriarRelatorio = RelatorioSessaoModel.criar;
+
+    let relatorioChamado = false;
+    RelatorioSessaoModel.criar = async () => {
+      relatorioChamado = true;
+      return null;
+    };
+
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.finalizarSessao = async (id: string) => ({
+      id,
+      session_token: 'LIVR-1234',
+      terapeuta_id: 'terapeuta-1',
+      paciente_id: null,
+      modo_sessao: 'modo_livre',
+      status_sessao: 'finalizada',
+      data_hora_fim: new Date().toISOString(),
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'sessao-livre-1' });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.finalizarSessao = originalFinalizar;
+    RelatorioSessaoModel.criar = originalCriarRelatorio;
+
+    expect(getStatus()).toBe(200);
+    const resposta = getJson() as any;
+    expect(resposta.data.relatorio).toBeUndefined();
+    expect(relatorioChamado).toBe(false);
+  });
+
   it('deve retornar 404 se a sessão não for encontrada para finalização', async () => {
     const { SessaoController } = await import('../controllers/sessao.controller.js');
     const originalFinalizar = SessaoModel.finalizarSessao;
@@ -501,4 +587,49 @@ describe('SessaoTokenService — Geração e Validação de Token', () => {
     expect(resultado.valido).toBe(true);
     expect(resultado.motivo).toBeUndefined();
   });
+
+  it('gerarRelatorioIA deve processar sessão finalizada e retornar Contrato 4', () => {
+    const sessaoMock: any = {
+      id: 'sessao-1',
+      session_token: 'ABCD-1234',
+      status_sessao: 'finalizada',
+      modo_sessao: 'sessao_clinica',
+      paciente_id: 'paciente-1',
+      data_hora_inicio: new Date(Date.now() - 600_000).toISOString(),
+      data_hora_fim: new Date().toISOString(),
+    };
+
+    const relatorio = SessaoTokenService.gerarRelatorioIA(sessaoMock);
+    expect(relatorio).not.toBeNull();
+    expect(relatorio?.token_sessao).toBe('ABCD-1234');
+    expect(relatorio?.duracao_segundos).toBeGreaterThanOrEqual(599);
+    expect(relatorio?.resumo.taxa_conclusao).toBe(85.5);
+  });
+
+  it('gerarRelatorioIA deve retornar null se a sessão não estiver com status finalizada', () => {
+    const sessaoEmAndamento: any = {
+      id: 'sessao-2',
+      session_token: 'ABCD-1234',
+      status_sessao: 'em_andamento',
+      modo_sessao: 'sessao_clinica',
+      paciente_id: 'paciente-1',
+    };
+
+    const relatorio = SessaoTokenService.gerarRelatorioIA(sessaoEmAndamento);
+    expect(relatorio).toBeNull();
+  });
+
+  it('gerarRelatorioIA deve retornar null para modo livre ou sem paciente_id (RN01)', () => {
+    const sessaoLivre: any = {
+      id: 'sessao-3',
+      session_token: 'ABCD-1234',
+      status_sessao: 'finalizada',
+      modo_sessao: 'modo_livre',
+      paciente_id: null,
+    };
+
+    const relatorio = SessaoTokenService.gerarRelatorioIA(sessaoLivre);
+    expect(relatorio).toBeNull();
+  });
 });
+

@@ -331,6 +331,28 @@ sessaoRoutes.get('/buscarPorToken/:token', authMiddleware, SessaoController.busc
 
 /**
  * @swagger
+ * /api/sessao/{token}/status:
+ *   get:
+ *     summary: Consulta o status atual de pareamento da sessão (RF10, Card 2.3)
+ *     description: Permite polling do status da sessão e presença do dispositivo via session_token.
+ *     tags: [Sessão]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Código PIN ou token da sessão
+ *     responses:
+ *       200:
+ *         description: Status da sessão retornado com sucesso
+ *       404:
+ *         description: Sessão não encontrada
+ */
+sessaoRoutes.get('/:token/status', SessaoController.consultarStatus);
+
+/**
+ * @swagger
  * /api/sessao/{id}:
  *   get:
  *     summary: Busca uma sessão pelo seu ID interno
@@ -405,28 +427,6 @@ sessaoRoutes.get('/buscarPorToken/:token', authMiddleware, SessaoController.busc
  *       500:
  *         description: Erro interno ao buscar sessão
  */
-/**
- * @swagger
- * /api/sessao/{token}/status:
- *   get:
- *     summary: Consulta o status atual de pareamento da sessão (RF10, Card 2.3)
- *     description: Permite polling do status da sessão e presença do dispositivo via session_token.
- *     tags: [Sessão]
- *     parameters:
- *       - in: path
- *         name: token
- *         required: true
- *         schema:
- *           type: string
- *         description: Código PIN ou token da sessão
- *     responses:
- *       200:
- *         description: Status da sessão retornado com sucesso
- *       404:
- *         description: Sessão não encontrada
- */
-sessaoRoutes.get('/:token/status', SessaoController.consultarStatus);
-
 sessaoRoutes.get('/:id', authMiddleware, SessaoController.buscarPorId);
 
 /**
