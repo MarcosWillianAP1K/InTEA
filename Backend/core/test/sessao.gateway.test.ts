@@ -3,7 +3,7 @@ import http from 'node:http';
 import express, { Express } from 'express';
 import { Server as SocketIOServer } from 'socket.io';
 import { io as ioc, Socket as ClientSocket } from 'socket.io-client';
-import { SessaoGateway, TelemetriaEventoNormalizado } from '../websocket/sessao.gateway.js';
+import { SessaoGateway, TelemetriaEventoNormalizado, ComandoClinicoEventoNormalizado, RespostaComandoAck } from '../websocket/sessao.gateway.js';
 import { sessaoRoutes } from '../../api/sessao/routes/sessao.routes.js';
 import { SessaoModel } from '../../api/sessao/models/sessao.model.js';
 
@@ -561,6 +561,168 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao) & Heartbeat/Que
       );
 
       SessaoGateway.removerCallbackTelemetria();
+      dispositivoSocket.disconnect();
+    });
+  });
+
+  describe('Card 2.2 - Canal de Comandos do Terapeuta para o Jogo Remoto (sessao:comando)', () => {
+    it('deve permitir ao terapeuta enviar comando pausar_jogo e entregar imediatamente ao tablet', async () => {
+      const terapeutaSocket = await createClientSocket();
+      const dispositivoSocket = await createClientSocket();
+
+      // Terapeuta e dispositivo entram na sala
+      await new Promise<void>((resolve) => {
+        terapeutaSocket.emit('entrar_sessao', { session_token: '849-291', role: 'terapeuta' });
+        terapeutaSocket.on('sessao_conectada', () => resolve());
+      });
+
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', { session_token: '849-291', role: 'dispositivo' });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      // Dispositivo escuta comando clínico
+      const comandoRecebidoPromise = new Promise<ComandoClinicoEventoNormalizado>((resolve) => {
+        dispositivoSocket.on('sessao:comando', (cmd: ComandoClinicoEventoNormalizado) => resolve(cmd));
+      });
+
+      // Terapeuta envia comando com ack
+      const ackResposta = await new Promise<RespostaComandoAck>((resolve) => {
+        terapeutaSocket.emit(
+          'sessao:comando',
+          { session_token: '849-291', tipo_comando: 'pausar_jogo' },
+          (res: RespostaComandoAck) => resolve(res)
+        );
+      });
+
+      expect(ackResposta.sucesso).toBe(true);
+      expect(ackResposta.comando).toBe('pausar_jogo');
+      expect(ackResposta.timestamp).toBeDefined();
+
+      const comandoEntregue = await comandoRecebidoPromise;
+      expect(comandoEntregue.session_token).toBe('849-291');
+      expect(comandoEntregue.tipo_comando).toBe('pausar_jogo');
+      expect(comandoEntregue.emitido_por).toBe(terapeutaSocket.id);
+
+      terapeutaSocket.disconnect();
+      dispositivoSocket.disconnect();
+    });
+
+    it('deve suportar comando ajustar_dificuldade_dda com parâmetros clínicos personalizados', async () => {
+      const terapeutaSocket = await createClientSocket();
+      const dispositivoSocket = await createClientSocket();
+
+      await new Promise<void>((resolve) => {
+        terapeutaSocket.emit('entrar_sessao', { session_token: '849-291', role: 'terapeuta' });
+        terapeutaSocket.on('sessao_conectada', () => resolve());
+      });
+
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', { session_token: '849-291', role: 'dispositivo' });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      const comandoRecebidoPromise = new Promise<ComandoClinicoEventoNormalizado>((resolve) => {
+        dispositivoSocket.on('sessao:comando', (cmd: ComandoClinicoEventoNormalizado) => resolve(cmd));
+      });
+
+      terapeutaSocket.emit('sessao:comando', {
+        session_token: '849-291',
+        tipo_comando: 'ajustar_dificuldade_dda',
+        parametros: {
+          novo_nivel: 3,
+          tempo_limite_segundos: 45
+        }
+      });
+
+      const comandoEntregue = await comandoRecebidoPromise;
+      expect(comandoEntregue.tipo_comando).toBe('ajustar_dificuldade_dda');
+      expect(comandoEntregue.parametros?.novo_nivel).toBe(3);
+      expect(comandoEntregue.parametros?.tempo_limite_segundos).toBe(45);
+
+      terapeutaSocket.disconnect();
+      dispositivoSocket.disconnect();
+    });
+
+    it('deve rejeitar envio de comando se o dispositivo remoto estiver offline ou desconectado', async () => {
+      const terapeutaSocket = await createClientSocket();
+
+      // Terapeuta entra na sala, mas NENHUM dispositivo está conectado
+      await new Promise<void>((resolve) => {
+        terapeutaSocket.emit('entrar_sessao', { session_token: '849-291', role: 'terapeuta' });
+        terapeutaSocket.on('sessao_conectada', () => resolve());
+      });
+
+      const erroPromise = new Promise<{ sucesso: boolean; codigo?: string; erro?: string }>((resolve) => {
+        terapeutaSocket.on('erro_comando', (err: { sucesso: boolean; codigo?: string; erro?: string }) => resolve(err));
+      });
+
+      const ackResposta = await new Promise<RespostaComandoAck>((resolve) => {
+        terapeutaSocket.emit(
+          'sessao:comando',
+          { session_token: '849-291', tipo_comando: 'pausar_jogo' },
+          (res: RespostaComandoAck) => resolve(res)
+        );
+      });
+
+      expect(ackResposta.sucesso).toBe(false);
+      expect(ackResposta.codigo).toBe('DISPOSITIVO_OFFLINE');
+
+      const erro = await erroPromise;
+      expect(erro.sucesso).toBe(false);
+      expect(erro.codigo).toBe('DISPOSITIVO_OFFLINE');
+
+      terapeutaSocket.disconnect();
+    });
+
+    it('deve rejeitar comandos com tipo_comando não suportado', async () => {
+      const terapeutaSocket = await createClientSocket();
+      const dispositivoSocket = await createClientSocket();
+
+      await new Promise<void>((resolve) => {
+        terapeutaSocket.emit('entrar_sessao', { session_token: '849-291', role: 'terapeuta' });
+        terapeutaSocket.on('sessao_conectada', () => resolve());
+      });
+
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', { session_token: '849-291', role: 'dispositivo' });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      const ackResposta = await new Promise<RespostaComandoAck>((resolve) => {
+        terapeutaSocket.emit(
+          'sessao:comando',
+          { session_token: '849-291', tipo_comando: 'comando_inexistente' },
+          (res: RespostaComandoAck) => resolve(res)
+        );
+      });
+
+      expect(ackResposta.sucesso).toBe(false);
+      expect(ackResposta.codigo).toBe('COMANDO_INVALIDO');
+
+      terapeutaSocket.disconnect();
+      dispositivoSocket.disconnect();
+    });
+
+    it('deve rejeitar comandos disparados por sockets com role dispositivo (permissão negada)', async () => {
+      const dispositivoSocket = await createClientSocket();
+
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', { session_token: '849-291', role: 'dispositivo' });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      const ackResposta = await new Promise<RespostaComandoAck>((resolve) => {
+        dispositivoSocket.emit(
+          'sessao:comando',
+          { session_token: '849-291', tipo_comando: 'pausar_jogo' },
+          (res: RespostaComandoAck) => resolve(res)
+        );
+      });
+
+      expect(ackResposta.sucesso).toBe(false);
+      expect(ackResposta.codigo).toBe('PERMISSAO_NEGADA');
+
       dispositivoSocket.disconnect();
     });
   });

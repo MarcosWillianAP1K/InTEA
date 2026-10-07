@@ -96,6 +96,45 @@ export type TelemetriaPersistenciaCallback = (
   evento: TelemetriaEventoNormalizado
 ) => Promise<void> | void;
 
+export type TipoComandoClinico =
+  | 'pausar_jogo'
+  | 'retomar_jogo'
+  | 'ajustar_dificuldade_dda'
+  | 'solicitar_encerramento';
+
+export interface ComandoClinicoPayload {
+  session_token?: string;
+  token_sessao?: string;
+  tipo_comando?: TipoComandoClinico | string;
+  comando?: TipoComandoClinico | string;
+  acao?: TipoComandoClinico | string;
+  parametros?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ComandoClinicoEventoNormalizado {
+  session_token: string;
+  tipo_comando: TipoComandoClinico;
+  parametros?: Record<string, unknown>;
+  timestamp: string;
+  emitido_por: string;
+}
+
+export interface RespostaComandoAck {
+  sucesso: boolean;
+  comando?: TipoComandoClinico;
+  timestamp?: string;
+  erro?: string;
+  codigo?: string;
+}
+
+export interface ResultadoValidacaoComando {
+  valido: boolean;
+  erro?: string;
+  codigo?: string;
+  comandoNormalizado?: ComandoClinicoEventoNormalizado;
+}
+
 export class SessaoGateway {
   private static instance?: SessaoGateway;
   private static telemetriaCallback?: TelemetriaPersistenciaCallback;
@@ -199,7 +238,15 @@ export class SessaoGateway {
         this.lidarTelemetria(socket, payload, ack);
       });
 
-      // 5. Detecção de perda de conexão / fechamento de janela
+      // 5. Canal de Comandos do Terapeuta para o Jogo Remoto (Card 2.2 - sessao:comando)
+      socket.on('sessao:comando', (payload: unknown, ack?: (res: RespostaComandoAck) => void) => {
+        this.lidarComandoClinico(socket, payload, ack);
+      });
+      socket.on('comando_jogo', (payload: unknown, ack?: (res: RespostaComandoAck) => void) => {
+        this.lidarComandoClinico(socket, payload, ack);
+      });
+
+      // 6. Detecção de perda de conexão / fechamento de janela
       socket.on('disconnect', (motivo: string) => {
         this.lidarDesconexao(socket, motivo);
       });
@@ -585,6 +632,166 @@ export class SessaoGateway {
     const sala = `session_${tokenNormalizado}`;
     this.sessaoNamespace.to(sala).emit('sessao:telemetria', evento);
     this.sessaoNamespace.to(sala).emit('telemetria_recebida', evento);
+  }
+
+  /**
+   * Valida o comando clínico enviado pelo terapeuta (Card 2.2 / RF13 / RF21).
+   *
+   * @param socket - Socket do cliente emissor.
+   * @param payloadRaw - Dados brutos do comando.
+   */
+  validarComandoClinico(socket: Socket, payloadRaw: unknown): ResultadoValidacaoComando {
+    if (!payloadRaw || typeof payloadRaw !== 'object' || Array.isArray(payloadRaw)) {
+      return {
+        valido: false,
+        erro: 'Payload de comando deve ser um objeto JSON válido',
+        codigo: 'FORMATO_INVALIDO'
+      };
+    }
+
+    const payload = payloadRaw as Record<string, unknown>;
+
+    // Extração e validação do session_token
+    const tokenInformado = (payload.session_token || payload.token_sessao) as string | undefined;
+    const tokenSocket = socket.data.sessionToken as string | undefined;
+
+    let tokenFinal: string;
+
+    if (tokenInformado && typeof tokenInformado === 'string' && tokenInformado.trim()) {
+      tokenFinal = this.normalizarToken(tokenInformado);
+      if (tokenSocket && tokenSocket !== tokenFinal) {
+        return {
+          valido: false,
+          erro: 'O token informado no comando diverge do token da sessão ativa',
+          codigo: 'TOKEN_DIVERGENTE'
+        };
+      }
+    } else if (tokenSocket) {
+      tokenFinal = tokenSocket;
+    } else {
+      return {
+        valido: false,
+        erro: 'Token de sessão não identificado para envio do comando',
+        codigo: 'TOKEN_AUSENTE'
+      };
+    }
+
+    // Permissão: dispositivo remoto do paciente não pode emitir comandos clínicos
+    if (socket.data.role === 'dispositivo') {
+      return {
+        valido: false,
+        erro: 'Dispositivos remotos não possuem autorização para emitir comandos clínicos',
+        codigo: 'PERMISSAO_NEGADA'
+      };
+    }
+
+    // Validação do tipo de comando
+    const comandoIdentificado = (payload.tipo_comando || payload.comando || payload.acao) as string | undefined;
+    const COMANDOS_VALIDOS: readonly TipoComandoClinico[] = [
+      'pausar_jogo',
+      'retomar_jogo',
+      'ajustar_dificuldade_dda',
+      'solicitar_encerramento'
+    ];
+
+    if (!comandoIdentificado || !COMANDOS_VALIDOS.includes(comandoIdentificado as TipoComandoClinico)) {
+      return {
+        valido: false,
+        erro: `Tipo de comando inválido. Comandos suportados: ${COMANDOS_VALIDOS.join(', ')}`,
+        codigo: 'COMANDO_INVALIDO'
+      };
+    }
+
+    // Validação do status da sessão / conectividade do dispositivo (Critério de Aceite Card 2.2)
+    const presenca = this.presencas.get(tokenFinal);
+    if (!presenca || !presenca.conectado) {
+      return {
+        valido: false,
+        erro: 'Dispositivo remoto desconectado ou não pareado para receber comandos clínicos',
+        codigo: 'DISPOSITIVO_OFFLINE'
+      };
+    }
+
+    // Validação opcional de parâmetros
+    let parametros: Record<string, unknown> | undefined;
+    if (payload.parametros !== undefined) {
+      if (typeof payload.parametros !== 'object' || payload.parametros === null || Array.isArray(payload.parametros)) {
+        return {
+          valido: false,
+          erro: 'O campo "parametros" deve ser um objeto JSON válido quando informado',
+          codigo: 'PARAMETROS_INVALIDOS'
+        };
+      }
+      parametros = payload.parametros as Record<string, unknown>;
+    }
+
+    const comandoNormalizado: ComandoClinicoEventoNormalizado = {
+      session_token: tokenFinal,
+      tipo_comando: comandoIdentificado as TipoComandoClinico,
+      parametros,
+      timestamp: new Date().toISOString(),
+      emitido_por: socket.id
+    };
+
+    return {
+      valido: true,
+      comandoNormalizado
+    };
+  }
+
+  /**
+   * Processa o canal de comandos bidirecional do terapeuta para o jogo (Card 2.2).
+   *
+   * @param socket - Socket do cliente.
+   * @param payloadRaw - Dados do comando enviado.
+   * @param ack - Callback opcional de confirmação para o terapeuta.
+   */
+  public lidarComandoClinico(
+    socket: Socket,
+    payloadRaw: unknown,
+    ack?: (resposta: RespostaComandoAck) => void
+  ): void {
+    const validacao = this.validarComandoClinico(socket, payloadRaw);
+
+    if (!validacao.valido || !validacao.comandoNormalizado) {
+      const erroResposta: RespostaComandoAck = {
+        sucesso: false,
+        erro: validacao.erro || 'Falha ao processar comando clínico',
+        codigo: validacao.codigo || 'COMANDO_REJEITADO'
+      };
+
+      socket.emit('erro_comando', erroResposta);
+      if (typeof ack === 'function') {
+        ack(erroResposta);
+      }
+      return;
+    }
+
+    const comando = validacao.comandoNormalizado;
+    const sala = `session_${comando.session_token}`;
+
+    // Despacha o comando imediatamente ao jogo remoto conectado na sala
+    socket.to(sala).emit('sessao:comando', comando);
+    socket.to(sala).emit('comando_jogo', comando);
+
+    // Retorna ack de confirmação imediata à interface web do terapeuta
+    if (typeof ack === 'function') {
+      ack({
+        sucesso: true,
+        comando: comando.tipo_comando,
+        timestamp: comando.timestamp
+      });
+    }
+  }
+
+  /**
+   * Emite programaticamente um comando para a sala da sessão.
+   */
+  notificarComando(sessionToken: string, comando: ComandoClinicoEventoNormalizado): void {
+    const tokenNormalizado = this.normalizarToken(sessionToken);
+    const sala = `session_${tokenNormalizado}`;
+    this.sessaoNamespace.to(sala).emit('sessao:comando', comando);
+    this.sessaoNamespace.to(sala).emit('comando_jogo', comando);
   }
 
   /**
