@@ -5,6 +5,7 @@ import {
   EventoAdvertenciaDesconexao,
   EventoSessaoInterrompida
 } from './sessao.reconnection.js';
+import { SocketRateLimiter } from './socket.limiter.js';
 
 export interface EntrarSessaoPayload {
   session_token: string;
@@ -147,6 +148,7 @@ export class SessaoGateway {
   private sessaoNamespace: Namespace;
   private presencas: Map<string, DispositivoPresenca> = new Map();
   private reconnectionManager: SessaoReconnectionManager = SessaoReconnectionManager.obterInstancia();
+  private rateLimiter: SocketRateLimiter = SocketRateLimiter.obterInstancia();
 
   constructor(io: SocketIOServer) {
     this.io = io;
@@ -179,6 +181,7 @@ export class SessaoGateway {
   resetarPresencas(): void {
     this.presencas.clear();
     this.reconnectionManager.limparTodos();
+    this.rateLimiter.limparTodos();
   }
 
   /**
@@ -217,6 +220,33 @@ export class SessaoGateway {
    */
   private configurarNamespace(): void {
     this.sessaoNamespace.on('connection', (socket: Socket) => {
+      // 0. Middleware de contenção de flood e rate limiting (Card 2.4 - RNF03)
+      socket.use(([event, ...args], next) => {
+        if (event === 'sessao:telemetria' || event === 'telemetria') {
+          const limite = this.rateLimiter.verificarLimite(socket.id, event);
+          if (!limite.permitido) {
+            socket.emit('erro_rate_limit', {
+              sucesso: false,
+              error: limite.mensagem,
+              codigo: limite.codigo,
+              limite_por_segundo: limite.limiteMaximo,
+              tempo_restante_ms: limite.tempoRestanteMs
+            });
+
+            const ultimoArg = args[args.length - 1];
+            if (typeof ultimoArg === 'function') {
+              ultimoArg({
+                sucesso: false,
+                erro: limite.mensagem,
+                codigo: limite.codigo
+              });
+            }
+            return;
+          }
+        }
+        next();
+      });
+
       // 1. Evento para vincular o socket à sala da sessão (terapeuta ou jogo)
       socket.on('entrar_sessao', (payload: EntrarSessaoPayload) => {
         this.lidarEntradaSessao(socket, payload);
@@ -398,6 +428,9 @@ export class SessaoGateway {
       this.sessaoNamespace.to(sala).emit('dispositivo_desconectado', evento);
       this.sessaoNamespace.to(sala).emit('sessao:alerta_conexao', alerta);
     }
+
+    // Limpa rastreio de taxa do socket desconectado (Card 2.4)
+    this.rateLimiter.removerIdentificador(socket.id);
   }
 
   /**
@@ -810,6 +843,13 @@ export class SessaoGateway {
    */
   obterReconnectionManager(): SessaoReconnectionManager {
     return this.reconnectionManager;
+  }
+
+  /**
+   * Retorna o gerenciador de taxa de eventos (Card 2.4).
+   */
+  obterRateLimiter(): SocketRateLimiter {
+    return this.rateLimiter;
   }
 
   /**
