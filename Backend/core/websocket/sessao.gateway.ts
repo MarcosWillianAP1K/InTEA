@@ -1,5 +1,10 @@
 import { Server as SocketIOServer, Socket, Namespace } from 'socket.io';
 import { SessaoController } from '../../api/sessao/controllers/sessao.controller.js';
+import {
+  SessaoReconnectionManager,
+  EventoAdvertenciaDesconexao,
+  EventoSessaoInterrompida
+} from './sessao.reconnection.js';
 
 export interface EntrarSessaoPayload {
   session_token: string;
@@ -141,6 +146,7 @@ export class SessaoGateway {
   private io: SocketIOServer;
   private sessaoNamespace: Namespace;
   private presencas: Map<string, DispositivoPresenca> = new Map();
+  private reconnectionManager: SessaoReconnectionManager = SessaoReconnectionManager.obterInstancia();
 
   constructor(io: SocketIOServer) {
     this.io = io;
@@ -153,9 +159,7 @@ export class SessaoGateway {
    * Inicializa o gateway WebSocket singleton para o namespace /sessao.
    */
   static inicializar(io: SocketIOServer): SessaoGateway {
-    if (!SessaoGateway.instance) {
-      SessaoGateway.instance = new SessaoGateway(io);
-    }
+    SessaoGateway.instance = new SessaoGateway(io);
     return SessaoGateway.instance;
   }
 
@@ -174,6 +178,7 @@ export class SessaoGateway {
    */
   resetarPresencas(): void {
     this.presencas.clear();
+    this.reconnectionManager.limparTodos();
   }
 
   /**
@@ -282,6 +287,7 @@ export class SessaoGateway {
 
     // Se o cliente conectando for o dispositivo do jogo:
     if (role === 'dispositivo') {
+      this.reconnectionManager.registrarReconexao(tokenNormalizado);
       const presencaExistente = this.presencas.get(tokenNormalizado);
       const agora = Date.now();
 
@@ -385,7 +391,12 @@ export class SessaoGateway {
         ultimo_heartbeat: presenca?.ultimo_heartbeat
       };
 
+      const alerta = this.reconnectionManager.registrarDesconexao(token, motivo, (eventoInterrupcao) => {
+        this.notificarSessaoInterrompidaPorQueda(token, eventoInterrupcao);
+      });
+
       this.sessaoNamespace.to(sala).emit('dispositivo_desconectado', evento);
+      this.sessaoNamespace.to(sala).emit('sessao:alerta_conexao', alerta);
     }
   }
 
@@ -792,6 +803,28 @@ export class SessaoGateway {
     const sala = `session_${tokenNormalizado}`;
     this.sessaoNamespace.to(sala).emit('sessao:comando', comando);
     this.sessaoNamespace.to(sala).emit('comando_jogo', comando);
+  }
+
+  /**
+   * Retorna o gerenciador de reconexão de sessão.
+   */
+  obterReconnectionManager(): SessaoReconnectionManager {
+    return this.reconnectionManager;
+  }
+
+  /**
+   * Notifica a sala da sessão que a tolerância expirou e a sessão foi interrompida (Card 2.3).
+   */
+  notificarSessaoInterrompidaPorQueda(sessionToken: string, evento: EventoSessaoInterrompida): void {
+    const tokenNormalizado = this.normalizarToken(sessionToken);
+    const sala = `session_${tokenNormalizado}`;
+    const presenca = this.presencas.get(tokenNormalizado);
+    if (presenca) {
+      presenca.conectado = false;
+      presenca.desconectado_em = evento.interrompida_em;
+    }
+    this.sessaoNamespace.to(sala).emit('sessao_interrompida', evento);
+    this.sessaoNamespace.to(sala).emit('sessao:interrompida', evento);
   }
 
   /**
