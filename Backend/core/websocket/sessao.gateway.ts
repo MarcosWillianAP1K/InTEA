@@ -59,8 +59,46 @@ export interface DispositivoPresenca {
   qualidade_sinal?: string;
 }
 
+export interface TelemetriaDadosPayload {
+  id_metrica: string;
+  valor: number | string | boolean;
+  [key: string]: unknown;
+}
+
+export interface TelemetriaEventoPayload {
+  token_sessao?: string;
+  session_token?: string;
+  data_hora?: string;
+  timestamp?: string | number;
+  tipo_evento: string;
+  dados: TelemetriaDadosPayload;
+  [key: string]: unknown;
+}
+
+export interface TelemetriaEventoNormalizado {
+  session_token: string;
+  data_hora: string;
+  tipo_evento: string;
+  dados: TelemetriaDadosPayload;
+  recebido_em: string;
+  origem_socket_id: string;
+}
+
+export interface ResultadoValidacaoTelemetria {
+  valido: boolean;
+  erro?: string;
+  codigo?: string;
+  eventoNormalizado?: TelemetriaEventoNormalizado;
+}
+
+export type TelemetriaPersistenciaCallback = (
+  sessionToken: string,
+  evento: TelemetriaEventoNormalizado
+) => Promise<void> | void;
+
 export class SessaoGateway {
   private static instance?: SessaoGateway;
+  private static telemetriaCallback?: TelemetriaPersistenciaCallback;
   private io: SocketIOServer;
   private sessaoNamespace: Namespace;
   private presencas: Map<string, DispositivoPresenca> = new Map();
@@ -153,7 +191,15 @@ export class SessaoGateway {
         }
       });
 
-      // 4. Detecção de perda de conexão / fechamento de janela
+      // 4. Ingestão e Roteamento de Telemetria Contínua (Card 2.1 - sessao:telemetria)
+      socket.on('sessao:telemetria', (payload: unknown, ack?: (resposta: unknown) => void) => {
+        this.lidarTelemetria(socket, payload, ack);
+      });
+      socket.on('telemetria', (payload: unknown, ack?: (resposta: unknown) => void) => {
+        this.lidarTelemetria(socket, payload, ack);
+      });
+
+      // 5. Detecção de perda de conexão / fechamento de janela
       socket.on('disconnect', (motivo: string) => {
         this.lidarDesconexao(socket, motivo);
       });
@@ -359,6 +405,186 @@ export class SessaoGateway {
       status_sessao: 'finalizada',
       finalizado_em: new Date().toISOString()
     });
+  }
+
+  /**
+   * Registra um callback para ingestão / persistência assíncrona de telemetria (integrado no Dia 4 com Card 1.2).
+   */
+  static registrarCallbackTelemetria(callback: TelemetriaPersistenciaCallback): void {
+    SessaoGateway.telemetriaCallback = callback;
+  }
+
+  /**
+   * Remove o callback de persistência de telemetria registrado.
+   */
+  static removerCallbackTelemetria(): void {
+    SessaoGateway.telemetriaCallback = undefined;
+  }
+
+  /**
+   * Valida o schema leve do payload de telemetria conforme o Contrato 3.
+   *
+   * @param socket - Socket do cliente que enviou o evento.
+   * @param payloadRaw - Dados brutos recebidos via WebSocket.
+   */
+  validarPayloadTelemetria(socket: Socket, payloadRaw: unknown): ResultadoValidacaoTelemetria {
+    if (!payloadRaw || typeof payloadRaw !== 'object' || Array.isArray(payloadRaw)) {
+      return {
+        valido: false,
+        erro: 'O payload de telemetria deve ser um objeto JSON válido',
+        codigo: 'FORMATO_INVALIDO'
+      };
+    }
+
+    const payload = payloadRaw as Record<string, unknown>;
+
+    // Extração e consistência do session_token
+    const tokenInformado = (payload.session_token || payload.token_sessao) as string | undefined;
+    const tokenSocket = socket.data.sessionToken as string | undefined;
+
+    let tokenFinal: string;
+
+    if (tokenInformado && typeof tokenInformado === 'string' && tokenInformado.trim()) {
+      tokenFinal = this.normalizarToken(tokenInformado);
+      if (tokenSocket && tokenSocket !== tokenFinal) {
+        return {
+          valido: false,
+          erro: 'O token informado no payload diverge do token da conexão socket ativa',
+          codigo: 'TOKEN_DIVERGENTE'
+        };
+      }
+    } else if (tokenSocket) {
+      tokenFinal = tokenSocket;
+    } else {
+      return {
+        valido: false,
+        erro: 'Token de sessão não identificado para este evento de telemetria',
+        codigo: 'TOKEN_AUSENTE'
+      };
+    }
+
+    // Validação de tipo_evento
+    if (typeof payload.tipo_evento !== 'string' || !payload.tipo_evento.trim()) {
+      return {
+        valido: false,
+        erro: 'Campo obrigatório "tipo_evento" deve ser uma string não vazia',
+        codigo: 'TIPO_EVENTO_INVALIDO'
+      };
+    }
+
+    // Validação de dados (id_metrica e valor)
+    if (!payload.dados || typeof payload.dados !== 'object' || Array.isArray(payload.dados)) {
+      return {
+        valido: false,
+        erro: 'Campo obrigatório "dados" deve ser um objeto contendo id_metrica e valor',
+        codigo: 'DADOS_INVALIDOS'
+      };
+    }
+
+    const dados = payload.dados as Record<string, unknown>;
+    if (typeof dados.id_metrica !== 'string' || !dados.id_metrica.trim()) {
+      return {
+        valido: false,
+        erro: 'Campo obrigatório "dados.id_metrica" deve ser uma string não vazia',
+        codigo: 'METRICA_INVALIDA'
+      };
+    }
+
+    const tipoValor = typeof dados.valor;
+    if (tipoValor !== 'number' && tipoValor !== 'string' && tipoValor !== 'boolean') {
+      return {
+        valido: false,
+        erro: 'Campo obrigatório "dados.valor" deve ser um tipo primitivo válido (número, texto ou booleano)',
+        codigo: 'VALOR_INVALIDO'
+      };
+    }
+
+    const agora = new Date().toISOString();
+    const dataHora = typeof payload.data_hora === 'string' && payload.data_hora.trim()
+      ? payload.data_hora.trim()
+      : typeof payload.timestamp === 'string' && payload.timestamp.trim()
+        ? payload.timestamp.trim()
+        : agora;
+
+    const eventoNormalizado: TelemetriaEventoNormalizado = {
+      session_token: tokenFinal,
+      data_hora: dataHora,
+      tipo_evento: payload.tipo_evento.trim(),
+      dados: {
+        ...(dados as TelemetriaDadosPayload),
+        id_metrica: dados.id_metrica.trim(),
+        valor: dados.valor as number | string | boolean
+      },
+      recebido_em: agora,
+      origem_socket_id: socket.id
+    };
+
+    return {
+      valido: true,
+      eventoNormalizado
+    };
+  }
+
+  /**
+   * Processa o evento de telemetria recebido do jogo remoto (Card 2.1).
+   * Valida com schema leve e despacha em tempo real para a sala da sessão.
+   */
+  public lidarTelemetria(
+    socket: Socket,
+    payloadRaw: unknown,
+    ack?: (resposta: { sucesso: boolean; erro?: string; codigo?: string; timestamp?: string }) => void
+  ): void {
+    const validacao = this.validarPayloadTelemetria(socket, payloadRaw);
+
+    if (!validacao.valido || !validacao.eventoNormalizado) {
+      const erroResposta = {
+        sucesso: false,
+        error: validacao.erro || 'Payload de telemetria inválido',
+        codigo: validacao.codigo || 'PAYLOAD_INVALIDO'
+      };
+
+      socket.emit('erro_telemetria', erroResposta);
+      if (typeof ack === 'function') {
+        ack({ sucesso: false, erro: erroResposta.error, codigo: erroResposta.codigo });
+      }
+      return;
+    }
+
+    const evento = validacao.eventoNormalizado;
+    const sala = `session_${evento.session_token}`;
+
+    // Roteia instantaneamente (<100ms) para todos os outros clientes na sala da sessão
+    socket.to(sala).emit('sessao:telemetria', evento);
+    socket.to(sala).emit('telemetria_recebida', evento);
+
+    // Retorna confirmação (ack) imediata ao transmissor se solicitada
+    if (typeof ack === 'function') {
+      ack({ sucesso: true, timestamp: evento.recebido_em });
+    }
+
+    // Invocação assíncrona desacoplada do callback de persistência (Card 1.2 no Dia 4)
+    if (SessaoGateway.telemetriaCallback) {
+      try {
+        const resultado = SessaoGateway.telemetriaCallback(evento.session_token, evento);
+        if (resultado instanceof Promise) {
+          resultado.catch((err: unknown) => {
+            console.error('[SessaoGateway] Erro assíncrono ao persistir telemetria:', err);
+          });
+        }
+      } catch (err: unknown) {
+        console.error('[SessaoGateway] Erro no callback de persistência de telemetria:', err);
+      }
+    }
+  }
+
+  /**
+   * Despacha diretamente um evento de telemetria para a sala (útil para injeções ou testes).
+   */
+  notificarTelemetria(sessionToken: string, evento: TelemetriaEventoNormalizado): void {
+    const tokenNormalizado = this.normalizarToken(sessionToken);
+    const sala = `session_${tokenNormalizado}`;
+    this.sessaoNamespace.to(sala).emit('sessao:telemetria', evento);
+    this.sessaoNamespace.to(sala).emit('telemetria_recebida', evento);
   }
 
   /**

@@ -3,7 +3,7 @@ import http from 'node:http';
 import express, { Express } from 'express';
 import { Server as SocketIOServer } from 'socket.io';
 import { io as ioc, Socket as ClientSocket } from 'socket.io-client';
-import { SessaoGateway } from '../websocket/sessao.gateway.js';
+import { SessaoGateway, TelemetriaEventoNormalizado } from '../websocket/sessao.gateway.js';
 import { sessaoRoutes } from '../../api/sessao/routes/sessao.routes.js';
 import { SessaoModel } from '../../api/sessao/models/sessao.model.js';
 
@@ -359,4 +359,210 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao) & Heartbeat/Que
 
     client.disconnect();
   });
+
+  describe('Card 2.1 - Roteamento de Telemetria Contínua (sessao:telemetria)', () => {
+    it('deve rotear evento sessao:telemetria emitido pelo jogo para o terapeuta na mesma sala (<100ms)', async () => {
+      const terapeutaSocket = await createClientSocket();
+      const dispositivoSocket = await createClientSocket();
+
+      // Terapeuta entra na sala
+      await new Promise<void>((resolve) => {
+        terapeutaSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'terapeuta'
+        });
+        terapeutaSocket.on('sessao_conectada', () => resolve());
+      });
+
+      // Dispositivo entra na sala
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'dispositivo'
+        });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      const inicioTimestamp = Date.now();
+
+      // Terapeuta aguarda recebimento do evento de telemetria
+      const telemetriaPromise = new Promise<{ evento: TelemetriaEventoNormalizado; latenciaMs: number }>((resolve) => {
+        terapeutaSocket.on('sessao:telemetria', (evento: TelemetriaEventoNormalizado) => {
+          const latenciaMs = Date.now() - inicioTimestamp;
+          resolve({ evento, latenciaMs });
+        });
+      });
+
+      // Dispositivo envia evento de telemetria do Contrato 3
+      dispositivoSocket.emit('sessao:telemetria', {
+        token_sessao: '849-291',
+        tipo_evento: 'interacao_paciente',
+        dados: {
+          id_metrica: 'tempo_resposta',
+          valor: 3.5
+        }
+      });
+
+      const { evento, latenciaMs } = await telemetriaPromise;
+
+      expect(latenciaMs).toBeLessThan(100);
+      expect(evento.session_token).toBe('849-291');
+      expect(evento.tipo_evento).toBe('interacao_paciente');
+      expect(evento.dados.id_metrica).toBe('tempo_resposta');
+      expect(evento.dados.valor).toBe(3.5);
+      expect(evento.recebido_em).toBeDefined();
+
+      terapeutaSocket.disconnect();
+      dispositivoSocket.disconnect();
+    });
+
+    it('deve fornecer resposta ack imediata ao transmissor da telemetria', async () => {
+      const dispositivoSocket = await createClientSocket();
+
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'dispositivo'
+        });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      const ackResposta = await new Promise<{ sucesso: boolean; timestamp?: string }>((resolve) => {
+        dispositivoSocket.emit(
+          'sessao:telemetria',
+          {
+            token_sessao: '849-291',
+            tipo_evento: 'acerto',
+            dados: {
+              id_metrica: 'pontuacao_fase',
+              valor: 100
+            }
+          },
+          (res: { sucesso: boolean; timestamp?: string }) => resolve(res)
+        );
+      });
+
+      expect(ackResposta.sucesso).toBe(true);
+      expect(ackResposta.timestamp).toBeDefined();
+
+      dispositivoSocket.disconnect();
+    });
+
+    it('deve rejeitar telemetria com schema inválido emitindo erro_telemetria', async () => {
+      const dispositivoSocket = await createClientSocket();
+
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'dispositivo'
+        });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      // 1. Payload sem dados.id_metrica
+      const erroPromise = new Promise<{ sucesso: boolean; error: string; codigo: string }>((resolve) => {
+        dispositivoSocket.on('erro_telemetria', (err: { sucesso: boolean; error: string; codigo: string }) => resolve(err));
+      });
+
+      dispositivoSocket.emit('sessao:telemetria', {
+        token_sessao: '849-291',
+        tipo_evento: 'interacao_paciente',
+        dados: { valor: 10 } // Falta id_metrica
+      });
+
+      const erro = await erroPromise;
+      expect(erro.sucesso).toBe(false);
+      expect(erro.codigo).toBe('METRICA_INVALIDA');
+
+      dispositivoSocket.disconnect();
+    });
+
+    it('deve garantir isolamento estrito de salas sem vazamento de telemetria para outras sessões', async () => {
+      const terapeutaSessaoA = await createClientSocket();
+      const terapeutaSessaoB = await createClientSocket();
+      const dispositivoSessaoA = await createClientSocket();
+
+      // Terapeuta A na sala 849-291
+      await new Promise<void>((resolve) => {
+        terapeutaSessaoA.emit('entrar_sessao', { session_token: '849-291', role: 'terapeuta' });
+        terapeutaSessaoA.on('sessao_conectada', () => resolve());
+      });
+
+      // Terapeuta B em OUTRA sala 123-456
+      await new Promise<void>((resolve) => {
+        terapeutaSessaoB.emit('entrar_sessao', { session_token: '123-456', role: 'terapeuta' });
+        terapeutaSessaoB.on('sessao_conectada', () => resolve());
+      });
+
+      // Dispositivo A na sala 849-291
+      await new Promise<void>((resolve) => {
+        dispositivoSessaoA.emit('entrar_sessao', { session_token: '849-291', role: 'dispositivo' });
+        dispositivoSessaoA.on('sessao_conectada', () => resolve());
+      });
+
+      let terapeutaBRecebeu = false;
+      terapeutaSessaoB.on('sessao:telemetria', () => {
+        terapeutaBRecebeu = true;
+      });
+
+      const terapeutaARecebeuPromise = new Promise<TelemetriaEventoNormalizado>((resolve) => {
+        terapeutaSessaoA.on('sessao:telemetria', (evt: TelemetriaEventoNormalizado) => resolve(evt));
+      });
+
+      // Emite telemetria na sessão A
+      dispositivoSessaoA.emit('sessao:telemetria', {
+        token_sessao: '849-291',
+        tipo_evento: 'interacao_paciente',
+        dados: { id_metrica: 'toques', valor: 5 }
+      });
+
+      const eventoA = await terapeutaARecebeuPromise;
+      expect(eventoA.session_token).toBe('849-291');
+
+      // Aguarda janela curta para certificar que Terapeuta B não recebeu nada
+      await new Promise((r) => setTimeout(r, 50));
+      expect(terapeutaBRecebeu).toBe(false);
+
+      terapeutaSessaoA.disconnect();
+      terapeutaSessaoB.disconnect();
+      dispositivoSessaoA.disconnect();
+    });
+
+    it('deve disparar o callback desacoplado de persistência quando configurado', async () => {
+      const dispositivoSocket = await createClientSocket();
+
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'dispositivo'
+        });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      const spyPersistencia = vi.fn();
+      SessaoGateway.registrarCallbackTelemetria(spyPersistencia);
+
+      dispositivoSocket.emit('sessao:telemetria', {
+        token_sessao: '849-291',
+        tipo_evento: 'acerto',
+        dados: { id_metrica: 'score', valor: 99 }
+      });
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(spyPersistencia).toHaveBeenCalledTimes(1);
+      expect(spyPersistencia).toHaveBeenCalledWith(
+        '849-291',
+        expect.objectContaining({
+          session_token: '849-291',
+          tipo_evento: 'acerto',
+          dados: expect.objectContaining({ id_metrica: 'score', valor: 99 })
+        })
+      );
+
+      SessaoGateway.removerCallbackTelemetria();
+      dispositivoSocket.disconnect();
+    });
+  });
 });
+
