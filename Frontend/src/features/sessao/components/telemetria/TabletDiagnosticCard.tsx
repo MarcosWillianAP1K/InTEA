@@ -28,6 +28,11 @@ export interface TabletDiagnosticCardProps {
  * Monitora saúde do tablet: latência de rede, bateria, sinal e alertas de queda
  * ============================================================================
  */
+
+/**
+ * Card de telemetria de conectividade e integridade física do tablet pareado (RF12, RNF04).
+ * Apresenta latência de rede em milissegundos com código semafórico, nível de bateria e alertas visuais de desconexão.
+ */
 export function TabletDiagnosticCard({
   latenciaMs = 42,
   bateria = 88,

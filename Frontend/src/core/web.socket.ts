@@ -501,6 +501,13 @@ export interface UseSessionSocketReturn {
   sairSala: (token?: string) => void;
 }
 
+/**
+ * Hook reativo do React para integração contínua com a sessão WebSocket ativa.
+ * Utiliza useSyncExternalStore do React 19 para sincronização pura sem tearing de estado.
+ *
+ * @param options - Configurações opcionais de auto-conexão e callbacks de ciclo de vida do dispositivo.
+ * @returns Estado da conexão, metadados do dispositivo remoto e métodos de controle de sala.
+ */
 export function useSessionSocket(options: UseSessionSocketOptions = {}): UseSessionSocketReturn {
   const {
     sessionToken,

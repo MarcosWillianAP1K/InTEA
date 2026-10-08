@@ -13,6 +13,11 @@ export interface TelemetriaChartProps {
  * Renderização SVG vetorial reativa e ultraleve de séries temporais clínicas
  * ============================================================================
  */
+
+/**
+ * Gráfico vetorial SVG em tempo real para visualização contínua de engajamento e atenção do paciente.
+ * Renderiza curvas e gradientes dinâmicos de alta performance sem bibliotecas pesadas de terceiros.
+ */
 export function TelemetriaChart({
   historico,
   titulo = "Evolução Contínua de Engajamento e Atenção",

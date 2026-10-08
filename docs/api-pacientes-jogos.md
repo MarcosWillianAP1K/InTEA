@@ -1730,7 +1730,7 @@ O servidor Socket.IO opera integrado ao backend na porta `3000`, expondo o names
 
 ---
 
-## 8. Matriz de Rastreabilidade Consolidada (Requisitos x Rotas x Códigos HTTP)
+## 8. Matriz de Rastreabilidade (Requisitos x Rotas x Códigos HTTP)
 
 | Requisito / Regra | Rota / Mecanismo Principal | Códigos HTTP / Eventos WS | Detalhe de Implementação |
 | :--- | :--- | :--- | :--- |

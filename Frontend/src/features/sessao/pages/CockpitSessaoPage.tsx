@@ -72,6 +72,7 @@ export function CockpitSessaoPage() {
   }, [status, isPausado]);
 
   // Formata segundos para MM:SS ou HH:MM:SS
+  /** Converte segundos em formato MM:SS ou HH:MM:SS para exibição no cronômetro clínico */
   const formatarTempo = (totalSegundos: number) => {
     const horas = Math.floor(totalSegundos / 3600);
     const minutos = Math.floor((totalSegundos % 3600) / 60);
@@ -88,6 +89,7 @@ export function CockpitSessaoPage() {
   // Handlers de intervenção clínica imediata
   const tokenSessao = pareamento?.sessionToken || paramSessaoId || "sessao-ativa";
 
+  /** Envia comando de pausa ao store e ao jogo remoto via WebSocket (RF21 — Intervenção Manual) */
   const handlePausar = () => {
     pausarSessao();
     SessionSocketManager.getInstance().enviarComando({
@@ -97,6 +99,7 @@ export function CockpitSessaoPage() {
     toast.info("Comando de pausa enviado ao jogo remoto.");
   };
 
+  /** Envia comando de retomada ao store e ao jogo remoto via WebSocket (RF21) */
   const handleRetomar = () => {
     retomarSessao();
     SessionSocketManager.getInstance().enviarComando({
@@ -106,6 +109,7 @@ export function CockpitSessaoPage() {
     toast.success("Intervenção retomada no dispositivo.");
   };
 
+  /** Ajusta o nível DDA no store e propaga o comando ao dispositivo remoto (RF17, RN03) */
   const handleAjustarDda = (nivel: number) => {
     ajustarDda(nivel);
     SessionSocketManager.getInstance().enviarComando({
@@ -116,6 +120,12 @@ export function CockpitSessaoPage() {
     toast.success(`Dificuldade DDA ajustada para o nível ${nivel}.`);
   };
 
+  /**
+   * Confirma o encerramento formal da sessão:
+   * 1. Transiciona o store para 'finalizada'
+   * 2. Notifica o tablet via WebSocket (sessao_finalizada)
+   * 3. Persiste no backend via REST (máquina de estados, IA e auditoria — RF13, RF17, RNF06)
+   */
   const handleConfirmarFinalizacao = async (anotacoes: string) => {
     setIsSubmittingFinalizar(true);
     try {

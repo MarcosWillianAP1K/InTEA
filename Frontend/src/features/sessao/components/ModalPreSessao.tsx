@@ -31,6 +31,12 @@ import {
  * Padrão: Shadcn / Radix UI fiel ao design system clínico
  * ============================================================================
  */
+
+/**
+ * Modal de configuração preliminar de sessão e pareamento remoto com o tablet (RF09, RF10).
+ * Permite selecionar paciente, configurar gatilhos sensoriais a evitar, estresse inicial DDA
+ * e exibir o código PIN de pareamento gerado pelo backend.
+ */
 export function ModalPreSessao() {
   // Sincronização em tempo real entre WebSocket e store global
   useSessionSync();
@@ -49,7 +55,7 @@ export function ModalPreSessao() {
 
   const [copiado, setCopiado] = useState(false);
 
-  // Formata PIN no padrão visual 3 dígitos - 3 dígitos (ex: 849 - 291)
+  /** Formata PIN de pareamento no padrão legível com separador central (ex: 849 - 291) */
   function gerarPINVisual(): string {
     const p1 = Math.floor(100 + Math.random() * 900);
     const p2 = Math.floor(100 + Math.random() * 900);
@@ -61,6 +67,7 @@ export function ModalPreSessao() {
   const nivelEstresse = config?.nivelEstresseInicial ?? 1;
   const gatilhosAtivos = config?.gatilhosEvitar ?? ["Som Alto", "Luz Intensa"];
 
+  /** Alterna inclusão/remoção de gatilho sensorial nos parâmetros da sessão ativa */
   function handleToggleGatilho(gatilho: string) {
     const novos = gatilhosAtivos.includes(gatilho)
       ? gatilhosAtivos.filter((g) => g !== gatilho)
@@ -69,10 +76,12 @@ export function ModalPreSessao() {
     configurarParametros({ gatilhosEvitar: novos });
   }
 
+  /** Atualiza o nível inicial de estresse DDA (1 a 5) antes do início do jogo */
   function handleNivelEstresseChange(novoNivel: number) {
     configurarParametros({ nivelEstresseInicial: novoNivel });
   }
 
+  /** Copia o PIN de pareamento da sessão para a área de transferência com feedback sonner */
   async function handleCopiarPIN() {
     if (!pinExibido) return;
 
@@ -86,6 +95,7 @@ export function ModalPreSessao() {
     }
   }
 
+  /** Dispara a intervenção clínica após handshake confirmado do dispositivo remoto (RF12) */
   function handleIniciarJogo() {
     iniciarIntervencao();
     toast.success(
@@ -93,6 +103,7 @@ export function ModalPreSessao() {
     );
   }
 
+  /** Cancela o fluxo pré-sessão e libera recursos associados */
   function handleCancelar() {
     cancelarSessao("Sessão cancelada pelo terapeuta");
     toast.info("Configuração de sessão cancelada.");

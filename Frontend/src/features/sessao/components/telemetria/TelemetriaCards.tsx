@@ -23,6 +23,11 @@ export interface TelemetriaCardsProps {
  * Exibe métricas em tempo real recebidas do dispositivo remoto
  * ============================================================================
  */
+
+/**
+ * Grid de cartões com indicadores e métricas clínicas recebidas em tempo real (RF12, RF17, RN02).
+ * Exibe contagem de acertos/erros, precisão percentual, tempo médio de resposta, níveis de atenção e estresse.
+ */
 export function TelemetriaCards({ metricas, isLoading = false }: TelemetriaCardsProps) {
   const taxaAcerto =
     metricas.totalEventos > 0

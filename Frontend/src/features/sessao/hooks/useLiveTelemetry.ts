@@ -15,6 +15,13 @@ export interface UseLiveTelemetryOptions {
   initialMetricas?: Partial<MetricasTelemetria>;
 }
 
+/**
+ * Hook para consumo reativo e agregação em tempo real de telemetria recebida via WebSocket.
+ * Processa métricas clínicas, calcula taxa de acertos e mantém janela histórica deslizante de atenção/engajamento.
+ *
+ * @param options - Configurações opcionais de inicialização, limites de histórico e métricas prévias.
+ * @returns Objeto contendo métricas consolidadas, série temporal de histórico e métodos de limpeza/processamento.
+ */
 export function useLiveTelemetry(options: UseLiveTelemetryOptions = {}) {
   const { habilitado = true, maxPontosHistorico = 20, initialMetricas } = options;
 
@@ -35,6 +42,9 @@ export function useLiveTelemetry(options: UseLiveTelemetryOptions = {}) {
     contagem: 0,
   });
 
+  /**
+   * Processa um evento unitário de telemetria atualizando contadores, tempos de resposta e série temporal.
+   */
   const processarEvento = useCallback(
     (evento: EventoTelemetriaPayload) => {
       contadorSegundosRef.current += 1;
@@ -130,6 +140,9 @@ export function useLiveTelemetry(options: UseLiveTelemetryOptions = {}) {
     };
   }, [habilitado, processarEvento]);
 
+  /**
+   * Reseta os contadores de métricas acumuladas e limpa os pontos do gráfico histórico.
+   */
   const limparTelemetria = useCallback(() => {
     setMetricas({
       acertos: 0,
