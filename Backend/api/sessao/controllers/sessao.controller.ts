@@ -154,6 +154,13 @@ export class SessaoController {
       if (validarUUID(idParam)) {
         sessaoAtual = await SessaoModel.buscarPorId(idParam);
       } else {
+        // Valida se o identificador atende ao formato de token de pareamento (ex: 4M5S-8U7B ou 849-291)
+        const isPossivelToken = /^[A-Z0-9]{3,5}-?[A-Z0-9]{3,5}$/i.test(idParam);
+        if (!isPossivelToken) {
+          res.status(400).json({ error: 'O identificador da sessão deve ser um UUID válido ou token existente.' });
+          return;
+        }
+
         sessaoAtual = await SessaoModel.buscarPorToken(idParam);
         if (!sessaoAtual) {
           res.status(400).json({ error: 'O identificador da sessão deve ser um UUID válido ou token existente.' });

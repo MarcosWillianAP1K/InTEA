@@ -246,8 +246,13 @@ describe('SessaoController.finalizar', () => {
 
   it('deve retornar 400 se o identificador da sessão não for um UUID válido', async () => {
     const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscarToken = SessaoModel.buscarPorToken;
+    SessaoModel.buscarPorToken = async () => null;
+
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'uuid-invalido' });
     await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.buscarPorToken = originalBuscarToken;
 
     expect(getStatus()).toBe(400);
     expect((getJson() as { error: string }).error).toContain('UUID válido');
