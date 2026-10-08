@@ -21,12 +21,13 @@ import { supabase } from '../../../core/supabase/supabase.client.js';
 function criarMocks(
   body: Record<string, unknown> = {},
   params: Record<string, string> = {},
-  query: Record<string, string> = {}
+  query: Record<string, string> = {},
+  user: Record<string, unknown> | null = { id: '22222222-2222-4222-a222-222222222222' }
 ) {
   let statusCode = 200;
   let jsonResult: unknown = null;
 
-  const mockReq = { body, params, query } as unknown as import('express').Request;
+  const mockReq = { body, params, query, user } as unknown as import('express').Request;
   const mockRes = {
     status(code: number) {
       statusCode = code;
@@ -215,9 +216,9 @@ describe('TelemetriaService — Lógica de Negócio e RN01', () => {
   });
 
   const sessaoClinicaValida: Sessao = {
-    id: '11111111-1111-1111-1111-111111111111',
-    terapeuta_id: '22222222-2222-2222-2222-222222222222',
-    paciente_id: '33333333-3333-3333-3333-333333333333',
+    id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    terapeuta_id: '22222222-2222-4222-a222-222222222222',
+    paciente_id: '33333333-3333-4333-a333-333333333333',
     jogo_id: '44444444-4444-4444-4444-444444444444',
     session_token: 'ABCD-1234',
     modo_sessao: MODO_SESSAO.SESSAO_CLINICA,
@@ -248,6 +249,57 @@ describe('TelemetriaService — Lógica de Negócio e RN01', () => {
 
     expect(res.persistido).toBe(false);
     expect(res.motivo).toContain('Sessão não encontrada');
+  });
+
+  it('deve rejeitar telemetria se a sessão estiver no status finalizada (sessao_inativa)', async () => {
+    const sessaoFinalizada: Sessao = {
+      ...sessaoClinicaValida,
+      status_sessao: STATUS_SESSAO.FINALIZADA,
+    };
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(sessaoFinalizada);
+
+    const res = await TelemetriaService.persistirEvento(sessaoFinalizada.id, {
+      tipo_evento: 'clique',
+      dados: { id_metrica: 'm1', valor: 1 },
+    });
+
+    expect(res.persistido).toBe(false);
+    expect(res.motivo).toContain('sessao_inativa');
+  });
+
+  it('deve rejeitar lote de telemetria se a sessão estiver no status cancelada (sessao_inativa)', async () => {
+    const sessaoCancelada: Sessao = {
+      ...sessaoClinicaValida,
+      status_sessao: STATUS_SESSAO.CANCELADA,
+    };
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(sessaoCancelada);
+
+    const res = await TelemetriaService.persistirLote(sessaoCancelada.id, [
+      { tipo_evento: 'e1', dados: { id_metrica: 'm1', valor: 1 } },
+    ]);
+
+    expect(res.persistido).toBe(false);
+    expect(res.motivo).toContain('sessao_inativa');
+  });
+
+  it('deve resolver UUID diretamente via validarUUID sem invocar buscarPorToken', async () => {
+    const spyBuscarId = vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(sessaoClinicaValida);
+    const spyBuscarToken = vi.spyOn(SessaoModel, 'buscarPorToken');
+    vi.spyOn(TelemetriaModel, 'registrarEvento').mockResolvedValue({
+      id: 'evt-1',
+      sessao_id: sessaoClinicaValida.id,
+      tipo_evento: 'e1',
+      dados: { id_metrica: 'm1', valor: 1 },
+      data_hora: '2026-09-01T15:00:00Z',
+    });
+
+    await TelemetriaService.persistirEvento(sessaoClinicaValida.id, {
+      tipo_evento: 'e1',
+      dados: { id_metrica: 'm1', valor: 1 },
+    });
+
+    expect(spyBuscarId).toHaveBeenCalledWith(sessaoClinicaValida.id);
+    expect(spyBuscarToken).not.toHaveBeenCalled();
   });
 
   it('RN01: deve suprimir persistência no banco quando sessão for Modo Livre', async () => {
@@ -431,6 +483,23 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
     expect(getJson()).toHaveProperty('error');
   });
 
+  it('POST /api/telemetria: deve retornar 409 Conflict se a sessão estiver inativa', async () => {
+    vi.spyOn(TelemetriaService, 'persistirEvento').mockResolvedValue({
+      persistido: false,
+      motivo: "sessao_inativa: a sessão está no status 'finalizada'",
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      tipo_evento: 'clique',
+      dados: { id_metrica: 'm1', valor: 10 },
+    });
+
+    await TelemetriaController.registrar(mockReq, mockRes);
+    expect(getStatus()).toBe(409);
+    expect((getJson() as { error: string }).error).toContain('não está em andamento');
+  });
+
   it('POST /api/telemetria: deve retornar 200 com persistido: false para Modo Livre (RN01)', async () => {
     vi.spyOn(TelemetriaService, 'persistirEvento').mockResolvedValue({
       persistido: false,
@@ -495,13 +564,62 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
 
   it('POST /api/telemetria/lote: deve retornar 400 se array de eventos for inválido ou vazio', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      sessao_id: 'sess-1',
+      sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
       eventos: [],
     });
 
     await TelemetriaController.registrarLote(mockReq, mockRes);
     expect(getStatus()).toBe(400);
     expect(getJson()).toHaveProperty('error');
+  });
+
+  it('POST /api/telemetria/lote: deve retornar 400 se o lote exceder 500 eventos', async () => {
+    const loteGigante = new Array(501).fill({
+      tipo_evento: 'e',
+      dados: { id_metrica: 'm', valor: 1 },
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      eventos: loteGigante,
+    });
+
+    await TelemetriaController.registrarLote(mockReq, mockRes);
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('Limite máximo de 500 eventos');
+  });
+
+  it('POST /api/telemetria/lote: deve retornar 400 se algum evento do lote não tiver tipo_evento ou dados.id_metrica', async () => {
+    const loteInvalido = [
+      { tipo_evento: 'valido', dados: { id_metrica: 'm1', valor: 1 } },
+      { tipo_evento: '', dados: { id_metrica: 'm2', valor: 2 } },
+    ];
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      eventos: loteInvalido,
+    });
+
+    await TelemetriaController.registrarLote(mockReq, mockRes);
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain("Campo 'tipo_evento' ausente ou inválido");
+  });
+
+  it('POST /api/telemetria/lote: deve retornar 409 Conflict se a sessão estiver inativa', async () => {
+    vi.spyOn(TelemetriaService, 'persistirLote').mockResolvedValue({
+      persistido: false,
+      motivo: "sessao_inativa: a sessão está no status 'cancelada'",
+      total: 1,
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      eventos: [{ tipo_evento: 'e1', dados: { id_metrica: 'm1', valor: 1 } }],
+    });
+
+    await TelemetriaController.registrarLote(mockReq, mockRes);
+    expect(getStatus()).toBe(409);
+    expect((getJson() as { error: string }).error).toContain('não está em andamento');
   });
 
   it('POST /api/telemetria/lote: deve retornar 200 com persistido: false para Modo Livre (RN01)', async () => {
@@ -535,7 +653,7 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
     });
 
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      sessao_id: 'sess-clinica-1',
+      sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
       eventos: [
         { tipo_evento: 'e1', dados: { id_metrica: 'm1', valor: 1 } },
         { tipo_evento: 'e2', dados: { id_metrica: 'm2', valor: 2 } },
@@ -550,35 +668,121 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
     });
   });
 
-  it('GET /api/telemetria/sessao/:sessaoId: deve retornar 200 com lista de telemetrias', async () => {
+  it('GET /api/telemetria/sessao/:sessaoId: deve retornar 400 se sessaoId não for um UUID válido', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { sessaoId: 'uuid-invalido' });
+    await TelemetriaController.listarPorSessao(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('UUID válido');
+  });
+
+  it('GET /api/telemetria/sessao/:sessaoId: deve retornar 404 se a sessão não for encontrada', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(null);
+
+    const { mockReq, mockRes, getStatus } = criarMocks({}, { sessaoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' });
+    await TelemetriaController.listarPorSessao(mockReq, mockRes);
+
+    expect(getStatus()).toBe(404);
+  });
+
+  it('GET /api/telemetria/sessao/:sessaoId: deve retornar 403 Forbidden se o terapeuta não for o dono da sessão (RN04)', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      terapeuta_id: 'outro-terapeuta-uuid',
+      status_sessao: 'em_andamento',
+    } as any);
+
+    // Usuário logado tem id diferente e não é super admin
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {},
+      { sessaoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      {},
+      { id: 'meu-terapeuta-uuid', user_metadata: { is_super_admin: false } }
+    );
+
+    await TelemetriaController.listarPorSessao(mockReq, mockRes);
+    expect(getStatus()).toBe(403);
+    expect((getJson() as { error: string }).error).toContain('RN04');
+  });
+
+  it('GET /api/telemetria/sessao/:sessaoId: deve permitir acesso se o usuário autenticado for Super Admin', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      terapeuta_id: 'outro-terapeuta-uuid',
+      status_sessao: 'em_andamento',
+    } as any);
+
+    vi.spyOn(TelemetriaService, 'listarPorSessao').mockResolvedValue([]);
+
+    // Super Admin com id diferente
+    const { mockReq, mockRes, getStatus } = criarMocks(
+      {},
+      { sessaoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      {},
+      { id: 'admin-uuid', user_metadata: { is_super_admin: true } }
+    );
+
+    await TelemetriaController.listarPorSessao(mockReq, mockRes);
+    expect(getStatus()).toBe(200);
+  });
+
+  it('GET /api/telemetria/sessao/:sessaoId: deve retornar 200 com lista de telemetrias e paginação', async () => {
     const mockHistorico: TelemetriaEvento[] = [
       {
         id: 'evt-1',
-        sessao_id: 'sess-123',
+        sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
         tipo_evento: 'toque',
         dados: { id_metrica: 'coord_x', valor: 120 },
         data_hora: '2026-09-01T15:00:00Z',
       },
     ];
 
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      terapeuta_id: '22222222-2222-4222-a222-222222222222',
+      status_sessao: 'em_andamento',
+    } as any);
+
     vi.spyOn(TelemetriaService, 'listarPorSessao').mockResolvedValue(mockHistorico);
 
     const { mockReq, mockRes, getStatus, getJson } = criarMocks(
       {},
-      { sessaoId: 'sess-123' },
-      { metrica: 'coord_x' }
+      { sessaoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      { metrica: 'coord_x', limite: '10', pagina: '2' },
+      { id: '22222222-2222-4222-a222-222222222222' }
     );
 
     await TelemetriaController.listarPorSessao(mockReq, mockRes);
     expect(getStatus()).toBe(200);
-    expect(getJson()).toEqual({ data: mockHistorico });
-    expect(TelemetriaService.listarPorSessao).toHaveBeenCalledWith('sess-123', 'coord_x');
+    expect(getJson()).toEqual({
+      data: mockHistorico,
+      limite: 10,
+      pagina: 2,
+      total_pagina: 1,
+    });
+    expect(TelemetriaService.listarPorSessao).toHaveBeenCalledWith(
+      'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      'coord_x',
+      10,
+      2
+    );
   });
 
   it('GET /api/telemetria/sessao/:sessaoId: deve retornar 500 se ocorrer erro interno no serviço', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      terapeuta_id: '22222222-2222-4222-a222-222222222222',
+      status_sessao: 'em_andamento',
+    } as any);
+
     vi.spyOn(TelemetriaService, 'listarPorSessao').mockRejectedValue(new Error('Falha no banco'));
 
-    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { sessaoId: 'sess-123' });
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {},
+      { sessaoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      {},
+      { id: '22222222-2222-4222-a222-222222222222' }
+    );
 
     await TelemetriaController.listarPorSessao(mockReq, mockRes);
     expect(getStatus()).toBe(500);

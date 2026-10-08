@@ -7,6 +7,7 @@ import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, StatusSessao } from '../models
 import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/sessao.dto.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
+import { validarUUID } from '../../../core/utils/validators.js';
 
 export class SessaoController {
   // Callback opcional injetado pelo gateway WebSocket (Card 2.2) para notificação em tempo real
@@ -146,14 +147,58 @@ export class SessaoController {
     try {
       const id = String(req.params.id);
 
-      // 1. Atualização atômica da máquina de estados: 'finalizada' e carimbo de 'data_hora_fim'
-      const sessaoAtualizada = await SessaoModel.finalizarSessao(id);
-      if (!sessaoAtualizada) {
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'O identificador da sessão deve ser um UUID válido.' });
+        return;
+      }
+
+      // 1. Busca prévia para validação estrita da máquina de estados
+      const sessaoAtual = await SessaoModel.buscarPorId(id);
+      if (!sessaoAtual) {
         res.status(404).json({ error: 'Sessão não encontrada para finalização' });
         return;
       }
 
-      // 2. Conformidade com RN01 (Modo Livre sem Persistência Clínica / Sem IA)
+      if (sessaoAtual.status_sessao === STATUS_SESSAO.FINALIZADA) {
+        res.status(400).json({
+          error: 'A sessão já se encontra finalizada.',
+          detalhes: 'Esta intervenção clínica já foi encerrada e não pode ser finalizada novamente.',
+        });
+        return;
+      }
+
+      if (sessaoAtual.status_sessao === STATUS_SESSAO.CANCELADA) {
+        res.status(400).json({
+          error: 'A sessão foi cancelada e não pode ser finalizada.',
+          detalhes: 'Sessões canceladas são estados terminais e não podem ser reabertas.',
+        });
+        return;
+      }
+
+      if (sessaoAtual.status_sessao === STATUS_SESSAO.EXPIRADA) {
+        res.status(400).json({
+          error: 'A sessão expirou e não pode ser finalizada.',
+          detalhes: 'O tempo limite de pareamento foi ultrapassado.',
+        });
+        return;
+      }
+
+      if (sessaoAtual.status_sessao === STATUS_SESSAO.AGUARDANDO_PAREAMENTO) {
+        res.status(400).json({
+          error: 'A sessão ainda está aguardando pareamento e não foi iniciada.',
+          detalhes: 'Para descartar uma sessão antes do pareamento, utilize o cancelamento (DELETE /api/sessao/:id/cancelar).',
+        });
+        return;
+      }
+
+      // 2. Atualização atômica da máquina de estados: 'finalizada' e carimbo de 'data_hora_fim'
+      const sessaoAtualizada = await SessaoModel.finalizarSessao(id);
+      if (!sessaoAtualizada) {
+        res.status(500).json({ error: 'Erro ao registrar finalização da sessão no banco de dados' });
+        return;
+      }
+
+      // 3. Conformidade com RN01 (Modo Livre sem Persistência Clínica / Sem IA)
       // Partidas em modo livre não gravam telemetria em prontuário, não acionam IA e paciente_id = NULL
       if (sessaoAtualizada.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessaoAtualizada.paciente_id) {
         res.status(200).json({ data: sessaoAtualizada });

@@ -85,9 +85,14 @@ export class TelemetriaModel {
   }
 
   /**
-   * Busca todo o histórico de eventos de uma sessão ordenado cronologicamente, com filtro opcional por métrica
+   * Busca todo o histórico de eventos de uma sessão ordenado cronologicamente, com filtro opcional por métrica e paginação
    */
-  static async buscarPorSessaoId(sessaoId: string, idMetrica?: string): Promise<TelemetriaEvento[]> {
+  static async buscarPorSessaoId(
+    sessaoId: string,
+    idMetrica?: string,
+    limite?: number,
+    pagina: number = 1
+  ): Promise<TelemetriaEvento[]> {
     try {
       if (!sessaoId) return [];
 
@@ -99,6 +104,12 @@ export class TelemetriaModel {
 
       if (idMetrica) {
         query = query.filter('dados->>id_metrica', 'eq', idMetrica);
+      }
+
+      if (limite && limite > 0) {
+        const paginaNormalizada = Math.max(1, pagina);
+        const offset = (paginaNormalizada - 1) * limite;
+        query = query.range(offset, offset + limite - 1);
       }
 
       const { data, error } = await query;

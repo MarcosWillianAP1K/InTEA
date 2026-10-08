@@ -4,6 +4,9 @@
 
 import { Request, Response } from 'express';
 import { TelemetriaService } from '../services/telemetria.service.js';
+import { SessaoModel } from '../../sessao/models/sessao.model.js';
+import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { validarUUID } from '../../../core/utils/validators.js';
 
 export class TelemetriaController {
   /**
@@ -30,6 +33,15 @@ export class TelemetriaController {
 
       if (!resultado.persistido && resultado.motivo?.includes('Sessão não encontrada')) {
         res.status(404).json({ error: resultado.motivo });
+        return;
+      }
+
+      if (!resultado.persistido && resultado.motivo?.includes('sessao_inativa')) {
+        res.status(409).json({
+          error: 'Não é possível registrar telemetria para uma sessão que não está em andamento.',
+          detalhes: resultado.motivo,
+          persistido: false,
+        });
         return;
       }
 
@@ -68,10 +80,44 @@ export class TelemetriaController {
         return;
       }
 
+      if (eventos.length > 500) {
+        res.status(400).json({
+          error: 'Limite máximo de 500 eventos por lote excedido',
+        });
+        return;
+      }
+
+      // Validação detalhada de integridade de cada evento do lote
+      for (let i = 0; i < eventos.length; i++) {
+        const evt = eventos[i];
+        if (!evt || typeof evt !== 'object') {
+          res.status(400).json({ error: `Elemento no índice ${i} do lote não é um objeto válido` });
+          return;
+        }
+        if (!evt.tipo_evento || typeof evt.tipo_evento !== 'string') {
+          res.status(400).json({ error: `Campo 'tipo_evento' ausente ou inválido no índice ${i} do lote` });
+          return;
+        }
+        if (!evt.dados || typeof evt.dados !== 'object' || !evt.dados.id_metrica) {
+          res.status(400).json({ error: `Objeto 'dados' com 'id_metrica' obrigatório no índice ${i} do lote` });
+          return;
+        }
+      }
+
       const resultado = await TelemetriaService.persistirLote(identificador, eventos);
 
       if (!resultado.persistido && resultado.motivo?.includes('Sessão não encontrada')) {
         res.status(404).json({ error: resultado.motivo });
+        return;
+      }
+
+      if (!resultado.persistido && resultado.motivo?.includes('sessao_inativa')) {
+        res.status(409).json({
+          error: 'Não é possível registrar telemetria para uma sessão que não está em andamento.',
+          detalhes: resultado.motivo,
+          total: resultado.total,
+          persistido: false,
+        });
         return;
       }
 
@@ -97,21 +143,44 @@ export class TelemetriaController {
   }
 
   /**
-   * Consulta histórico de eventos da sessão com filtro opcional por métrica
+   * Consulta histórico de eventos da sessão com filtro opcional por métrica, paginação e RN04
    * GET /api/telemetria/sessao/:sessaoId
    */
   static async listarPorSessao(req: Request, res: Response): Promise<void> {
     try {
       const sessaoId = String(req.params.sessaoId || '');
       const idMetrica = req.query.metrica ? String(req.query.metrica) : undefined;
+      const limite = req.query.limite ? parseInt(String(req.query.limite), 10) : undefined;
+      const pagina = req.query.pagina ? parseInt(String(req.query.pagina), 10) : 1;
 
-      if (!sessaoId) {
-        res.status(400).json({ error: 'Parâmetro sessaoId obrigatório na rota' });
+      if (!sessaoId || !validarUUID(sessaoId)) {
+        res.status(400).json({ error: 'Parâmetro sessaoId obrigatório e deve ser um UUID válido' });
         return;
       }
 
-      const telemetrias = await TelemetriaService.listarPorSessao(sessaoId, idMetrica);
-      res.status(200).json({ data: telemetrias });
+      // Validação de existência da sessão e regra RN04 (Visibilidade Institucional)
+      const sessao = await SessaoModel.buscarPorId(sessaoId);
+      if (!sessao) {
+        res.status(404).json({ error: 'Sessão não encontrada' });
+        return;
+      }
+
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const isSuperAdmin = usuarioLogado?.user_metadata?.is_super_admin === true;
+      const isDonoDaSessao = sessao.terapeuta_id === usuarioLogado?.id;
+
+      if (!isSuperAdmin && !isDonoDaSessao) {
+        res.status(403).json({
+          error: 'Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04).',
+        });
+        return;
+      }
+
+      const telemetrias = await TelemetriaService.listarPorSessao(sessaoId, idMetrica, limite, pagina);
+      res.status(200).json({
+        data: telemetrias,
+        ...(limite ? { pagina, limite, total_pagina: telemetrias.length } : {}),
+      });
     } catch (error) {
       console.error('[TelemetriaController] Erro ao buscar telemetria:', error);
       res.status(500).json({ error: 'Erro interno ao buscar eventos de telemetria' });

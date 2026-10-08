@@ -68,6 +68,8 @@ export const telemetriaRoutes = Router();
  *         description: Dados incompletos ou payload inválido
  *       404:
  *         description: Sessão não encontrada
+ *       409:
+ *         description: Conflito — a sessão não está em andamento (status finalizada, cancelada ou aguardando)
  *       500:
  *         description: Erro interno ao registrar evento de telemetria
  */
@@ -125,9 +127,11 @@ telemetriaRoutes.post('/', TelemetriaController.registrar);
  *       200:
  *         description: Lote processado em memória (Modo Livre - RN01)
  *       400:
- *         description: Parâmetros inválidos ou array vazio
+ *         description: Parâmetros inválidos, elemento do lote malformado ou limite de 500 excedido
  *       404:
  *         description: Sessão não encontrada
+ *       409:
+ *         description: Conflito — a sessão não está em andamento (status finalizada, cancelada ou aguardando)
  *       500:
  *         description: Erro interno ao registrar lote
  */
@@ -138,7 +142,7 @@ telemetriaRoutes.post('/lote', TelemetriaController.registrarLote);
  * /api/telemetria/sessao/{sessaoId}:
  *   get:
  *     summary: Consulta o histórico de eventos de telemetria de uma sessão
- *     description: Retorna a série temporal cronológica dos eventos de telemetria persistidos da sessão clínica, com filtro opcional por ID de métrica.
+ *     description: Retorna a série temporal cronológica dos eventos de telemetria persistidos da sessão clínica, com filtro opcional por ID de métrica e paginação (protegido por RN04).
  *     tags: [Telemetria]
  *     security:
  *       - bearerAuth: []
@@ -156,6 +160,21 @@ telemetriaRoutes.post('/lote', TelemetriaController.registrarLote);
  *         schema:
  *           type: string
  *         description: Filtrar por identificador específico de métrica (ex. 'tempo_resposta')
+ *       - in: query
+ *         name: limite
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Quantidade máxima de registros retornados por página
+ *       - in: query
+ *         name: pagina
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Número da página consultada
  *     responses:
  *       200:
  *         description: Histórico de telemetria retornado com sucesso
@@ -183,9 +202,13 @@ telemetriaRoutes.post('/lote', TelemetriaController.registrarLote);
  *                         type: string
  *                         format: date-time
  *       400:
- *         description: Parâmetro sessaoId ausente
+ *         description: Parâmetro sessaoId ausente ou não é um UUID válido
  *       401:
  *         description: Token JWT ausente ou inválido
+ *       403:
+ *         description: Acesso negado — terapeuta sem vínculo institucional com a sessão clínica (RN04)
+ *       404:
+ *         description: Sessão não encontrada
  *       500:
  *         description: Erro interno ao buscar eventos de telemetria
  */

@@ -242,21 +242,107 @@ describe('SessaoController.iniciar', () => {
 // finalizar — encerramento clínico e persistência de data_hora_fim
 // =============================================================================
 describe('SessaoController.finalizar', () => {
-  it('deve finalizar sessão e retornar data_hora_fim preenchido', async () => {
+  const uuidValido = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+
+  it('deve retornar 400 se o identificador da sessão não for um UUID válido', async () => {
     const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'uuid-invalido' });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('UUID válido');
+  });
+
+  it('deve retornar 404 se a sessão não for encontrada para finalização', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorId;
+    SessaoModel.buscarPorId = async () => null;
+
+    const { mockReq, mockRes, getStatus } = criarMocks({}, { id: uuidValido });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.buscarPorId = originalBuscar;
+    expect(getStatus()).toBe(404);
+  });
+
+  it('deve retornar 400 se a sessão já estiver no status finalizada', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorId;
+    // @ts-expect-error — mock temporário
+    SessaoModel.buscarPorId = async (id: string) => ({
+      id,
+      status_sessao: 'finalizada',
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: uuidValido });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.buscarPorId = originalBuscar;
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('já se encontra finalizada');
+  });
+
+  it('deve retornar 400 se a sessão estiver no status cancelada', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorId;
+    // @ts-expect-error — mock temporário
+    SessaoModel.buscarPorId = async (id: string) => ({
+      id,
+      status_sessao: 'cancelada',
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: uuidValido });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.buscarPorId = originalBuscar;
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('cancelada');
+  });
+
+  it('deve retornar 400 se a sessão ainda estiver aguardando pareamento', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorId;
+    // @ts-expect-error — mock temporário
+    SessaoModel.buscarPorId = async (id: string) => ({
+      id,
+      status_sessao: 'aguardando_pareamento',
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: uuidValido });
+    await SessaoController.finalizar(mockReq, mockRes);
+
+    SessaoModel.buscarPorId = originalBuscar;
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('aguardando pareamento');
+  });
+
+  it('deve finalizar sessão clínica em andamento e retornar data_hora_fim preenchido', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalBuscar = SessaoModel.buscarPorId;
     const originalFinalizar = SessaoModel.finalizarSessao;
 
     const agora = new Date().toISOString();
-    // @ts-expect-error — mock temporário para teste unitário
+    // @ts-expect-error — mock temporário
+    SessaoModel.buscarPorId = async (id: string) => ({
+      id,
+      status_sessao: 'em_andamento',
+      modo_sessao: 'modo_livre',
+      paciente_id: null,
+    });
+
+    // @ts-expect-error — mock temporário
     SessaoModel.finalizarSessao = async (id: string) => ({
       id,
       status_sessao: 'finalizada',
+      modo_sessao: 'modo_livre',
+      paciente_id: null,
       data_hora_fim: agora,
     });
 
-    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'sessao-1' });
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: uuidValido });
     await SessaoController.finalizar(mockReq, mockRes);
 
+    SessaoModel.buscarPorId = originalBuscar;
     SessaoModel.finalizarSessao = originalFinalizar;
 
     expect(getStatus()).toBe(200);
@@ -266,6 +352,7 @@ describe('SessaoController.finalizar', () => {
   it('deve finalizar sessão clínica, sintetizar relatório no formato Contrato 4 e chamar persistência', async () => {
     const { SessaoController } = await import('../controllers/sessao.controller.js');
     const { RelatorioSessaoModel } = await import('../models/relatorio.model.js');
+    const originalBuscar = SessaoModel.buscarPorId;
     const originalFinalizar = SessaoModel.finalizarSessao;
     const originalCriarRelatorio = RelatorioSessaoModel.criar;
 
@@ -273,7 +360,17 @@ describe('SessaoController.finalizar', () => {
     const fim = new Date().toISOString();
     let relatorioPersistido: any = null;
 
-    // @ts-expect-error — mock temporário para teste unitário
+    // @ts-expect-error — mock temporário
+    SessaoModel.buscarPorId = async (id: string) => ({
+      id,
+      session_token: '4M5S-8U7B',
+      terapeuta_id: '11111111-1111-1111-1111-111111111111',
+      paciente_id: '33333333-3333-3333-3333-333333333333',
+      modo_sessao: 'sessao_clinica',
+      status_sessao: 'em_andamento',
+    });
+
+    // @ts-expect-error — mock temporário
     SessaoModel.finalizarSessao = async (id: string) => ({
       id,
       session_token: '4M5S-8U7B',
@@ -290,9 +387,10 @@ describe('SessaoController.finalizar', () => {
       return { id: 'relatorio-uuid-1', ...dto };
     };
 
-    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'sessao-clinica-1' });
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: uuidValido });
     await SessaoController.finalizar(mockReq, mockRes);
 
+    SessaoModel.buscarPorId = originalBuscar;
     SessaoModel.finalizarSessao = originalFinalizar;
     RelatorioSessaoModel.criar = originalCriarRelatorio;
 
@@ -309,7 +407,7 @@ describe('SessaoController.finalizar', () => {
 
     // Valida persistência no banco
     expect(relatorioPersistido).not.toBeNull();
-    expect(relatorioPersistido.sessao_id).toBe('sessao-clinica-1');
+    expect(relatorioPersistido.sessao_id).toBe(uuidValido);
     expect(relatorioPersistido.paciente_id).toBe('33333333-3333-3333-3333-333333333333');
     expect(relatorioPersistido.dados_ia_json.token_sessao).toBe('4M5S-8U7B');
   });
@@ -317,6 +415,7 @@ describe('SessaoController.finalizar', () => {
   it('deve finalizar sessão em modo livre sem gerar relatório de IA (RN01)', async () => {
     const { SessaoController } = await import('../controllers/sessao.controller.js');
     const { RelatorioSessaoModel } = await import('../models/relatorio.model.js');
+    const originalBuscar = SessaoModel.buscarPorId;
     const originalFinalizar = SessaoModel.finalizarSessao;
     const originalCriarRelatorio = RelatorioSessaoModel.criar;
 
@@ -326,7 +425,17 @@ describe('SessaoController.finalizar', () => {
       return null;
     };
 
-    // @ts-expect-error — mock temporário para teste unitário
+    // @ts-expect-error — mock temporário
+    SessaoModel.buscarPorId = async (id: string) => ({
+      id,
+      session_token: 'LIVR-1234',
+      terapeuta_id: 'terapeuta-1',
+      paciente_id: null,
+      modo_sessao: 'modo_livre',
+      status_sessao: 'em_andamento',
+    });
+
+    // @ts-expect-error — mock temporário
     SessaoModel.finalizarSessao = async (id: string) => ({
       id,
       session_token: 'LIVR-1234',
@@ -337,9 +446,10 @@ describe('SessaoController.finalizar', () => {
       data_hora_fim: new Date().toISOString(),
     });
 
-    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: 'sessao-livre-1' });
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: uuidValido });
     await SessaoController.finalizar(mockReq, mockRes);
 
+    SessaoModel.buscarPorId = originalBuscar;
     SessaoModel.finalizarSessao = originalFinalizar;
     RelatorioSessaoModel.criar = originalCriarRelatorio;
 
@@ -347,19 +457,6 @@ describe('SessaoController.finalizar', () => {
     const resposta = getJson() as any;
     expect(resposta.data.relatorio).toBeUndefined();
     expect(relatorioChamado).toBe(false);
-  });
-
-  it('deve retornar 404 se a sessão não for encontrada para finalização', async () => {
-    const { SessaoController } = await import('../controllers/sessao.controller.js');
-    const originalFinalizar = SessaoModel.finalizarSessao;
-    SessaoModel.finalizarSessao = async () => null;
-
-    const { mockReq, mockRes, getStatus } = criarMocks({}, { id: 'id-inexistente' });
-    await SessaoController.finalizar(mockReq, mockRes);
-
-    SessaoModel.finalizarSessao = originalFinalizar;
-
-    expect(getStatus()).toBe(404);
   });
 });
 

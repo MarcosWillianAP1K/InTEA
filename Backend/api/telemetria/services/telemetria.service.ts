@@ -12,7 +12,8 @@
 // ==============================================================================
 
 import { TelemetriaModel, TelemetriaEvento } from '../models/telemetria.model.js';
-import { SessaoModel, MODO_SESSAO, Sessao } from '../../sessao/models/sessao.model.js';
+import { SessaoModel, MODO_SESSAO, STATUS_SESSAO, Sessao } from '../../sessao/models/sessao.model.js';
+import { validarUUID } from '../../../core/utils/validators.js';
 
 export interface ResultadoPersistenciaTelemetria {
   persistido: boolean;
@@ -31,12 +32,13 @@ export class TelemetriaService {
    * Resolve a sessão a partir do ID ou do Session Token (PIN)
    */
   private static async resolverSessao(identificador: string): Promise<Sessao | null> {
-    if (!identificador) return null;
-    let sessao = await SessaoModel.buscarPorId(identificador);
-    if (!sessao) {
-      sessao = await SessaoModel.buscarPorToken(identificador);
+    if (!identificador || typeof identificador !== 'string') return null;
+    const idLimpo = identificador.trim();
+
+    if (validarUUID(idLimpo)) {
+      return SessaoModel.buscarPorId(idLimpo);
     }
-    return sessao;
+    return SessaoModel.buscarPorToken(idLimpo);
   }
 
   /**
@@ -52,6 +54,14 @@ export class TelemetriaService {
       return {
         persistido: false,
         motivo: 'Sessão não encontrada para associação de telemetria',
+      };
+    }
+
+    // Guarda de máquina de estados: telemetria só pode ser injetada em sessão ativa
+    if (sessao.status_sessao !== STATUS_SESSAO.EM_ANDAMENTO) {
+      return {
+        persistido: false,
+        motivo: `sessao_inativa: a sessão está no status '${sessao.status_sessao}'`,
       };
     }
 
@@ -99,6 +109,15 @@ export class TelemetriaService {
       };
     }
 
+    // Guarda de máquina de estados: telemetria só pode ser injetada em sessão ativa
+    if (sessao.status_sessao !== STATUS_SESSAO.EM_ANDAMENTO) {
+      return {
+        persistido: false,
+        motivo: `sessao_inativa: a sessão está no status '${sessao.status_sessao}'`,
+        total: eventos.length,
+      };
+    }
+
     // Regra RN01: Modo livre não grava telemetria em prontuário
     if (sessao.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessao.paciente_id) {
       return {
@@ -125,9 +144,14 @@ export class TelemetriaService {
   }
 
   /**
-   * Consulta os eventos de telemetria de uma sessão com suporte a filtro por métrica
+   * Consulta os eventos de telemetria de uma sessão com suporte a filtro por métrica e paginação
    */
-  static async listarPorSessao(sessaoId: string, idMetrica?: string): Promise<TelemetriaEvento[]> {
-    return TelemetriaModel.buscarPorSessaoId(sessaoId, idMetrica);
+  static async listarPorSessao(
+    sessaoId: string,
+    idMetrica?: string,
+    limite?: number,
+    pagina: number = 1
+  ): Promise<TelemetriaEvento[]> {
+    return TelemetriaModel.buscarPorSessaoId(sessaoId, idMetrica, limite, pagina);
   }
 }
