@@ -146,11 +146,21 @@ A **Sprint 10** representa o ápice da jornada clínica pós-intervenção no ec
 | **5.1** | Raildom Silva | `Docs: Seção 7.10 do Relatório Oficial LaTeX — Tela de Resultados` | Docs | `docs/*.tex` |
 | **5.2** | Raildom Silva | `Docs: Especificação OpenAPI dos Endpoints de Resultados e Anotações` | Docs | `docs/api-pacientes-jogos.md`, Swagger UI |
 | **5.3** | Raildom Silva | `Docs: Roteiro de Testes Manuais de Resultados da Sessão (CT-S15 a CT-S22)` | Validação | `docs/roteiro-testes.md` |
-| **5.4** | Raildom Silva | `Docs: Gestão do Quadro Kanban e Regularização da Sprint 9` | Docs | GitHub Projects (Board, Milestones, Issues) |
+| **5.4** | Raildom Silva | `Docs: Gestão e Governança do Quadro Kanban da Sprint 10` | Docs | GitHub Projects (Board, Milestones, Issues) |
 | **E.1** | *Extra (Não atribuído)* | `BD/Back: Anonimização e Mascaramento LGPD na Exportação de Relatórios` | Validação | `Backend/core/formatters/lgpd.formatter.ts`, `services/` |
 | **E.2** | *Extra (Não atribuído)* | `BD/Back: Cache Materializado de Relatórios de Sessões Finalizadas` | Feature | `Backend/core/cache/relatorio.cache.ts`, `services/` |
 | **E.3** | *Extra (Não atribuído)* | `Front: Folha de Estilos de Impressão Clínica Acessível e Otimizada para PDF` | Feature | `Frontend/src/styles/print.css`, `components/resultado/` |
 | **E.4** | *Extra (Não atribuído)* | `BD: Trigger PostgreSQL de Bloqueio Estrito contra Alteração e Hard Delete` | Validação | `Database/migrations/009_*.sql`, `Database/database.sql` |
+
+### 4.1 Cards de Correção — Débitos Técnicos e Auditoria de Sprints Anteriores (Tipo: Fix)
+
+| ID | Responsável | Card de Correção | Tipo | Arquivos Impactados |
+| :---: | :--- | :--- | :---: | :--- |
+| **F.1** | Marcos Willian | `Back: (Fix) Extração Segura de terapeuta_id a partir do JWT em POST /api/sessao/iniciar` | Fix | `Backend/api/sessao/controllers/sessao.controller.ts`, `routes/` |
+| **F.2** | Marcos Willian | `BD: (Fix) Saneamento da Tabela relatorio_sessao e Políticas RLS para Conformidade 3FN e Modo Livre` | Fix | `Database/database.sql`, `Database/migrations/008_*.sql` |
+| **F.3** | João Marcos | `Back: (Fix) Idempotência e Resiliência na Rota de Pareamento Remoto POST /api/sessao/parear` | Fix | `Backend/api/sessao/controllers/`, `services/sessao-parear.service.ts` |
+| **F.4** | Hermeson Alves | `Front: (Fix) Redirecionamento Pós-Finalização para Tela de Resultados Consolidados` | Fix | `Frontend/src/features/sessao/pages/CockpitSessaoPage.tsx`, `components/` |
+| **F.5** | Luma Maiara | `Front: (Fix) Sincronização e Resiliência Temporal do Cronômetro Clínico contra Desvio e F5` | Fix | `Frontend/src/features/sessao/hooks/useClinicalTimer.ts`, `CockpitSessaoPage.tsx` |
 
 ---
 
@@ -158,14 +168,82 @@ A **Sprint 10** representa o ápice da jornada clínica pós-intervenção no ec
 
 | Requisito / Invariante | Descrição Formal no PDF | Cards Responsáveis |
 | :--- | :--- | :--- |
-| **RF14** | Tela de Resultados da Sessão com métricas e prévia analítica | 1.1, 1.2, 2.1, 2.2, 3.1, 4.1, 4.2, 4.3, 5.1, 5.3 |
+| **RF10** | Pareamento Remoto do Jogo e Tolerância a Desconexões | F.3 |
+| **RF12** | Gestão de Sessão Clínica e Temporização Precisa | F.5 |
+| **RF14** | Tela de Resultados da Sessão com métricas e prévia analítica | 1.1, 1.2, 2.1, 2.2, 3.1, 4.1, 4.2, 4.3, 5.1, 5.3, F.4 |
 | **RF16** | Bloco de Anotações Clínicas associadas ao paciente e sessão | 1.1, 1.3, 3.3, 5.2, 5.3 |
+| **RF19** | Assinatura e Síntese Automatizada do Agente de IA | 2.2, 4.3, F.4 |
 | **RF20** | Exportação de Relatórios Clínicos para formatos padronizados (PDF) | 2.3, 4.4, 5.2, 5.3, E.1, E.3 |
-| **RF21** | Autoria Obrigatória vinculada ao `terapeuta_id` | 1.3, 3.3, 5.1 |
-| **RN01** | Supressão de telemetria e relatório clínico no Modo Livre | 1.2, 3.2, 5.2, 5.3 |
-| **RN04** | Visibilidade restrita a vínculos institucionais (403 Forbidden) | 1.2, 1.3, 2.3, 5.2, 5.3 |
-| **RN05** | Inalterabilidade do histórico clínico (soft delete mandatório) | 1.1, 1.3, 5.1, 5.3, E.4 |
+| **RF21** | Autoria Obrigatória vinculada ao `terapeuta_id` via Token JWT | 1.3, 3.3, 5.1, F.1 |
+| **RN01** | Supressão de telemetria e relatório clínico no Modo Livre | 1.2, 3.2, 5.2, 5.3, F.2 |
+| **RN04** | Visibilidade restrita a vínculos institucionais (403 Forbidden) | 1.2, 1.3, 2.3, 5.2, 5.3, F.1, F.2 |
+| **RN05** | Inalterabilidade do histórico clínico (soft delete mandatório) | 1.1, 1.3, 5.1, 5.3, E.4, F.2 |
 | **RNF02** | Modularidade por Contrato (Contrato 4 - Relatório Analítico) | 1.1, 2.2, 5.2 |
-| **RNF04** | Geração automática de visualizações e gráficos clínicos | 2.1, 4.1, 4.2 |
+| **RNF03** | Segurança da Informação e Autenticação Criptográfica | F.1 |
+| **RNF04** | Geração automática de visualizações e Resiliência Operacional | 2.1, 4.1, 4.2, F.3, F.5 |
 | **RNF06** | Conformidade com LGPD e proteção de dados médicos sensíveis | 2.3, 4.4, E.1, E.4 |
 | **RNF07** | Responsividade da interface para desktop e tablets clínicos | 3.1, 4.1, 4.4, E.3 |
+| **3FN** | Terceira Forma Normal e Eliminação de Redundâncias no Banco | F.2 |
+
+---
+
+## 6. Cronograma Dia a Dia e Sequenciamento Anti-Conflito
+
+| Dia | Back-end 1 (Marcos) | Back-end 2 (João Marcos) | Front-end 1 (Hermeson) | Front-end 2 (Luma) | Docs / QA (Raildom) |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| **Dia 1** | Migration `008` (3FN, RLS) e models de sessão/relatório | Agregação de telemetria em memória (`telemetria-agregacao.service.ts`) | Casca de `ResultadoSessaoPage.tsx` com cabeçalho e slots | `MetricasConsolidadasCards.tsx` com mocks e Skeleton | **PRIORIDADE:** Sincronização do board Kanban no GitHub Projects |
+| **Dia 2** | Controller e serviço `sessao-resultado.service.ts` (leitura de dados) | Cálculos estatísticos de reação/precisão e respeito a RN02 | Redirecionamento fluido no Cockpit (`CockpitSessaoPage.tsx`) | `GraficoEvolutivoResultado.tsx` em SVG vetorial puro | Estruturação da Seção 7.10 no relatório LaTeX |
+| **Dia 3** | Módulo de anotações clínicas (`Backend/api/anotacao/`) | Síntese analítica do Agente de IA (`sessao-ia-analise.service.ts` Contrato 4) | `BlocoAnotacoesClinicas.tsx` com estado local e proteção de duplo clique | `PainelInsightsIA.tsx` e **ENTREGA 1:** Componentes prontos nos slots | Atualização da especificação OpenAPI em `api-pacientes-jogos.md` |
+| **Dia 4** | **INTEGRAÇÃO:** Conecta síntese IA (Card 2.2) na rota de resultado | Endpoint de exportação clínica `GET /api/sessao/:id/exportar` | **INTEGRAÇÃO:** Importa componentes analíticos de Luma na página mestre | `BotaoExportarRelatorio.tsx`, hook e folha `@media print` | Elaboração dos casos de teste manuais CT-S15 a CT-S22 |
+| **Dia 5** | **ENTREGA:** Libera rotas de anotação para o Front | **ENTREGA:** Libera rota de exportação para o Front | **INTEGRAÇÃO:** Conecta bloco de anotações com as rotas reais de Marcos | **INTEGRAÇÃO:** Conecta botão de exportação com a rota real de João | Coleta de evidências, prints das telas e tabelas no LaTeX |
+| **Dia 6** | Testes automatizados Vitest de ponta a ponta (Back) | Testes Vitest de agregação, síntese IA e exportação | Testes Vitest de renderização e 4 estados de tela | Testes Vitest dos componentes isolados e impressão | Compilação final do PDF em LaTeX e revisão textual |
+| **Dia 7** | **Revisão e Regressão Geral (100% testes verdes no back e front)** | **Fechamento formal da Sprint 10 e retrospectiva da equipe** |
+
+---
+
+## 7. Matriz de Dependências Técnicas e Ordem de Merge
+
+```mermaid
+flowchart TD
+    subgraph BACKEND["Back-end: Desacoplamento e Integração Segura"]
+        M_BD["Marcos: Migration 008 3FN e Models (Dias 1-2)"] -->|Disponibiliza models| M_Res["Marcos: Endpoint GET /api/sessao/:id/resultado (Dias 2-3)"]
+        J_Agreg["João: Agregação de Telemetria (Dias 1-3)"] -->|Alimenta cálculos| J_IA["João: Síntese Contrato 4 IA (Dias 3-4)"]
+        J_IA -->|Entrega função analítica (Dia 4)| M_Res
+        J_IA -->|Fornece dados estruturados| J_Exp["João: Endpoint GET /api/sessao/:id/exportar (Dias 4-5)"]
+        M_Anot["Marcos: Módulo Anotações POST/PATCH (Dias 3-4)"]
+    end
+
+    subgraph FRONTEND["Front-end: Arquitetura de Componentes por Slots"]
+        L_Cards["Luma: MetricasCards e Gráfico SVG (Dias 1-3)"] -->|Entrega componentes puros (Dia 4)| H_Page["Hermeson: Casca ResultadoSessaoPage (Dias 1-3)"]
+        L_IA["Luma: PainelInsightsIA Contrato 4 (Dia 3)"] -->|Entrega painel de IA (Dia 4)| H_Page
+        H_Cockpit["Hermeson: Redirecionamento Cockpit (Dia 2)"]
+        H_Anot["Hermeson: BlocoAnotacoesClinicas (Dias 1-3)"]
+        L_Exp["Luma: BotaoExportar e Print (Dias 4-5)"]
+    end
+
+    subgraph INTEGRACAO["Integração Ponta a Ponta (Dias 4-5)"]
+        M_Res -->|Consumo REST resultado| H_Page
+        M_Anot -->|Consumo REST anotações (Dia 5)| H_Anot
+        J_Exp -->|Consumo REST exportar (Dia 5)| L_Exp
+    end
+
+    subgraph QA["Qualidade e Governança"]
+        R_Kanban["Raildom: Sincronização do Board (Dias 1-2)"]
+        INTEGRACAO -->|Evidências e Contratos| R_Docs["Raildom: OpenAPI, LaTeX e Roteiro de Testes (Dias 4-6)"]
+    end
+```
+
+---
+
+## 8. Critérios de Homologação da Sprint 10
+
+Para que a Sprint 10 seja considerada oficialmente concluída, todos os seguintes critérios devem ser atendidos:
+1. **Compilação Estrita:** `npm run build` no Backend e Frontend com 0 erros de TypeScript e zero `any`.
+2. **Cobertura de Testes Verdes:** 100% dos testes do Backend e do Frontend passando no Vitest (`npm test`).
+3. **Respeito aos Invariantes Clínicos:**
+   - **RN01:** Partidas em Modo Livre encerram e exibem dados sem gravar prontuário ou relatório de paciente.
+   - **RN02:** Telemetria com tipos incompatíveis rejeitada com status HTTP `422 Unprocessable Entity` sem fallback automático.
+   - **RN04:** Acesso à Tela de Resultados e rotas de anotação restrito a terapeutas vinculados (`403 Forbidden`).
+   - **RN05:** Imutabilidade clínica garantida por soft delete (`soft_delete = true`) e bloqueio total de hard delete no banco.
+4. **Relatório LaTeX Compilável:** Seção 7.10 redigida e PDF compilando perfeitamente sem referências quebradas.
+5. **Board Kanban Atualizado:** Todas as 20 issues da Sprint 10 finalizadas e movidas para `CLOSED`.

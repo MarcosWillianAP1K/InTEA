@@ -265,19 +265,23 @@
 
 > [!NOTE]
 > Estes cards representam **3 grandes frentes fundamentais fora do cronograma linear de sprints** (Autenticação Avançada, Blindagem de Segurança e Auditoria/SuperAdmin).  
-> **Não possuem responsável atribuído na Sprint 8** e servem como backlog estratégico para os membros que concluírem suas tarefas antecipadamente.
+> **Não possuem responsável atribuído na Sprint 8** e servem como backlog estratégico de reforço arquitetural para os membros que concluírem suas tarefas antecipadamente.
+> *Nota de Auditoria:* A auditoria de sessões clínicas foi adiantada e entregue na Sprint 9 (Card 1.3 - `007_auditoria_sessao.sql`). A auditoria de acesso direto a prontuário médico (`auditoria_acesso`) permanece neste backlog extra.
 
 ---
 
 ### Back: Mecanismo de Refresh Token com Rotação Automática (Tipo: Feature)
 
 * **Tipo:** Feature
+* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Fronteira de Arquivos:** `Backend/core/auth/auth.service.ts`, `Backend/core/auth/auth.controller.ts`, `Backend/core/auth/auth.routes.ts`, `Backend/core/auth/token.service.ts`
+* **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RF03, RNF03
 * **Referência Documentação:** RF03 (Controle de Acesso via Refresh Token), RNF03
-* **Descrição:** Implementar renovação contínua de sessão JWT com rotação estrita de tokens: a cada chamada a `/api/auth/refresh`, um novo refresh token é emitido e o anterior é imediatamente invalidado, detectando tentativas de reutilização maliciosa.
+* **Descrição:** Implementar renovação contínua de sessão JWT com rotação estrita de tokens: a cada chamada a `POST /api/auth/refresh`, um novo refresh token é emitido e o anterior é imediatamente invalidado, detectando tentativas de reutilização maliciosa e revogando a árvore da sessão.
 * **Critérios de Aceite:**
-  * [ ] Rota `POST /api/auth/refresh` valida o refresh token e emite novo par (access e refresh token).
-  * [ ] Reutilização de um refresh token já consumido revoga toda a árvore de sessões por segurança.
+  * [ ] Rota `POST /api/auth/refresh` valida o refresh token e emite novo par (access e refresh token) com status HTTP 200.
+  * [ ] Reutilização de um refresh token já consumido revoga toda a árvore de sessões por segurança retornando HTTP 401.
   * [ ] Interceptor no frontend atualiza silenciosamente o token sem interrupção para o terapeuta.
 
 ---
@@ -285,64 +289,79 @@
 ### Back: Gestão e Encerramento de Sessões Concorrentes (Tipo: Feature)
 
 * **Tipo:** Feature
+* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Fronteira de Arquivos:** `Database/migrations/010_sessoes_ativas.sql`, `Backend/core/auth/sessoes-ativas.service.ts`, `Backend/core/auth/auth.controller.ts`
+* **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RF02
 * **Referência Documentação:** RF02 (Gerenciamento de Sessões Ativas)
-* **Descrição:** Criar endpoints e tabelas para controle de dispositivos logados pelo terapeuta, permitindo listar sessões ativas com IP/User-Agent e revogar remotamente acessos suspeitos (`POST /api/auth/logout-all`).
+* **Descrição:** Criar endpoints e estrutura para controle de dispositivos logados pelo terapeuta, permitindo listar sessões ativas com IP/User-Agent e revogar remotamente acessos suspeitos (`POST /api/auth/logout-all`).
 * **Critérios de Aceite:**
-  * [ ] Rota `GET /api/auth/sessoes` lista conexões ativas do terapeuta logado.
-  * [ ] Rota `POST /api/auth/logout-all` desconecta todas as outras sessões ativas com sucesso.
-  * [ ] Tokens de sessões revogadas são rejeitados imediatamente no middleware de autenticação.
+  * [ ] Rota `GET /api/auth/sessoes` lista conexões ativas do terapeuta logado com status HTTP 200.
+  * [ ] Rota `POST /api/auth/logout-all` desconecta todas as outras sessões ativas com sucesso retornando HTTP 200 ou 204.
+  * [ ] Tokens de sessões revogadas são rejeitados imediatamente no middleware de autenticação (HTTP 401).
 
 ---
 
 ### Back: Fluxo de Recuperação de Senha com Link Mágico Expirável (Tipo: Feature)
 
 * **Tipo:** Feature
+* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Fronteira de Arquivos:** `Backend/core/auth/recuperacao.service.ts`, `Backend/core/auth/auth.controller.ts`, `Backend/core/mail/mailer.service.ts`
+* **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RF01, RNF03
 * **Referência Documentação:** RF01, RNF03
 * **Descrição:** Disponibilizar fluxo seguro de recuperação de credenciais via e-mail contendo token assinado de uso único com expiração de 30 minutos, impedindo enumeração de usuários na resposta da API.
 * **Critérios de Aceite:**
   * [ ] Endpoint `POST /api/auth/recuperar-senha` sempre retorna status 200 genérico para evitar vazamento de existência de e-mail.
   * [ ] Endpoint `POST /api/auth/redefinir-senha` valida token efêmero e aplica nova senha criptografada.
-  * [ ] Token de recuperação torna-se inválido imediatamente após o primeiro uso.
+  * [ ] Token de recuperação torna-se inválido imediatamente após o primeiro uso ou após 30 minutos (HTTP 410 Gone).
 
 ---
 
 ### Back: Rate Limiting Contra Força Bruta em Autenticação e Pareamento (Tipo: Validação)
 
 * **Tipo:** Validação
+* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Fronteira de Arquivos:** `Backend/core/middlewares/rate-limit.middleware.ts`, `Backend/core/auth/auth.routes.ts`, `Backend/api/sessao/routes/sessao.routes.ts`
+* **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RNF03 (Segurança)
 * **Referência Documentação:** RNF03
-* **Descrição:** Aplicar limitação de taxa de requisições (`express-rate-limit`) nas rotas de login e pareamento de sessão, bloqueando ataques de força bruta direcionados a senhas de terapeutas e adivinhação de PINs de jogos.
+* **Descrição:** Aplicar limitação de taxa de requisições (`express-rate-limit`) nas rotas REST de login e pareamento de sessão, bloqueando ataques de força bruta direcionados a senhas de terapeutas e adivinhação de PINs de jogos.
 * **Critérios de Aceite:**
-  * [ ] Limite de no máximo 5 tentativas de login por IP a cada 15 minutos (retorno 429 Too Many Requests).
-  * [ ] Limite de checagem de PIN no endpoint de pareamento `/api/sessao/parear` contra enumeração.
-  * [ ] Resposta com header `Retry-After` informando tempo de espera para desbloqueio.
+  * [ ] Limite de no máximo 5 tentativas de login por IP a cada 15 minutos (retorno HTTP 429 Too Many Requests).
+  * [ ] Limite de checagem de PIN no endpoint de pareamento `/api/sessao/parear` contra enumeração exaustiva.
+  * [ ] Resposta com header `Retry-After` informando tempo restante de bloqueio em conformidade com padrões de segurança.
 
 ---
 
 ### BD/Back: Anonimização e Criptografia em Repouso de Dados Sensíveis LGPD (Tipo: Validação)
 
 * **Tipo:** Validação
+* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Fronteira de Arquivos:** `Backend/core/security/crypto.service.ts`, `Backend/api/pacientes/services/paciente.service.ts`, `Database/migrations/011_criptografia_prontuario.sql`
+* **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RNF06 (LGPD), RN04
 * **Referência Documentação:** RNF06, RN04
-* **Descrição:** Implementar anonimização de identificadores em logs da aplicação e rotinas de criptografia simétrica (AES-256) em repouso para campos altamente sensíveis de prontuário, laudos médicos e histórico de gatilhos.
+* **Descrição:** Implementar rotinas de anonimização de identificadores em logs da aplicação e criptografia simétrica (AES-256-GCM) em repouso para campos altamente sensíveis de prontuário, laudos médicos e histórico de gatilhos.
 * **Critérios de Aceite:**
   * [ ] Logs da aplicação nunca imprimem CPF, telefone ou nome completo em texto claro.
   * [ ] Campos sensíveis armazenados cifrados no banco e decifrados apenas na camada de serviço autorizada.
-  * [ ] Conformidade comprovada com diretrizes da LGPD para dados de menores de idade e pessoas atípicas.
+  * [ ] Conformidade comprovada com diretrizes da LGPD para proteção de dados clínicos de pessoas atípicas.
 
 ---
 
 ### Back: Middleware de Headers de Segurança HTTP e Proteção CSRF/CORS (Tipo: Validação)
 
 * **Tipo:** Validação
+* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Fronteira de Arquivos:** `Backend/core/middlewares/security-headers.middleware.ts`, `Backend/index.ts`
+* **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RNF03
 * **Referência Documentação:** RNF03
 * **Descrição:** Configurar proteção avançada de rede no backend utilizando `helmet` (HSTS, Content Security Policy restritiva, bloqueio de clickjacking via `X-Frame-Options: DENY`) e validação estrita de origens confiáveis no CORS.
 * **Critérios de Aceite:**
   * [ ] Headers de proteção presentes em 100% das respostas HTTP da API.
-  * [ ] Requisições com origens não autorizadas no CORS são bloqueadas com erro de rede seguro.
+  * [ ] Requisições com origens não autorizadas no CORS são bloqueadas com erro seguro de rede.
   * [ ] Bloqueio de injeção em iframes externos para proteção de telas clínicas.
 
 ---
@@ -350,25 +369,31 @@
 ### BD/Back: Trilha de Auditoria de Acessos ao Prontuário Médico (Tipo: Feature)
 
 * **Tipo:** Feature
+* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Fronteira de Arquivos:** `Database/migrations/012_auditoria_prontuario.sql`, `Backend/api/pacientes/middlewares/auditoria-prontuario.middleware.ts`, `Backend/api/auditoria/auditoria-prontuario.service.ts`
+* **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RF08, RNF06
 * **Referência Documentação:** RF08 (Auditoria de Vínculos e Acessos), RNF06
-* **Descrição:** Implementar middleware de auditoria que registra na tabela `auditoria_acesso` todo evento de visualização (`GET`), alteração (`PUT`/`PATCH`) ou exclusão lógica (`DELETE`) de prontuários, armazenando `terapeuta_id`, `paciente_id`, `ip`, `user_agent` e timestamp.
+* **Descrição:** Implementar middleware de auditoria que registra na tabela `auditoria_acesso_prontuario` todo evento de visualização (`GET`), alteração (`PUT`/`PATCH`) ou exclusão lógica (`DELETE`) de dados de pacientes, armazenando `terapeuta_id`, `paciente_id`, `ip`, `user_agent` e timestamp imutável.
 * **Critérios de Aceite:**
   * [ ] Registro automático em tabela de auditoria a cada consulta a `/api/paciente/:id`.
-  * [ ] Imutabilidade dos registros de log (sem permissão de alteração ou deleção na tabela de auditoria).
-  * [ ] Suporte a consultas de auditoria por período e por terapeuta.
+  * [ ] Imutabilidade dos registros de log garantida por trigger PostgreSQL (bloqueio total de UPDATE e DELETE).
+  * [ ] Suporte a consultas de auditoria por período e por terapeuta com status HTTP 200.
 
 ---
 
 ### Back: Endpoints Administrativos para Gestão Global de Clínicas e Terapeutas (Tipo: Feature)
 
 * **Tipo:** Feature
+* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Fronteira de Arquivos:** `Backend/api/admin/controllers/admin.controller.ts`, `Backend/api/admin/services/admin.service.ts`, `Backend/api/admin/routes/admin.routes.ts`
+* **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RF07, RF08
 * **Referência Documentação:** RF07 (Gestão SuperAdmin), RF08
 * **Descrição:** Criar rotas restritas ao papel `is_super_admin` (`/api/admin/clinicas`, `/api/admin/terapeutas`) para gerenciamento institucional de clínicas parceiras, ativação/desativação de contas de profissionais e consulta global de logs de auditoria.
 * **Critérios de Aceite:**
-  * [ ] Middleware `superAdminMiddleware` bloqueia qualquer terapeuta sem privilégios de SuperAdmin (status 403).
-  * [ ] Rotas de listagem, ativação e desativação institucional de clínicas e terapeutas funcionando.
+  * [ ] Middleware `superAdminMiddleware` bloqueia qualquer terapeuta sem privilégios de SuperAdmin com status HTTP 403 Forbidden.
+  * [ ] Rotas de listagem, ativação e desativação institucional de clínicas e terapeutas funcionando com status HTTP 200/204.
   * [ ] Consulta de logs de auditoria consolidada por instituição.
 
 ---
@@ -376,11 +401,14 @@
 ### Front: Interface do Painel Administrativo de Auditoria (Tipo: Feature)
 
 * **Tipo:** Feature
+* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Fronteira de Arquivos:** `Frontend/src/features/admin/pages/AuditoriaAdminPage.tsx`, `Frontend/src/features/admin/components/TabelaAuditoria.tsx`, `Frontend/src/routes/admin.routes.tsx`
+* **Ordem de Execução / Dependência:** FAZ DEPOIS DE (Endpoints Administrativos do Back-end).
 * **Requisitos:** RF07, RF08
 * **Referência Documentação:** RF07, RF08
 * **Descrição:** Desenvolver página restrita no frontend (`/admin/auditoria`) com tabela interativa contendo filtros por data, terapeuta e tipo de ação clínica, permitindo aos administradores da clínica fiscalizar a conformidade e os acessos aos prontuários.
 * **Critérios de Aceite:**
-  * [ ] Rota protegida por guard de rota que restringe acesso apenas a usuários SuperAdmin.
+  * [ ] Rota protegida por guard de rota que restringe acesso apenas a usuários com flag SuperAdmin.
   * [ ] Tabela com busca, paginação e filtros de eventos de auditoria.
   * [ ] Botão de exportação dos logs em formato estruturado (CSV/JSON) para relatórios institucionais.
 

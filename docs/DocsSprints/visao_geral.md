@@ -55,5 +55,6 @@ Os relatórios acadêmicos e retrospectivas detalhadas de cada Sprint residem em
 ## 4. Regras e Padrões Obrigatórios para Novas Tasks
 
 Ao criar, planejar ou auditar qualquer card para as sprints presentes ou futuras, consulte obrigatoriamente as diretrizes em:
-* [AGENTS.md — Seção 5: Padrão de Engenharia de Cards e Tasks](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/AGENTS.md#L58-L179)
-* [AGENTS.md — Seção 6: Verificação e Auditoria Técnica de Tasks (Quality Gate)](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/AGENTS.md#L181-L431)
+* [AGENTS.md — Seção 5: Padrão de Engenharia de Cards e Tasks](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/AGENTS.md) (Nomenclatura, Tipos Feature/Validação/Docs/Fix, Template canônico de 8 campos e Sequenciamento anti-conflito).
+* [AGENTS.md — Seção 6: Verificação e Auditoria Técnica de Tasks (Quality Gate)](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/AGENTS.md) (Auditoria isolada por área: Back, BD, Front e Docs).
+* **Cards de Correção (Fix):** Débitos técnicos identificados em auditorias de sprints passadas são formalizados na sprint atual com o prefixo `Área: (Fix) [Título] (Tipo: Fix)`.
