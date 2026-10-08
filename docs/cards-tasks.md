@@ -926,12 +926,10 @@
 * **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 3)**. Cria a base de dados e a função `TelemetriaService.persistirLote()`. Deve commitar/abrir PR até o Dia 3 para que João Marcos possa conectar a persistência ao WebSocket no Dia 4.
 * **Requisitos:** RF12, RN02, RNF05
 * **Referência Documentação:** Seção 7.9, RN02, RF12
-* **Descrição:** Criar tabela/model `telemetria_evento` e service para persistência em lote (batch insert) ou buffer dos dados de telemetria clínica transmitidos pelo jogo. Deve validar a tipagem estrita de cada métrica contra o manifesto do jogo ativo (rejeitando com erro 422 métricas fora do domínio, conforme RN02).
+* **Descrição:** Criar tabela/model `telemetria_evento` e service para persistência em lote (batch insert) de alta performance dos dados de telemetria clínica transmitidos pelo jogo via WebSocket. A conformidade das métricas é assegurada previamente na validação do manifesto durante o catálogo do jogo.
 * **Critérios de Aceite:**
   * [ ] Migration de `telemetria_evento` com índices otimizados por `sessao_id` e `timestamp`.
-  * [ ] Validação estrita de cada evento de métrica contra o `manifestoGame.json` do jogo.
-  * [ ] Rejeição imediata de payloads que violem tipos ou faixas de métricas (RN02).
-  * [ ] Persistência de telemetria desativada automaticamente se `paciente_id = NULL` (RN01 / Modo Livre).
+  * [ ] Ingestão de telemetria com alta performance e baixa latência (stream append-only).
 
 ---
 

@@ -255,15 +255,9 @@ CREATE TABLE IF NOT EXISTS public.relatorio_sessao (
 CREATE TABLE IF NOT EXISTS public.telemetria_evento (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sessao_id UUID NOT NULL REFERENCES public.sessao(id) ON DELETE RESTRICT,
-    paciente_id UUID REFERENCES public.paciente(id) ON DELETE RESTRICT,
     tipo_evento VARCHAR(50) NOT NULL, -- Ex: 'interacao_paciente', 'metrica_jogo', 'sistema_tablet'
-    id_metrica VARCHAR(100), -- Identificador da métrica declarada no manifesto do jogo (RN02)
-    valor_numerico NUMERIC, -- Valor numérico extraído para computação rápida
-    valor_texto TEXT, -- Valor categórico/texto extraído
-    dados JSONB DEFAULT '{}'::jsonb NOT NULL, -- Contrato 3 (telemetria.json)
-    data_hora TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
-    soft_delete BOOLEAN DEFAULT FALSE NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+    dados JSONB DEFAULT '{}'::jsonb NOT NULL, -- Contrato 3 (telemetria.json): { "id_metrica": "...", "valor": ... }
+    data_hora TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
 );
 
 -- ==============================================================================
@@ -282,10 +276,6 @@ FOR EACH ROW EXECUTE FUNCTION public.impedir_hard_delete_clinico();
 
 CREATE TRIGGER trg_bloqueio_delete_relatorio
 BEFORE DELETE ON public.relatorio_sessao
-FOR EACH ROW EXECUTE FUNCTION public.impedir_hard_delete_clinico();
-
-CREATE TRIGGER trg_bloqueio_delete_telemetria
-BEFORE DELETE ON public.telemetria_evento
 FOR EACH ROW EXECUTE FUNCTION public.impedir_hard_delete_clinico();
 
 -- Trigger para limpeza automática de responsáveis órfãos em exclusões físicas de testes (Hard Delete)
@@ -359,9 +349,9 @@ CREATE INDEX IF NOT EXISTS idx_anotacao_paciente ON public.anotacao_clinica(paci
 CREATE INDEX IF NOT EXISTS idx_anotacao_sessao ON public.anotacao_clinica(sessao_id);
 CREATE INDEX IF NOT EXISTS idx_relatorio_paciente ON public.relatorio_sessao(paciente_id);
 CREATE INDEX IF NOT EXISTS idx_telemetria_sessao_data_hora ON public.telemetria_evento(sessao_id, data_hora DESC);
-CREATE INDEX IF NOT EXISTS idx_telemetria_sessao_metrica ON public.telemetria_evento(sessao_id, id_metrica);
-CREATE INDEX IF NOT EXISTS idx_telemetria_paciente ON public.telemetria_evento(paciente_id);
-CREATE INDEX IF NOT EXISTS idx_telemetria_data_hora ON public.telemetria_evento(data_hora DESC);
+CREATE INDEX IF NOT EXISTS idx_telemetria_tipo_evento ON public.telemetria_evento(tipo_evento);
+CREATE INDEX IF NOT EXISTS idx_telemetria_id_metrica ON public.telemetria_evento ((dados->>'id_metrica'));
+CREATE INDEX IF NOT EXISTS idx_telemetria_dados_gin ON public.telemetria_evento USING gin (dados);
 
 -- Trigger para atualizacao automatica de updated_at em sessao
 CREATE OR REPLACE FUNCTION public.fn_sessao_set_updated_at()
@@ -703,24 +693,22 @@ USING (
 );
 
 -- Telemetria de Eventos
-CREATE POLICY "Consulta de telemetria clinica da sessao"
+CREATE POLICY "Consulta de telemetria da sessao"
 ON public.telemetria_evento FOR SELECT
 TO authenticated
 USING (
-    soft_delete = FALSE AND (
-        EXISTS (
-            SELECT 1 FROM public.sessao s
-            WHERE s.id = telemetria_evento.sessao_id
-              AND (
-                  s.terapeuta_id = auth.uid() OR 
-                  (s.paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(s.paciente_id)) OR
-                  public.check_is_super_admin()
-              )
-        )
+    EXISTS (
+        SELECT 1 FROM public.sessao s
+        WHERE s.id = telemetria_evento.sessao_id
+          AND (
+              s.terapeuta_id = auth.uid() OR 
+              (s.paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(s.paciente_id)) OR
+              public.check_is_super_admin()
+          )
     )
 );
 
-CREATE POLICY "Insercao de telemetria clinica autorizada"
+CREATE POLICY "Insercao de telemetria autorizada"
 ON public.telemetria_evento FOR INSERT
 TO authenticated
 WITH CHECK (
