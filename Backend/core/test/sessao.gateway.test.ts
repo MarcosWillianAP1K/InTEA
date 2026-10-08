@@ -644,6 +644,62 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao) & Heartbeat/Que
       dispositivoSocket.disconnect();
     });
 
+    it('deve aceitar payload vindo do Cockpit Web em formato camelCase e com aliases (sessionToken, tipo: pausar, retomar, ajustar_dda)', async () => {
+      const terapeutaSocket = await createClientSocket();
+      const dispositivoSocket = await createClientSocket();
+
+      await new Promise<void>((resolve) => {
+        terapeutaSocket.emit('entrar_sessao', { session_token: '849-291', role: 'terapeuta' });
+        terapeutaSocket.on('sessao_conectada', () => resolve());
+      });
+
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', { session_token: '849-291', role: 'dispositivo' });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      // 1. Testa alias 'pausar' com 'sessionToken'
+      const comandoPausarPromise = new Promise<ComandoClinicoEventoNormalizado>((resolve) => {
+        dispositivoSocket.once('sessao:comando', (cmd: ComandoClinicoEventoNormalizado) => resolve(cmd));
+      });
+
+      const ackPausa = await new Promise<RespostaComandoAck>((resolve) => {
+        terapeutaSocket.emit(
+          'sessao:comando',
+          { sessionToken: '849-291', tipo: 'pausar' },
+          (res: RespostaComandoAck) => resolve(res)
+        );
+      });
+
+      expect(ackPausa.sucesso).toBe(true);
+      expect(ackPausa.comando).toBe('pausar_jogo');
+      const entreguePausa = await comandoPausarPromise;
+      expect(entreguePausa.tipo_comando).toBe('pausar_jogo');
+
+      // 2. Testa alias 'ajustar_dda' com 'nivelDda'
+      const comandoDdaPromise = new Promise<ComandoClinicoEventoNormalizado>((resolve) => {
+        dispositivoSocket.once('sessao:comando', (cmd: ComandoClinicoEventoNormalizado) => resolve(cmd));
+      });
+
+      const ackDda = await new Promise<RespostaComandoAck>((resolve) => {
+        terapeutaSocket.emit(
+          'sessao:comando',
+          { sessionToken: '849-291', tipo: 'ajustar_dda', parametros: { nivelDda: 4 } },
+          (res: RespostaComandoAck) => resolve(res)
+        );
+      });
+
+      expect(ackDda.sucesso).toBe(true);
+      expect(ackDda.comando).toBe('ajustar_dificuldade_dda');
+      const entregueDda = await comandoDdaPromise;
+      expect(entregueDda.tipo_comando).toBe('ajustar_dificuldade_dda');
+      expect(entregueDda.parametros?.nivelDda).toBe(4);
+      expect(entregueDda.parametros?.novo_nivel).toBe(4);
+
+      terapeutaSocket.disconnect();
+      dispositivoSocket.disconnect();
+    });
+
     it('deve rejeitar envio de comando se o dispositivo remoto estiver offline ou desconectado', async () => {
       const terapeutaSocket = await createClientSocket();
 

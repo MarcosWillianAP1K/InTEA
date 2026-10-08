@@ -7,6 +7,7 @@ import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
 import { apiRouter } from "../api/index.js";
 import { SessaoGateway } from "../core/websocket/sessao.gateway.js";
+import { TelemetriaService } from "../api/telemetria/services/telemetria.service.js";
 
 dotenv.config();
 
@@ -24,6 +25,19 @@ const io = new SocketIOServer(httpServer, {
 
 // Inicializa o Gateway WebSocket de Sessões (/sessao)
 SessaoGateway.inicializar(io);
+
+// Conecta o hook assíncrono de persistência contínua de telemetria no PostgreSQL (RF12 / RN01)
+SessaoGateway.registrarCallbackTelemetria(async (sessionToken, evento) => {
+  try {
+    await TelemetriaService.persistirEvento(sessionToken, {
+      tipo_evento: evento.tipo_evento,
+      dados: evento.dados,
+      data_hora: evento.data_hora,
+    });
+  } catch (erroTelemetria) {
+    console.error("[server.ts] Erro assíncrono ao persistir telemetria via WebSocket:", erroTelemetria);
+  }
+});
 
 // Swagger UI — documentação interativa em /api/docs
 const swaggerSpec = swaggerJsdoc({

@@ -3,7 +3,7 @@
 // ==============================================================================
 
 import { Request, Response } from 'express';
-import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, StatusSessao } from '../models/sessao.model.js';
+import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, StatusSessao, Sessao } from '../models/sessao.model.js';
 import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/sessao.dto.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
@@ -147,15 +147,20 @@ export class SessaoController {
    */
   static async finalizar(req: Request, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id);
+      const idParam = String(req.params.id || '').trim();
 
-      if (!validarUUID(id)) {
-        res.status(400).json({ error: 'O identificador da sessão deve ser um UUID válido.' });
-        return;
+      // 1. Busca prévia para validação estrita da máquina de estados (suporta UUID ou token de sessão)
+      let sessaoAtual: Sessao | null = null;
+      if (validarUUID(idParam)) {
+        sessaoAtual = await SessaoModel.buscarPorId(idParam);
+      } else {
+        sessaoAtual = await SessaoModel.buscarPorToken(idParam);
+        if (!sessaoAtual) {
+          res.status(400).json({ error: 'O identificador da sessão deve ser um UUID válido ou token existente.' });
+          return;
+        }
       }
 
-      // 1. Busca prévia para validação estrita da máquina de estados
-      const sessaoAtual = await SessaoModel.buscarPorId(id);
       if (!sessaoAtual) {
         res.status(404).json({ error: 'Sessão não encontrada para finalização' });
         return;
@@ -194,7 +199,7 @@ export class SessaoController {
       }
 
       // 2. Atualização atômica da máquina de estados: 'finalizada' e carimbo de 'data_hora_fim'
-      const sessaoAtualizada = await SessaoModel.finalizarSessao(id);
+      const sessaoAtualizada = await SessaoModel.finalizarSessao(sessaoAtual.id);
       if (!sessaoAtualizada) {
         res.status(500).json({ error: 'Erro ao registrar finalização da sessão no banco de dados' });
         return;
@@ -203,6 +208,8 @@ export class SessaoController {
       // Registra evento na trilha de auditoria clínica (Task 1.3 / RF13 / RNF06)
       const ipOrigemFinalizar = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
       const usuarioLogadoFinalizar = (req as AuthenticatedRequest).user;
+      const anotacoesRecebidas = req.body?.anotacoes_clinicas || req.body?.anotacoes || req.body?.observacoes;
+
       AuditoriaService.registrarSilencioso({
         sessao_id: sessaoAtualizada.id,
         terapeuta_id: usuarioLogadoFinalizar?.id || sessaoAtualizada.terapeuta_id,
@@ -213,6 +220,7 @@ export class SessaoController {
           data_hora_inicio: sessaoAtualizada.data_hora_inicio,
           data_hora_fim: sessaoAtualizada.data_hora_fim,
           gerou_relatorio_ia: sessaoAtualizada.modo_sessao !== MODO_SESSAO.MODO_LIVRE && Boolean(sessaoAtualizada.paciente_id),
+          tem_anotacoes: Boolean(anotacoesRecebidas),
         },
         ip: ipOrigemFinalizar,
         user_agent: (req.headers?.['user-agent'] as string) || null,
@@ -228,6 +236,13 @@ export class SessaoController {
       // 3. Síntese do Relatório com o Motor de IA segundo o Contrato 4 (docs/ModelosDeContratos/relatorio.json)
       const relatorioIA = SessaoTokenService.gerarRelatorioIA(sessaoAtualizada);
 
+      // Constrói o texto consolidado incluindo eventuais anotações do terapeuta
+      const relatorioConteudo = relatorioIA
+        ? (anotacoesRecebidas
+            ? `${relatorioIA.analises_ia.join('\n')}\n\n[Observações do Terapeuta]: ${anotacoesRecebidas}`
+            : relatorioIA.analises_ia.join('\n'))
+        : (anotacoesRecebidas ? `[Observações do Terapeuta]: ${anotacoesRecebidas}` : '');
+
       // 4. Persistência do relatório no prontuário do paciente (tabela 'relatorio_sessao')
       if (relatorioIA) {
         try {
@@ -235,7 +250,7 @@ export class SessaoController {
             sessao_id: sessaoAtualizada.id,
             terapeuta_id: sessaoAtualizada.terapeuta_id,
             paciente_id: sessaoAtualizada.paciente_id,
-            conteudo: relatorioIA.analises_ia.join('\n'),
+            conteudo: relatorioConteudo,
             dados_ia_json: relatorioIA,
           });
         } catch (errPersistencia) {

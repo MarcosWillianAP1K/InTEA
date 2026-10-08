@@ -9,6 +9,7 @@ import { ModalFinalizarSessao } from "../components/ModalFinalizarSessao";
 import { TelemetriaCards } from "../components/telemetria/TelemetriaCards";
 import { TelemetriaChart } from "../components/telemetria/TelemetriaChart";
 import { TabletDiagnosticCard } from "../components/telemetria/TabletDiagnosticCard";
+import { sessaoService } from "../services/sessaoService";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { toast } from "sonner";
@@ -120,8 +121,14 @@ export function CockpitSessaoPage() {
     try {
       finalizarSessao(anotacoes);
 
-      // Envia notificação de encerramento via WebSocket
+      // Envia notificação de encerramento via WebSocket para o tablet
       SessionSocketManager.getInstance().finalizarSessaoRemota(tokenSessao);
+
+      // Persiste formalmente no backend via REST (máquina de estados, IA e auditoria)
+      const idOuToken = paramSessaoId || tokenSessao;
+      if (idOuToken) {
+        await sessaoService.finalizar(idOuToken, anotacoes);
+      }
 
       toast.success("Sessão finalizada com sucesso! Prontuário atualizado.");
       setModalFinalizarAberto(false);

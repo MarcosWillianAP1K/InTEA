@@ -111,9 +111,11 @@ export type TipoComandoClinico =
 export interface ComandoClinicoPayload {
   session_token?: string;
   token_sessao?: string;
+  sessionToken?: string;
   tipo_comando?: TipoComandoClinico | string;
   comando?: TipoComandoClinico | string;
   acao?: TipoComandoClinico | string;
+  tipo?: TipoComandoClinico | string;
   parametros?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -695,8 +697,8 @@ export class SessaoGateway {
 
     const payload = payloadRaw as Record<string, unknown>;
 
-    // Extração e validação do session_token
-    const tokenInformado = (payload.session_token || payload.token_sessao) as string | undefined;
+    // Extração e validação do session_token (suporta session_token, token_sessao e sessionToken)
+    const tokenInformado = (payload.session_token || payload.token_sessao || payload.sessionToken) as string | undefined;
     const tokenSocket = socket.data.sessionToken as string | undefined;
 
     let tokenFinal: string;
@@ -729,8 +731,20 @@ export class SessaoGateway {
       };
     }
 
-    // Validação do tipo de comando
-    const comandoIdentificado = (payload.tipo_comando || payload.comando || payload.acao) as string | undefined;
+    // Validação e normalização do tipo de comando (suporta nomes canônicos e aliases do frontend)
+    const comandoBruto = (payload.tipo_comando || payload.comando || payload.acao || payload.tipo) as string | undefined;
+
+    const MAPA_ALIAS_COMANDOS: Record<string, TipoComandoClinico> = {
+      pausar_jogo: 'pausar_jogo',
+      pausar: 'pausar_jogo',
+      retomar_jogo: 'retomar_jogo',
+      retomar: 'retomar_jogo',
+      ajustar_dificuldade_dda: 'ajustar_dificuldade_dda',
+      ajustar_dda: 'ajustar_dificuldade_dda',
+      solicitar_encerramento: 'solicitar_encerramento',
+      finalizar: 'solicitar_encerramento',
+    };
+
     const COMANDOS_VALIDOS: readonly TipoComandoClinico[] = [
       'pausar_jogo',
       'retomar_jogo',
@@ -738,7 +752,9 @@ export class SessaoGateway {
       'solicitar_encerramento'
     ];
 
-    if (!comandoIdentificado || !COMANDOS_VALIDOS.includes(comandoIdentificado as TipoComandoClinico)) {
+    const comandoIdentificado = comandoBruto ? MAPA_ALIAS_COMANDOS[comandoBruto] : undefined;
+
+    if (!comandoIdentificado) {
       return {
         valido: false,
         erro: `Tipo de comando inválido. Comandos suportados: ${COMANDOS_VALIDOS.join(', ')}`,
@@ -766,12 +782,17 @@ export class SessaoGateway {
           codigo: 'PARAMETROS_INVALIDOS'
         };
       }
-      parametros = payload.parametros as Record<string, unknown>;
+      const rawParametros = payload.parametros as Record<string, unknown>;
+      parametros = { ...rawParametros };
+      // Mapeamento de conveniência: nivelDda -> novo_nivel
+      if (parametros.nivelDda !== undefined && parametros.novo_nivel === undefined) {
+        parametros.novo_nivel = parametros.nivelDda;
+      }
     }
 
     const comandoNormalizado: ComandoClinicoEventoNormalizado = {
       session_token: tokenFinal,
-      tipo_comando: comandoIdentificado as TipoComandoClinico,
+      tipo_comando: comandoIdentificado,
       parametros,
       timestamp: new Date().toISOString(),
       emitido_por: socket.id

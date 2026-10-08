@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { CockpitSessaoPage } from "../pages/CockpitSessaoPage";
 import { useSessionStore } from "../store/sessionStore";
+import { sessaoService } from "../services/sessaoService";
 import { toast } from "sonner";
 
 // Mock Sonner
@@ -118,11 +119,19 @@ describe("Card 3.4 — Testes do Cockpit de Monitoramento da Sessão (Hermeson A
     });
 
     // Confirma encerramento
+    const spyFinalizarRest = vi.spyOn(sessaoService, "finalizar").mockResolvedValue({
+      sucesso: true,
+    });
+
     const btnConfirmar = screen.getByTestId("botao-confirmar-finalizacao");
     await act(async () => {
       fireEvent.click(btnConfirmar);
     });
 
+    expect(spyFinalizarRest).toHaveBeenCalledWith(
+      "sessao-teste-123",
+      "Excelente resposta ao reforço positivo."
+    );
     expect(useSessionStore.getState().status).toBe("finalizada");
     expect(useSessionStore.getState().anotacoesClinicas).toBe(
       "Excelente resposta ao reforço positivo."

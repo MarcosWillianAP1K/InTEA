@@ -10,3 +10,4 @@ export * from "./components/telemetria/TelemetriaCards";
 export * from "./components/telemetria/TelemetriaChart";
 export * from "./components/telemetria/TabletDiagnosticCard";
 export * from "./pages/CockpitSessaoPage";
+export * from "./services/sessaoService";

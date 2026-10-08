@@ -16,6 +16,9 @@ import { TelemetriaController } from '../../telemetria/controllers/telemetria.co
 import { TelemetriaModel, TelemetriaEvento } from '../../telemetria/models/telemetria.model.js';
 import { AuditoriaController } from '../../auditoria/controllers/auditoria.controller.js';
 import { AuditoriaModel, AuditoriaSessao } from '../../auditoria/models/auditoria.model.js';
+import { TelemetriaService } from '../../telemetria/services/telemetria.service.js';
+import { SessaoGateway } from '../../../core/websocket/sessao.gateway.js';
+import { Server as SocketIOServer } from 'socket.io';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 
 function criarMocks(
@@ -432,6 +435,59 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
 
       expect(getStatus()).toBe(403);
       expect((getJson() as { error: string }).error).toContain('RN04');
+    });
+  });
+
+  // ----------------------------------------------------------------------------
+  // CENÁRIO 5: INTEGRAÇÃO WEBSOCKET E PERSISTÊNCIA ASSÍNCRONA DE TELEMETRIA
+  // ----------------------------------------------------------------------------
+  describe('Cenário 5: Hook Assíncrono de Persistência de Telemetria via WebSocket', () => {
+    it('deve repassar evento de telemetria recebido pelo gateway para TelemetriaService.persistirEvento', async () => {
+      const mockIo = {
+        of: () => ({
+          use: () => {},
+          on: () => {},
+          to: () => ({ emit: () => {} }),
+        }),
+      } as unknown as SocketIOServer;
+      const gateway = SessaoGateway.inicializar(mockIo);
+
+      const spyPersistir = vi.spyOn(TelemetriaService, 'persistirEvento').mockResolvedValue({
+        persistido: true,
+      });
+
+      // Registra o callback exatamente como no server.ts
+      SessaoGateway.registrarCallbackTelemetria(async (token, evento) => {
+        await TelemetriaService.persistirEvento(token, {
+          tipo_evento: evento.tipo_evento,
+          dados: evento.dados,
+          data_hora: evento.data_hora,
+        });
+      });
+
+      const mockSocket = {
+        id: 'socket-dispositivo-1',
+        data: { sessionToken: 'INTEA-9988', role: 'dispositivo' },
+        to: () => ({ emit: () => {} }),
+        emit: () => {},
+      } as unknown as import('socket.io').Socket;
+
+      const payload = {
+        session_token: 'INTEA-9988',
+        tipo_evento: 'metrica_jogo',
+        dados: { id_metrica: 'tempo_reacao_ms', valor: 240 },
+        data_hora: new Date().toISOString(),
+      };
+
+      gateway.lidarTelemetria(mockSocket, payload);
+
+      expect(spyPersistir).toHaveBeenCalledWith(
+        'INTEA-9988',
+        expect.objectContaining({
+          tipo_evento: 'metrica_jogo',
+          dados: expect.objectContaining({ id_metrica: 'tempo_reacao_ms', valor: 240 }),
+        })
+      );
     });
   });
 });
