@@ -8,6 +8,8 @@ import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { validarUUID } from '../../../core/utils/validators.js';
+import { AuditoriaService } from '../../auditoria/services/auditoria.service.js';
+import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 
 export class SessaoController {
   // Callback opcional injetado pelo gateway WebSocket (Card 2.2) para notificação em tempo real
@@ -198,6 +200,24 @@ export class SessaoController {
         return;
       }
 
+      // Registra evento na trilha de auditoria clínica (Task 1.3 / RF13 / RNF06)
+      const ipOrigemFinalizar = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
+      const usuarioLogadoFinalizar = (req as AuthenticatedRequest).user;
+      AuditoriaService.registrarSilencioso({
+        sessao_id: sessaoAtualizada.id,
+        terapeuta_id: usuarioLogadoFinalizar?.id || sessaoAtualizada.terapeuta_id,
+        origem: 'terapeuta_web',
+        acao: 'sessao_finalizada',
+        detalhes_json: {
+          modo_sessao: sessaoAtualizada.modo_sessao,
+          data_hora_inicio: sessaoAtualizada.data_hora_inicio,
+          data_hora_fim: sessaoAtualizada.data_hora_fim,
+          gerou_relatorio_ia: sessaoAtualizada.modo_sessao !== MODO_SESSAO.MODO_LIVRE && Boolean(sessaoAtualizada.paciente_id),
+        },
+        ip: ipOrigemFinalizar,
+        user_agent: (req.headers?.['user-agent'] as string) || null,
+      });
+
       // 3. Conformidade com RN01 (Modo Livre sem Persistência Clínica / Sem IA)
       // Partidas em modo livre não gravam telemetria em prontuário, não acionam IA e paciente_id = NULL
       if (sessaoAtualizada.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessaoAtualizada.paciente_id) {
@@ -271,6 +291,21 @@ export class SessaoController {
         res.status(500).json({ error: 'Erro ao cancelar a sessão no banco de dados' });
         return;
       }
+
+      // Registra evento na trilha de auditoria clínica (Task 1.3 / RF13 / RNF06)
+      const ipOrigemCancelar = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
+      const usuarioLogadoCancelar = (req as AuthenticatedRequest).user;
+      AuditoriaService.registrarSilencioso({
+        sessao_id: sessaoCancelada.id,
+        terapeuta_id: usuarioLogadoCancelar?.id || sessaoCancelada.terapeuta_id,
+        origem: 'terapeuta_web',
+        acao: 'sessao_cancelada',
+        detalhes_json: {
+          status_anterior: sessao.status_sessao,
+        },
+        ip: ipOrigemCancelar,
+        user_agent: (req.headers?.['user-agent'] as string) || null,
+      });
 
       res.json({ data: sessaoCancelada });
     } catch (error) {
@@ -401,6 +436,22 @@ export class SessaoController {
           console.error('[SessaoController] Falha ao disparar evento WebSocket:', wsError);
         }
       }
+
+      // Registra evento na trilha de auditoria clínica (Task 1.3 / RF13 / RNF06)
+      const ipOrigemParear = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
+      AuditoriaService.registrarSilencioso({
+        sessao_id: sessaoAtualizada.id,
+        terapeuta_id: sessaoAtualizada.terapeuta_id,
+        origem: 'dispositivo_jogo',
+        acao: 'dispositivo_pareado',
+        detalhes_json: {
+          jogo_id: sessaoAtualizada.jogo_id,
+          dispositivo_info: sessaoAtualizada.dispositivo_info || null,
+          modo_sessao: sessaoAtualizada.modo_sessao,
+        },
+        ip: ipOrigemParear,
+        user_agent: (req.headers?.['user-agent'] as string) || null,
+      });
 
       res.status(200).json({
         message: 'Dispositivo pareado com sucesso',

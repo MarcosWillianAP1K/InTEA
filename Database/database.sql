@@ -723,6 +723,79 @@ WITH CHECK (
 );
 
 -- ==============================================================================
+-- 20.1 TRILHA DE AUDITORIA CLÍNICA DE SESSÃO (RF13, RNF06, RN04, RN05)
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.auditoria_sessao (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sessao_id UUID NOT NULL REFERENCES public.sessao(id) ON DELETE CASCADE,
+    terapeuta_id UUID REFERENCES public.terapeuta(id) ON DELETE SET NULL,
+    origem VARCHAR(50) NOT NULL, -- 'terapeuta_web', 'dispositivo_jogo', 'sistema_dda'
+    acao VARCHAR(80) NOT NULL,   -- 'sessao_criada', 'dispositivo_pareado', 'sessao_finalizada', 'sessao_cancelada', etc.
+    detalhes_json JSONB DEFAULT '{}'::jsonb NOT NULL,
+    ip VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+-- Trigger de Imutabilidade Estrita
+CREATE OR REPLACE FUNCTION public.impedir_modificacao_auditoria_sessao()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Operacao proibida: Registros da trilha de auditoria clinica sao estritamente imutaveis (RN05 / RNF06).'
+        USING ERRCODE = '23505';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_mutacao_auditoria ON public.auditoria_sessao;
+CREATE TRIGGER trg_bloqueio_mutacao_auditoria
+    BEFORE UPDATE OR DELETE ON public.auditoria_sessao
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_modificacao_auditoria_sessao();
+
+-- Índices de Otimização
+CREATE INDEX IF NOT EXISTS idx_auditoria_sessao_created 
+    ON public.auditoria_sessao(sessao_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_terapeuta 
+    ON public.auditoria_sessao(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_auditoria_acao 
+    ON public.auditoria_sessao(acao);
+CREATE INDEX IF NOT EXISTS idx_auditoria_detalhes_gin 
+    ON public.auditoria_sessao USING gin (detalhes_json);
+
+-- RLS
+ALTER TABLE public.auditoria_sessao ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Consulta de auditoria da sessao autorizada"
+ON public.auditoria_sessao FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM public.sessao s
+        WHERE s.id = auditoria_sessao.sessao_id
+          AND (
+              s.terapeuta_id = auth.uid() OR 
+              (s.paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(s.paciente_id)) OR
+              public.check_is_super_admin()
+          )
+    )
+);
+
+CREATE POLICY "Insercao de auditoria autorizada"
+ON public.auditoria_sessao FOR INSERT
+TO authenticated
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.sessao s
+        WHERE s.id = auditoria_sessao.sessao_id
+          AND (
+              s.terapeuta_id = auth.uid() OR
+              public.check_is_super_admin()
+          )
+    )
+);
+
+-- ==============================================================================
 -- 21. SEMENTES DE DADOS (Seeds Iniciais)
 -- ==============================================================================
 

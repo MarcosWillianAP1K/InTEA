@@ -937,15 +937,17 @@
 
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
-* **Fronteira de Arquivos:** `Backend/api/auditoria/*` (`auditoria.model.ts`, `auditoria.service.ts`), `Backend/core/middlewares/auditoria.middleware.ts`
-* **Ordem de Execução / Dependência:** **Independente (Dia 5)**. Módulo desacoplado de auditoria imutável.
-* **Requisitos:** RF13, RNF06, RN05
-* **Referência Documentação:** RNF06 (LGPD / Segurança), RF13
-* **Descrição:** Implementar registro imutável de eventos clínicos relevantes e comandos manuais disparados durante a sessão (início, pausa, retomada, intervenção DDA e encerramento), armazenando metadados de autoria e timestamps para auditoria clínica e conformidade LGPD.
+* **Fronteira de Arquivos:** `Database/migrations/007_auditoria_sessao.sql`, `Database/database.sql`, `Backend/api/auditoria/*` (`auditoria.model.ts`, `auditoria.service.ts`, `auditoria.controller.ts`, `auditoria.routes.ts`), `Backend/api/sessao/controllers/sessao.controller.ts`
+* **Ordem de Execução / Dependência:** **Independente (Dia 5)**. Módulo desacoplado de auditoria imutável integrado ao ciclo de vida da sessão.
+* **Requisitos:** RF13, RNF06, RN04, RN05
+* **Referência Documentação:** RNF06 (LGPD / Segurança), RF13, RN05 (Imutabilidade de Registros Clínicos), RN04 (Vínculo Institucional)
+* **Descrição:** Implementar infraestrutura e registro imutável de trilha de auditoria clínica para eventos do ciclo de vida da sessão e intervenções clínicas (pareamento, encerramento, cancelamento e alterações de estado), armazenando metadados de autoria (`terapeuta_id` ou dispositivo), endereço IP, user-agent e timestamps UTC para conformidade estrita com LGPD e rastreabilidade médica.
 * **Critérios de Aceite:**
-  * [ ] Registro na tabela de auditoria de cada mudança de estado da sessão com IP e identificador do terapeuta.
-  * [ ] Imutabilidade dos registros de auditoria assegurada no banco de dados.
-  * [ ] Endpoint para consulta da linha do tempo clínica restrito aos profissionais vinculados.
+  * [ ] Migration DDL `007_auditoria_sessao.sql` com PK UUID, índices e trigger PostgreSQL garantindo imutabilidade absoluta (bloqueio total de UPDATE e DELETE).
+  * [ ] Módulo desacoplado `Backend/api/auditoria/` com model, service, controller e documentação Swagger 3.0.
+  * [ ] Instrumentação automática nos métodos de ciclo de sessão (`parear`, `finalizar`, `cancelar`) capturando IP e metadados contextuais.
+  * [ ] Endpoint `GET /api/auditoria/sessao/:sessaoId` protegido por vínculo clínico ativo e instituição (RN04 / 403 Forbidden).
+  * [ ] Suíte de testes unitários do módulo de auditoria rodando 100% verde no Vitest.
 
 ---
 
@@ -953,14 +955,15 @@
 
 * **Tipo:** Validação
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
-* **Fronteira de Arquivos:** `Backend/api/sessao/test/sessao_finalizar.test.ts`, `Backend/api/telemetria/test/*`
-* **Ordem de Execução / Dependência:** **Após 1.1 e 1.2 (Dia 6)**. Valida a integração de encerramento, telemetria e RN02.
-* **Requisitos:** Qualidade de Software, RF12, RF13, RN02
-* **Referência Documentação:** Pipeline CI, `roteiro-testes.md`
-* **Descrição:** Criar suíte completa de testes de integração com Vitest para validação do ciclo de vida da sessão (início -> telemetria contínua -> comandos -> encerramento), validação estrita da regra RN02 com métricas inválidas e integridade da sumarização pós-sessão.
+* **Fronteira de Arquivos:** `Backend/api/sessao/test/ciclo_sessao_telemetria.test.ts`
+* **Ordem de Execução / Dependência:** **Após 1.1, 1.2 e 1.3 (Dia 6)**. Valida a integração completa de encerramento, telemetria, máquina de estados e trilha de auditoria clínica.
+* **Requisitos:** Qualidade de Software, RF10, RF12, RF13, RN01, RN04, RN05
+* **Referência Documentação:** Pipeline CI, `roteiro-testes.md`, `architecture.md`
+* **Descrição:** Criar suíte completa de testes de integração com Vitest simulando o ciclo de vida ponta a ponta da sessão (criação -> pareamento -> ingestão de telemetria em lote -> consulta de dados -> encerramento -> geração de relatório clínico de IA), cobrindo a máquina de estados (FSM), conformidade estrita com a RN01 (Modo Livre sem persistência clínica) e isolamento por vínculo terapêutico (RN04).
 * **Critérios de Aceite:**
-  * [ ] Cobertura de testes cobrindo transições de status válidas e inválidas.
-  * [ ] Teste unitário e de integração cobrindo rejeição de métrica incompatível (RN02).
+  * [ ] Ciclo Clínico Completo: Validação ponta a ponta desde `aguardando_pareamento` até `finalizada`, garantindo persistência de telemetria, geração de logs imutáveis de auditoria e persistência de `relatorio_sessao` com dados de IA.
+  * [ ] Ciclo de Modo Livre (RN01): Garantir que sessão sem paciente seja finalizada com sucesso, mas com supressão de gravação de telemetria e sem geração de relatório clínico.
+  * [ ] Máquina de Estados e Guardas: Rejeição de telemetria para sessões não ativas (`409 Conflict`), bloqueio de encerramento duplo ou de sessões canceladas/não pareadas (`400 Bad Request`), e bloqueio por vínculo indevido (`403 Forbidden`).
   * [ ] Suíte rodando 100% verde no Vitest sem warnings ou vazamento de conexões.
 
 ---

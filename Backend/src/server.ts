@@ -42,6 +42,7 @@ const swaggerSpec = swaggerJsdoc({
       { name: "Jogos", description: "Catálogo de jogos terapêuticos, manifestos e telemetria" },
       { name: "Sessão", description: "Gerenciamento de sessões clínicas e pareamento remoto" },
       { name: "Telemetria", description: "Ingestão e consulta de telemetria contínua da sessão" },
+      { name: "Auditoria", description: "Trilha de auditoria clínica e conformidade LGPD da sessão" },
     ],
     components: {
       securitySchemes: {
