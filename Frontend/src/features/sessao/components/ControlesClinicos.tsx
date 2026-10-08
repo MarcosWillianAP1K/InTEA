@@ -23,6 +23,12 @@ export interface ControlesClinicosProps {
  * Requisitos: RF13 (Ciclo da Sessão), RF21 (Intervenção Manual do Terapeuta)
  * ============================================================================
  */
+
+/**
+ * Painel de intervenção clínica imediata do terapeuta na sessão ativa (RF21).
+ * Fornece botões para pausar/retomar a execução remota, sintonizar o nível DDA (1 a 5)
+ * e disparar o fluxo de encerramento formal da intervenção.
+ */
 export function ControlesClinicos({
   isPausado,
   nivelDda,

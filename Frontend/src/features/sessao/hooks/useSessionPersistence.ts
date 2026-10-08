@@ -21,6 +21,13 @@ export interface DadosPersistenciaSessao {
  * Requisitos: RNF04 (Resiliência), Usabilidade (Proteção contra Refresh F5)
  * ============================================================================
  */
+
+/**
+ * Hook de resiliência e persistência de sessão ativa contra recarregamento acidental de página (F5).
+ * Salva e restaura o estado de sessão clínica via sessionStorage e intercepta o evento beforeunload.
+ *
+ * @returns Objeto com função para limpar persistência e flag indicando se há sessão em cache.
+ */
 export function useSessionPersistence() {
   const status = useSessionStore((state) => state.status);
   const config = useSessionStore((state) => state.config);
@@ -103,6 +110,9 @@ export function useSessionPersistence() {
     };
   }, [status]);
 
+  /**
+   * Remove a sessão ativa persistida do sessionStorage (usado em encerramentos e cancelamentos).
+   */
   const limparPersistencia = useCallback(() => {
     if (typeof window !== "undefined") {
       window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
