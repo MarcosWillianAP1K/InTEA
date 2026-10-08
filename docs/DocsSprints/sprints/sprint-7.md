@@ -3,6 +3,8 @@
 > **Período planejado:** 17/09/2026 a 24/09/2026  
 > **Tema da Sprint:** Pacientes e Biblioteca de Jogos  
 > **Composição da equipe:** 2 Back-end, 2 Front-end, 1 Documentação / Qualidade  
+> **Cards Detalhados:** [task_sprint_7.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_7.md)  
+> **Hub Geral de Tarefas:** [visao_geral.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/visao_geral.md)  
 
 ---
 

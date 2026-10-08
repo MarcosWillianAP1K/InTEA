@@ -4,6 +4,8 @@
 > **Tema da Sprint:** Gestão de Sessão Terapêutica, Ingestão de Telemetria Contínua e Cockpit do Terapeuta  
 > **Composição da equipe:** 2 Back-end, 2 Front-end, 1 Documentação / Qualidade  
 > **Requisitos centrais do PDF:** RF12 (Gestão de Sessão), RF13 (Ciclo da Sessão), RF17 (Contexto DDA), RF21 (Autoria Obrigatória), RN01, RN02, RN03, RN04, RN05  
+> **Cards Detalhados:** [task_sprint_9.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_9.md)  
+> **Hub Geral de Tarefas:** [visao_geral.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/visao_geral.md)  
 
 ---
 

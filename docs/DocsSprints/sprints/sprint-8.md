@@ -4,6 +4,8 @@
 > **Tema da Sprint:** Pareamento Remoto via Session Token e Testes das Features Prévias  
 > **Composição da equipe:** 2 Back-end, 2 Front-end, 1 Documentação / Qualidade  
 > **Requisitos centrais do PDF:** RF10 (Pareamento Remoto), RF12/RF13 (Ciclo de Sessão), Validação e Regressão de RF06/RF09  
+> **Cards Detalhados:** [task_sprint_8.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_8.md)  
+> **Hub Geral de Tarefas:** [visao_geral.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/visao_geral.md)  
 
 ---
 
