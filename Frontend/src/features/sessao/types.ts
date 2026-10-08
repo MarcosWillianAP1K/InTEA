@@ -39,12 +39,43 @@ export interface DadosPareamento {
   dispositivo?: DispositivoConectadoPayload | null;
 }
 
+export interface MetricasTelemetria {
+  acertos: number;
+  erros: number;
+  tempoMedioRespostaMs: number;
+  nivelEngajamento: number; // 0 a 100%
+  nivelAtencao: number; // 0 a 100%
+  nivelEstresseAtual: number; // 1 a 5
+  totalEventos: number;
+}
+
+export interface PontoHistoricoTelemetria {
+  tempoFormatado: string;
+  segundo: number;
+  atencao: number;
+  engajamento: number;
+  estresse: number;
+}
+
+export interface DiagnosticoTablet {
+  latenciaMs: number;
+  bateriaNivel: number; // 0 a 100
+  qualidadeSinal: "excelente" | "bom" | "fraco" | "offline";
+  ultimoHeartbeat: string;
+  isConectado: boolean;
+}
+
 export interface SessionState {
   status: StatusPareamento;
   config: ConfiguracaoSessao | null;
   pareamento: DadosPareamento | null;
   isModalAberto: boolean;
   erro: string | null;
+  dataHoraInicio?: string | null;
+  dataHoraFim?: string | null;
+  anotacoesClinicas?: string | null;
+  isPausado?: boolean;
+  nivelDdaAtual?: number;
 }
 
 export interface SessionActions {
@@ -59,12 +90,17 @@ export interface SessionActions {
   confirmarConexaoDispositivo: (dispositivo: DispositivoConectadoPayload) => void;
   notificarDesconexaoDispositivo: () => void;
 
-  // Ciclo da sessão clínica
+  // Ciclo da sessão clínica e cockpit
   iniciarIntervencao: () => void;
-  finalizarSessao: () => void;
+  pausarSessao: () => void;
+  retomarSessao: () => void;
+  ajustarDda: (novoNivel: number) => void;
+  salvarAnotacoes: (anotacoes: string) => void;
+  finalizarSessao: (anotacoes?: string) => void;
   cancelarSessao: (motivo?: string) => void;
   expirarToken: () => void;
   setErro: (mensagem: string | null) => void;
+  restaurarSessao: (dados: Partial<SessionState>) => void;
   reset: () => void;
 }
 

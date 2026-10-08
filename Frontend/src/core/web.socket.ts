@@ -40,6 +40,46 @@ export type SessionConnectionStatus =
   | "reconectando"
   | "erro";
 
+export interface EventoTelemetriaPayload {
+  token_sessao?: string;
+  data_hora: string;
+  tipo_evento: string; // Ex: 'interacao_paciente', 'acerto', 'erro', 'metrica'
+  dados: {
+    id_metrica?: string;
+    valor?: number | string | boolean;
+    acerto?: boolean;
+    tempo_resposta_ms?: number;
+    engajamento?: number;
+    atencao?: number;
+    estresse?: number;
+    pontuacao?: number;
+    [key: string]: unknown;
+  };
+}
+
+export interface ComandoClinicoPayload {
+  tipo: "pausar" | "retomar" | "ajustar_dda" | "finalizar";
+  sessionToken: string;
+  parametros?: {
+    nivelDda?: number;
+    motivo?: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface PingPresencaPayload {
+  timestamp_cliente?: number;
+  bateria?: number;
+  qualidade_sinal?: "excelente" | "bom" | "fraco" | string;
+}
+
+export interface PongPresencaResposta {
+  status: "online";
+  timestamp_servidor: number;
+  timestamp_cliente?: number;
+  latencia_estimada_ms?: number;
+}
+
 export interface ServerToClientEvents {
   dispositivo_conectado: (payload: DispositivoConectadoPayload) => void;
   dispositivo_desconectado: (payload: DispositivoDesconectadoPayload) => void;
@@ -47,6 +87,11 @@ export interface ServerToClientEvents {
   ping: () => void;
   pong: () => void;
   status_sessao: (status: string) => void;
+  telemetria: (payload: EventoTelemetriaPayload) => void;
+  "sessao:telemetria": (payload: EventoTelemetriaPayload) => void;
+  pong_presenca: (payload: PongPresencaResposta) => void;
+  dispositivo_reconectado: (payload: unknown) => void;
+  sessao_finalizada: (payload: { session_token: string; status_sessao: string; finalizado_em: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -54,6 +99,10 @@ export interface ClientToServerEvents {
   sair_sala: (data: { sessionToken: string }) => void;
   ping: () => void;
   pong: () => void;
+  ping_presenca: (data?: PingPresencaPayload) => void;
+  enviar_comando: (comando: ComandoClinicoPayload) => void;
+  "sessao:comando": (comando: ComandoClinicoPayload) => void;
+  finalizar_sessao: (dados?: { session_token?: string }) => void;
 }
 
 export type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -91,6 +140,8 @@ export class SessionSocketManager {
     dispositivo_conectado: new Set<(payload: DispositivoConectadoPayload) => void>(),
     dispositivo_desconectado: new Set<(payload: DispositivoDesconectadoPayload) => void>(),
     erro_sessao: new Set<(payload: ErroSessaoPayload) => void>(),
+    telemetria: new Set<(payload: EventoTelemetriaPayload) => void>(),
+    pong_presenca: new Set<(payload: PongPresencaResposta) => void>(),
   };
 
   private constructor() {}
@@ -222,6 +273,29 @@ export class SessionSocketManager {
         }
       });
     });
+
+    const notificarTelemetria = (payload: EventoTelemetriaPayload) => {
+      this.listenersMap.telemetria.forEach((cb) => {
+        try {
+          cb(payload);
+        } catch {
+          // Protege o loop
+        }
+      });
+    };
+
+    this.socket.on("telemetria", notificarTelemetria);
+    this.socket.on("sessao:telemetria", notificarTelemetria);
+
+    this.socket.on("pong_presenca", (payload) => {
+      this.listenersMap.pong_presenca.forEach((cb) => {
+        try {
+          cb(payload);
+        } catch {
+          // Protege o loop
+        }
+      });
+    });
   }
 
 
@@ -327,6 +401,57 @@ export class SessionSocketManager {
     return () => {
       this.listenersMap.erro_sessao.delete(handler);
     };
+  }
+
+  /**
+   * Registra listener para recepção de eventos de telemetria contínua
+   */
+  public onTelemetria(handler: (payload: EventoTelemetriaPayload) => void): () => void {
+    this.listenersMap.telemetria.add(handler);
+    return () => {
+      this.listenersMap.telemetria.delete(handler);
+    };
+  }
+
+  /**
+   * Registra listener para pong de presença e latência
+   */
+  public onPongPresenca(handler: (payload: PongPresencaResposta) => void): () => void {
+    this.listenersMap.pong_presenca.add(handler);
+    return () => {
+      this.listenersMap.pong_presenca.delete(handler);
+    };
+  }
+
+  /**
+   * Envia comando clínico de intervenção para o jogo remoto via WebSocket
+   */
+  public enviarComando(comando: ComandoClinicoPayload): boolean {
+    if (!this.socket || !this.socket.connected) {
+      return false;
+    }
+    this.socket.emit("enviar_comando", comando);
+    this.socket.emit("sessao:comando", comando);
+    return true;
+  }
+
+  /**
+   * Envia ping de presença com timestamp local para medição de latência RTT
+   */
+  public enviarPingPresenca(payload?: PingPresencaPayload): void {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("ping_presenca", payload);
+    }
+  }
+
+  /**
+   * Emite finalização de sessão para a sala
+   */
+  public finalizarSessaoRemota(token?: string): void {
+    const tokenAlvo = token || this.currentSessionToken;
+    if (tokenAlvo && this.socket && this.socket.connected) {
+      this.socket.emit("finalizar_sessao", { session_token: tokenAlvo });
+    }
   }
 
   /**

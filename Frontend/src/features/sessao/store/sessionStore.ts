@@ -20,6 +20,11 @@ const initialState: SessionState = {
   pareamento: null,
   isModalAberto: false,
   erro: null,
+  dataHoraInicio: null,
+  dataHoraFim: null,
+  anotacoesClinicas: null,
+  isPausado: false,
+  nivelDdaAtual: 1,
 };
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
@@ -152,14 +157,42 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({
       status: "em_andamento",
       erro: null,
+      dataHoraInicio: get().dataHoraInicio || new Date().toISOString(),
+      isPausado: false,
+      nivelDdaAtual: config.nivelEstresseInicial || 1,
     });
   },
 
-  finalizarSessao: () => {
+  pausarSessao: () => {
+    set({ isPausado: true });
+  },
+
+  retomarSessao: () => {
+    set({ isPausado: false });
+  },
+
+  ajustarDda: (novoNivel: number) => {
+    set({ nivelDdaAtual: Math.min(5, Math.max(1, novoNivel)) });
+  },
+
+  salvarAnotacoes: (anotacoes: string) => {
+    set({ anotacoesClinicas: anotacoes });
+  },
+
+  finalizarSessao: (anotacoes?: string) => {
     set({
       status: "finalizada",
       isModalAberto: false,
+      dataHoraFim: new Date().toISOString(),
+      anotacoesClinicas: anotacoes !== undefined ? anotacoes : get().anotacoesClinicas,
     });
+  },
+
+  restaurarSessao: (dados: Partial<SessionState>) => {
+    set((state) => ({
+      ...state,
+      ...dados,
+    }));
   },
 
   cancelarSessao: (motivo?: string) => {
