@@ -250,7 +250,18 @@ CREATE TABLE IF NOT EXISTS public.relatorio_sessao (
 );
 
 -- ==============================================================================
--- 15. BLOQUEIO DE HARD DELETE (Conformidade RN05)
+-- 15. TABELA: telemetria_evento (Ingestão e Persistência de Eventos de Telemetria)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.telemetria_evento (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sessao_id UUID NOT NULL REFERENCES public.sessao(id) ON DELETE RESTRICT,
+    tipo_evento VARCHAR(50) NOT NULL, -- Ex: 'interacao_paciente', 'metrica_jogo', 'sistema_tablet'
+    dados JSONB DEFAULT '{}'::jsonb NOT NULL, -- Contrato 3 (telemetria.json): { "id_metrica": "...", "valor": ... }
+    data_hora TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+-- ==============================================================================
+-- 16. BLOQUEIO DE HARD DELETE (Conformidade RN05)
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.impedir_hard_delete_clinico()
 RETURNS TRIGGER AS $$
@@ -337,6 +348,10 @@ CREATE INDEX IF NOT EXISTS idx_sessao_status_expira ON public.sessao(status_sess
 CREATE INDEX IF NOT EXISTS idx_anotacao_paciente ON public.anotacao_clinica(paciente_id);
 CREATE INDEX IF NOT EXISTS idx_anotacao_sessao ON public.anotacao_clinica(sessao_id);
 CREATE INDEX IF NOT EXISTS idx_relatorio_paciente ON public.relatorio_sessao(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_telemetria_sessao_data_hora ON public.telemetria_evento(sessao_id, data_hora DESC);
+CREATE INDEX IF NOT EXISTS idx_telemetria_tipo_evento ON public.telemetria_evento(tipo_evento);
+CREATE INDEX IF NOT EXISTS idx_telemetria_id_metrica ON public.telemetria_evento ((dados->>'id_metrica'));
+CREATE INDEX IF NOT EXISTS idx_telemetria_dados_gin ON public.telemetria_evento USING gin (dados);
 
 -- Trigger para atualizacao automatica de updated_at em sessao
 CREATE OR REPLACE FUNCTION public.fn_sessao_set_updated_at()
@@ -433,6 +448,7 @@ ALTER TABLE public.jogo ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sessao ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.anotacao_clinica ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.relatorio_sessao ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.telemetria_evento ENABLE ROW LEVEL SECURITY;
 
 -- Catálogo de Jogos
 CREATE POLICY "Jogos visiveis para terapeutas autenticados"
@@ -674,6 +690,109 @@ ON public.relatorio_sessao FOR UPDATE
 TO authenticated
 USING (
     terapeuta_id = auth.uid() AND soft_delete = FALSE
+);
+
+-- Telemetria de Eventos
+CREATE POLICY "Consulta de telemetria da sessao"
+ON public.telemetria_evento FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM public.sessao s
+        WHERE s.id = telemetria_evento.sessao_id
+          AND (
+              s.terapeuta_id = auth.uid() OR 
+              (s.paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(s.paciente_id)) OR
+              public.check_is_super_admin()
+          )
+    )
+);
+
+CREATE POLICY "Insercao de telemetria autorizada"
+ON public.telemetria_evento FOR INSERT
+TO authenticated
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.sessao s
+        WHERE s.id = telemetria_evento.sessao_id
+          AND (
+              s.terapeuta_id = auth.uid() OR
+              public.check_is_super_admin()
+          )
+    )
+);
+
+-- ==============================================================================
+-- 20.1 TRILHA DE AUDITORIA CLÍNICA DE SESSÃO (RF13, RNF06, RN04, RN05)
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.auditoria_sessao (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sessao_id UUID NOT NULL REFERENCES public.sessao(id) ON DELETE CASCADE,
+    terapeuta_id UUID REFERENCES public.terapeuta(id) ON DELETE SET NULL,
+    origem VARCHAR(50) NOT NULL, -- 'terapeuta_web', 'dispositivo_jogo', 'sistema_dda'
+    acao VARCHAR(80) NOT NULL,   -- 'sessao_criada', 'dispositivo_pareado', 'sessao_finalizada', 'sessao_cancelada', etc.
+    detalhes_json JSONB DEFAULT '{}'::jsonb NOT NULL,
+    ip VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+-- Trigger de Imutabilidade Estrita
+CREATE OR REPLACE FUNCTION public.impedir_modificacao_auditoria_sessao()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Operacao proibida: Registros da trilha de auditoria clinica sao estritamente imutaveis (RN05 / RNF06).'
+        USING ERRCODE = '23505';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_mutacao_auditoria ON public.auditoria_sessao;
+CREATE TRIGGER trg_bloqueio_mutacao_auditoria
+    BEFORE UPDATE OR DELETE ON public.auditoria_sessao
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_modificacao_auditoria_sessao();
+
+-- Índices de Otimização
+CREATE INDEX IF NOT EXISTS idx_auditoria_sessao_created 
+    ON public.auditoria_sessao(sessao_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_terapeuta 
+    ON public.auditoria_sessao(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_auditoria_acao 
+    ON public.auditoria_sessao(acao);
+CREATE INDEX IF NOT EXISTS idx_auditoria_detalhes_gin 
+    ON public.auditoria_sessao USING gin (detalhes_json);
+
+-- RLS
+ALTER TABLE public.auditoria_sessao ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Consulta de auditoria da sessao autorizada"
+ON public.auditoria_sessao FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM public.sessao s
+        WHERE s.id = auditoria_sessao.sessao_id
+          AND (
+              s.terapeuta_id = auth.uid() OR 
+              (s.paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(s.paciente_id)) OR
+              public.check_is_super_admin()
+          )
+    )
+);
+
+CREATE POLICY "Insercao de auditoria autorizada"
+ON public.auditoria_sessao FOR INSERT
+TO authenticated
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.sessao s
+        WHERE s.id = auditoria_sessao.sessao_id
+          AND (
+              s.terapeuta_id = auth.uid() OR
+              public.check_is_super_admin()
+          )
+    )
 );
 
 -- ==============================================================================

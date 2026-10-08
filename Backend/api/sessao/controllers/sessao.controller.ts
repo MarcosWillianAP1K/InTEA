@@ -7,6 +7,9 @@ import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, StatusSessao } from '../models
 import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/sessao.dto.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
+import { validarUUID } from '../../../core/utils/validators.js';
+import { AuditoriaService } from '../../auditoria/services/auditoria.service.js';
+import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 
 export class SessaoController {
   // Callback opcional injetado pelo gateway WebSocket (Card 2.2) para notificação em tempo real
@@ -146,14 +149,76 @@ export class SessaoController {
     try {
       const id = String(req.params.id);
 
-      // 1. Atualização atômica da máquina de estados: 'finalizada' e carimbo de 'data_hora_fim'
-      const sessaoAtualizada = await SessaoModel.finalizarSessao(id);
-      if (!sessaoAtualizada) {
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'O identificador da sessão deve ser um UUID válido.' });
+        return;
+      }
+
+      // 1. Busca prévia para validação estrita da máquina de estados
+      const sessaoAtual = await SessaoModel.buscarPorId(id);
+      if (!sessaoAtual) {
         res.status(404).json({ error: 'Sessão não encontrada para finalização' });
         return;
       }
 
-      // 2. Conformidade com RN01 (Modo Livre sem Persistência Clínica / Sem IA)
+      if (sessaoAtual.status_sessao === STATUS_SESSAO.FINALIZADA) {
+        res.status(400).json({
+          error: 'A sessão já se encontra finalizada.',
+          detalhes: 'Esta intervenção clínica já foi encerrada e não pode ser finalizada novamente.',
+        });
+        return;
+      }
+
+      if (sessaoAtual.status_sessao === STATUS_SESSAO.CANCELADA) {
+        res.status(400).json({
+          error: 'A sessão foi cancelada e não pode ser finalizada.',
+          detalhes: 'Sessões canceladas são estados terminais e não podem ser reabertas.',
+        });
+        return;
+      }
+
+      if (sessaoAtual.status_sessao === STATUS_SESSAO.EXPIRADA) {
+        res.status(400).json({
+          error: 'A sessão expirou e não pode ser finalizada.',
+          detalhes: 'O tempo limite de pareamento foi ultrapassado.',
+        });
+        return;
+      }
+
+      if (sessaoAtual.status_sessao === STATUS_SESSAO.AGUARDANDO_PAREAMENTO) {
+        res.status(400).json({
+          error: 'A sessão ainda está aguardando pareamento e não foi iniciada.',
+          detalhes: 'Para descartar uma sessão antes do pareamento, utilize o cancelamento (DELETE /api/sessao/:id/cancelar).',
+        });
+        return;
+      }
+
+      // 2. Atualização atômica da máquina de estados: 'finalizada' e carimbo de 'data_hora_fim'
+      const sessaoAtualizada = await SessaoModel.finalizarSessao(id);
+      if (!sessaoAtualizada) {
+        res.status(500).json({ error: 'Erro ao registrar finalização da sessão no banco de dados' });
+        return;
+      }
+
+      // Registra evento na trilha de auditoria clínica (Task 1.3 / RF13 / RNF06)
+      const ipOrigemFinalizar = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
+      const usuarioLogadoFinalizar = (req as AuthenticatedRequest).user;
+      AuditoriaService.registrarSilencioso({
+        sessao_id: sessaoAtualizada.id,
+        terapeuta_id: usuarioLogadoFinalizar?.id || sessaoAtualizada.terapeuta_id,
+        origem: 'terapeuta_web',
+        acao: 'sessao_finalizada',
+        detalhes_json: {
+          modo_sessao: sessaoAtualizada.modo_sessao,
+          data_hora_inicio: sessaoAtualizada.data_hora_inicio,
+          data_hora_fim: sessaoAtualizada.data_hora_fim,
+          gerou_relatorio_ia: sessaoAtualizada.modo_sessao !== MODO_SESSAO.MODO_LIVRE && Boolean(sessaoAtualizada.paciente_id),
+        },
+        ip: ipOrigemFinalizar,
+        user_agent: (req.headers?.['user-agent'] as string) || null,
+      });
+
+      // 3. Conformidade com RN01 (Modo Livre sem Persistência Clínica / Sem IA)
       // Partidas em modo livre não gravam telemetria em prontuário, não acionam IA e paciente_id = NULL
       if (sessaoAtualizada.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessaoAtualizada.paciente_id) {
         res.status(200).json({ data: sessaoAtualizada });
@@ -226,6 +291,21 @@ export class SessaoController {
         res.status(500).json({ error: 'Erro ao cancelar a sessão no banco de dados' });
         return;
       }
+
+      // Registra evento na trilha de auditoria clínica (Task 1.3 / RF13 / RNF06)
+      const ipOrigemCancelar = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
+      const usuarioLogadoCancelar = (req as AuthenticatedRequest).user;
+      AuditoriaService.registrarSilencioso({
+        sessao_id: sessaoCancelada.id,
+        terapeuta_id: usuarioLogadoCancelar?.id || sessaoCancelada.terapeuta_id,
+        origem: 'terapeuta_web',
+        acao: 'sessao_cancelada',
+        detalhes_json: {
+          status_anterior: sessao.status_sessao,
+        },
+        ip: ipOrigemCancelar,
+        user_agent: (req.headers?.['user-agent'] as string) || null,
+      });
 
       res.json({ data: sessaoCancelada });
     } catch (error) {
@@ -356,6 +436,22 @@ export class SessaoController {
           console.error('[SessaoController] Falha ao disparar evento WebSocket:', wsError);
         }
       }
+
+      // Registra evento na trilha de auditoria clínica (Task 1.3 / RF13 / RNF06)
+      const ipOrigemParear = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
+      AuditoriaService.registrarSilencioso({
+        sessao_id: sessaoAtualizada.id,
+        terapeuta_id: sessaoAtualizada.terapeuta_id,
+        origem: 'dispositivo_jogo',
+        acao: 'dispositivo_pareado',
+        detalhes_json: {
+          jogo_id: sessaoAtualizada.jogo_id,
+          dispositivo_info: sessaoAtualizada.dispositivo_info || null,
+          modo_sessao: sessaoAtualizada.modo_sessao,
+        },
+        ip: ipOrigemParear,
+        user_agent: (req.headers?.['user-agent'] as string) || null,
+      });
 
       res.status(200).json({
         message: 'Dispositivo pareado com sucesso',
