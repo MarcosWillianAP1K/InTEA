@@ -213,3 +213,40 @@ telemetriaRoutes.post('/lote', TelemetriaController.registrarLote);
  *         description: Erro interno ao buscar eventos de telemetria
  */
 telemetriaRoutes.get('/sessao/:sessaoId', authMiddleware, TelemetriaController.listarPorSessao);
+
+/**
+ * @swagger
+ * /api/telemetria/sessao/{sessaoId}/agregada:
+ *   get:
+ *     summary: Compila e retorna estatísticas agregadas da telemetria da sessão (Card 2.1)
+ *     description: |
+ *       Consolida dados analíticos dos eventos brutos da sessão: contagem por tipo,
+ *       taxa de precisão (acertos vs. erros), tempo de reação médio/mediano, estabilidade
+ *       de atenção por janelas temporais e métricas consolidadas com tipagem estrita (RN02).
+ *     tags: [Telemetria]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessaoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da sessão clínica
+ *     responses:
+ *       200:
+ *         description: Estatísticas consolidadas da telemetria retornadas com sucesso
+ *       400:
+ *         description: Parâmetro sessaoId ausente ou não é um UUID válido
+ *       401:
+ *         description: Token JWT ausente ou inválido
+ *       403:
+ *         description: Acesso negado — terapeuta sem vínculo institucional com a sessão clínica (RN04)
+ *       404:
+ *         description: Sessão não encontrada ou sem dados
+ *       500:
+ *         description: Erro interno ao compilar estatísticas da telemetria
+ */
+telemetriaRoutes.get('/sessao/:sessaoId/agregada', authMiddleware, TelemetriaController.obterEstatisticasSessao);
+
