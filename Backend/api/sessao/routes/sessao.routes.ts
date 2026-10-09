@@ -4,6 +4,7 @@
 
 import { Router } from 'express';
 import { SessaoController } from '../controllers/sessao.controller.js';
+import { SessaoExportarService } from '../services/sessao-exportar.service.js';
 
 // Middlewares de autenticação JWT e validação de vínculo clínico (RN04)
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
@@ -428,6 +429,43 @@ sessaoRoutes.get('/:token/status', SessaoController.consultarStatus);
  *         description: Erro interno ao buscar sessão
  */
 sessaoRoutes.get('/:id', authMiddleware, SessaoController.buscarPorId);
+
+/**
+ * @swagger
+ * /api/sessao/{id}/exportar:
+ *   get:
+ *     summary: Emite e exporta laudo clínico estruturado da sessão (RF20 / RNF06)
+ *     description: |
+ *       Gera payload estruturado e sanitizado para impressão e emissão de laudo médico formal,
+ *       reunindo dados da clínica, registro profissional do terapeuta, identificação do paciente
+ *       com CPF mascarado (LGPD), tabela consolidada de desempenho, parecer da IA e área formal para assinatura.
+ *     tags: [Sessão]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da sessão clínica finalizada
+ *     responses:
+ *       200:
+ *         description: Laudo clínico estruturado retornado com sucesso para exportação
+ *       400:
+ *         description: Sessão não está finalizada ou identificador inválido
+ *       401:
+ *         description: Token JWT ausente ou inválido
+ *       403:
+ *         description: Acesso negado por falta de vínculo institucional ativo (RN04)
+ *       404:
+ *         description: Sessão ou paciente não encontrado
+ *       500:
+ *         description: Erro interno ao emitir laudo para exportação
+ */
+sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoExportarService.handlerExportarHttp);
+
 
 /**
  * @swagger
