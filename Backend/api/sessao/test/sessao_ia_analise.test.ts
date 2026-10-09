@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { z } from 'zod';
 import { SessaoIaAnaliseService } from '../services/sessao-ia-analise.service.js';
 import { Sessao, MODO_SESSAO, STATUS_SESSAO, SessaoModel } from '../models/sessao.model.js';
 import {
@@ -220,5 +221,155 @@ describe('Card 2.2 — SessaoIaAnaliseService (Síntese Analítica do Agente de 
 
     const resultadoLivre = await SessaoIaAnaliseService.processarPorSessaoId('id-livre');
     expect(resultadoLivre).toBeNull();
+  });
+});
+
+describe('Card 2.4 — Validação Estrita do Schema Zod do Contrato 4 (docs/ModelosDeContratos/relatorio.json)', () => {
+  const contrato4ZodSchema = z
+    .object({
+      token_sessao: z.string().min(1),
+      duracao_segundos: z.number().int().nonnegative(),
+      resumo: z.object({
+        taxa_conclusao: z.number().min(0).max(100),
+        intervencoes_dda: z.number().int().nonnegative(),
+      }),
+      analises_ia: z.array(z.string().min(1)).min(1),
+      metricas_agregadas: z.array(
+        z.object({
+          id_metrica: z.string().min(1),
+          valor_dominante: z.union([z.string(), z.number()]),
+          tendencia: z.enum(['estavel', 'crescente', 'decrescente']),
+        })
+      ),
+    })
+    .strict();
+
+  const sessaoExemplo: Sessao = {
+    id: '11111111-1111-4111-8111-111111111111',
+    terapeuta_id: '22222222-2222-4222-8222-222222222222',
+    paciente_id: '33333333-3333-4333-8333-333333333333',
+    jogo_id: 'game-uuid-01',
+    session_token: 'a1b2c3d4-token',
+    modo_sessao: MODO_SESSAO.SESSAO_CLINICA,
+    contexto_dda_json: {
+      nivel_estresse_inicial: 'baixo',
+      gatilhos_sensoriais_evitar: ['luz_piscante'],
+      objetivo_clinico: 'coordenacao_motora',
+    },
+    dispositivo_info: null,
+    status_sessao: STATUS_SESSAO.FINALIZADA,
+    data_hora_inicio: '2026-10-08T10:00:00Z',
+    expira_em: '2026-10-08T10:15:00Z',
+    data_hora_fim: '2026-10-08T10:20:00Z',
+    created_at: '2026-10-08T10:00:00Z',
+    updated_at: '2026-10-08T10:20:00Z',
+  };
+
+  const telemetriaExemplo: TelemetriaConsolidada = {
+    total_eventos: 20,
+    duracao_estimada_segundos: 1200,
+    contagem_por_tipo: { acerto: 18, erro: 2 },
+    precisao: {
+      total_toques: 20,
+      total_acertos: 18,
+      total_erros: 2,
+      taxa_precisao_percentual: 90,
+    },
+    tempo_resposta: {
+      total_amostras: 15,
+      media: 1.8,
+      mediana: 1.7,
+      minimo: 1.0,
+      maximo: 3.2,
+      desvio_padrao: 0.4,
+      unidade: 'segundos',
+    },
+    estabilidade_atencao: {
+      indice_estabilidade: 92,
+      classificacao: 'alta',
+      coeficiente_variacao: 0.1,
+      janelas: [],
+    },
+    metricas_agregadas: [
+      {
+        id_metrica: 'nivel_frustracao',
+        tipo_metrica: 'categorica',
+        total_amostras: 10,
+        valor_dominante: 'baixo',
+        distribuicao: { baixo: 10 },
+        tendencia: 'estavel',
+      },
+    ],
+    violacoes_rn02: [],
+    data_hora_primeiro_evento: '2026-10-08T10:00:00Z',
+    data_hora_ultimo_evento: '2026-10-08T10:20:00Z',
+  };
+
+  it('deve validar estritamente o modelo de referência oficial em docs/ModelosDeContratos/relatorio.json', () => {
+    const modeloReferencia = {
+      token_sessao: 'a1b2c3d4-token',
+      duracao_segundos: 1200,
+      resumo: {
+        taxa_conclusao: 85.5,
+        intervencoes_dda: 4,
+      },
+      analises_ia: [
+        'O paciente demonstrou excelente regulação após os primeiros 5 minutos.',
+        'Houve necessidade de redução de dificuldade em estímulos sonoros.',
+      ],
+      metricas_agregadas: [
+        {
+          id_metrica: 'nivel_frustracao',
+          valor_dominante: 'baixo',
+          tendencia: 'estavel',
+        },
+      ],
+    };
+
+    const resultado = contrato4ZodSchema.safeParse(modeloReferencia);
+    expect(resultado.success).toBe(true);
+  });
+
+  it('deve validar que a saída de SessaoIaAnaliseService.sintetizarRelatorio satisfaz 100% o schema Zod estrito', () => {
+    const relatorioSintetizado = SessaoIaAnaliseService.sintetizarRelatorio(sessaoExemplo, telemetriaExemplo);
+    expect(relatorioSintetizado).not.toBeNull();
+
+    const resultadoZod = contrato4ZodSchema.safeParse(relatorioSintetizado);
+    expect(resultadoZod.success).toBe(true);
+
+    if (resultadoZod.success) {
+      expect(resultadoZod.data.token_sessao).toBe('a1b2c3d4-token');
+      expect(resultadoZod.data.duracao_segundos).toBe(1200);
+      expect(resultadoZod.data.resumo.taxa_conclusao).toBeGreaterThan(0);
+      expect(resultadoZod.data.analises_ia.length).toBeGreaterThan(0);
+      expect(resultadoZod.data.metricas_agregadas.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('deve rejeitar com erro Zod payloads contendo campos espúrios não autorizados (strict)', () => {
+    const payloadComCampoExtra = {
+      token_sessao: 'token-teste',
+      duracao_segundos: 600,
+      resumo: { taxa_conclusao: 70, intervencoes_dda: 1 },
+      analises_ia: ['Análise ok'],
+      metricas_agregadas: [],
+      campo_fantasma_invalido: true,
+    };
+
+    const validacao = contrato4ZodSchema.safeParse(payloadComCampoExtra);
+    expect(validacao.success).toBe(false);
+  });
+
+  it('deve rejeitar com erro Zod payloads onde taxa_conclusao for fora do intervalo 0-100', () => {
+    const payloadTaxaInvalida = {
+      token_sessao: 'token-teste',
+      duracao_segundos: 600,
+      resumo: { taxa_conclusao: 150, intervencoes_dda: 1 },
+      analises_ia: ['Análise ok'],
+      metricas_agregadas: [],
+    };
+
+    const validacao = contrato4ZodSchema.safeParse(payloadTaxaInvalida);
+    expect(validacao.success).toBe(false);
   });
 });

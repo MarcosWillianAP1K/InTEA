@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { z } from 'zod';
 import {
   SessaoExportarService,
   mascararCPF,
@@ -410,5 +411,221 @@ describe('Card 2.3 — SessaoExportarService.handlerExportarHttp (Controller Exp
     expect(getStatus()).toBe(500);
     const json = getJson() as { error: string };
     expect(json.error).toContain('Erro interno ao emitir laudo');
+  });
+});
+
+describe('Card 2.4 — Validação Estrita de Schema Zod e Conformidade de Exportação (RF20 / RNF06)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(TelemetriaAgregacaoService, 'compilarPorSessaoId').mockResolvedValue({
+      total_eventos: 15,
+      duracao_estimada_segundos: 1500,
+      contagem_por_tipo: { acerto: 15 },
+      precisao: { total_toques: 15, total_acertos: 15, total_erros: 0, taxa_precisao_percentual: 100 },
+      tempo_resposta: { total_amostras: 15, media: 1.5, mediana: 1.5, minimo: 1.0, maximo: 2.0, desvio_padrao: 0.2, unidade: 'segundos' },
+      estabilidade_atencao: { indice_estabilidade: 95, classificacao: 'alta', coeficiente_variacao: 0.05, janelas: [] },
+      metricas_agregadas: [],
+      violacoes_rn02: [],
+      data_hora_primeiro_evento: '2026-10-08T14:00:00Z',
+      data_hora_ultimo_evento: '2026-10-08T14:25:00Z',
+    });
+  });
+
+  const laudoClinicoZodSchema = z
+    .object({
+      cabecalho: z.object({
+        instituicao: z.string().min(1),
+        cnpj_clinica: z.string(),
+        emissao_em: z.string(),
+        codigo_autenticidade: z.string().regex(/^INTEA-LAUDO-/),
+      }),
+      paciente: z.object({
+        id: z.string().uuid(),
+        nome: z.string().min(1),
+        data_nascimento: z.string(),
+        idade_anos: z.number().int().nonnegative(),
+        cpf_mascarado: z.string(),
+        diagnostico_base: z.string().min(1),
+        responsavel_legal: z
+          .object({
+            nome: z.string(),
+            parentesco: z.string().optional(),
+            telefone: z.string().optional(),
+          })
+          .nullable(),
+      }),
+      terapeuta: z.object({
+        id: z.string().uuid(),
+        nome: z.string().min(1),
+        registro_profissional: z.string().min(1),
+        especialidade: z.string().min(1),
+        email_contato: z.string(),
+      }),
+      sessao: z.object({
+        id: z.string().uuid(),
+        token_pareamento: z.string(),
+        jogo: z.object({
+          nome: z.string().min(1),
+          versao: z.string().min(1),
+        }),
+        data_hora_inicio: z.string(),
+        data_hora_fim: z.string(),
+        duracao_segundos: z.number().int().nonnegative(),
+        duracao_formatada: z.string(),
+        modo: z.string(),
+      }),
+      desempenho_clinico: z.object({
+        taxa_conclusao: z.number().min(0).max(100),
+        intervencoes_dda: z.number().int().nonnegative(),
+        taxa_precisao_percentual: z.number().min(0).max(100),
+        total_toques: z.number().int().nonnegative(),
+        total_acertos: z.number().int().nonnegative(),
+        total_erros: z.number().int().nonnegative(),
+        tempo_resposta_medio: z.number().nonnegative(),
+        estabilidade_atencao: z.object({
+          indice: z.number().min(0).max(100),
+          classificacao: z.string(),
+        }),
+        metricas_tabela: z.array(
+          z.object({
+            indicador: z.string(),
+            tipo: z.string(),
+            valor: z.union([z.string(), z.number()]),
+            tendencia: z.string(),
+          })
+        ),
+      }),
+      parecer_ia: z.object({
+        sintese_analises: z.array(z.string()).min(1),
+        motor_ia: z.string(),
+      }),
+      observacoes_clinicas: z.string().nullable(),
+      assinatura_formal: z.object({
+        termo_responsabilidade: z.string(),
+        terapeuta_responsavel: z.string(),
+        registro_conselho: z.string(),
+        linha_assinatura: z.string(),
+      }),
+    })
+    .strict();
+
+  const sessaoMock: Sessao = {
+    id: '55555555-5555-4555-8555-555555555555',
+    terapeuta_id: '66666666-6666-4666-8666-666666666666',
+    paciente_id: '77777777-7777-4777-8777-777777777777',
+    jogo_id: 'game-uuid-99',
+    session_token: '999-888',
+    modo_sessao: MODO_SESSAO.SESSAO_CLINICA,
+    contexto_dda_json: {},
+    dispositivo_info: null,
+    status_sessao: STATUS_SESSAO.FINALIZADA,
+    data_hora_inicio: '2026-10-08T14:00:00Z',
+    expira_em: '2026-10-08T14:15:00Z',
+    data_hora_fim: '2026-10-08T14:25:00Z',
+    created_at: '2026-10-08T14:00:00Z',
+    updated_at: '2026-10-08T14:25:00Z',
+  };
+
+  const pacienteMock: Paciente = {
+    id: '77777777-7777-4777-8777-777777777777',
+    nome: 'Clarice Lispector Silva',
+    data_nascimento: '2017-03-10',
+    telefone: '(86) 99999-8888',
+    cpf: '98765432100',
+    cep: '64000-000',
+    cidade: 'Teresina',
+    estado: 'PI',
+    endereco: 'Rua das Letras',
+    bairro: 'Centro',
+    numero: '456',
+    complemento: null,
+    status_ativo: true,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    clinica_id: 'clinica-uuid-99',
+    responsaveis: [],
+  };
+
+  const terapeutaMock: Terapeuta = {
+    id: '66666666-6666-4666-8666-666666666666',
+    nome: 'Dr. Roberto Freire',
+    email: 'roberto@intea.com.br',
+    telefone: '(86) 98888-7777',
+    crefito: 'CREFITO-9988-TO',
+    registro_profissional: 'CREFITO-9988-TO',
+    especialidade: 'Psicologia Comportamental',
+    tempo_experiencia_anos: 12,
+    clinica_id: 'clinica-uuid-99',
+    is_super_admin: false,
+    status_ativo: true,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  };
+
+  it('conformidade Zod: laudo gerado em caso de sucesso passa com 100% de precisão no schema estrito', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(sessaoMock);
+    vi.spyOn(PacienteModel, 'buscarPorId').mockResolvedValue(pacienteMock);
+    vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue(terapeutaMock);
+    vi.spyOn(TelemetriaAgregacaoService, 'compilarPorSessaoId').mockResolvedValue({
+      total_eventos: 15,
+      duracao_estimada_segundos: 1500,
+      contagem_por_tipo: { acerto: 15 },
+      precisao: { total_toques: 15, total_acertos: 15, total_erros: 0, taxa_precisao_percentual: 100 },
+      tempo_resposta: { total_amostras: 15, media: 1.5, mediana: 1.5, minimo: 1.0, maximo: 2.0, desvio_padrao: 0.2, unidade: 'segundos' },
+      estabilidade_atencao: { indice_estabilidade: 95, classificacao: 'alta', coeficiente_variacao: 0.05, janelas: [] },
+      metricas_agregadas: [],
+      violacoes_rn02: [],
+      data_hora_primeiro_evento: '2026-10-08T14:00:00Z',
+      data_hora_ultimo_evento: '2026-10-08T14:25:00Z',
+    });
+
+    const res = await SessaoExportarService.gerarLaudoExportacao(sessaoMock.id, { id: terapeutaMock.id });
+
+    expect(res.sucesso).toBe(true);
+    expect(res.statusHttp).toBe(200);
+
+    const validacao = laudoClinicoZodSchema.safeParse(res.dados);
+    expect(validacao.success).toBe(true);
+  });
+
+  it('RNF06 / LGPD: protege dados sensíveis do paciente mascarando CPF e omitindo credenciais', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(sessaoMock);
+    vi.spyOn(PacienteModel, 'buscarPorId').mockResolvedValue(pacienteMock);
+    vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue(terapeutaMock);
+
+    const res = await SessaoExportarService.gerarLaudoExportacao(sessaoMock.id, { id: terapeutaMock.id });
+
+    expect(res.sucesso).toBe(true);
+    const laudo = res.dados as LaudoClinicoExportavel;
+
+    // CPF deve estar estritamente no padrão mascarado: ***.XXX.***-XX
+    expect(laudo.paciente.cpf_mascarado).toBe('***.654.***-00');
+
+    // Nenhuma chave privada ou URL interna deve estar presente no payload serializado
+    const payloadJson = JSON.stringify(laudo);
+    expect(payloadJson).not.toContain('supabase');
+    expect(payloadJson).not.toContain('service_role');
+    expect(payloadJson).not.toContain('jwt');
+  });
+
+  it('deve lidar com ausência de responsáveis legais retornando responsavel_legal como null', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(sessaoMock);
+    vi.spyOn(PacienteModel, 'buscarPorId').mockResolvedValue({
+      ...pacienteMock,
+      responsaveis: [],
+    });
+    vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue(terapeutaMock);
+
+    const res = await SessaoExportarService.gerarLaudoExportacao(sessaoMock.id, { id: terapeutaMock.id });
+
+    expect(res.sucesso).toBe(true);
+    expect(res.dados?.paciente.responsavel_legal).toBeNull();
+  });
+
+  it('deve converter tempos e durações extremas com formatação consistente', () => {
+    expect(formatarDuracao(1)).toBe('1s');
+    expect(formatarDuracao(59)).toBe('59s');
+    expect(formatarDuracao(60)).toBe('1 min');
+    expect(formatarDuracao(3665)).toBe('61 min 5s');
   });
 });

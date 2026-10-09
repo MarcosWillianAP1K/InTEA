@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { z } from 'zod';
 import {
   TelemetriaAgregacaoService,
   calcularMedia,
@@ -513,5 +514,172 @@ describe('Card 2.1 — TelemetriaController.obterEstatisticasSessao (Endpoint RE
     expect(json.data).toBeDefined();
     expect(json.data.precisao.taxa_precisao_percentual).toBe(80);
     expect(json.data.tempo_resposta.media).toBe(2.5);
+  });
+});
+
+describe('Card 2.4 — Validação Matemática Estrita e Schema Zod da Telemetria Consolidada', () => {
+  const telemetriaConsolidadaSchema = z
+    .object({
+      total_eventos: z.number().int().nonnegative(),
+      duracao_estimada_segundos: z.number().int().nonnegative(),
+      contagem_por_tipo: z.record(z.string(), z.number().int().nonnegative()),
+      precisao: z.object({
+        total_toques: z.number().int().nonnegative(),
+        total_acertos: z.number().int().nonnegative(),
+        total_erros: z.number().int().nonnegative(),
+        taxa_precisao_percentual: z.number().min(0).max(100),
+      }),
+      tempo_resposta: z.object({
+        total_amostras: z.number().int().nonnegative(),
+        media: z.number().nonnegative(),
+        mediana: z.number().nonnegative(),
+        minimo: z.number().nonnegative(),
+        maximo: z.number().nonnegative(),
+        desvio_padrao: z.number().nonnegative(),
+        unidade: z.string(),
+      }),
+      estabilidade_atencao: z.object({
+        indice_estabilidade: z.number().min(0).max(100),
+        classificacao: z.enum(['alta', 'moderada', 'baixa', 'sem_dados']),
+        coeficiente_variacao: z.number().nonnegative(),
+        janelas: z.array(
+          z.object({
+            indice: z.number().int().nonnegative(),
+            inicio_segundos: z.number().nonnegative(),
+            fim_segundos: z.number().nonnegative(),
+            total_eventos: z.number().int().nonnegative(),
+            taxa_precisao: z.number().min(0).max(100),
+            tempo_resposta_medio: z.number().nonnegative(),
+          })
+        ),
+      }),
+      metricas_agregadas: z.array(
+        z.union([
+          z.object({
+            id_metrica: z.string(),
+            tipo_metrica: z.literal('numerica'),
+            unidade: z.string().optional(),
+            total_amostras: z.number().int().nonnegative(),
+            media: z.number(),
+            mediana: z.number(),
+            minimo: z.number(),
+            maximo: z.number(),
+            desvio_padrao: z.number().nonnegative(),
+            tendencia: z.enum(['estavel', 'crescente', 'decrescente']),
+          }),
+          z.object({
+            id_metrica: z.string(),
+            tipo_metrica: z.literal('categorica'),
+            total_amostras: z.number().int().nonnegative(),
+            valor_dominante: z.string(),
+            distribuicao: z.record(z.string(), z.number().int().nonnegative()),
+            tendencia: z.enum(['estavel', 'crescente', 'decrescente']),
+          }),
+        ])
+      ),
+      violacoes_rn02: z.array(
+        z.object({
+          id_metrica: z.string(),
+          motivo: z.string(),
+          total_rejeitados: z.number().int().nonnegative(),
+        })
+      ),
+      data_hora_primeiro_evento: z.string().nullable(),
+      data_hora_ultimo_evento: z.string().nullable(),
+    })
+    .strict();
+
+  it('exatidão matemática: cálculo de média com arredondamento preciso para duas casas decimais', () => {
+    const amostras = [1.111, 2.222, 3.333];
+    // (1.111 + 2.222 + 3.333) / 3 = 6.666 / 3 = 2.222 -> arredonda para 2.22
+    expect(calcularMedia(amostras)).toBe(2.22);
+
+    const amostrasGrande = [100.5, 200.75, 300.25];
+    // soma = 601.5 / 3 = 200.5
+    expect(calcularMedia(amostrasGrande)).toBe(200.5);
+  });
+
+  it('exatidão matemática: mediana em distribuição com valores repetidos e ímpares/pares', () => {
+    // Lista ímpar com números repetidos
+    expect(calcularMediana([1, 2, 2, 9, 10])).toBe(2);
+    // Lista par: média dos dois centrais [2, 4, 6, 8] -> (4 + 6) / 2 = 5
+    expect(calcularMediana([8, 2, 6, 4])).toBe(5);
+    // Lista par com centrais fracionários: [1, 2] -> 1.5
+    expect(calcularMediana([1, 2])).toBe(1.5);
+  });
+
+  it('exatidão matemática: desvio padrão populacional contra fórmula teórica conhecida', () => {
+    // População clássica: [10, 12, 23, 23, 16, 23, 21, 16]
+    // Média = 18.0 | Variância populacional = 24.0 | Desvio padrão = sqrt(24) ≈ 4.8989... -> 4.9
+    const populacao = [10, 12, 23, 23, 16, 23, 21, 16];
+    expect(calcularDesvioPadrao(populacao)).toBe(4.9);
+
+    // Amostras com valores idênticos devem ter variância e desvio exatamente 0
+    expect(calcularDesvioPadrao([7, 7, 7, 7, 7])).toBe(0);
+  });
+
+  it('exatidão matemática: limiares de tendência com tolerância estrita de 5%', () => {
+    // Variação de 4% (inferior a 5%) -> deve ser estável
+    // Primeira metade: [100, 100] (média 100). Segunda metade: [104, 104] (média 104). Diff = 4%
+    expect(calcularTendenciaNumerica([100, 100, 104, 104])).toBe('estavel');
+
+    // Variação de 6% (superior a 5%) -> deve ser crescente
+    expect(calcularTendenciaNumerica([100, 100, 106, 106])).toBe('crescente');
+
+    // Variação de -6% -> deve ser decrescente
+    expect(calcularTendenciaNumerica([100, 100, 94, 94])).toBe('decrescente');
+  });
+
+  it('conformidade Zod: a estrutura compilada por agregarEventos é 100% válida no schema Zod estrito', () => {
+    const eventosMistos: TelemetriaEvento[] = [
+      {
+        sessao_id: 'sessao-zod-1',
+        tipo_evento: 'acerto',
+        dados: { id_metrica: 'tempo_resposta', valor: 1.8 },
+        data_hora: '2026-10-08T10:00:00Z',
+      },
+      {
+        sessao_id: 'sessao-zod-1',
+        tipo_evento: 'acerto',
+        dados: { id_metrica: 'tempo_resposta', valor: 2.2 },
+        data_hora: '2026-10-08T10:00:15Z',
+      },
+      {
+        sessao_id: 'sessao-zod-1',
+        tipo_evento: 'erro',
+        dados: { id_metrica: 'tempo_resposta', valor: 3.5 },
+        data_hora: '2026-10-08T10:00:30Z',
+      },
+      {
+        sessao_id: 'sessao-zod-1',
+        tipo_evento: 'metrica_jogo',
+        dados: { id_metrica: 'nivel_engajamento', valor: 'alto' },
+        data_hora: '2026-10-08T10:00:45Z',
+      },
+    ];
+
+    const manifesto: ManifestoJogo = {
+      id_jogo: 'game-zod',
+      nome: 'Game Zod Test',
+      versao: '1.0.0',
+      metricas_suportadas: [
+        { id_metrica: 'tempo_resposta', tipo_metrica: 'numerica', unidade: 'segundos' },
+        { id_metrica: 'nivel_engajamento', tipo_metrica: 'categorica', valores: ['baixo', 'medio', 'alto'] },
+      ],
+    };
+
+    const consolidado = TelemetriaAgregacaoService.agregarEventos(eventosMistos, manifesto);
+
+    // Validação Zod estrita (lança erro se campos estiverem divergentes ou ausentes)
+    const validacao = telemetriaConsolidadaSchema.safeParse(consolidado);
+    expect(validacao.success).toBe(true);
+
+    if (validacao.success) {
+      expect(validacao.data.total_eventos).toBe(4);
+      expect(validacao.data.precisao.total_acertos).toBe(2);
+      expect(validacao.data.precisao.total_erros).toBe(1);
+      expect(validacao.data.precisao.taxa_precisao_percentual).toBe(66.67);
+      expect(validacao.data.metricas_agregadas.length).toBeGreaterThanOrEqual(1);
+    }
   });
 });
