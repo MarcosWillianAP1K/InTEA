@@ -82,4 +82,58 @@ export const sessaoService = {
       };
     }
   },
+
+  /**
+   * Consulta os dados estruturados de exportação clínica pós-sessão via GET /api/sessao/:id/exportar (RF20).
+   * Reúne identificação sanitizada da clínica, terapeuta autor, paciente, métricas e síntese da IA.
+   */
+  exportarRelatorio: async (
+    identificadorSessao: string
+  ): Promise<{ sucesso: boolean; data?: unknown; error?: string }> => {
+    if (!identificadorSessao || !identificadorSessao.trim()) {
+      return { sucesso: false, error: "Identificador de sessão ausente" };
+    }
+
+    try {
+      const url = `${API_BASE_URL}/sessao/${encodeURIComponent(identificadorSessao.trim())}/exportar`;
+      const token =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("token") || window.sessionStorage.getItem("token")
+          : null;
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorJson = (await response.json().catch(() => null)) as { error?: string } | null;
+        return {
+          sucesso: false,
+          error: errorJson?.error || `Falha ao exportar relatório clínico (status ${response.status})`,
+        };
+      }
+
+      const resultado = (await response.json()) as { data?: unknown };
+      return {
+        sucesso: true,
+        data: resultado.data,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro desconhecido ao conectar com a API";
+      return {
+        sucesso: false,
+        error: msg,
+      };
+    }
+  },
 };
+

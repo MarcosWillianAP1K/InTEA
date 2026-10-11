@@ -118,3 +118,41 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ==========================================================================
+   ESTILOS DE IMPRESSÃO CLÍNICA E PDF (Sprint 10 / RF20 / RNF07)
+   Padronização A4 (15mm), eliminação de barras/botões e quebras suaves
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ocultar navegação, cabeçalhos do app, sidebars e botões interativos */
+  header,
+  nav,
+  aside,
+  button,
+  [data-slot="sidebar"],
+  [data-slot="sidebar-trigger"],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Preservar integridade visual dos cartões e gráficos sem quebras indesejadas */
+  [data-slot="card"],
+  .page-break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+}
