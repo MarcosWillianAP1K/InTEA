@@ -105,3 +105,61 @@ export interface SessionActions {
 }
 
 export type SessionStore = SessionState & SessionActions;
+
+/**
+ * ============================================================================
+ * TIPAGEM DE RELATÓRIO E RESULTADOS DE SESSÃO (Sprint 10 / RF14 / Contrato 4)
+ * TypeScript estrito sem o uso de `any`
+ * ============================================================================
+ */
+
+export interface MetricasConsolidadasDados {
+  duracaoSegundos: number;
+  taxaConclusao: number; // 0 a 100%
+  intervencoesDda: number;
+  pontuacaoGeral?: number | null;
+  estabilidadeFoco?: number | null; // 0 a 100%
+  tempoMedioRespostaMs?: number | null;
+  totalAcertos?: number | null;
+  totalErros?: number | null;
+}
+
+export interface IntervencaoDdaPonto {
+  momentoFormatado: string; // ex: "04:30"
+  segundo: number;
+  tipoIntervencao: string; // ex: "Redução de Dificuldade" | "Aumento de Dificuldade" | "Estímulo Suavizado"
+  detalhes?: string;
+}
+
+export interface TentativaRespostaPonto {
+  tentativa: number;
+  tempoFormatado: string; // ex: "01:25"
+  segundo: number;
+  tempoRespostaSegundos: number; // ex: 2.4
+  acerto: boolean;
+  intervencaoDda?: IntervencaoDdaPonto | null;
+}
+
+export type TendenciaMetrica = "estavel" | "crescente" | "decrescente";
+
+export interface MetricaAgregadaIA {
+  id_metrica: string;
+  valor_dominante: string;
+  tendencia: TendenciaMetrica;
+}
+
+export interface DadosIaRelatorio {
+  token_sessao?: string;
+  duracao_segundos?: number;
+  resumo?: {
+    taxa_conclusao: number;
+    intervencoes_dda: number;
+  };
+  analises_ia?: string[];
+  metricas_agregadas?: MetricaAgregadaIA[];
+  recomendacoes_adaptativas?: string[];
+  alerta_sensorial?: boolean;
+}
+
+
+
