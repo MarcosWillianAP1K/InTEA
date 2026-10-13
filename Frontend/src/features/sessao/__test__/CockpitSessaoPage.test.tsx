@@ -139,6 +139,45 @@ describe("Card 3.4 — Testes do Cockpit de Monitoramento da Sessão (Hermeson A
     expect(toast.success).toHaveBeenCalledWith(
       "Sessão finalizada com sucesso! Prontuário atualizado."
     );
+    expect(mockNavigate).toHaveBeenCalledWith("/sessao/sessao-teste-123/resultado");
+  });
+
+  it("deve redirecionar sessão em Modo Livre para /games com toast informativo (RN01)", async () => {
+    // Configura sessão em Modo Livre (sem paciente associado)
+    act(() => {
+      useSessionStore.getState().abrirModalPreSessao({
+        id: "jogo-livre",
+        titulo: "Jogo em Modo Livre",
+      });
+      useSessionStore.getState().iniciarPareamento({
+        sessionToken: "token-livre-456",
+      });
+      useSessionStore.getState().iniciarIntervencao();
+    });
+
+    render(
+      <BrowserRouter>
+        <CockpitSessaoPage />
+      </BrowserRouter>
+    );
+
+    // Abre modal de encerramento
+    const botaoFinalizar = screen.getByTestId("botao-finalizar-sessao");
+    fireEvent.click(botaoFinalizar);
+
+    vi.spyOn(sessaoService, "finalizar").mockResolvedValue({
+      sucesso: true,
+    });
+
+    const btnConfirmar = screen.getByTestId("botao-confirmar-finalizacao");
+    await act(async () => {
+      fireEvent.click(btnConfirmar);
+    });
+
+    expect(useSessionStore.getState().status).toBe("finalizada");
+    expect(toast.info).toHaveBeenCalledWith(
+      "Partida em Modo Livre concluída sem persistência em prontuário (RN01)."
+    );
     expect(mockNavigate).toHaveBeenCalledWith("/games");
   });
 });
