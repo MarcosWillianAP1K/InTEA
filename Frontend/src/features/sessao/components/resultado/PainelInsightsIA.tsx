@@ -39,20 +39,7 @@ export function formatarNomeMetrica(id: string): string {
     .join(" ");
 }
 
-/**
- * ============================================================================
- * COMPONENTE: PainelInsightsIA (Front-end 2 — Luma Maiara / Card 4.3)
- * Requisitos: RF14, RNF02, RN01
- * Referência: Contrato 4 (docs/ModelosDeContratos/relatorio.json), Figura 12
- * 
- * Componente puro orientado a props para exibição da síntese analítica do motor de IA:
- * 1. Observações contextuais do paciente pós-sessão (analises_ia[])
- * 2. Tendências e valores dominantes de métricas agregadas (estável, crescente, decrescente)
- * 3. Alertas clínicos em destaque para modulação de estímulos sensoriais
- * 4. Recomendações adaptativas para as próximas sessões
- * 5. Skeleton loader geométrico (zero CLS) e tratamento rigoroso para Modo Livre (RN01)
- * ============================================================================
- */
+
 export function PainelInsightsIA({
   dadosIa,
   isLoading = false,

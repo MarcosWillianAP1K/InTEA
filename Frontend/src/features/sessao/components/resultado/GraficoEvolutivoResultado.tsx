@@ -29,21 +29,6 @@ export interface GraficoEvolutivoResultadoProps {
   className?: string;
 }
 
-/**
- * ============================================================================
- * COMPONENTE: GraficoEvolutivoResultado (Front-end 2 — Luma Maiara / Card 4.2)
- * Requisitos: RF14, RNF04, RN01
- * Referência: Figura 12 do Projeto InTEA
- * 
- * Gráfico vetorial SVG puro e responsivo que plota a evolução temporal da sessão:
- * - Curva de tempo de resposta por tentativa ao longo dos minutos.
- * - Marcadores visuais destacados sinalizando os momentos exatos de modulação DDA.
- * - Linha de referência da média clínica de reação.
- * - Tooltip interativo acessível em hover/foco.
- * - Suporte a Skeleton Loader estrutural (zero CLS) e Empty State amigável.
- * - Conformidade com Modo Livre (RN01 - DDA inativo).
- * ============================================================================
- */
 export function GraficoEvolutivoResultado({
   tentativas = [],
   tempoMedioReferencia,

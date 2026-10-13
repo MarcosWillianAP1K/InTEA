@@ -20,18 +20,8 @@ export interface BotaoExportarRelatorioProps {
   className?: string;
 }
 
-/**
- * ============================================================================
- * COMPONENTE: BotaoExportarRelatorio (Front-end 2 — Luma Maiara / Card 4.4)
- * Requisitos: RF20, RNF06, RNF07
- * 
- * Botão e menu de ações para exportação e impressão clínica do laudo de sessão:
- * - Aciona a impressão formatada A4 (@media print) ou geração de PDF nativo.
- * - Permite download de cópia estruturada dos dados clínicos em JSON (RF20/RNF06).
- * - Protegido contra múltiplos cliques simultâneos (isExporting / spinner).
- * - Indicadores visuais acessíveis de carregamento, sucesso e erro.
- * ============================================================================
- */
+
+
 export function BotaoExportarRelatorio({
   sessaoId,
   pacienteNome,

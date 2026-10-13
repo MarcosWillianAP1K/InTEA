@@ -38,20 +38,7 @@ export function formatarDuracaoClinica(segundos: number): string {
   return `${pad(minutos)}m ${pad(segsRestantes)}s`;
 }
 
-/**
- * ============================================================================
- * COMPONENTE: MetricasConsolidadasCards (Front-end 2 — Luma Maiara / Card 4.1)
- * Requisitos: RF14, RNF04, RN01
- * 
- * Componente 100% puro orientado a props.
- * Exibe o sumário quantitativo e clínico consolidado da sessão finalizada:
- * 1. Tempo Total de Atividade (Duração)
- * 2. Taxa de Conclusão (%)
- * 3. Quantidade de Intervenções DDA (com suporte estrito a Modo Livre - RN01)
- * 4. Pontuação Geral / Eficiência
- * 5. Estabilidade de Foco / Atenção
- * ============================================================================
- */
+
 export function MetricasConsolidadasCards({
   metricas,
   isLoading = false,
