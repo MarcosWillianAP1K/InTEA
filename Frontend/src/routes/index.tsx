@@ -2,6 +2,7 @@ import DashboardPage from "@/features/dashboard/pages/dashboardPage";
 import { BibliotecaJogosPage } from "@/features/jogos/pages/BibliotecaJogosPage";
 import PatientsPage from "@/features/patients/pages/patientsPage";
 import { CockpitSessaoPage } from "@/features/sessao/pages/CockpitSessaoPage";
+import { ResultadoSessaoPage } from "@/features/sessao/pages/ResultadoSessaoPage";
 import { Route, Routes as RouterRoutes } from "react-router-dom";
 
 export function Routes() {
@@ -37,6 +38,11 @@ export function Routes() {
       <Route
         path="/sessao/:id/monitoramento"
         element={<CockpitSessaoPage />}
+      />
+
+      <Route
+        path="/sessao/:id/resultado"
+        element={<ResultadoSessaoPage />}
       />
     </RouterRoutes>
   );
