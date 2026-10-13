@@ -128,10 +128,7 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
       vi.spyOn(RelatorioSessaoModel, 'criar').mockImplementation(async () => {
         relatorioPersistido = true;
         return {
-          id: 'relatorio-1',
           sessao_id: sessaoId,
-          terapeuta_id: terapeutaId,
-          paciente_id: pacienteId,
           conteudo: 'Resumo clinico',
           dados_ia_json: {} as any,
           soft_delete: false,

@@ -497,14 +497,17 @@
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Database/database.sql`, `Database/migrations/008_normalizacao_relatorio_sessao.sql`
 * **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Ajuste de modelagem estrutural antes de consultas analíticas.
-* **Requisitos:** 3FN (Terceira Forma Normal), RN01 (Modo Livre sem Persistência), RN04 (Vínculo Institucional), RN05
-* **Referência Documentação:** AGENTS.md Seção 6.2 (Regra 3FN), Figura 4 (DER), RN01
-* **Descrição:** Em `Database/database.sql` (linhas 240-250), a tabela `relatorio_sessao` possui `terapeuta_id UUID NOT NULL REFERENCES terapeuta(id)` e `paciente_id UUID NOT NULL REFERENCES paciente(id)`. Como `sessao_id UUID UNIQUE NOT NULL REFERENCES sessao(id)` já é a âncora relacional única e a tabela `sessao` já contém os relacionamentos com terapeuta e paciente, a obrigatoriedade dessas FKs em `relatorio_sessao` viola a 3FN e quebra sumários de sessões em Modo Livre (**RN01**), onde `paciente_id` é `NULL`. Este card cria migração idempotente saneando as constraints e reescreve as políticas RLS para validar autorização através da tabela pai `sessao` (`EXISTS (SELECT 1 FROM public.sessao s WHERE s.id = relatorio_sessao.sessao_id AND ...)`).
+* **Requisitos:** 3FN (Terceira Forma Normal), RN01 (Modo Livre sem Persistência), RN04 (Vínculo Institucional), RN05 (Inalterabilidade e Soft Delete)
+* **Referência Documentação:** AGENTS.md Seção 6.2 (Regra 3FN), Figura 4 (DER), RN01, docs/ANOTACAO.MD
+* **Descrição:** A modelagem herdada da tabela `relatorio_sessao` continha `terapeuta_id UUID NOT NULL REFERENCES terapeuta(id)` e `paciente_id UUID NOT NULL REFERENCES paciente(id)`. Como `sessao_id UUID UNIQUE NOT NULL REFERENCES sessao(id)` já é a âncora relacional 1:1 e a tabela pai `sessao` já contém os relacionamentos com terapeuta e paciente, a presença dessas FKs viola a 3FN. Ademais, consolida-se a regra clínica de que partidas em Modo Livre (**RN01**) **não geram relatório**, pertencendo a tabela exclusivamente a sessões clínicas finalizadas. Este card normaliza a tabela tornando `sessao_id` a própria chave primária compartilhada (`sessao_id UUID PRIMARY KEY REFERENCES public.sessao(id)`), remove as colunas redundantes e reescreve as políticas RLS para validar autorização através da tabela pai `sessao` (`EXISTS (SELECT 1 FROM public.sessao s WHERE s.id = relatorio_sessao.sessao_id AND ...)`).
 * **Critérios de Aceite:**
   * [ ] Migration idempotente `008_normalizacao_relatorio_sessao.sql` saneando a tabela `relatorio_sessao`.
-  * [ ] `Database/database.sql` mantido sincronizado como Single Source of Truth sem constraints que quebrem sessões sem paciente.
-  * [ ] Políticas RLS de `relatorio_sessao` reescritas com subquery `EXISTS` sobre a tabela pai `sessao`.
-  * [ ] Suporte formal a relatórios de sessões com `paciente_id = NULL` sem violação de integridade referencial.
+  * [ ] Chave primária compartilhada: `sessao_id` é a própria `PRIMARY KEY`, eliminando a coluna `id` artificial.
+  * [ ] Conformidade 3FN pura: remoção definitiva das colunas redundantes `paciente_id` e `terapeuta_id`, obtendo vínculos via JOIN com `sessao`.
+  * [ ] Políticas RLS de `relatorio_sessao` reescritas com subquery `EXISTS` delegando autorização à tabela pai `sessao`.
+  * [ ] `Database/database.sql` mantido sincronizado como Single Source of Truth.
+  * [ ] Trigger anti-hard delete e flag `soft_delete` preservadas para conformidade clínica (**RN05**).
+  * [ ] Documentação alinhada em `docs/ANOTACAO.MD` esclarecendo que Modo Livre não gera registros de relatório (**RN01**).
 
 ---
 

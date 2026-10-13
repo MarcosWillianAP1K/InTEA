@@ -255,8 +255,6 @@ export class SessaoController {
         try {
           await RelatorioSessaoModel.criar({
             sessao_id: sessaoAtualizada.id,
-            terapeuta_id: sessaoAtualizada.terapeuta_id,
-            paciente_id: sessaoAtualizada.paciente_id,
             conteudo: relatorioConteudo,
             dados_ia_json: relatorioIA,
           });

@@ -410,10 +410,10 @@ describe('SessaoController.finalizar', () => {
     expect(Array.isArray(resposta.data.relatorio.analises_ia)).toBe(true);
     expect(resposta.data.relatorio.metricas_agregadas[0].id_metrica).toBe('nivel_frustracao');
 
-    // Valida persistência no banco
+    // Valida persistência no banco (3FN pura: apenas sessao_id, conteudo e dados_ia_json)
     expect(relatorioPersistido).not.toBeNull();
     expect(relatorioPersistido.sessao_id).toBe(uuidValido);
-    expect(relatorioPersistido.paciente_id).toBe('33333333-3333-3333-3333-333333333333');
+    expect(relatorioPersistido.conteudo).toBeDefined();
     expect(relatorioPersistido.dados_ia_json.token_sessao).toBe('4M5S-8U7B');
   });
 
