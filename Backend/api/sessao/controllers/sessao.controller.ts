@@ -8,7 +8,7 @@ import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { validarUUID } from '../../../core/utils/validators.js';
-import { AuditoriaService } from '../../auditoria/services/auditoria.service.js';
+import { eventBus } from '../../../core/events/event-bus.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 
 export class SessaoController {
@@ -212,25 +212,17 @@ export class SessaoController {
         return;
       }
 
-      // Registra evento na trilha de auditoria clínica (Task 1.3 / RF13 / RNF06)
+      // Dispara evento de domínio desacoplado para auditoria e efeitos colaterais
       const ipOrigemFinalizar = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
       const usuarioLogadoFinalizar = (req as AuthenticatedRequest).user;
       const anotacoesRecebidas = req.body?.anotacoes_clinicas || req.body?.anotacoes || req.body?.observacoes;
 
-      AuditoriaService.registrarSilencioso({
-        sessao_id: sessaoAtualizada.id,
-        terapeuta_id: usuarioLogadoFinalizar?.id || sessaoAtualizada.terapeuta_id,
-        origem: 'terapeuta_web',
-        acao: 'sessao_finalizada',
-        detalhes_json: {
-          modo_sessao: sessaoAtualizada.modo_sessao,
-          data_hora_inicio: sessaoAtualizada.data_hora_inicio,
-          data_hora_fim: sessaoAtualizada.data_hora_fim,
-          gerou_relatorio_ia: sessaoAtualizada.modo_sessao !== MODO_SESSAO.MODO_LIVRE && Boolean(sessaoAtualizada.paciente_id),
-          tem_anotacoes: Boolean(anotacoesRecebidas),
-        },
+      await eventBus.emitirAsync('sessao:finalizada', {
+        sessao: sessaoAtualizada,
+        terapeutaId: usuarioLogadoFinalizar?.id || sessaoAtualizada.terapeuta_id,
         ip: ipOrigemFinalizar,
-        user_agent: (req.headers?.['user-agent'] as string) || null,
+        userAgent: (req.headers?.['user-agent'] as string) || null,
+        temAnotacoes: Boolean(anotacoesRecebidas),
       });
 
       // 3. Conformidade com RN01 (Modo Livre sem Persistência Clínica / Sem IA)
@@ -312,19 +304,16 @@ export class SessaoController {
         return;
       }
 
-      // Registra evento na trilha de auditoria clínica (Task 1.3 / RF13 / RNF06)
+      // Dispara evento de domínio desacoplado para auditoria
       const ipOrigemCancelar = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
       const usuarioLogadoCancelar = (req as AuthenticatedRequest).user;
-      AuditoriaService.registrarSilencioso({
-        sessao_id: sessaoCancelada.id,
-        terapeuta_id: usuarioLogadoCancelar?.id || sessaoCancelada.terapeuta_id,
-        origem: 'terapeuta_web',
-        acao: 'sessao_cancelada',
-        detalhes_json: {
-          status_anterior: sessao.status_sessao,
-        },
+
+      await eventBus.emitirAsync('sessao:cancelada', {
+        sessao: sessaoCancelada,
+        terapeutaId: usuarioLogadoCancelar?.id || sessaoCancelada.terapeuta_id,
+        statusAnterior: sessao.status_sessao,
         ip: ipOrigemCancelar,
-        user_agent: (req.headers?.['user-agent'] as string) || null,
+        userAgent: (req.headers?.['user-agent'] as string) || null,
       });
 
       res.json({ data: sessaoCancelada });
@@ -457,20 +446,13 @@ export class SessaoController {
         }
       }
 
-      // Registra evento na trilha de auditoria clínica (Task 1.3 / RF13 / RNF06)
+      // Dispara evento de domínio desacoplado para auditoria
       const ipOrigemParear = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
-      AuditoriaService.registrarSilencioso({
-        sessao_id: sessaoAtualizada.id,
-        terapeuta_id: sessaoAtualizada.terapeuta_id,
-        origem: 'dispositivo_jogo',
-        acao: 'dispositivo_pareado',
-        detalhes_json: {
-          jogo_id: sessaoAtualizada.jogo_id,
-          dispositivo_info: sessaoAtualizada.dispositivo_info || null,
-          modo_sessao: sessaoAtualizada.modo_sessao,
-        },
+      await eventBus.emitirAsync('sessao:pareada', {
+        sessao: sessaoAtualizada,
+        terapeutaId: sessaoAtualizada.terapeuta_id,
         ip: ipOrigemParear,
-        user_agent: (req.headers?.['user-agent'] as string) || null,
+        userAgent: (req.headers?.['user-agent'] as string) || null,
       });
 
       res.status(200).json({

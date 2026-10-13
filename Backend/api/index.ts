@@ -7,6 +7,10 @@ import { sessaoRoutes } from './sessao/routes/sessao.routes.js';
 import { telemetriaRoutes } from './telemetria/routes/telemetria.routes.js';
 import { terapeutaRoutes } from './terapeuta/routes/terapeuta.routes.js';
 import { auditoriaRoutes } from './auditoria/routes/auditoria.routes.js';
+import { inicializarAuditoriaListeners } from './auditoria/listeners/auditoria.listener.js';
+
+// Inicializa listeners orientados a eventos para auditoria assíncrona
+inicializarAuditoriaListeners();
 
 export const apiRouter = Router();
 
