@@ -21,7 +21,6 @@ export interface AnotacaoClinica {
   soft_delete: boolean;
   created_at: string;
   updated_at: string;
-  terapeuta?: AnotacaoTerapeutaInfo;
 }
 
 export interface CriarAnotacaoDTO {
@@ -72,7 +71,7 @@ export class AnotacaoClinicaModel {
     try {
       const { data, error } = await supabase
         .from('anotacao_clinica')
-        .select('*, terapeuta:terapeuta_id (id, nome)')
+        .select('*')
         .eq('id', id)
         .eq('soft_delete', false)
         .maybeSingle();
@@ -87,20 +86,26 @@ export class AnotacaoClinicaModel {
 
   /**
    * Lista todas as anotações ativas do prontuário de um paciente específico (ordenadas por data decrescente).
+   * Permite filtrar exclusivamente anotações de paciente (sessao_id IS NULL).
    */
   static async listarPorPaciente(
     pacienteId: string,
-    incluirDeletadas = false
+    incluirDeletadas = false,
+    somenteSemSessao = false
   ): Promise<AnotacaoClinica[]> {
     try {
       let query = supabase
         .from('anotacao_clinica')
-        .select('*, terapeuta:terapeuta_id (id, nome)')
+        .select('*')
         .eq('paciente_id', pacienteId)
         .order('created_at', { ascending: false });
 
       if (!incluirDeletadas) {
         query = query.eq('soft_delete', false);
+      }
+
+      if (somenteSemSessao) {
+        query = query.is('sessao_id', null);
       }
 
       const { data, error } = await query;
@@ -120,14 +125,20 @@ export class AnotacaoClinicaModel {
   /**
    * Lista anotações clínicas vinculadas a uma sessão específica.
    */
-  static async listarPorSessao(sessaoId: string): Promise<AnotacaoClinica[]> {
+  static async listarPorSessao(sessaoId: string, incluirDeletadas = false): Promise<AnotacaoClinica[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('anotacao_clinica')
-        .select('*, terapeuta:terapeuta_id (id, nome)')
-        .eq('sessao_id', sessaoId)
-        .eq('soft_delete', false)
-        .order('created_at', { ascending: true });
+        .select('*')
+        .eq('sessao_id', sessaoId);
+
+      if (!incluirDeletadas) {
+        query = query.eq('soft_delete', false);
+      }
+
+      query = query.order('created_at', { ascending: true });
+
+      const { data, error } = await query;
 
       if (error || !data) {
         console.error('[AnotacaoClinicaModel] Erro ao listar anotações por sessão:', error);
@@ -198,6 +209,32 @@ export class AnotacaoClinicaModel {
       return true;
     } catch (err) {
       console.error('[AnotacaoClinicaModel] Exceção ao executar soft delete na anotação:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Exclusão física permanente (Hard Delete) exclusiva para ambiente de desenvolvimento/testes.
+   */
+  static async deletarHard(id: string): Promise<boolean> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Hard delete proibido em ambiente de produção (RN05).');
+    }
+
+    try {
+      const { error } = await supabase
+        .from('anotacao_clinica')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('[AnotacaoClinicaModel] Erro ao executar hard delete:', error);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('[AnotacaoClinicaModel] Exceção ao executar hard delete:', err);
       return false;
     }
   }

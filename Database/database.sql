@@ -258,22 +258,13 @@ CREATE TABLE IF NOT EXISTS public.telemetria_evento (
 );
 
 -- ==============================================================================
--- 16. BLOQUEIO DE HARD DELETE (Conformidade RN05)
+-- 16. BLOQUEIO DE HARD DELETE (Desativado temporariamente em DEV/Testes)
 -- ==============================================================================
-CREATE OR REPLACE FUNCTION public.impedir_hard_delete_clinico()
-RETURNS TRIGGER AS $$
-BEGIN
-    RAISE EXCEPTION 'Exclusão física proibida por conformidade clínica (RN05). Altere soft_delete para TRUE.';
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_bloqueio_delete_anotacao
-BEFORE DELETE ON public.anotacao_clinica
-FOR EACH ROW EXECUTE FUNCTION public.impedir_hard_delete_clinico();
-
-CREATE TRIGGER trg_bloqueio_delete_relatorio
-BEFORE DELETE ON public.relatorio_sessao
-FOR EACH ROW EXECUTE FUNCTION public.impedir_hard_delete_clinico();
+-- Os triggers de bloqueio físico (trg_bloqueio_delete_anotacao e trg_bloqueio_delete_relatorio)
+-- estão temporariamente desativados durante a fase de testes e desenvolvimento.
+-- Serão reativados antes da implantação oficial em produção para conformidade clínica RN05.
+DROP TRIGGER IF EXISTS trg_bloqueio_delete_anotacao ON public.anotacao_clinica;
+DROP TRIGGER IF EXISTS trg_bloqueio_delete_relatorio ON public.relatorio_sessao;
 
 -- Trigger para limpeza automática de responsáveis órfãos em exclusões físicas de testes (Hard Delete)
 CREATE OR REPLACE FUNCTION public.fn_limpar_responsavel_orfaos()
