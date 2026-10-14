@@ -7,6 +7,7 @@ import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, StatusSessao, Sessao } from '.
 import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/sessao.dto.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
+import { SessaoResultadoService } from '../services/sessao-resultado.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { eventBus } from '../../../core/events/event-bus.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
@@ -588,6 +589,43 @@ export class SessaoController {
       res.status(200).json({ data: sessaoAtualizada });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao atualizar status da sessão' });
+    }
+  }
+
+  /**
+   * Consulta os resultados consolidados de uma sessão finalizada
+   * GET /api/sessao/:id/resultado (RF14, RN01, RN04, Contrato 4)
+   */
+  static async consultarResultado(req: Request, res: Response): Promise<void> {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const usuarioLogadoId = authReq.user?.id;
+
+      if (!usuarioLogadoId) {
+        res.status(401).json({
+          error: 'Acesso não autorizado: identificação do terapeuta não encontrada no token de autenticação.',
+        });
+        return;
+      }
+
+      const sessaoId = String(req.params.id || '');
+      const isSuperAdmin = authReq.user?.user_metadata?.is_super_admin === true;
+
+      const resultado = await SessaoResultadoService.obterResultadoConsolidado(
+        sessaoId,
+        usuarioLogadoId,
+        isSuperAdmin
+      );
+
+      if (!resultado.sucesso) {
+        res.status(resultado.status).json({ error: resultado.erro });
+        return;
+      }
+
+      res.status(200).json({ data: resultado.dados });
+    } catch (error) {
+      console.error('[SessaoController.consultarResultado] Erro inesperado:', error);
+      res.status(500).json({ error: 'Erro interno ao consultar resultado consolidado da sessão.' });
     }
   }
 }
