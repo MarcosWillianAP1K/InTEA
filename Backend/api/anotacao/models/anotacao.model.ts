@@ -1,0 +1,204 @@
+// ==============================================================================
+// InTEA: Modelo da Tabela anotacao_clinica (Prontuário com Sessão Opcional)
+// ==============================================================================
+// Conformidade: RF16 (Anotações Clínicas), RF21 (Autoria JWT), RN04, RN05
+// TypeScript Estrito: Sem 'any'
+// ==============================================================================
+
+import { supabase } from '../../../core/supabase/supabase.client.js';
+
+export interface AnotacaoTerapeutaInfo {
+  id: string;
+  nome: string;
+}
+
+export interface AnotacaoClinica {
+  id: string;
+  terapeuta_id: string;
+  paciente_id: string;
+  sessao_id: string | null;
+  conteudo: string;
+  soft_delete: boolean;
+  created_at: string;
+  updated_at: string;
+  terapeuta?: AnotacaoTerapeutaInfo;
+}
+
+export interface CriarAnotacaoDTO {
+  terapeuta_id: string;
+  paciente_id: string;
+  sessao_id?: string | null;
+  conteudo: string;
+}
+
+export interface AtualizarAnotacaoDTO {
+  conteudo?: string;
+  soft_delete?: boolean;
+}
+
+export class AnotacaoClinicaModel {
+  /**
+   * Registra uma nova anotação clínica vinculada ao paciente (e opcionalmente à sessão).
+   */
+  static async criar(dto: CriarAnotacaoDTO): Promise<AnotacaoClinica | null> {
+    try {
+      const { data, error } = await supabase
+        .from('anotacao_clinica')
+        .insert({
+          terapeuta_id: dto.terapeuta_id,
+          paciente_id: dto.paciente_id,
+          sessao_id: dto.sessao_id || null,
+          conteudo: dto.conteudo.trim(),
+        })
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        console.error('[AnotacaoClinicaModel] Erro ao criar anotação:', error);
+        return null;
+      }
+
+      return data as AnotacaoClinica;
+    } catch (err) {
+      console.error('[AnotacaoClinicaModel] Exceção ao criar anotação clínica:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Busca uma anotação ativa pelo seu identificador único UUID.
+   */
+  static async buscarPorId(id: string): Promise<AnotacaoClinica | null> {
+    try {
+      const { data, error } = await supabase
+        .from('anotacao_clinica')
+        .select('*, terapeuta:terapeuta_id (id, nome)')
+        .eq('id', id)
+        .eq('soft_delete', false)
+        .maybeSingle();
+
+      if (error || !data) return null;
+      return data as AnotacaoClinica;
+    } catch (err) {
+      console.error('[AnotacaoClinicaModel] Erro ao buscar anotação por ID:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Lista todas as anotações ativas do prontuário de um paciente específico (ordenadas por data decrescente).
+   */
+  static async listarPorPaciente(
+    pacienteId: string,
+    incluirDeletadas = false
+  ): Promise<AnotacaoClinica[]> {
+    try {
+      let query = supabase
+        .from('anotacao_clinica')
+        .select('*, terapeuta:terapeuta_id (id, nome)')
+        .eq('paciente_id', pacienteId)
+        .order('created_at', { ascending: false });
+
+      if (!incluirDeletadas) {
+        query = query.eq('soft_delete', false);
+      }
+
+      const { data, error } = await query;
+
+      if (error || !data) {
+        console.error('[AnotacaoClinicaModel] Erro ao listar anotações por paciente:', error);
+        return [];
+      }
+
+      return data as AnotacaoClinica[];
+    } catch (err) {
+      console.error('[AnotacaoClinicaModel] Exceção ao listar anotações por paciente:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Lista anotações clínicas vinculadas a uma sessão específica.
+   */
+  static async listarPorSessao(sessaoId: string): Promise<AnotacaoClinica[]> {
+    try {
+      const { data, error } = await supabase
+        .from('anotacao_clinica')
+        .select('*, terapeuta:terapeuta_id (id, nome)')
+        .eq('sessao_id', sessaoId)
+        .eq('soft_delete', false)
+        .order('created_at', { ascending: true });
+
+      if (error || !data) {
+        console.error('[AnotacaoClinicaModel] Erro ao listar anotações por sessão:', error);
+        return [];
+      }
+
+      return data as AnotacaoClinica[];
+    } catch (err) {
+      console.error('[AnotacaoClinicaModel] Exceção ao listar anotações por sessão:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Atualiza o conteúdo ou estado de uma anotação ativa.
+   */
+  static async atualizar(id: string, dto: AtualizarAnotacaoDTO): Promise<AnotacaoClinica | null> {
+    try {
+      const camposAtualizar: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (dto.conteudo !== undefined) {
+        camposAtualizar.conteudo = dto.conteudo.trim();
+      }
+
+      if (dto.soft_delete !== undefined) {
+        camposAtualizar.soft_delete = dto.soft_delete;
+      }
+
+      const { data, error } = await supabase
+        .from('anotacao_clinica')
+        .update(camposAtualizar)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        console.error('[AnotacaoClinicaModel] Erro ao atualizar anotação:', error);
+        return null;
+      }
+
+      return data as AnotacaoClinica;
+    } catch (err) {
+      console.error('[AnotacaoClinicaModel] Exceção ao atualizar anotação clínica:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Executa soft delete da anotação clínica (soft_delete = true), cumprindo a regra RN05.
+   */
+  static async softDelete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('anotacao_clinica')
+        .update({
+          soft_delete: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) {
+        console.error('[AnotacaoClinicaModel] Erro ao executar soft delete:', error);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('[AnotacaoClinicaModel] Exceção ao executar soft delete na anotação:', err);
+      return false;
+    }
+  }
+}

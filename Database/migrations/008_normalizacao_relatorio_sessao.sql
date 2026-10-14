@@ -136,3 +136,90 @@ USING (
           AND (s.terapeuta_id = auth.uid() OR public.check_is_super_admin())
     )
 );
+
+-- ==============================================================================
+-- PARTE 2: TABELA anotacao_clinica (Prontuário Humano com Sessão Opcional)
+-- ==============================================================================
+-- Justificativa Clínica:
+-- Anotações clínicas pertencem ao prontuário do paciente (paciente_id NOT NULL).
+-- A relação com sessão é opcional (sessao_id NULLABLE ON DELETE SET NULL), pois
+-- o terapeuta realiza anotações de evolução fora de jogos terapêuticos.
+-- ==============================================================================
+
+-- ------------------------------------------------------------------------------
+-- PASSO 7: Criação Idempotente da Tabela anotacao_clinica
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.anotacao_clinica (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    terapeuta_id UUID NOT NULL REFERENCES public.terapeuta(id) ON DELETE RESTRICT,
+    paciente_id UUID NOT NULL REFERENCES public.paciente(id) ON DELETE RESTRICT,
+    sessao_id UUID REFERENCES public.sessao(id) ON DELETE SET NULL,
+    conteudo TEXT NOT NULL,
+    soft_delete BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+-- ------------------------------------------------------------------------------
+-- PASSO 8: Comentários Semânticos de Documentação
+-- ------------------------------------------------------------------------------
+COMMENT ON TABLE public.anotacao_clinica IS 'Evoluções e anotações clínicas do prontuário médico (RF16, RN04, RN05). paciente_id é mandatório e sessao_id é opcional.';
+COMMENT ON COLUMN public.anotacao_clinica.id IS 'Identificador único da anotação clínica (UUID).';
+COMMENT ON COLUMN public.anotacao_clinica.terapeuta_id IS 'Terapeuta autor da anotação (autoria obrigatória via JWT - RF21).';
+COMMENT ON COLUMN public.anotacao_clinica.paciente_id IS 'Paciente titular do prontuário médico (vínculo institucional obrigatório - RN04).';
+COMMENT ON COLUMN public.anotacao_clinica.sessao_id IS 'Sessão clínica associada à anotação (opcional: NULL para observações avulsas).';
+COMMENT ON COLUMN public.anotacao_clinica.conteudo IS 'Texto da evolução clínica ou anotação terapêutica.';
+COMMENT ON COLUMN public.anotacao_clinica.soft_delete IS 'Flag de exclusão lógica para preservação do histórico clínico (RN05).';
+
+-- ------------------------------------------------------------------------------
+-- PASSO 9: Índices de Otimização e Performance
+-- ------------------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_anotacao_paciente ON public.anotacao_clinica(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_anotacao_sessao ON public.anotacao_clinica(sessao_id);
+CREATE INDEX IF NOT EXISTS idx_anotacao_terapeuta ON public.anotacao_clinica(terapeuta_id);
+
+-- ------------------------------------------------------------------------------
+-- PASSO 10: Habilitação de RLS e Políticas de Segurança com Blindagem RN04
+-- ------------------------------------------------------------------------------
+ALTER TABLE public.anotacao_clinica ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Consulta de anotacoes ativas da equipe" ON public.anotacao_clinica;
+DROP POLICY IF EXISTS "Insercao de anotacao com autoria obrigatoria" ON public.anotacao_clinica;
+DROP POLICY IF EXISTS "Insercao de anotacao com autoria e vinculo obrigatorio" ON public.anotacao_clinica;
+DROP POLICY IF EXISTS "Edicao de anotacao propria" ON public.anotacao_clinica;
+
+-- Consulta: apenas anotações ativas de pacientes que o terapeuta possui vínculo na clínica (RN04 / RN05)
+CREATE POLICY "Consulta de anotacoes ativas da equipe"
+ON public.anotacao_clinica FOR SELECT
+TO authenticated
+USING (
+    soft_delete = FALSE AND (
+        terapeuta_id = auth.uid() OR 
+        public.terapeuta_tem_acesso_paciente(paciente_id) OR
+        public.check_is_super_admin()
+    )
+);
+
+-- Inserção: exige autoria (terapeuta_id = auth.uid()) E vínculo institucional com o paciente (RN04)
+CREATE POLICY "Insercao de anotacao com autoria e vinculo obrigatorio"
+ON public.anotacao_clinica FOR INSERT
+TO authenticated
+WITH CHECK (
+    terapeuta_id = auth.uid() AND (
+        public.terapeuta_tem_acesso_paciente(paciente_id) OR
+        public.check_is_super_admin()
+    )
+);
+
+-- Edição: autor da anotação pode editar se o registro estiver ativo e mantiver vínculo institucional
+CREATE POLICY "Edicao de anotacao propria"
+ON public.anotacao_clinica FOR UPDATE
+TO authenticated
+USING (
+    terapeuta_id = auth.uid() AND 
+    soft_delete = FALSE AND (
+        public.terapeuta_tem_acesso_paciente(paciente_id) OR
+        public.check_is_super_admin()
+    )
+);
+

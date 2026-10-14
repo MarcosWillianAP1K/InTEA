@@ -642,7 +642,7 @@ ON public.sessao FOR SELECT
 TO anon
 USING (status_sessao IN ('aguardando_pareamento', 'conectado', 'em_andamento'));
 
--- Anotações Clínicas
+-- Anotações Clínicas (Autoria Obrigatória RF21 e Vínculo Institucional RN04)
 CREATE POLICY "Consulta de anotacoes ativas da equipe"
 ON public.anotacao_clinica FOR SELECT
 TO authenticated
@@ -654,15 +654,26 @@ USING (
     )
 );
 
-CREATE POLICY "Insercao de anotacao com autoria obrigatoria"
+CREATE POLICY "Insercao de anotacao com autoria e vinculo obrigatorio"
 ON public.anotacao_clinica FOR INSERT
 TO authenticated
-WITH CHECK (terapeuta_id = auth.uid());
+WITH CHECK (
+    terapeuta_id = auth.uid() AND (
+        public.terapeuta_tem_acesso_paciente(paciente_id) OR
+        public.check_is_super_admin()
+    )
+);
 
 CREATE POLICY "Edicao de anotacao propria"
 ON public.anotacao_clinica FOR UPDATE
 TO authenticated
-USING (terapeuta_id = auth.uid() AND soft_delete = FALSE);
+USING (
+    terapeuta_id = auth.uid() AND 
+    soft_delete = FALSE AND (
+        public.terapeuta_tem_acesso_paciente(paciente_id) OR
+        public.check_is_super_admin()
+    )
+);
 
 -- Relatórios de Sessão (Autorização delegada à tabela pai sessao via 3FN)
 CREATE POLICY "Consulta de relatorios clinicos"
