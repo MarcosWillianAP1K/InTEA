@@ -41,19 +41,39 @@ export class SessaoController {
    */
   static async iniciar(req: Request, res: Response): Promise<void> {
     try {
+      // 1. Extração segura da identidade do terapeuta a partir do token JWT verificado (RF21, CA-1)
+      const authReq = req as AuthenticatedRequest;
+      const usuarioLogadoId = authReq.user?.id;
+
+      if (!usuarioLogadoId) {
+        res.status(401).json({
+          error: 'Acesso não autorizado: identificação do terapeuta não encontrada no token de autenticação.',
+        });
+        return;
+      }
+
       const {
-        terapeuta_id,
+        terapeuta_id: terapeutaIdBody,
         jogo_id,
         paciente_id,
         modo_sessao = MODO_SESSAO.SESSAO_CLINICA,
         contexto_dda_json = {},
         codigo_pareamento,
-      } = req.body;
+      } = req.body || {};
 
-      const codigoFinal = codigo_pareamento || req.body.codigo;
+      // 2. Guarda Anti-Spoofing: bloqueia com 403 se o body informar terapeuta divergente do token (CA-3)
+      if (terapeutaIdBody && terapeutaIdBody !== usuarioLogadoId) {
+        res.status(403).json({
+          error: 'Acesso negado: tentativa de iniciar sessão para outro terapeuta não autorizada.',
+        });
+        return;
+      }
 
-      if (!terapeuta_id || !jogo_id || !codigoFinal) {
-        res.status(400).json({ error: 'Os campos terapeuta_id, jogo_id e codigo_pareamento são obrigatórios' });
+      const codigoFinal = codigo_pareamento || req.body?.codigo;
+
+      // 3. Validação de campos obrigatórios (terapeuta_id não é mais exigido no body)
+      if (!jogo_id || !codigoFinal) {
+        res.status(400).json({ error: 'Os campos jogo_id e codigo_pareamento são obrigatórios' });
         return;
       }
 
@@ -74,7 +94,7 @@ export class SessaoController {
       }
 
       const dadosSessao: CriarSessaoDTO = {
-        terapeuta_id,
+        terapeuta_id: usuarioLogadoId,
         jogo_id,
         paciente_id: modo_sessao === MODO_SESSAO.MODO_LIVRE ? null : paciente_id,
         modo_sessao,

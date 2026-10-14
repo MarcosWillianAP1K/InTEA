@@ -66,7 +66,6 @@ sessaoRoutes.get('/gerarCodigoPareamento', authMiddleware, SessaoController.gera
  *           schema:
  *             type: object
  *             required:
- *               - terapeuta_id
  *               - jogo_id
  *               - codigo_pareamento
  *             properties:
@@ -74,7 +73,7 @@ sessaoRoutes.get('/gerarCodigoPareamento', authMiddleware, SessaoController.gera
  *                 type: string
  *                 format: uuid
  *                 example: "11111111-1111-1111-1111-111111111111"
- *                 description: UUID do terapeuta responsável
+ *                 description: (Opcional) UUID do terapeuta responsável. Derivado primariamente do token JWT verificado (RF21). Se informado no body, deve coincidir com o usuário autenticado; divergências são bloqueadas com 403 Forbidden.
  *               jogo_id:
  *                 type: string
  *                 format: uuid
@@ -146,9 +145,9 @@ sessaoRoutes.get('/gerarCodigoPareamento', authMiddleware, SessaoController.gera
  *                   type: string
  *                   example: "O paciente_id é obrigatório para sessões clínicas (RN01)"
  *       401:
- *         description: Token JWT ausente ou inválido
+ *         description: Token JWT ausente, inválido ou identificador do terapeuta não encontrado
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo ativo com o paciente (RN04) ou de clínica divergente
+ *         description: Acesso negado — terapeuta informado no body divergente do token autenticado (anti-spoofing), sem vínculo ativo com o paciente (RN04) ou de clínica divergente
  *       500:
  *         description: Erro interno ao criar sessão
  */
