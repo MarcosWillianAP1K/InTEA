@@ -352,6 +352,258 @@ describe('SessaoResultadoService — Endpoint GET /api/sessao/:id/resultado (RF1
     expect(res.sucesso).toBe(true);
     expect(res.status).toBe(200);
   });
+  it('deve retornar 400 Bad Request se a sessão estiver cancelada (FSM)', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      ...mockSessaoFinalizada,
+      status_sessao: STATUS_SESSAO.CANCELADA,
+      data_hora_fim: null,
+    });
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(false);
+    expect(res.status).toBe(400);
+    expect(res.erro).toContain("só está disponível para sessões finalizadas. Status atual: 'cancelada'");
+  });
+
+  it('deve retornar 400 Bad Request se a sessão estiver expirada (FSM)', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      ...mockSessaoFinalizada,
+      status_sessao: STATUS_SESSAO.EXPIRADA,
+      data_hora_fim: null,
+    });
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(false);
+    expect(res.status).toBe(400);
+    expect(res.erro).toContain("só está disponível para sessões finalizadas. Status atual: 'expirada'");
+  });
+
+  it('deve retornar 403 Forbidden se o perfil do terapeuta requisitante não for encontrado no banco (RN04)', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(mockSessaoFinalizada);
+
+    vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
+      if (table === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null, // Terapeuta não encontrado
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(false);
+    expect(res.status).toBe(403);
+    expect(res.erro).toContain('perfil de terapeuta associado ao token não encontrado');
+  });
+
+  it('deve retornar 403 Forbidden se a conta do terapeuta requisitante estiver inativa (RN04)', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(mockSessaoFinalizada);
+
+    vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
+      if (table === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaId, clinica_id: clinicaId, is_super_admin: false, status_ativo: false },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(false);
+    expect(res.status).toBe(403);
+    expect(res.erro).toContain('a conta do terapeuta encontra-se inativa');
+  });
+
+  it('deve retornar 404 Not Found se o paciente vinculado à sessão não for encontrado no banco (RN04)', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(mockSessaoFinalizada);
+
+    vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
+      if (table === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaId, clinica_id: clinicaId, is_super_admin: false, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null, // Paciente não encontrado
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(false);
+    expect(res.status).toBe(404);
+    expect(res.erro).toContain('Paciente vinculado à sessão não encontrado');
+  });
+
+  it('deve retornar 200 OK com fallback de relatório via SessaoTokenService quando relatorio_sessao for nulo', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(mockSessaoFinalizada);
+    vi.spyOn(RelatorioSessaoModel, 'buscarPorSessaoId').mockResolvedValue(null);
+    vi.spyOn(AnotacaoClinicaModel, 'listarPorSessao').mockResolvedValue([]);
+
+    const { SessaoTokenService } = await import('../services/sessao-token.service.js');
+    const mockSintese = {
+      token_sessao: 'ABCD-1234',
+      duracao_segundos: 1200,
+      resumo: { taxa_conclusao: 80, intervencoes_dda: 1 },
+      analises_ia: ['Análise gerada em fallback'],
+      metricas_agregadas: [],
+    };
+    vi.spyOn(SessaoTokenService, 'gerarRelatorioIA').mockReturnValue(mockSintese);
+
+    vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
+      if (table === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaId, clinica_id: clinicaId, is_super_admin: false, status_ativo: true, nome: 'Dr. Marcos' },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: pacienteId, clinica_id: clinicaId, status_ativo: true, nome: 'Lucas' },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'terapeuta_paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { paciente_id: pacienteId },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'jogo') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: jogoId, nome: 'Ilha dos Sentidos', versao: '1.0' },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(true);
+    expect(res.status).toBe(200);
+    expect(res.dados?.relatorio?.dados_ia_json.resumo.taxa_conclusao).toBe(80);
+    expect(res.dados?.relatorio?.conteudo).toBeNull();
+  });
+
+  it('deve calcular duracao_segundos como 0 se data_hora_fim for nula', async () => {
+    const mockSessaoSemFim: Sessao = {
+      ...mockSessaoFinalizada,
+      data_hora_fim: null,
+    };
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(mockSessaoSemFim);
+    vi.spyOn(RelatorioSessaoModel, 'buscarPorSessaoId').mockResolvedValue(null);
+    vi.spyOn(AnotacaoClinicaModel, 'listarPorSessao').mockResolvedValue([]);
+
+    vi.spyOn(supabase, 'from').mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: { paciente_id: pacienteId }, error: null }),
+          }),
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: { id: terapeutaId, clinica_id: clinicaId, is_super_admin: false, status_ativo: true },
+            error: null,
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof supabase.from>));
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(true);
+    expect(res.dados?.sessao.duracao_segundos).toBe(0);
+  });
+
+  it('RN05: deve garantir que anotações com soft_delete = true não são expostas no resultado consolidado', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(mockSessaoFinalizada);
+    vi.spyOn(RelatorioSessaoModel, 'buscarPorSessaoId').mockResolvedValue(null);
+
+    // AnotacaoClinicaModel.listarPorSessao já filtra soft_delete: false por padrão
+    const spyListarAnotacoes = vi.spyOn(AnotacaoClinicaModel, 'listarPorSessao').mockResolvedValue([]);
+
+    vi.spyOn(supabase, 'from').mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: { paciente_id: pacienteId }, error: null }),
+          }),
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: { id: terapeutaId, clinica_id: clinicaId, is_super_admin: false, status_ativo: true },
+            error: null,
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof supabase.from>));
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(true);
+    expect(spyListarAnotacoes).toHaveBeenCalledWith(sessaoId);
+    expect(res.dados?.anotacoes).toEqual([]);
+  });
+
+  it('deve retornar 500 se ocorrer uma exceção inesperada no serviço', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockRejectedValue(new Error('Falha catastrófica de rede'));
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(false);
+    expect(res.status).toBe(500);
+    expect(res.erro).toContain('Erro interno ao consultar resultado consolidado');
+  });
 });
 
 describe('SessaoController.consultarResultado — Integração REST e Códigos HTTP', () => {
@@ -437,5 +689,78 @@ describe('SessaoController.consultarResultado — Integração REST e Códigos H
 
     expect(getStatus()).toBe(400);
     expect(getJson().error).toBe('A sessão ainda está em andamento.');
+  });
+
+  it('deve repassar status 403 Forbidden retornado pelo service (RN04)', async () => {
+    vi.spyOn(SessaoResultadoService, 'obterResultadoConsolidado').mockResolvedValue({
+      sucesso: false,
+      status: 403,
+      erro: 'Acesso negado: vínculo não encontrado.',
+    });
+
+    const { req, res, getStatus, getJson } = criarMockHttp({ id: sessaoId });
+
+    await SessaoController.consultarResultado(req, res);
+
+    expect(getStatus()).toBe(403);
+    expect(getJson().error).toContain('Acesso negado');
+  });
+
+  it('deve repassar status 404 Not Found retornado pelo service', async () => {
+    vi.spyOn(SessaoResultadoService, 'obterResultadoConsolidado').mockResolvedValue({
+      sucesso: false,
+      status: 404,
+      erro: 'Sessão clínica não encontrada.',
+    });
+
+    const { req, res, getStatus, getJson } = criarMockHttp({ id: sessaoId });
+
+    await SessaoController.consultarResultado(req, res);
+
+    expect(getStatus()).toBe(404);
+    expect(getJson().error).toContain('não encontrada');
+  });
+
+  it('deve extrair isSuperAdmin = true a partir de user_metadata.is_super_admin', async () => {
+    const spyService = vi.spyOn(SessaoResultadoService, 'obterResultadoConsolidado').mockResolvedValue({
+      sucesso: true,
+      status: 200,
+      dados: {} as any,
+    });
+
+    const { req, res } = criarMockHttp(
+      { id: sessaoId },
+      { id: terapeutaId, user_metadata: { is_super_admin: true } }
+    );
+
+    await SessaoController.consultarResultado(req, res);
+
+    expect(spyService).toHaveBeenCalledWith(sessaoId, terapeutaId, true);
+  });
+
+  it('deve retornar 500 se o service lançar uma exceção inesperada', async () => {
+    vi.spyOn(SessaoResultadoService, 'obterResultadoConsolidado').mockRejectedValue(new Error('Erro inesperado'));
+
+    const { req, res, getStatus, getJson } = criarMockHttp({ id: sessaoId });
+
+    await SessaoController.consultarResultado(req, res);
+
+    expect(getStatus()).toBe(500);
+    expect(getJson().error).toContain('Erro interno ao consultar resultado');
+  });
+});
+
+describe('Rotas de Sessão — GET /api/sessao/:id/resultado (OpenAPI e Middlewares)', () => {
+  it('deve ter a rota GET /:id/resultado registrada com authMiddleware', async () => {
+    const { sessaoRoutes } = await import('../routes/sessao.routes.js');
+    expect(sessaoRoutes).toBeDefined();
+
+    const rotaResultado = sessaoRoutes.stack.find(
+      (layer: any) => layer.route && layer.route.path === '/:id/resultado' && layer.route.methods.get
+    );
+
+    expect(rotaResultado).toBeDefined();
+    // A rota deve conter authMiddleware e o handler do controller
+    expect(rotaResultado?.route?.stack.length).toBeGreaterThanOrEqual(2);
   });
 });
