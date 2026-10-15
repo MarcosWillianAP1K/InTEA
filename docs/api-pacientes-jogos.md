@@ -1103,6 +1103,7 @@ Todas as respostas seguem formatos previsíveis:
 | `PATCH` | `/api/sessao/:id/finalizar` | Sim (JWT) | **RF13**, **RF17**, **RF21**, **RN01**, **RN04**, **RN05**, **RNF06** | Encerra formalmente a sessão, aciona síntese de IA e grava na trilha de auditoria |
 | `DELETE` | `/api/sessao/:id/cancelar` | Sim (JWT) | **RF12**, **RF13**, **RN05** | Cancela antecipadamente sessão pendente antes da conclusão clínica |
 | `PATCH` | `/api/sessao/:id/status` | Sim (JWT) | **RF12** | Transição manual controlada da máquina de estados (FSM) da sessão |
+| `GET` | `/api/sessao/:id/resultado` | Sim (JWT + Vínculo) | **RF14**, **RF17**, **RN01**, **RN04**, **RN05** | Consulta consolidada de resultados, IA (3FN), anotações e paciente pós-sessão |
 
 ---
 
@@ -1353,7 +1354,7 @@ Todas as respostas seguem formatos previsíveis:
   ```
 
 - **Respostas:**
-  - **Status `200 OK` (Sessão Finalizada com Relatório IA):**
+  - **Status `200 OK` (Sessão Clínica Finalizada com Relatório IA — 3FN):**
 
     ```json
     {
@@ -1368,16 +1369,53 @@ Todas as respostas seguem formatos previsíveis:
         "data_hora_inicio": "2026-10-07T23:30:15.000Z",
         "data_hora_fim": "2026-10-07T23:55:20.000Z",
         "relatorio": {
-          "id_relatorio": "rel-849291",
           "sessao_id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
-          "duracao_total_segundos": 1505,
-          "analises_ia": [
-            "Desempenho de foco atencional acima da média histórica do paciente.",
-            "Sem indícios de fadiga sensorial durante o ciclo ativo."
-          ],
-          "gerado_em": "2026-10-07T23:55:20.000Z"
+          "conteudo": "Paciente apresentou evolução notável no tempo de reação e excelente autorregulação nas fases com estímulos cromáticos complexos.",
+          "dados_ia_json": {
+            "token_sessao": "4M5S-8U7B",
+            "duracao_segundos": 1505,
+            "resumo": {
+              "taxa_conclusao": 92.4,
+              "intervencoes_dda": 2
+            },
+            "analises_ia": [
+              "Desempenho de foco atencional acima da média histórica do paciente.",
+              "Sem indícios de fadiga sensorial durante o ciclo ativo."
+            ],
+            "metricas_agregadas": [
+              {
+                "id_metrica": "tempo_reacao_ms",
+                "valor_dominante": "320",
+                "tendencia": "decrescente"
+              }
+            ]
+          },
+          "created_at": "2026-10-07T23:55:20.000Z"
         }
       }
+    }
+    ```
+
+  - **Status `200 OK` (Sessão em Modo Livre Finalizada — RN01):**
+
+    Partidas em Modo Livre não geram, não processam e não persistem relatórios clínicos nem telemetria. O objeto `paciente` é `null` e o campo `relatorio` é retornado como `null` (sem persistência na tabela `public.relatorio_sessao`):
+
+    ```json
+    {
+      "data": {
+        "id": "b1c2d3e4-5678-90ab-cdef-1234567890ab",
+        "session_token": "9K2L-1A4C",
+        "status_sessao": "finalizada",
+        "modo_sessao": "modo_livre",
+        "terapeuta_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "paciente_id": null,
+        "paciente": null,
+        "jogo_id": "8b5a034f-9e77-4ad3-9b6e-1d54e5cf4291",
+        "data_hora_inicio": "2026-10-07T23:00:00.000Z",
+        "data_hora_fim": "2026-10-07T23:25:00.000Z",
+        "relatorio": null
+      },
+      "message": "Sessão em Modo Livre encerrada com sucesso. Nenhuma telemetria ou relatório clínico persistido em prontuário (RN01)."
     }
     ```
 
@@ -1428,6 +1466,121 @@ Todas as respostas seguem formatos previsíveis:
 - **Respostas:**
   - **Status `200 OK`:** Status atualizado com sucesso.
   - **Status `400 Bad Request`:** Status inválido ou campo ausente.
+
+---
+
+#### Rota 10: Consulta Consolidada dos Resultados da Sessão (RF14, RF17, RN01, RN04, RN05)
+
+- **Método:** `GET`
+- **URL:** `/api/sessao/:id/resultado`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Path Parameters:** `id` (`string`, UUID da sessão).
+- **Contexto Clínico e Regras:**
+  - Recupera a consolidação clínica completa de uma sessão já finalizada para exibição na Tela de Resultados web (`/sessao/:id/resultado`).
+  - **Identificador Âncora 3FN:** O relatório clínico é identificado unicamente por `sessao_id` (PK compartilhada com a sessão pai, relação 1:1, sem colunas redundantes de `paciente_id` ou `terapeuta_id`).
+  - **Autorização e Vínculo Institucional (RN04):** Requer que o terapeuta requisitante autenticado possua vínculo ativo com o paciente na mesma clínica (`public.terapeuta_tem_acesso_paciente(s.paciente_id)`). Caso contrário, a API retorna **`403 Forbidden`**. SuperAdmins possuem bypass auditado.
+  - **Regra de Ouro do Modo Livre (RN01):** Partidas em Modo Livre (`modo_sessao = "modo_livre"`) retornam metadados operacionais da partida com `paciente: null`, `paciente_id: null` e omitem `relatorio` (`relatorio: null`), pois nenhuma linha é inserida na tabela `public.relatorio_sessao`.
+  - **Validação de Ciclo:** Se a sessão ainda estiver em andamento (`em_andamento`) ou pendente (`aguardando_pareamento`), a requisição é rejeitada com **`400 Bad Request`**.
+- **Respostas:**
+  - **Status `200 OK` (Sessão Clínica Finalizada com Sucesso):**
+
+    ```json
+    {
+      "data": {
+        "sessao": {
+          "id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
+          "session_token": "4M5S-8U7B",
+          "status_sessao": "finalizada",
+          "modo_sessao": "sessao_clinica",
+          "data_hora_inicio": "2026-10-07T23:30:15.000Z",
+          "data_hora_fim": "2026-10-07T23:55:20.000Z",
+          "duracao_segundos": 1505
+        },
+        "paciente": {
+          "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "nome": "Lucas Gabriel Santos",
+          "data_nascimento": "2019-04-10"
+        },
+        "jogo": {
+          "id": "8b5a034f-9e77-4ad3-9b6e-1d54e5cf4291",
+          "titulo": "Exploradores da Galáxia Sensorial",
+          "versao": "1.2.0"
+        },
+        "terapeuta": {
+          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "nome": "Dra. Juliana Ferreira",
+          "registro_profissional": "CRP 06/123456"
+        },
+        "relatorio": {
+          "sessao_id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
+          "conteudo": "Paciente apresentou evolução notável no tempo de reação e excelente autorregulação nas fases com estímulos cromáticos complexos.",
+          "dados_ia_json": {
+            "token_sessao": "4M5S-8U7B",
+            "duracao_segundos": 1505,
+            "resumo": {
+              "taxa_conclusao": 92.4,
+              "intervencoes_dda": 2
+            },
+            "analises_ia": [
+              "Desempenho de foco atencional acima da média histórica do paciente.",
+              "Sem indícios de fadiga sensorial durante o ciclo ativo."
+            ],
+            "metricas_agregadas": [
+              {
+                "id_metrica": "tempo_reacao_ms",
+                "valor_dominante": "320",
+                "tendencia": "decrescente"
+              }
+            ]
+          },
+          "created_at": "2026-10-07T23:55:20.000Z"
+        },
+        "anotacoes": [
+          {
+            "id": "a91b2c3d-4e5f-6789-0123-abcdefabcdef",
+            "conteudo": "Observada melhora expressiva na tolerância a pistas sonoras.",
+            "origem": "pos_sessao",
+            "created_at": "2026-10-07T23:58:00.000Z"
+          }
+        ]
+      }
+    }
+    ```
+
+  - **Status `200 OK` (Modo Livre — RN01):**
+
+    ```json
+    {
+      "data": {
+        "sessao": {
+          "id": "b1c2d3e4-5678-90ab-cdef-1234567890ab",
+          "session_token": "9K2L-1A4C",
+          "status_sessao": "finalizada",
+          "modo_sessao": "modo_livre",
+          "data_hora_inicio": "2026-10-07T23:00:00.000Z",
+          "data_hora_fim": "2026-10-07T23:25:00.000Z",
+          "duracao_segundos": 1500
+        },
+        "paciente": null,
+        "jogo": {
+          "id": "8b5a034f-9e77-4ad3-9b6e-1d54e5cf4291",
+          "titulo": "Exploradores da Galáxia Sensorial"
+        },
+        "terapeuta": {
+          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "nome": "Dra. Juliana Ferreira"
+        },
+        "relatorio": null,
+        "anotacoes": []
+      },
+      "message": "Resultados de Modo Livre consolidados sem dados de prontuário (RN01)."
+    }
+    ```
+
+  - **Status `400 Bad Request`:** Sessão não se encontra em estado finalizado (ex: ainda `em_andamento` ou `aguardando_pareamento`).
+  - **Status `401 Unauthorized`:** Token JWT ausente, inválido ou expirado.
+  - **Status `403 Forbidden`:** Terapeuta autenticado não possui vínculo institucional ativo com o paciente da sessão (**RN04**).
+  - **Status `404 Not Found`:** Sessão não encontrada pelo UUID informado.
 
 ---
 
@@ -1740,11 +1893,12 @@ O servidor Socket.IO opera integrado ao backend na porta `3000`, expondo o names
 | **RF11** (Modo Livre) | `POST /api/sessao/iniciar` (`modo_sessao: modo_livre`) | `200`, `201` | Partidas recreativas sem vínculo a prontuário clínico. |
 | **RF12** (Gestão de Sessão) | `POST /api/sessao/iniciar`, `GET /api/sessao/:id`, `PATCH /status` | `200`, `201`, `400`, `404` | Orquestração da FSM e monitoramento ativo do ciclo. |
 | **RF13** (Ciclo e Encerramento) | `PATCH /api/sessao/:id/finalizar`, `DELETE /cancelar` | `200`, `400`, `404` | Encerramento formal, cálculo de duração e trilha de auditoria. |
-| **RF17** (Contexto DDA e Relatório IA) | `PATCH /api/sessao/:id/finalizar` | `200`, `500` | Síntese clínica via IA persistida em `relatorio_sessao`. |
+| **RF14** (Tela de Resultados) | `GET /api/sessao/:id/resultado` | `200`, `400`, `403`, `404` | Consulta consolidada de resultados, IA (3FN), anotações e paciente. |
+| **RF17** (Contexto DDA e Relatório IA) | `PATCH /api/sessao/:id/finalizar`, `GET /api/sessao/:id/resultado` | `200`, `500` | Síntese clínica via IA persistida em `relatorio_sessao` (3FN ancorada em `sessao_id`). |
 | **RF18** (Vínculo Multiterapeuta) | `POST`, `DELETE /api/paciente/:id/terapeutas` | `200`, `201`, `400`, `401`, `403`, `404` | Associação de múltiplos terapeutas com barreira clínica multitenant. |
 | **RF19** (Filtros e Busca) | `GET /api/paciente`, `GET /api/jogos` | `200`, `400` | Paginação e busca avançada por idade, objetivo e CPF. |
 | **RF21** (Autoria Obrigatória) | `POST /api/sessao/iniciar`, `sessao:comando` | `201`, `401`, `403` | Bloqueio de comandos remotos emitidos pelo dispositivo do paciente. |
-| **RN01** (Modo Livre sem Persistência) | `POST /api/telemetria`, `POST /api/telemetria/lote` | `200` (`persistido: false`) | Supressão mandatória de gravação de telemetria no prontuário. |
+| **RN01** (Modo Livre sem Persistência) | `POST /api/telemetria`, `PATCH /api/sessao/:id/finalizar`, `GET /api/sessao/:id/resultado` | `200` (`persistido: false`, `relatorio: null`) | Supressão mandatória de gravação de telemetria e relatório clínico no prontuário. |
 | **RN02** (Tipagem Estrita de Métrica) | `POST /api/jogos/:id/validar-telemetria` | `200`, `404`, `422` | Rejeição mandatória com status 422 para tipos divergentes. |
 | **RN03** (Contexto DDA Pré-Sessão) | `POST /api/sessao/iniciar`, `POST /api/sessao/parear` | `200`, `201` | Entrega de gatilhos e estresse antes do início da telemetria. |
 | **RN04** (Visibilidade por Vínculo) | `GET /api/telemetria/sessao/:id`, `GET /api/auditoria/sessao/:id` | `200`, `401`, `403`, `404` | Middleware `verificarVisibilidadePaciente` bloqueia terceiros (403). |

@@ -72,7 +72,7 @@ Database/
 
 | Regra | Detalhe |
 | :--- | :--- |
-| **PKs sempre UUID** | `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`. Nunca usar `BIGSERIAL` ou `INT`. |
+| **PKs sempre UUID** | `id UUID PRIMARY KEY DEFAULT gen_random_uuid()` (ou FK compartilhada `sessao_id UUID PRIMARY KEY REFERENCES sessao(id)` em tabelas com relação 1:1 estrita e conformidade 3FN, como `relatorio_sessao`). Nunca usar `BIGSERIAL` ou `INT`. |
 | **FKs sempre UUID** | Toda chave estrangeira deve referenciar um `UUID`. |
 | **Timestamps padrão** | Toda tabela deve ter `created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL` e `updated_at` quando aplicável. |
 | **Soft Delete** | Tabelas clínicas (`anotacao_clinica`, `relatorio_sessao`) usam `soft_delete BOOLEAN DEFAULT FALSE`. Hard DELETE é bloqueado por trigger (`impedir_hard_delete_clinico`). |
@@ -116,7 +116,7 @@ Database/
 | `jogo` | Catálogo de jogos terapêuticos |
 | `sessao` | Sessão de jogo (clínica ou modo livre) |
 | `anotacao_clinica` | Anotações de prontuário (soft delete, RN05) |
-| `relatorio_sessao` | Relatório consolidado de sessão (soft delete, RN05) |
+| `relatorio_sessao` | Relatório consolidado de sessão (1:1 com `sessao` via `sessao_id` PK/FK, 3FN, sem redundância de `paciente_id`/`terapeuta_id`, soft delete RN05, exclusivo para sessões clínicas — RN01) |
 
 ### 2.6 Funções e Helpers de RLS
 

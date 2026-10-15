@@ -1163,6 +1163,7 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 - `message: "Lote processado em memória (Modo Livre não persiste telemetria - RN01)"`
 - `persistido: false`
 - Nenhum registro gravado na tabela `telemetria_evento` nem no prontuário do paciente (**RN01**)
+- Nenhuma linha inserida na tabela `relatorio_sessao` durante ou após o encerramento da partida livre (**RN01**)
 
 **Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
 
@@ -1295,10 +1296,249 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 - HTTP **200 OK**
 - `data.status_sessao: "finalizada"` e `data.data_hora_fim` carimbado
 - Objeto `data.relatorio` gerado com análises do motor de IA (`analises_ia[]` e `duracao_total_segundos`)
-- Registro criado na tabela `relatorio_sessao` vinculado ao prontuário médico
+- Registro criado na tabela `relatorio_sessao` (3FN — PK compartilhada `sessao_id`) vinculado ao prontuário médico (em estrito contraste com Modo Livre RN01, onde nenhuma linha é persistida nesta tabela)
 - Notificação `sessao_finalizada` emitida na sala WebSocket para desconexão ordenada do tablet
 - Evento imutável gravado na trilha de auditoria clínica (`acao: "sessao_finalizada"`) com IP e User-Agent
 - Segunda tentativa de finalização sumariamente rejeitada com HTTP **400 Bad Request** (_"A sessão já se encontra finalizada."_)
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+## Módulo 4 — Resultados da Sessão, Relatórios Clínicos e Anotações (Sprint 10)
+
+### CT-S15 — Consulta Consolidada dos Resultados de Sessão Clínica (RF14, RF17, RN04)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF14 — Tela de Resultados; RF17 — Relatório Analítico IA; RN04 |
+| **Tipo** | Positivo |
+| **Precondição** | Sessão clínica (`sessao_clinica`) finalizada com telemetria e relatório gerado; terapeuta vinculado logado |
+
+**Entrada — `GET /api/sessao/{id}/resultado`**
+
+```http
+Authorization: Bearer {token_terapeuta_vinculado}
+```
+
+#### Passos
+
+1. Obter o UUID de uma sessão clínica formalmente finalizada.
+2. Executar a requisição `GET /api/sessao/{id}/resultado`.
+3. Analisar os metadados consolidados, objeto de paciente, jogo e bloco analítico de IA.
+
+#### Resultado Esperado
+
+- HTTP **200 OK**
+- `data.sessao.status_sessao: "finalizada"`
+- `data.paciente` presente com dados sociodemográficos
+- `data.relatorio` presente, contendo `sessao_id`, parecer em `conteudo` e `dados_ia_json` conforme Contrato 4 (`taxa_conclusao`, `analises_ia[]`, `metricas_agregadas[]`)
+- `data.anotacoes[]` listando anotações clínicas registradas
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S16 — Supressão Mandatória de Relatório Clínico e Prontuário em Modo Livre (RN01, RF11, RF14)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RN01 — Isolamento do Modo Livre; RF11; RF14 — Tela de Resultados |
+| **Tipo** | Positivo / Regra Clínica Inviolável |
+| **Precondição** | Sessão em Modo Livre (`modo_sessao: "modo_livre"`) finalizada com `PATCH /api/sessao/{id}/finalizar` |
+
+**Entrada — `GET /api/sessao/{id}/resultado` e Inspeção Direta no Banco**
+
+```http
+Authorization: Bearer {token_terapeuta}
+```
+
+#### Passos
+
+1. Iniciar e finalizar uma partida em Modo Livre (`paciente_id: null`).
+2. Executar `GET /api/sessao/{id}/resultado`.
+3. Executar query SQL no banco de dados: `SELECT COUNT(*) FROM public.relatorio_sessao WHERE sessao_id = '{id}';`.
+
+#### Resultado Esperado
+
+- HTTP **200 OK**
+- `data.sessao.modo_sessao: "modo_livre"`
+- `data.paciente: null` e `data.sessao.paciente_id: null`
+- Campo `data.relatorio: null` (ou omitido)
+- Query no banco retorna contagem **0**: **ausência absoluta de persistência na tabela `relatorio_sessao`** (**RN01**)
+- Nenhuma linha associada a prontuário médico
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S17 — Bloqueio de Consulta de Resultados por Falta de Vínculo Clínico Institucional (RN04)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RN04 — Visibilidade por Vínculo Institucional; RF14 |
+| **Tipo** | Negativo / Segurança Multitenant |
+| **Precondição** | Sessão clínica finalizada pertencente a paciente de outra clínica ou terapeuta sem vínculo |
+
+**Entrada — `GET /api/sessao/{id}/resultado`**
+
+```http
+Authorization: Bearer {token_terapeuta_sem_vinculo}
+```
+
+#### Passos
+
+1. Autenticar com credenciais de terapeuta sem vínculo ativo em `terapeuta_paciente` com o paciente da sessão.
+2. Executar a requisição `GET /api/sessao/{id}/resultado`.
+
+#### Resultado Esperado
+
+- HTTP **403 Forbidden**
+- `error: "Acesso negado: terapeuta não possui vínculo ativo com o paciente desta sessão (RN04)"`
+- Dados de prontuário e análises clínicas protegidos
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S18 — Rejeição de Consulta de Resultados para Sessão em Andamento (Ciclo Incompleto)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF12 — FSM da Sessão; RF14 — Tela de Resultados |
+| **Tipo** | Negativo / Integridade de FSM |
+| **Precondição** | Sessão em status `em_andamento` ou `aguardando_pareamento` |
+
+**Entrada — `GET /api/sessao/{id}/resultado`**
+
+#### Passos
+
+1. Obter o UUID de uma sessão com status `em_andamento`.
+2. Executar requisição para consultar resultados consolidados.
+
+#### Resultado Esperado
+
+- HTTP **400 Bad Request**
+- `error: "Resultados consolidados disponíveis apenas para sessões em status finalizada"`
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S19 — Validação Estrutural da Modelagem 3FN da Tabela `relatorio_sessao`
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | Conformidade 3FN; ANOTACAO.MD Seção 2; RN01; RN05 |
+| **Tipo** | Validação Estrutural de Banco de Dados |
+| **Precondição** | Migração `008_normalizacao_relatorio_sessao.sql` aplicada |
+
+**Entrada — Inspeção de Schema PostgreSQL (`information_schema.columns`)**
+
+```sql
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_name = 'relatorio_sessao';
+```
+
+#### Passos
+
+1. Consultar a estrutura de colunas e constraints da tabela `public.relatorio_sessao`.
+2. Verificar chave primária (`sessao_id`) e ausência de colunas redundantes (`paciente_id`, `terapeuta_id`).
+3. Verificar a restrição de FK `REFERENCES public.sessao(id) ON DELETE RESTRICT`.
+
+#### Resultado Esperado
+
+- Chave primária é exclusivamente `sessao_id` (PK = FK compartilhada, relação 1:1)
+- Coluna artificial `id UUID` eliminada do schema
+- Colunas `paciente_id` e `terapeuta_id` **ausentes** da tabela `relatorio_sessao` (resolvidas via JOIN com `public.sessao`)
+- Campos presentes: `sessao_id`, `conteudo`, `dados_ia_json`, `soft_delete`, `created_at`, `updated_at`
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S20 — Registro e Atualização de Parecer Técnico e Anotações Pós-Sessão (RF16, RF21)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF16 — Anotações Clínicas; RF21 — Autoria Obrigatória; RN04 |
+| **Tipo** | Positivo |
+| **Precondição** | Sessão clínica finalizada; terapeuta com vínculo autenticado |
+
+**Entrada — `POST /api/anotacao`**
+
+```json
+{
+  "sessao_id": "{uuid-sessao-finalizada}",
+  "conteudo": "Observada melhora expressiva na tolerância a pistas sonoras complexas pós-intervenção."
+}
+```
+
+#### Passos
+
+1. Submeter anotação clínica associada à sessão.
+2. Consultar o endpoint de resultados `GET /api/sessao/{id}/resultado`.
+3. Validar se a anotação aparece indexada com autoria do terapeuta logado.
+
+#### Resultado Esperado
+
+- HTTP **201 Created**
+- `data.id` gerado
+- `data.terapeuta_id` associado ao `auth.uid()` do terapeuta logado (**RF21**)
+- Anotação listada em `data.anotacoes[]` na rota de resultado consolidado
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S21 — Imutabilidade de Prontuário e Bloqueio de Hard Delete em Relatório Clínico (RN05)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RN05 — Inalterabilidade e Imutabilidade do Histórico Clínico |
+| **Tipo** | Negativo / Validação de Imutabilidade |
+| **Precondição** | Sessão clínica com relatório persistido |
+
+**Entrada — Tentativa de `DELETE FROM public.relatorio_sessao WHERE sessao_id = '{id}';`**
+
+#### Passos
+
+1. Localizar o `sessao_id` de um relatório clínico existente.
+2. Tentar executar exclusão física (`DELETE`) diretamente via SQL ou endpoint administrativo.
+
+#### Resultado Esperado
+
+- Exclusão física sumariamente rejeitada por trigger de integridade clínica ou substituída por flag `soft_delete: true`
+- Preservação intacta dos dados históricos e análises da IA no prontuário médico (**RN05**)
+
+**Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S22 — Exportação de Relatório Clínico Estruturado (RF20)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF20 — Impressão e Exportação de Relatórios Clínicos; RN04 |
+| **Tipo** | Positivo |
+| **Precondição** | Sessão clínica finalizada com relatório IA e anotações |
+
+**Entrada — `GET /api/sessao/{id}/exportar`**
+
+```http
+Authorization: Bearer {token_terapeuta_vinculado}
+```
+
+#### Passos
+
+1. Solicitar a exportação do relatório consolidado da sessão.
+2. Analisar o cabeçalho de resposta e o payload recebido.
+
+#### Resultado Esperado
+
+- HTTP **200 OK**
+- Retorno de payload estruturado contendo dados completos do paciente, profissional responsável, métricas agregadas, análises analíticas de IA e parecer consolidado pronto para impressão/PDF
 
 **Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
 
@@ -1311,25 +1551,28 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 | **RF06** | Cadastro e Gestão de Pacientes | CT-P01, CT-P02, CT-P03, CT-P04, CT-P14, CT-P15 |
 | **RF09** | Biblioteca de Jogos Terapêuticos | CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J06, CT-J12 |
 | **RF10** | Pareamento Remoto via Session Token e Handshake | CT-S01, CT-S02, CT-S04, CT-S05 |
-| **RF11** | Modo Livre (sem prontuário clínico) | CT-J01, CT-S10 |
-| **RF12** | Gestão de Sessão Terapêutica Ativa | CT-S07, CT-S08, CT-S09, CT-S10 |
+| **RF11** | Modo Livre (sem prontuário clínico) | CT-J01, CT-S10, CT-S16 |
+| **RF12** | Gestão de Sessão Terapêutica Ativa | CT-S07, CT-S08, CT-S09, CT-S10, CT-S18 |
 | **RF13** | Ciclo de Sessão, Comandos e Encerramento Formal | CT-S07, CT-S11, CT-S13, CT-S14 |
-| **RF17** | Contexto DDA e Relatório de Síntese IA | CT-S07, CT-S14 |
+| **RF14** | Tela de Resultados e Consolidação Pós-Sessão | CT-S15, CT-S16, CT-S17, CT-S18 |
+| **RF16** | Anotações Clínicas Pós-Sessão | CT-S20 |
+| **RF17** | Contexto DDA e Relatório de Síntese IA | CT-S07, CT-S14, CT-S15 |
 | **RF18** | Gestão de Vínculos Multiterapeuta | CT-P11, CT-P12, CT-P13 |
 | **RF19** | Filtros, Busca Avançada e Paginação | CT-P05, CT-J02, CT-J03, CT-J04 |
-| **RF21** | Autoria Obrigatória e Controle do Terapeuta | CT-P11, CT-S11, CT-S14 |
-| **RN01** | Supressão de Persistência Clínica no Modo Livre | CT-S10 |
+| **RF20** | Exportação e Impressão de Relatórios Clínicos | CT-S22 |
+| **RF21** | Autoria Obrigatória e Controle do Terapeuta | CT-P11, CT-S11, CT-S14, CT-S20 |
+| **RN01** | Supressão de Persistência Clínica no Modo Livre (Telemetria e Relatório) | CT-S10, CT-S16 |
 | **RN02** | Tipagem Estrita de Métricas (sem fallback) | CT-J07, CT-J08, CT-J09, CT-J10, CT-J11, CT-S08 |
 | **RN03** | Contexto DDA Pré-Sessão Entregue ao Jogo | CT-S07 |
-| **RN04** | Visibilidade por Vínculo e Isolamento Institucional | CT-P06, CT-P07, CT-P08, CT-P12, CT-S14 |
-| **RN05** | Inalterabilidade do Histórico Clínico (Soft Delete / Imutabilidade) | CT-P04, CT-P09, CT-P10, CT-P13, CT-S14 |
+| **RN04** | Visibilidade por Vínculo e Isolamento Institucional | CT-P06, CT-P07, CT-P08, CT-P12, CT-S14, CT-S15, CT-S17 |
+| **RN05** | Inalterabilidade do Histórico Clínico (Soft Delete / Imutabilidade / 3FN) | CT-P04, CT-P09, CT-P10, CT-P13, CT-S14, CT-S19, CT-S21 |
 | **RNF02** | Padronização e Contratos de Dados | CT-J05, CT-J07, CT-J08, CT-J12 |
 | **RNF03** | Expiração de PIN (15 min) e Rate Limiting no WebSocket | CT-S02, CT-S03, CT-S07, CT-S09, CT-S12 |
 | **RNF04** | Heartbeat, Resiliência e Janela de Tolerância de 60s | CT-S06, CT-S11, CT-S12, CT-S13 |
 | **RNF05** | Ingestão em Tempo Real (< 100ms) e Alta Vazão | CT-S08, CT-S09 |
 | **RNF06** | Trilha de Auditoria Clínica Imutável | CT-S14 |
 
-**Total: 41 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 14 Gestão de Sessão, Pareamento e Telemetria (CT-S01→S14)
+**Total: 49 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 22 Gestão de Sessão, Pareamento, Resultados e Relatórios Clínicos (CT-S01→S22)
 
 ---
 
@@ -1337,15 +1580,16 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 | Protocolo / Código | Semântica | Casos de Teste |
 | :---: | :--- | :--- |
-| **HTTP 200** | Sucesso em consulta, pareamento, validação aprovada ou modo livre | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12, CT-S01, CT-S02, CT-S06, CT-S10, CT-S14 |
-| **HTTP 201** | Recurso criado (paciente, vínculo, início de sessão, telemetria persistida) | CT-P01, CT-P11, CT-S07, CT-S08, CT-S09 |
-| **HTTP 400** | Parâmetros inválidos, lote excedido ou transição inválida de FSM | CT-P02, CT-P12, CT-P13, CT-P15, CT-J08, CT-S09, CT-S14 |
+| **HTTP 200** | Sucesso em consulta, pareamento, validação aprovada, resultados ou modo livre | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12, CT-S01, CT-S02, CT-S06, CT-S10, CT-S14, CT-S15, CT-S16, CT-S22 |
+| **HTTP 201** | Recurso criado (paciente, vínculo, início de sessão, telemetria, anotação clínica) | CT-P01, CT-P11, CT-S07, CT-S08, CT-S09, CT-S20 |
+| **HTTP 400** | Parâmetros inválidos, lote excedido, transição inválida de FSM ou sessão não finalizada | CT-P02, CT-P12, CT-P13, CT-P15, CT-J08, CT-S09, CT-S14, CT-S18 |
 | **HTTP 401** | Sem autenticação / Token JWT ausente ou inválido | CT-P08 |
-| **HTTP 403** | Acesso negado por falta de vínculo clínico institucional (RN04) | CT-P07, CT-S14 |
+| **HTTP 403** | Acesso negado por falta de vínculo clínico institucional (RN04) | CT-P07, CT-S14, CT-S17 |
 | **HTTP 404** | Recurso não encontrado (paciente, jogo ou sessão inexistente) | CT-J06, CT-S04 |
 | **HTTP 409** | Conflito de integridade única ou sessão já em andamento | CT-P03, CT-S05 |
 | **HTTP 410** | Token PIN expirado (TTL 15 min) ou sessão terminal | CT-S03 |
 | **HTTP 422** | Violação de regra clínica de tipagem estrita RN02 | CT-J10, CT-J11 |
+| **Banco / SQL** | Validação de restrições DDL 3FN e bloqueio de exclusão física | CT-S19, CT-S21 |
 | **WebSocket** | Streaming de telemetria contínua (`sessao:telemetria` < 100ms) | CT-S08, CT-S09, CT-S10 |
 | **WebSocket** | Canal bidirecional de comandos clínicos (`sessao:comando`) e Acks | CT-S11 |
 | **WebSocket** | Rate limiting e prevenção de flood (`erro_rate_limit`) | CT-S12 |
