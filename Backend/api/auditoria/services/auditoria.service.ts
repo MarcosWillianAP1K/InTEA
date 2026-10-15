@@ -25,7 +25,10 @@ export interface ResultadoValidacaoAcesso {
 
 export class AuditoriaService {
   /**
-   * Registra formalmente um evento na trilha de auditoria clínica.
+   * Formally records an event in the clinical audit trail.
+   *
+   * @param dto - Data transfer object for audit entry creation.
+   * @returns Created audit record or null on validation error.
    */
   static async registrarEvento(dto: CriarAuditoriaDTO): Promise<AuditoriaSessao | null> {
     if (!dto.sessao_id || !validarUUID(dto.sessao_id)) {
@@ -37,8 +40,10 @@ export class AuditoriaService {
   }
 
   /**
-   * Invocação silenciosa e desacoplada para ser utilizada em hooks de controllers de sessão.
-   * Não lança exceções para não interromper a resposta da requisição principal.
+   * Silently and asynchronously records an audit event without throwing errors to the caller.
+   *
+   * @param dto - Data transfer object for audit entry creation.
+   * @returns Resolves when the recording completes or fails silently.
    */
   static async registrarSilencioso(dto: CriarAuditoriaDTO): Promise<void> {
     try {
@@ -49,8 +54,11 @@ export class AuditoriaService {
   }
 
   /**
-   * Valida permissão de acesso à linha do tempo da sessão conforme a regra RN04.
-   * SuperAdmin e o terapeuta responsável pela sessão possuem acesso garantido.
+   * Validates access permission to the session audit timeline based on clinical rule RN04.
+   *
+   * @param sessaoId - UUID of the clinical session.
+   * @param usuario - Authenticated user info.
+   * @returns Access validation result object.
    */
   static async validarAcessoLinhaDoTempo(
     sessaoId: string,
@@ -80,7 +88,10 @@ export class AuditoriaService {
   }
 
   /**
-   * Retorna os eventos de auditoria cronológicos de uma sessão.
+   * Lists chronological audit events for a clinical session.
+   *
+   * @param sessaoId - UUID of the clinical session.
+   * @returns Array of audit records.
    */
   static async listarPorSessao(sessaoId: string): Promise<AuditoriaSessao[]> {
     if (!sessaoId || !validarUUID(sessaoId)) return [];

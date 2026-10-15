@@ -29,7 +29,10 @@ interface TimerStorageData {
 }
 
 /**
- * Converte total de segundos em representação formatada MM:SS ou HH:MM:SS
+ * Formats total seconds into MM:SS or HH:MM:SS string representation.
+ *
+ * @param totalSegundos - Number of elapsed seconds.
+ * @returns Formatted time string.
  */
 export function formatarTempoClinico(totalSegundos: number): string {
   if (isNaN(totalSegundos) || totalSegundos <= 0) return "00:00";
@@ -47,15 +50,11 @@ export function formatarTempoClinico(totalSegundos: number): string {
 }
 
 /**
- * ============================================================================
- * HOOK: useClinicalTimer (Front-end 2 — Luma Maiara / Card 5 — Fix)
- * Requisitos: RF12, RNF04
- * 
- * Cronômetro clínico de alta precisão resiliente contra:
- * 1. Desvio por throttling de aba em segundo plano do navegador.
- * 2. Recarregamento acidental de página (F5) via hidratação de sessionStorage.
- * 3. Congelamento exato do delta em pausas sem acúmulo de tempo ocioso.
- * ============================================================================
+ * High-precision clinical session timer hook with persistence and pause handling.
+ * Protects against background tab throttling and page reloads via sessionStorage (RF12, RNF04).
+ *
+ * @param options - Configuration options for session timer.
+ * @returns Timer state, formatted elapsed time, and control methods.
  */
 export function useClinicalTimer(
   options: UseClinicalTimerOptions = {}
@@ -71,7 +70,11 @@ export function useClinicalTimer(
 
   const storageKey = `intea_clinical_timer_${sessaoId || "default"}`;
 
-  // Lê ou inicializa o estado de timestamps
+  /**
+   * Reads the timestamp state persisted in sessionStorage, or initializes
+   * a new zero state anchoring the start timestamp to `dataHoraInicioInicial`
+   * when available.
+   */
   const carregarEstadoInicial = (): TimerStorageData => {
     if (typeof window === "undefined") {
       return {
@@ -117,7 +120,10 @@ export function useClinicalTimer(
 
   const timerDataRef = React.useRef<TimerStorageData>(carregarEstadoInicial());
 
-  // Salva no sessionStorage sempre que o estado de timestamps mudar
+  /**
+   * Persists the current timer state (timestamps and pause control) to
+   * sessionStorage, ensuring resilience against page reloads.
+   */
   const salvarNoStorage = React.useCallback((data: TimerStorageData) => {
     if (typeof window === "undefined") return;
     try {
@@ -127,7 +133,11 @@ export function useClinicalTimer(
     }
   }, [storageKey]);
 
-  // Calcula o delta real de tempo decorrido em segundos
+  /**
+   * Calculates the real elapsed time delta in seconds.
+   * When paused, freezes the calculation at the last pause instant;
+   * otherwise uses `Date.now()` minus the accumulated paused time.
+   */
   const calcularSegundos = React.useCallback(() => {
     const data = timerDataRef.current;
     const agora = Date.now();
@@ -191,6 +201,10 @@ export function useClinicalTimer(
     return () => clearInterval(timer);
   }, [ativo, isPausado, intervaloMs, calcularSegundos, onTick]);
 
+  /**
+   * Resets the timer to zero, overwriting the sessionStorage state
+   * with a new start timestamp set to the current moment.
+   */
   const reiniciarTimer = React.useCallback(() => {
     const agora = Date.now();
     const novo: TimerStorageData = {
@@ -204,6 +218,10 @@ export function useClinicalTimer(
     setSegundosDecorridos(0);
   }, [salvarNoStorage]);
 
+  /**
+   * Removes the timer state from sessionStorage and resets elapsed seconds
+   * to zero; intended to be called on component unmount or session teardown.
+   */
   const limparTimer = React.useCallback(() => {
     if (typeof window !== "undefined") {
       try {

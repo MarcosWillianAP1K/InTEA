@@ -141,10 +141,11 @@ export function formatarDuracao(segundos: number): string {
 
 export class SessaoExportarService {
   /**
-   * Compila e estrutura o laudo clínico sanitizado da sessão para exportação em PDF e impressão (RF20).
+   * Compiles and structures the sanitized clinical report of a session for PDF export and printing (RF20).
    *
-   * @param sessaoId - UUID da sessão finalizada
-   * @param usuarioAutenticado - Dados do terapeuta autenticado na requisição
+   * @param sessaoId - UUID of the finalized session.
+   * @param usuarioAutenticado - Authenticated therapist credentials from request token.
+   * @returns Service response containing structured export report data or an error payload.
    */
   static async gerarLaudoExportacao(
     sessaoId: string,
@@ -386,7 +387,11 @@ export class SessaoExportarService {
   }
 
   /**
-   * Express Handler para endpoint REST: GET /api/sessao/:id/exportar
+   * Handles GET /api/sessao/:id/exportar to export structured clinical report data for printing and PDF generation.
+   *
+   * @param req - Express request containing session UUID in URL parameter `:id`.
+   * @param res - Express response returning sanitized clinical report data.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async handlerExportarHttp(req: Request, res: Response): Promise<void> {
     try {
@@ -410,7 +415,10 @@ export class SessaoExportarService {
   }
 
   /**
-   * Busca o diagnóstico clínico base do paciente na tabela dados_clinicos (ou fallback seguro).
+   * Retrieves the baseline clinical diagnosis of a patient with fallback support.
+   *
+   * @param pacienteId - UUID of the patient.
+   * @returns The clinical diagnosis string.
    */
   static async buscarDiagnosticoPaciente(pacienteId: string): Promise<string> {
     const padrao = 'Transtorno do Espectro Autista (TEA)';
@@ -431,7 +439,10 @@ export class SessaoExportarService {
   }
 
   /**
-   * Busca dados da clínica (nome e CNPJ) para emissão institucional do laudo.
+   * Retrieves clinic demographic data (name and CNPJ) for official report issuance.
+   *
+   * @param clinicaId - Optional UUID of the clinic.
+   * @returns Clinic name and CNPJ details.
    */
   static async buscarDadosClinica(
     clinicaId?: string | null
@@ -457,7 +468,10 @@ export class SessaoExportarService {
   }
 
   /**
-   * Busca observações clínicas ou pareceres descritivos registrados para a sessão.
+   * Retrieves clinical observations or descriptive opinions recorded for a session.
+   *
+   * @param sessaoId - UUID of the session.
+   * @returns Observation text or null if none was recorded.
    */
   static async buscarObservacoesSessao(sessaoId: string): Promise<string | null> {
     if (!sessaoId || !process.env.SUPABASE_URL || process.env.SUPABASE_URL.includes('placeholder')) {
@@ -489,7 +503,11 @@ export class SessaoExportarService {
   }
 
   /**
-   * Valida se o terapeuta possui vínculo clínico institucional ativo com o paciente (RN04).
+   * Validates whether a therapist has an active institutional clinical link with a patient (RN04).
+   *
+   * @param terapeutaId - UUID of the therapist.
+   * @param pacienteId - UUID of the patient.
+   * @returns True if the link exists, false otherwise.
    */
   static async verificarVinculoInstitucional(
     terapeutaId: string,

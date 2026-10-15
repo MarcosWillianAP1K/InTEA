@@ -11,8 +11,11 @@ import { validarUUID } from '../../../core/utils/validators.js';
 
 export class TelemetriaController {
   /**
-   * Ingestão de um evento individual de telemetria
-   * POST /api/telemetria
+   * Handles POST /api/telemetria to ingest an individual clinical telemetry event.
+   *
+   * @param req - Express request containing session ID or token, event type, and telemetry data.
+   * @param res - Express response returning the recorded telemetry event or persistence status.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async registrar(req: Request, res: Response): Promise<void> {
     try {
@@ -66,8 +69,11 @@ export class TelemetriaController {
   }
 
   /**
-   * Ingestão em lote (batch insert) de telemetria
-   * POST /api/telemetria/lote
+   * Handles POST /api/telemetria/lote to batch ingest multiple telemetry events.
+   *
+   * @param req - Express request containing session ID or token and an array of telemetry events.
+   * @param res - Express response returning the batch processing results and statistics.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async registrarLote(req: Request, res: Response): Promise<void> {
     try {
@@ -144,8 +150,11 @@ export class TelemetriaController {
   }
 
   /**
-   * Consulta histórico de eventos da sessão com filtro opcional por métrica, paginação e RN04
-   * GET /api/telemetria/sessao/:sessaoId
+   * Handles GET /api/telemetria/sessao/:sessaoId to list telemetry events for a session.
+   *
+   * @param req - Express request containing session UUID in `:sessaoId` and optional filters/pagination.
+   * @param res - Express response returning the array of telemetry events.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async listarPorSessao(req: Request, res: Response): Promise<void> {
     try {
@@ -189,8 +198,11 @@ export class TelemetriaController {
   }
 
   /**
-   * Obtém as estatísticas e métricas agregadas da telemetria de uma sessão (Sprint 10 - Card 2.1)
-   * GET /api/telemetria/sessao/:sessaoId/agregada
+   * Handles GET /api/telemetria/sessao/:sessaoId/agregada to retrieve aggregated telemetry metrics.
+   *
+   * @param req - Express request containing session UUID in URL parameter `:sessaoId`.
+   * @param res - Express response returning aggregated session statistics.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async obterEstatisticasSessao(req: Request, res: Response): Promise<void> {
     try {

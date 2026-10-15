@@ -19,7 +19,9 @@ export class SessaoController {
   private static obterPresencaCallback?: (sessionToken: string) => unknown;
 
   /**
-   * Permite que o WebSocket Gateway registre um listener para notificações reativas.
+   * Registers a callback listener for reactive WebSocket pairing notifications.
+   *
+   * @param callback - Callback invoked when a remote device pairs with a session.
    */
   static registrarListenerPareamento(
     callback: (sessionToken: string, dadosPareamento: PareamentoRespostaDTO) => void
@@ -28,7 +30,9 @@ export class SessaoController {
   }
 
   /**
-   * Permite que o WebSocket Gateway forneça dados de presença em tempo real (Card 2.3).
+   * Registers a callback to check real-time device presence via WebSocket.
+   *
+   * @param callback - Function returning presence data for a given session token.
    */
   static registrarCallbackPresenca(
     callback: (sessionToken: string) => unknown
@@ -37,8 +41,11 @@ export class SessaoController {
   }
 
   /**
-   * Inicia uma nova sessão clínica ou em modo livre
-   * POST /api/sessao/iniciar
+   * Handles POST /api/sessao/iniciar to start a new clinical or free-mode session.
+   *
+   * @param req - Express request containing session parameters (game ID, pairing code, patient ID, mode).
+   * @param res - Express response returning the newly initialized session.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async iniciar(req: Request, res: Response): Promise<void> {
     try {
@@ -127,8 +134,11 @@ export class SessaoController {
   }
 
   /**
-   * Busca uma sessão pelo seu ID interno (UUID)
-   * GET /api/sessao/:id
+   * Handles GET /api/sessao/:id to retrieve a session by its internal UUID.
+   *
+   * @param req - Express request containing session UUID in URL parameter `:id`.
+   * @param res - Express response returning the session details or 404 if not found.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
@@ -145,8 +155,11 @@ export class SessaoController {
   }
 
   /**
-   * Busca sessão pelo token de pareamento (utilizado pelo jogo externo ou painel)
-   * GET /api/sessao/buscarPorToken/:token
+   * Handles GET /api/sessao/buscarPorToken/:token to retrieve a session by its pairing token.
+   *
+   * @param req - Express request containing pairing token in URL parameter `:token`.
+   * @param res - Express response returning the session record or 404 if not found or expired.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async buscarPorToken(req: Request, res: Response): Promise<void> {
     try {
@@ -163,8 +176,11 @@ export class SessaoController {
   }
 
   /**
-   * Finaliza uma sessão clínica ou em modo livre
-   * PATCH /api/sessao/:id/finalizar
+   * Handles PATCH /api/sessao/:id/finalizar to finalize an active clinical or free-mode session.
+   *
+   * @param req - Express request containing session UUID or token in `:id` and final telemetry in body.
+   * @param res - Express response returning the finalized session and report status.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async finalizar(req: Request, res: Response): Promise<void> {
     try {
@@ -290,8 +306,11 @@ export class SessaoController {
   }
 
   /**
-   * Cancela antecipadamente uma sessão pendente (pelo terapeuta)
-   * DELETE /api/sessao/:id/cancelar 
+   * Handles DELETE /api/sessao/:id/cancelar to cancel a pending session prematurely.
+   *
+   * @param req - Express request containing session UUID in URL parameter `:id`.
+   * @param res - Express response returning the cancelled session record.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async cancelar(req: Request, res: Response): Promise<void> {
     try {
@@ -344,8 +363,11 @@ export class SessaoController {
   }
 
   /**
-   * Handshake de pareamento remoto: jogo externo confirma conexão via session_token (RF10, Card 563)
-   * POST /api/sessao/parear
+   * Handles POST /api/sessao/parear for remote pairing handshake between external game and session.
+   *
+   * @param req - Express request containing pairing DTO (`session_token`, `jogo_id`, `dispositivo_info`).
+   * @param res - Express response returning pairing confirmation and session context.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async parear(req: Request, res: Response): Promise<void> {
     try {
@@ -491,8 +513,11 @@ export class SessaoController {
   }
 
   /**
-   * Consulta o status atual de pareamento da sessão (RF10, Card 2.3)
-   * GET /api/sessao/:token/status
+   * Handles GET /api/sessao/:token/status to check the current pairing and presence status of a session.
+   *
+   * @param req - Express request containing session pairing token in URL parameter `:token`.
+   * @param res - Express response returning session status, mode, and device presence.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async consultarStatus(req: Request, res: Response): Promise<void> {
     try {
@@ -531,8 +556,11 @@ export class SessaoController {
   }
 
   /**
-   * Gera um código de pareamento único para a sessão
-   * GET /api/sessao/gerarCodigoPareamento
+   * Handles GET /api/sessao/gerarCodigoPareamento to generate a unique random pairing code.
+   *
+   * @param _req - Express request.
+   * @param res - Express response returning the generated pairing code.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async gerarCodigoPareamento(_req: Request, res: Response): Promise<void> {
     try {
@@ -561,8 +589,11 @@ export class SessaoController {
   }
 
   /**
-   * Atualiza o status de uma sessão (máquina de estados genérica)
-   * PATCH /api/sessao/:id/status
+   * Handles PATCH /api/sessao/:id/status to update the state machine status of a session.
+   *
+   * @param req - Express request containing session ID in `:id` and new status in body.
+   * @param res - Express response returning the updated session record.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async atualizarStatus(req: Request, res: Response): Promise<void> {
     try {
@@ -593,8 +624,11 @@ export class SessaoController {
   }
 
   /**
-   * Consulta os resultados consolidados de uma sessão finalizada
-   * GET /api/sessao/:id/resultado (RF14, RN01, RN04, Contrato 4)
+   * Handles GET /api/sessao/:id/resultado to retrieve consolidated clinical metrics and results of a finalized session.
+   *
+   * @param req - Authenticated Express request containing session ID in URL parameter `:id`.
+   * @param res - Express response returning consolidated session metrics and clinical results.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async consultarResultado(req: Request, res: Response): Promise<void> {
     try {

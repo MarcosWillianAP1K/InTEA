@@ -13,8 +13,11 @@ import { AnotacaoService } from '../services/anotacao.service.js';
 
 export class AnotacaoPacienteController {
   /**
-   * POST /api/anotacao/paciente
-   * Registra parecer clínico geral para um paciente
+   * Handles POST /api/anotacao/paciente to record a general clinical note for a patient.
+   *
+   * @param req - Authenticated Express request containing patient ID, note content, and optional therapist ID.
+   * @param res - Express response returning the created clinical note record.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async criar(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -51,8 +54,11 @@ export class AnotacaoPacienteController {
   }
 
   /**
-   * GET /api/anotacao/paciente/:pacienteId
-   * Lista histórico de anotações gerais de um paciente
+   * Handles GET /api/anotacao/paciente/:pacienteId to list clinical notes associated with a patient.
+   *
+   * @param req - Authenticated Express request containing patient UUID in URL parameter `:pacienteId`.
+   * @param res - Express response returning the list of clinical notes.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async listarPorPaciente(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -67,8 +73,11 @@ export class AnotacaoPacienteController {
   }
 
   /**
-   * PATCH /api/anotacao/paciente/:id
-   * Atualiza o conteúdo da anotação de paciente (exclusivo do autor)
+   * Handles PATCH /api/anotacao/paciente/:id to update the content of an existing patient note.
+   *
+   * @param req - Authenticated Express request containing note ID and new content in body.
+   * @param res - Express response returning the updated clinical note record.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async atualizar(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -103,8 +112,11 @@ export class AnotacaoPacienteController {
   }
 
   /**
-   * DELETE /api/anotacao/paciente/:id
-   * Soft delete da anotação de paciente (RN05, exclusivo do autor)
+   * Handles DELETE /api/anotacao/paciente/:id to logically delete (soft delete) a patient note.
+   *
+   * @param req - Authenticated Express request containing note ID in URL parameter `:id`.
+   * @param res - Express response returning status 204 on successful deactivation.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async deletar(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -132,8 +144,11 @@ export class AnotacaoPacienteController {
   }
 
   /**
-   * DELETE /api/anotacao/paciente/:id/hard
-   * [DEV/TESTES] Exclusão física permanente (admin only)
+   * Handles DELETE /api/anotacao/paciente/:id/hard to permanently delete a patient note for development and testing.
+   *
+   * @param req - Authenticated Express request containing note ID in URL parameter `:id`.
+   * @param res - Express response returning status 204 on successful deletion.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async deletarHard(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {

@@ -3,6 +3,13 @@ import { ExemploModel } from '../models/exemplo.model.js';
 
 // Controller: Orquestra a requisição HTTP e interage com o Model
 export class ExemploController {
+  /**
+   * Handles GET /api/exemplo to list example items.
+   *
+   * @param _req - Express request.
+   * @param res - Express response returning the array of example items.
+   * @returns Resolves when the HTTP response has been sent.
+   */
   static async listar(_req: Request, res: Response): Promise<void> {
     try {
       const items = await ExemploModel.listar();
@@ -12,6 +19,13 @@ export class ExemploController {
     }
   }
 
+  /**
+   * Handles GET /api/exemplo/:id to retrieve an example item by ID.
+   *
+   * @param req - Express request containing item ID in URL parameter `:id`.
+   * @param res - Express response returning the item or 404 if not found.
+   * @returns Resolves when the HTTP response has been sent.
+   */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
@@ -26,6 +40,13 @@ export class ExemploController {
     }
   }
 
+  /**
+   * Handles POST /api/exemplo to create a new example item.
+   *
+   * @param req - Express request containing item name in body.
+   * @param res - Express response returning status 201 with created item.
+   * @returns Resolves when the HTTP response has been sent.
+   */
   static async criar(req: Request, res: Response): Promise<void> {
     try {
       const { nome } = req.body;

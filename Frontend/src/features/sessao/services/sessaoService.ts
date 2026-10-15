@@ -101,6 +101,10 @@ const API_BASE_URL =
   (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ||
   "http://localhost:3000/api";
 
+/**
+ * Builds the standard HTTP headers for authenticated requests,
+ * reading the Bearer token from the browser's localStorage or sessionStorage.
+ */
 function obterAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -120,9 +124,12 @@ function obterAuthHeaders(): Record<string, string> {
 
 export const sessaoService = {
   /**
-   * Finaliza formalmente uma sessão clínica no backend via PATCH /api/sessao/:id/finalizar.
-   * Aciona a máquina de estados, consolida anotações, dispara a geração do relatório IA
-   * e registra o evento na trilha de auditoria clínica.
+   * Finalizes a clinical session on backend via `PATCH /api/sessao/:id/finalizar`.
+   * Triggers the state machine transition, consolidates notes, dispatches AI report synthesis, and logs audit events.
+   *
+   * @param identificadorSessao - UUID or session pairing token.
+   * @param anotacoes - Optional clinical notes recorded at finalization.
+   * @returns Service response containing finalization status and session data.
    */
   finalizar: async (
     identificadorSessao: string,
@@ -167,9 +174,11 @@ export const sessaoService = {
   },
 
   /**
-   * Consulta os resultados consolidados da sessão via GET /api/sessao/:id/resultado.
-   * Retorna dados clínicos do paciente, jogo, métricas agregadas da IA e anotações.
-   * Respeita RN01 (Modo Livre retorna paciente: null) e RN04 (Vínculo institucional).
+   * Retrieves consolidated session results via `GET /api/sessao/:id/resultado`.
+   * Returns patient clinical data, game details, AI aggregated metrics, and session notes (RN01, RN04).
+   *
+   * @param identificadorSessao - UUID of the finalized session.
+   * @returns Service response containing consolidated session result data.
    */
   buscarResultado: async (
     identificadorSessao: string
@@ -210,8 +219,11 @@ export const sessaoService = {
   },
 
   /**
-   * Consulta os dados estruturados de exportação clínica pós-sessão via GET /api/sessao/:id/exportar (RF20).
-   * Reúne identificação sanitizada da clínica, terapeuta autor, paciente, métricas e síntese da IA.
+   * Retrieves structured clinical export data for a session via `GET /api/sessao/:id/exportar` (RF20).
+   * Aggregates sanitized clinic demographics, authoring therapist, patient, metrics, and AI summary.
+   *
+   * @param identificadorSessao - UUID of the session to export.
+   * @returns Service response containing export report payload.
    */
   exportarRelatorio: async (
     identificadorSessao: string
@@ -252,10 +264,12 @@ export const sessaoService = {
   },
 
   /**
-   * Salva ou atualiza uma anotação clínica pós-sessão:
-   * - Se anotacaoId estiver presente: PATCH /api/anotacao/:id
-   * - Caso contrário: POST /api/anotacao
-   * Autoria atribuída exclusivamente ao terapeuta autenticado (RF21).
+   * Saves or updates a clinical note associated with a session (RF21):
+   * - If `anotacaoId` is provided: `PATCH /api/anotacao/:id`
+   * - Otherwise: `POST /api/anotacao`
+   *
+   * @param payload - Clinical note payload (session ID, patient ID, content, and optional note ID).
+   * @returns Service response containing saved clinical note data.
    */
   salvarAnotacao: async (
     payload: SalvarAnotacaoPayload

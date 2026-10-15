@@ -16,7 +16,12 @@ export interface RespostaServico<T = unknown> {
 
 export class AnotacaoService {
   /**
-   * Cria uma anotação clínica geral de paciente (sem vínculo com sessão).
+   * Creates a general patient clinical note (without session linkage).
+   *
+   * @param terapeutaId - UUID of the authoring therapist.
+   * @param pacienteId - UUID of the target patient.
+   * @param conteudo - Textual content of the clinical note.
+   * @returns Service response containing the created clinical note record.
    */
   static async criarAnotacaoPaciente(
     terapeutaId: string,
@@ -43,7 +48,13 @@ export class AnotacaoService {
   }
 
   /**
-   * Cria uma anotação clínica vinculada a uma sessão específica.
+   * Creates a clinical note linked to a specific session.
+   *
+   * @param terapeutaId - UUID of the authoring therapist.
+   * @param sessaoId - UUID of the target clinical session.
+   * @param pacienteId - UUID of the target patient.
+   * @param conteudo - Textual content of the clinical note.
+   * @returns Service response containing the created clinical note record.
    */
   static async criarAnotacaoSessao(
     terapeutaId: string,
@@ -71,7 +82,10 @@ export class AnotacaoService {
   }
 
   /**
-   * Lista exclusivamente anotações clínicas de paciente (sessao_id IS NULL).
+   * Lists exclusively general clinical notes for a patient (`sessao_id IS NULL`).
+   *
+   * @param pacienteId - UUID of the patient.
+   * @returns Service response containing the array of clinical notes.
    */
   static async listarAnotacoesPaciente(pacienteId: string): Promise<RespostaServico<AnotacaoClinica[]>> {
     const lista = await AnotacaoClinicaModel.listarPorPaciente(pacienteId, false, true);
@@ -79,7 +93,10 @@ export class AnotacaoService {
   }
 
   /**
-   * Lista anotações clínicas vinculadas a uma sessão.
+   * Lists clinical notes linked to a specific session.
+   *
+   * @param sessaoId - UUID of the session.
+   * @returns Service response containing the array of clinical notes.
    */
   static async listarAnotacoesSessao(sessaoId: string): Promise<RespostaServico<AnotacaoClinica[]>> {
     const lista = await AnotacaoClinicaModel.listarPorSessao(sessaoId, false);
@@ -87,9 +104,12 @@ export class AnotacaoService {
   }
 
   /**
-   * Atualiza o conteúdo de uma anotação clínica ativa.
-   * Regra estrita de autoria: somente o terapeuta autor pode alterar (RF21).
-   * Whitelist estrita: aceita exclusivamente o campo 'conteudo', ignorando soft_delete ou IDs.
+   * Updates the content of an active clinical note, enforcing author ownership (RF21).
+   *
+   * @param anotacao - Existing clinical note record.
+   * @param usuarioLogadoId - UUID of the authenticated user.
+   * @param novoConteudo - Updated textual content.
+   * @returns Service response containing the updated clinical note record.
    */
   static async atualizarConteudo(
     anotacao: AnotacaoClinica,
@@ -122,8 +142,11 @@ export class AnotacaoService {
   }
 
   /**
-   * Aplica soft delete na anotação clínica (soft_delete = true), cumprindo RN05.
-   * Regra estrita de autoria: somente o terapeuta autor pode excluir.
+   * Applies logical soft delete to a clinical note (`soft_delete = true`), preserving history (RN05).
+   *
+   * @param anotacao - Existing clinical note record.
+   * @param usuarioLogadoId - UUID of the authenticated user.
+   * @returns Service response with HTTP status 204 on success.
    */
   static async softDelete(
     anotacao: AnotacaoClinica,
@@ -146,7 +169,10 @@ export class AnotacaoService {
   }
 
   /**
-   * Executa hard delete (exclusão física) exclusivo para ambiente de desenvolvimento/testes.
+   * Performs physical hard delete for development and testing environments.
+   *
+   * @param id - UUID of the note to permanently delete.
+   * @returns Service response with HTTP status 204 on success.
    */
   static async hardDeleteDev(id: string): Promise<RespostaServico<void>> {
     try {

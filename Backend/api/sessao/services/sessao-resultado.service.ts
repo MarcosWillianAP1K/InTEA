@@ -71,8 +71,13 @@ export interface RespostaResultadoService {
 
 export class SessaoResultadoService {
   /**
-   * Consolida todos os dados clínicos e analíticos de uma sessão finalizada.
-   * Valida permissões institucionais (RN04) e suprime dados em Modo Livre (RN01).
+   * Consolidates clinical and analytical result data for a finalized session.
+   * Validates institutional permissions (RN04) and suppresses clinical data for free-mode sessions (RN01).
+   *
+   * @param sessaoId - UUID of the session to retrieve.
+   * @param terapeutaId - UUID of the requesting therapist.
+   * @param isSuperAdmin - Whether the requesting user has super-admin privileges.
+   * @returns Service response containing consolidated session results or an error payload.
    */
   static async obterResultadoConsolidado(
     sessaoId: string,

@@ -16,7 +16,12 @@ import { AnotacaoClinicaModel } from '../models/anotacao.model.js';
 import { SessaoModel, STATUS_SESSAO } from '../../sessao/models/sessao.model.js';
 
 /**
- * Resolvedor de contexto para rotas sob /api/anotacao/paciente
+ * Middleware that resolves patient context for `/api/anotacao/paciente` routes.
+ *
+ * @param req - Authenticated Express request being enriched with target patient context.
+ * @param res - Express response.
+ * @param next - Express next middleware function.
+ * @returns Resolves when the next middleware has been called or an HTTP error response is returned.
  */
 export async function resolverContextoPaciente(
   req: AuthenticatedRequest,
@@ -93,7 +98,12 @@ export async function resolverContextoPaciente(
 }
 
 /**
- * Resolvedor de contexto para rotas sob /api/anotacao/sessao
+ * Middleware that resolves session context for `/api/anotacao/sessao` routes.
+ *
+ * @param req - Authenticated Express request being enriched with target session and patient context.
+ * @param res - Express response.
+ * @param next - Express next middleware function.
+ * @returns Resolves when the next middleware has been called or an HTTP error response is returned.
  */
 export async function resolverContextoSessao(
   req: AuthenticatedRequest,

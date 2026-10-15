@@ -37,7 +37,10 @@ export interface AtualizarAnotacaoDTO {
 
 export class AnotacaoClinicaModel {
   /**
-   * Registra uma nova anotação clínica vinculada ao paciente (e opcionalmente à sessão).
+   * Records a new clinical note associated with a patient and optional session.
+   *
+   * @param dto - Data transfer object with note details (`terapeuta_id`, `paciente_id`, `sessao_id`, `conteudo`).
+   * @returns Newly created clinical note record or null on failure.
    */
   static async criar(dto: CriarAnotacaoDTO): Promise<AnotacaoClinica | null> {
     try {
@@ -65,7 +68,10 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Busca uma anotação ativa pelo seu identificador único UUID.
+   * Retrieves an active clinical note by its UUID.
+   *
+   * @param id - UUID of the clinical note.
+   * @returns The clinical note record or null if not found or soft-deleted.
    */
   static async buscarPorId(id: string): Promise<AnotacaoClinica | null> {
     try {
@@ -85,8 +91,12 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Lista todas as anotações ativas do prontuário de um paciente específico (ordenadas por data decrescente).
-   * Permite filtrar exclusivamente anotações de paciente (sessao_id IS NULL).
+   * Lists active clinical notes for a patient ordered by creation date descending.
+   *
+   * @param pacienteId - UUID of the patient.
+   * @param incluirDeletadas - Whether to include soft-deleted records.
+   * @param somenteSemSessao - Whether to filter only general patient notes (`sessao_id IS NULL`).
+   * @returns Array of clinical note records.
    */
   static async listarPorPaciente(
     pacienteId: string,
@@ -123,7 +133,11 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Lista anotações clínicas vinculadas a uma sessão específica.
+   * Lists clinical notes associated with a specific session.
+   *
+   * @param sessaoId - UUID of the session.
+   * @param incluirDeletadas - Whether to include soft-deleted records.
+   * @returns Array of clinical note records.
    */
   static async listarPorSessao(sessaoId: string, incluirDeletadas = false): Promise<AnotacaoClinica[]> {
     try {
@@ -153,7 +167,11 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Atualiza o conteúdo ou estado de uma anotação ativa.
+   * Updates content or state of an active clinical note.
+   *
+   * @param id - UUID of the clinical note.
+   * @param dto - Update data containing new content and/or soft delete flag.
+   * @returns Updated clinical note record or null on failure.
    */
   static async atualizar(id: string, dto: AtualizarAnotacaoDTO): Promise<AnotacaoClinica | null> {
     try {
@@ -189,7 +207,10 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Executa soft delete da anotação clínica (soft_delete = true), cumprindo a regra RN05.
+   * Executes logical deletion (soft delete) of a clinical note (`soft_delete = true`, RN05).
+   *
+   * @param id - UUID of the clinical note.
+   * @returns True if successfully marked as deleted, false otherwise.
    */
   static async softDelete(id: string): Promise<boolean> {
     try {
@@ -214,7 +235,10 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Exclusão física permanente (Hard Delete) exclusiva para ambiente de desenvolvimento/testes.
+   * Permanently deletes a clinical note from the database for development and test environments.
+   *
+   * @param id - UUID of the clinical note.
+   * @returns True if successfully deleted, false otherwise.
    */
   static async deletarHard(id: string): Promise<boolean> {
     if (process.env.NODE_ENV === 'production') {

@@ -10,8 +10,11 @@ import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.
 
 export class AuditoriaController {
   /**
-   * Consulta a linha do tempo e eventos de auditoria da sessão.
-   * GET /api/auditoria/sessao/:sessaoId
+   * Handles GET /api/auditoria/sessao/:sessaoId to retrieve the audit trail and timeline of a session.
+   *
+   * @param req - Express request containing session UUID in URL parameter `:sessaoId`.
+   * @param res - Express response returning the array of audit events and total count.
+   * @returns Resolves when the HTTP response has been sent.
    */
   static async consultarLinhaDoTempo(req: Request, res: Response): Promise<void> {
     try {
