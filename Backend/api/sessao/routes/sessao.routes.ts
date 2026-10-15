@@ -30,14 +30,17 @@ export const sessaoRoutes = Router();
  *         description: Código de pareamento gerado com sucesso
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 codigo:
- *                   type: string
- *                   example: "4M5S-8U7B"
+ *             example:
+ *               message: "Código de pareamento gerado com sucesso"
+ *               data:
+ *                 codigo: "4M5S-8U7B"
+ *               codigo: "4M5S-8U7B"
  *       401:
  *         description: Token JWT ausente ou inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       500:
  *         description: Erro ao gerar código de pareamento
  *         content:
@@ -346,8 +349,36 @@ sessaoRoutes.get('/buscarPorToken/:token', authMiddleware, SessaoController.busc
  *     responses:
  *       200:
  *         description: Status da sessão retornado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                 session_token: "4M5S-8U7B"
+ *                 status_sessao: "conectado"
+ *                 modo_sessao: "sessao_clinica"
+ *                 dispositivo_info: null
+ *                 presenca_dispositivo: null
+ *                 expira_em: "2026-10-15T18:00:00.000Z"
+ *                 data_hora_inicio: "2026-10-15T17:45:00.000Z"
+ *       400:
+ *         description: Token não fornecido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token não fornecido"
  *       404:
  *         description: Sessão não encontrada
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Sessão não encontrada"
+ *       500:
+ *         description: Erro interno ao consultar status da sessão
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro ao consultar status da sessão"
  */
 sessaoRoutes.get('/:token/status', SessaoController.consultarStatus);
 
@@ -452,16 +483,87 @@ sessaoRoutes.get('/:id', authMiddleware, SessaoController.buscarPorId);
  *     responses:
  *       200:
  *         description: Laudo clínico estruturado retornado com sucesso para exportação
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 cabecalho:
+ *                   instituicao: "Clínica Integrada InTEA"
+ *                   cnpj_clinica: "12.345.678/0001-90"
+ *                   emissao_em: "2026-10-15T18:00:00.000Z"
+ *                   codigo_autenticidade: "LAUDO-4M5S-20261015"
+ *                 paciente:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   nome: "Pedro Henrique Silveira"
+ *                   data_nascimento: "2018-06-15"
+ *                   idade_anos: 8
+ *                   cpf_mascarado: "***.982.247-**"
+ *                   diagnostico_base: "Transtorno do Espectro Autista (TEA)"
+ *                   responsavel_legal:
+ *                     nome: "Juliana Silveira"
+ *                     parentesco: "Mãe"
+ *                     telefone: "(11) 99887-6655"
+ *                 terapeuta:
+ *                   id: "11111111-1111-1111-1111-111111111111"
+ *                   nome: "Dra. Mariana Costa"
+ *                   registro_profissional: "CREFITO-3/12345-TO"
+ *                   especialidade: "Terapia Ocupacional e Integração Sensorial"
+ *                   email_contato: "mariana.costa@intea.com.br"
+ *                 sessao:
+ *                   id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                   token_pareamento: "4M5S-8U7B"
+ *                   jogo:
+ *                     nome: "Jogo da Memória Sensorial"
+ *                     versao: "1.0.0"
+ *                   data_hora_inicio: "2026-10-15T17:30:00.000Z"
+ *                   data_hora_fim: "2026-10-15T17:50:00.000Z"
+ *                   duracao_segundos: 1200
+ *                   duracao_formatada: "20 min"
+ *                   modo: "sessao_clinica"
+ *                 metricas_tabela:
+ *                   - indicador: "Tempo Médio de Resposta"
+ *                     valor_obtido: "1.4s"
+ *                     unidade: "segundos"
+ *                     interpretacao_clinica: "Adequado"
+ *                 analise_ia:
+ *                   parecer_geral: "Paciente demonstrou excelente engajamento nas atividades sensoriais com foco atencional sustentado."
+ *                   engajamento_estimado: "alto"
+ *                   recomendacoes_clinicas:
+ *                     - "Manter estímulos visuais de intensidade média"
+ *                 assinatura:
+ *                   terapeuta_nome: "Dra. Mariana Costa"
+ *                   registro_profissional: "CREFITO-3/12345-TO"
+ *                   data_assinatura: "2026-10-15"
  *       400:
  *         description: Sessão não está finalizada ou identificador inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "A sessão precisa estar finalizada para exportação do laudo clínico."
  *       401:
  *         description: Token JWT ausente ou inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado por falta de vínculo institucional ativo (RN04)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado: você não possui vínculo com este paciente (RN04)."
  *       404:
  *         description: Sessão ou paciente não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Sessão não encontrada"
  *       500:
  *         description: Erro interno ao emitir laudo para exportação
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao emitir laudo clínico para exportação."
  */
 sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoExportarService.handlerExportarHttp);
 
@@ -488,24 +590,18 @@ sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoExportarService.handlerE
  *         description: Sessão finalizada com sucesso
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     status_sessao:
- *                       type: string
- *                       example: "finalizada"
- *                     data_hora_fim:
- *                       type: string
- *                       format: date-time
- *                       nullable: true
+ *             example:
+ *               message: "Sessão finalizada com sucesso"
+ *               data:
+ *                 id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                 status_sessao: "finalizada"
+ *                 data_hora_fim: "2026-10-15T18:00:00.000Z"
  *       401:
  *         description: Token JWT ausente ou inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       404:
  *         description: Sessão não encontrada para finalização
  *         content:
@@ -543,18 +639,11 @@ sessaoRoutes.patch('/:id/finalizar', authMiddleware, SessaoController.finalizar)
  *         description: Sessão cancelada com sucesso
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     status_sessao:
- *                       type: string
- *                       example: "cancelada"
+ *             example:
+ *               message: "Sessão cancelada com sucesso"
+ *               data:
+ *                 id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                 status_sessao: "cancelada"
  *       400:
  *         description: Sessão já está em status terminal (finalizada, expirada ou cancelada)
  *         content:

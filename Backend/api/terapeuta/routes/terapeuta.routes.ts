@@ -30,10 +30,39 @@ export const terapeutaRoutes = Router();
  *     responses:
  *       200:
  *         description: Lista de terapeutas retornada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 - id: "a9849163-613f-4492-90cf-89985902d16e"
+ *                   nome: "Dra. Mariana Costa"
+ *                   email: "mariana.costa@intea.com.br"
+ *                   telefone: "(11) 98765-4321"
+ *                   registro_profissional: "CREFITO-3/12345-TO"
+ *                   crefito: "CREFITO-3/12345-TO"
+ *                   especialidade: "Terapia Ocupacional e Integração Sensorial"
+ *                   tempo_experiencia_anos: 5
+ *                   status_ativo: true
+ *                   clinica_id: null
+ *                   areas_foco: []
+ *                   created_at: "2026-09-27T21:41:27.762Z"
+ *                   updated_at: "2026-10-15T17:48:17.033Z"
+ *               meta:
+ *                 total: 1
+ *                 ativos: 1
+ *                 inativos: 0
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao listar terapeutas"
  */
 terapeutaRoutes.get('/', authMiddleware, adminMiddleware, TerapeutaController.listar);
 
@@ -55,16 +84,53 @@ terapeutaRoutes.get('/', authMiddleware, adminMiddleware, TerapeutaController.li
  *     responses:
  *       200:
  *         description: Terapeuta encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "a9849163-613f-4492-90cf-89985902d16e"
+ *                 nome: "Dra. Mariana Costa"
+ *                 email: "mariana.costa@intea.com.br"
+ *                 telefone: "(11) 98765-4321"
+ *                 registro_profissional: "CREFITO-3/12345-TO"
+ *                 crefito: "CREFITO-3/12345-TO"
+ *                 especialidade: "Terapia Ocupacional e Integração Sensorial"
+ *                 tempo_experiencia_anos: 5
+ *                 status_ativo: true
+ *                 clinica_id: null
+ *                 areas_foco: []
+ *                 created_at: "2026-09-27T21:41:27.762Z"
+ *                 updated_at: "2026-10-15T17:48:17.033Z"
  *       400:
  *         description: Identificador UUID inválido ou ausente
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID inválido. Forneça um UUID válido."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado (operação restrita a administradores ativos)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
  *       404:
  *         description: Terapeuta não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Terapeuta não encontrado"
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao buscar terapeuta"
  */
 terapeutaRoutes.get('/:id', authMiddleware, adminMiddleware, TerapeutaController.buscarPorId);
 
@@ -95,16 +161,48 @@ terapeutaRoutes.get('/:id', authMiddleware, adminMiddleware, TerapeutaController
  *     responses:
  *       201:
  *         description: Terapeuta cadastrado e conta criada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Terapeuta criado com sucesso."
+ *               data:
+ *                 id: "a9849163-613f-4492-90cf-89985902d16e"
+ *                 nome: "Dra. Mariana Costa"
+ *                 email: "mariana.costa@intea.com.br"
+ *                 telefone: "(11) 98765-4321"
+ *                 registro_profissional: "CREFITO-3/12345-TO"
+ *                 especialidade: "Terapia Ocupacional e Integração Sensorial"
+ *                 status_ativo: true
  *       400:
  *         description: Campos obrigatórios ausentes ou senha curta (< 6 caracteres)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Os campos 'nome', 'email', 'password' e 'crefito' são obrigatórios."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado (operação restrita a administradores ativos)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
  *       409:
  *         description: E-mail já cadastrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "E-mail já cadastrado no sistema."
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao cadastrar terapeuta"
  */
 terapeutaRoutes.post('/', authMiddleware, adminMiddleware, TerapeutaController.criar);
 
@@ -135,16 +233,50 @@ terapeutaRoutes.post('/', authMiddleware, adminMiddleware, TerapeutaController.c
  *     responses:
  *       200:
  *         description: Terapeuta atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Terapeuta atualizado com sucesso."
+ *               data:
+ *                 id: "a9849163-613f-4492-90cf-89985902d16e"
+ *                 nome: "Dra. Mariana Costa Silva"
+ *                 email: "mariana.costa@intea.com.br"
+ *                 telefone: "(11) 91111-2222"
+ *                 registro_profissional: "CREFITO-3/12345-TO"
+ *                 crefito: "CREFITO-3/12345-TO"
+ *                 especialidade: "Terapia Ocupacional e ABA"
+ *                 tempo_experiencia_anos: 6
+ *                 status_ativo: true
  *       400:
  *         description: Dados de atualização inválidos
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID inválido. Forneça um UUID válido."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado (operação restrita a administradores ativos)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
  *       404:
  *         description: Terapeuta não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Terapeuta não encontrado"
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao atualizar dados do terapeuta"
  */
 terapeutaRoutes.put('/:id', authMiddleware, adminMiddleware, TerapeutaController.atualizar);
 
@@ -170,14 +302,40 @@ terapeutaRoutes.put('/:id', authMiddleware, adminMiddleware, TerapeutaController
  *     responses:
  *       200:
  *         description: Terapeuta e credenciais removidos fisicamente
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Terapeuta e credenciais de acesso excluídos com sucesso (Hard Delete)."
+ *       400:
+ *         description: Identificador UUID inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID inválido. Forneça um UUID válido."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado (operação restrita a administradores ativos)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
  *       404:
  *         description: Terapeuta não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Terapeuta não encontrado"
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao excluir terapeuta permanentemente"
  */
 terapeutaRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, TerapeutaController.deletarHard);
 
@@ -199,14 +357,44 @@ terapeutaRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, TerapeutaCo
  *     responses:
  *       200:
  *         description: Terapeuta desativado com sucesso (soft delete)
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Terapeuta desativado com sucesso (Soft Delete)."
+ *               data:
+ *                 id: "a9849163-613f-4492-90cf-89985902d16e"
+ *                 nome: "Dra. Mariana Costa"
+ *                 status_ativo: false
+ *       400:
+ *         description: Identificador UUID inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID inválido. Forneça um UUID válido."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado (operação restrita a administradores ativos)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
  *       404:
  *         description: Terapeuta não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Terapeuta não encontrado"
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao desativar terapeuta"
  */
 terapeutaRoutes.delete('/:id', authMiddleware, adminMiddleware, TerapeutaController.desativar);
 
@@ -228,13 +416,43 @@ terapeutaRoutes.delete('/:id', authMiddleware, adminMiddleware, TerapeutaControl
  *     responses:
  *       200:
  *         description: Terapeuta reativado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Terapeuta reativado com sucesso."
+ *               data:
+ *                 id: "a9849163-613f-4492-90cf-89985902d16e"
+ *                 nome: "Dra. Mariana Costa"
+ *                 status_ativo: true
+ *       400:
+ *         description: Identificador UUID inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID inválido. Forneça um UUID válido."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado (operação restrita a administradores ativos)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
  *       404:
  *         description: Terapeuta não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Terapeuta não encontrado"
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao reativar terapeuta"
  */
 terapeutaRoutes.patch('/:id/reativar', authMiddleware, adminMiddleware, TerapeutaController.reativar);

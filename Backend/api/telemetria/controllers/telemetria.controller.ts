@@ -189,6 +189,11 @@ export class TelemetriaController {
       const telemetrias = await TelemetriaService.listarPorSessao(sessaoId, idMetrica, limite, pagina);
       res.status(200).json({
         data: telemetrias,
+        meta: {
+          pagina,
+          limite: limite ?? null,
+          total_pagina: telemetrias.length,
+        },
         ...(limite ? { pagina, limite, total_pagina: telemetrias.length } : {}),
       });
     } catch (error) {

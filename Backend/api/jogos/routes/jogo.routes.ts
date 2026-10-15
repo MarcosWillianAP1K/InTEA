@@ -37,43 +37,28 @@ export const jogosRoutes = Router();
  *         description: Catálogo de jogos retornado com sucesso
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                         example: "1"
- *                       nome:
- *                         type: string
- *                         example: "Aventura das Cores"
- *                       descricao:
- *                         type: string
- *                         example: "Estimula atenção compartilhada e reconhecimento facial."
- *                       versao:
- *                         type: string
- *                         example: "1.2.0"
- *                       status_instalacao:
- *                         type: string
- *                         example: "instalado"
- *                 total:
- *                   type: integer
- *                   example: 3
- *                 page:
- *                   type: integer
- *                   example: 1
- *                 limit:
- *                   type: integer
- *                   example: 10
- *                 totalPages:
- *                   type: integer
- *                   example: 1
+ *             example:
+ *               data:
+ *                 - id: "1"
+ *                   nome: "Aventura das Cores"
+ *                   descricao: "Estimula atenção compartilhada e reconhecimento facial."
+ *                   versao: "1.2.0"
+ *                   status_instalacao: "instalado"
+ *               meta:
+ *                 total: 3
+ *                 page: 1
+ *                 limit: 10
+ *                 totalPages: 1
+ *               total: 3
+ *               page: 1
+ *               limit: 10
+ *               totalPages: 1
  *       500:
  *         description: Erro interno ao listar catálogo de jogos
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro ao listar catálogo de jogos"
  */
 jogosRoutes.get('/', JogoController.listar);
 
@@ -134,10 +119,34 @@ jogosRoutes.get('/', JogoController.listar);
  *     responses:
  *       200:
  *         description: Manifesto válido e em conformidade
+ *         content:
+ *           application/json:
+ *             example:
+ *               valido: true
+ *               data:
+ *                 id_jogo: "aventura-das-cores"
+ *                 nome: "Aventura das Cores"
+ *                 versao: "1.2.0"
+ *                 objetivo_clinico: "foco_atencional"
+ *                 metricas_suportadas:
+ *                   - id_metrica: "tempo_resposta"
+ *                     tipo_metrica: "numerica"
+ *                     unidade: "segundos"
  *       400:
  *         description: Manifesto inválido ou com campos faltantes
+ *         content:
+ *           application/json:
+ *             example:
+ *               valido: false
+ *               error: "Manifesto do jogo inválido"
+ *               erros:
+ *                 - "Campo 'nome' é obrigatório"
  *       500:
  *         description: Erro interno ao processar validação
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao validar manifesto"
  */
 jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
 
@@ -158,10 +167,31 @@ jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
  *     responses:
  *       200:
  *         description: Detalhes do jogo encontrados com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "1"
+ *                 nome: "Aventura das Cores"
+ *                 descricao: "Estimula atenção compartilhada e reconhecimento facial."
+ *                 versao: "1.2.0"
+ *                 status_instalacao: "instalado"
+ *                 manifesto_json:
+ *                   id_jogo: "aventura-das-cores"
+ *                   nome: "Aventura das Cores"
+ *                   versao: "1.2.0"
  *       404:
  *         description: Jogo não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Jogo não encontrado"
  *       500:
  *         description: Erro interno ao buscar detalhes do jogo
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro ao buscar detalhes do jogo"
  */
 jogosRoutes.get('/:id', JogoController.buscarPorId);
 
@@ -182,10 +212,31 @@ jogosRoutes.get('/:id', JogoController.buscarPorId);
  *     responses:
  *       200:
  *         description: Manifesto retornado com o relatório de conformidade
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id_jogo: "aventura-das-cores"
+ *                 nome: "Aventura das Cores"
+ *                 versao: "1.2.0"
+ *                 metricas_suportadas:
+ *                   - id_metrica: "tempo_resposta"
+ *                     tipo_metrica: "numerica"
+ *               validacao:
+ *                 valido: true
+ *                 erros: []
  *       404:
  *         description: Jogo não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Jogo não encontrado"
  *       500:
  *         description: Erro interno ao consultar manifesto do jogo
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro ao consultar manifesto do jogo"
  */
 jogosRoutes.get('/:id/manifesto', JogoController.obterManifesto);
 
@@ -243,11 +294,35 @@ jogosRoutes.get('/:id/manifesto', JogoController.obterManifesto);
  *     responses:
  *       200:
  *         description: Evento de telemetria homologado para gravação
+ *         content:
+ *           application/json:
+ *             example:
+ *               podeGravar: true
+ *               tipoDetectado: "numerica"
+ *               metricaHomologada: true
+ *               data:
+ *                 podeGravar: true
+ *                 tipoDetectado: "numerica"
+ *                 metricaHomologada: true
  *       404:
  *         description: Jogo não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Jogo não encontrado"
  *       422:
  *         description: Métrica não homologada ou tipagem estrita violada
+ *         content:
+ *           application/json:
+ *             example:
+ *               podeGravar: false
+ *               error: "Valor da métrica 'tempo_resposta' deve ser numérico"
+ *               regraViolada: "RN02 - Fallback de Métrica Proibido"
  *       500:
  *         description: Erro interno ao processar validação de telemetria
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao processar validação de telemetria"
  */
 jogosRoutes.post('/:id/validar-telemetria', JogoController.validarTelemetria);

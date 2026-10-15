@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
-import { TerapeutaModel, CriarTerapeutaDTO, AtualizarTerapeutaDTO, LoginDTO } from '../models/terapeuta.model.js';
-import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { TerapeutaModel, CriarTerapeutaDTO, AtualizarTerapeutaDTO } from '../models/terapeuta.model.js';
 import { validarTelefone } from '../../../core/utils/validators.js';
 import { formatarTelefone } from '../../../core/utils/formatters.js';
 
@@ -20,7 +19,13 @@ export class TerapeutaController {
     try {
       const incluirInativos = req.query.incluirInativos === 'true';
       const terapeutas = await TerapeutaModel.listar(incluirInativos);
-      res.status(200).json({ data: terapeutas });
+      const sanitizados = terapeutas.map((t: any) => ({
+        ...t,
+        areas_foco: Array.isArray(t.areas_foco)
+          ? t.areas_foco.map((item: any) => (item?.areas_foco ? item.areas_foco : item))
+          : [],
+      }));
+      res.status(200).json({ data: sanitizados });
     } catch (error: any) {
       console.error('[TerapeutaController.listar]', error);
       res.status(500).json({ error: 'Erro interno ao listar terapeutas.', detalhes: error?.message });
@@ -50,7 +55,16 @@ export class TerapeutaController {
         return;
       }
 
-      res.status(200).json({ data: terapeuta });
+      const areasFoco = Array.isArray(terapeuta.areas_foco)
+        ? terapeuta.areas_foco.map((item: any) => (item?.areas_foco ? item.areas_foco : item))
+        : [];
+
+      res.status(200).json({
+        data: {
+          ...terapeuta,
+          areas_foco: areasFoco,
+        },
+      });
     } catch (error: any) {
       console.error('[TerapeutaController.buscarPorId]', error);
       res.status(500).json({ error: 'Erro interno ao buscar terapeuta.', detalhes: error?.message });
@@ -148,7 +162,17 @@ export class TerapeutaController {
 
       const atualizado = await TerapeutaModel.atualizar(id, dto);
 
-      res.status(200).json({ data: atualizado });
+      const areasFoco = atualizado && Array.isArray(atualizado.areas_foco)
+        ? atualizado.areas_foco.map((item: any) => (item?.areas_foco ? item.areas_foco : item))
+        : [];
+
+      res.status(200).json({
+        data: {
+          ...atualizado,
+          areas_foco: areasFoco,
+        },
+        message: 'Terapeuta atualizado com sucesso.',
+      });
     } catch (error: any) {
       console.error('[TerapeutaController.atualizar]', error);
       res.status(500).json({ error: 'Erro interno ao atualizar terapeuta.', detalhes: error?.message });
@@ -260,67 +284,5 @@ export class TerapeutaController {
       res.status(500).json({ error: 'Erro interno ao realizar exclusão física.', detalhes: error?.message });
     }
   }
-
-  /**
-   * Handles POST /api/terapeuta/login to authenticate therapist credentials and return a JWT access token.
-   *
-   * @param req - Express request containing email and password in body.
-   * @param res - Express response returning access token and therapist profile.
-   * @returns Resolves when the HTTP response has been sent.
-   */
-  static async login(req: Request, res: Response): Promise<void> {
-    try {
-      const dto: LoginDTO = req.body;
-
-      if (!dto.email || !dto.password) {
-        res.status(400).json({ error: 'Campos "email" e "password" são obrigatórios para login.' });
-        return;
-      }
-
-      const resultado = await TerapeutaModel.login(dto);
-
-      res.status(200).json({
-        data: {
-          access_token: resultado.access_token,
-          token_type: 'Bearer',
-          expires_in: resultado.session.expires_in,
-          terapeuta: resultado.terapeuta,
-        },
-        message: 'Login realizado com sucesso.',
-      });
-    } catch (error: any) {
-      console.error('[TerapeutaController.login]', error);
-      res.status(401).json({ error: error?.message || 'Credenciais inválidas.' });
-    }
-  }
-
-  /**
-   * Handles GET /api/terapeuta/me to return authenticated therapist profile data.
-   *
-   * @param req - Authenticated Express request with user context in `req.user`.
-   * @param res - Express response returning therapist data.
-   * @returns Resolves when the HTTP response has been sent.
-   */
-  static async me(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const userId = req.user?.id;
-
-      if (!userId) {
-        res.status(401).json({ error: 'Usuário não autenticado.' });
-        return;
-      }
-
-      const terapeuta = await TerapeutaModel.buscarPorId(userId);
-
-      if (!terapeuta) {
-        res.status(404).json({ error: 'Perfil de terapeuta associado ao token não encontrado.' });
-        return;
-      }
-
-      res.status(200).json({ data: terapeuta });
-    } catch (error: any) {
-      console.error('[TerapeutaController.me]', error);
-      res.status(500).json({ error: 'Erro interno ao recuperar perfil.', detalhes: error?.message });
-    }
-  }
 }
+

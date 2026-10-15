@@ -298,6 +298,7 @@ export class SessaoController {
           ...sessaoAtualizada,
           relatorio: relatorioIA || undefined,
         },
+        message: 'Sessão finalizada com sucesso.',
       });
     } catch (error) {
       console.error('[SessaoController] Erro ao finalizar sessão:', error);
@@ -356,7 +357,10 @@ export class SessaoController {
         userAgent: (req.headers?.['user-agent'] as string) || null,
       });
 
-      res.json({ data: sessaoCancelada });
+      res.json({
+        data: sessaoCancelada,
+        message: 'Sessão cancelada com sucesso.',
+      });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao cancelar sessão' });
     }
@@ -582,7 +586,10 @@ export class SessaoController {
         return;
       }
 
-      res.json({ codigo });
+      res.json({
+        data: { codigo },
+        codigo,
+      });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao gerar código de pareamento' });
     }

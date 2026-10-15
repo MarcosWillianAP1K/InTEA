@@ -31,6 +31,7 @@ export class AuditoriaController {
 
       res.status(200).json({
         data: eventos,
+        meta: { total: eventos.length },
         total: eventos.length,
       });
     } catch (error) {

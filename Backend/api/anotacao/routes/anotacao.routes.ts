@@ -1,14 +1,17 @@
 // ==============================================================================
-// InTEA: Routes for the Clinical Notes Module (Patient Record and Session)
+// InTEA: Rotas do Módulo de Anotações Clínicas (Prontuário e Sessão)
 // ==============================================================================
-// Compliance: RF16 (Notes), RF21 (JWT Authorship), RN04 (Institutional Link), RN05 (Soft Delete)
+// Conformidade: RF16 (Anotações), RF21 (Autoria JWT), RN04 (Vínculo), RN05 (Soft Delete)
 // ==============================================================================
+
 import { Router } from 'express';
 import { AnotacaoPacienteController } from '../controllers/anotacao-paciente.controller.js';
 import { AnotacaoSessaoController } from '../controllers/anotacao-sessao.controller.js';
+import { AnotacaoClinicaModel } from '../models/anotacao.model.js';
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
+import { validarUUID } from '../../../core/utils/validators.js';
 import {
   resolverContextoPaciente,
   resolverContextoSessao,
@@ -17,16 +20,164 @@ import {
 export const anotacaoRoutes = Router();
 
 // ==============================================================================
-// PATIENT GENERAL NOTES ROUTES (/api/anotacao/paciente)
+// 1. ROTAS CANÔNICAS UNIFICADAS (/api/anotacao) - Consumidas pelo Frontend
+// ==============================================================================
+
+/**
+ * @swagger
+ * /api/anotacao:
+ *   post:
+ *     summary: Registra uma anotação clínica (vinculada a sessão ou paciente)
+ *     description: Endpoint unificado consumido pelo painel do terapeuta. Se informado sessao_id, vincula à sessão clínica; caso contrário, vincula diretamente ao prontuário geral do paciente.
+ *     tags: [Anotações Clínicas]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - conteudo
+ *             properties:
+ *               sessao_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "11111111-1111-1111-1111-111111111111"
+ *                 description: UUID da sessão clínica (opcional)
+ *               paciente_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "22222222-2222-2222-2222-222222222222"
+ *                 description: UUID do paciente
+ *               conteudo:
+ *                 type: string
+ *                 example: "Paciente demonstrou excelente autorregulação sensorial durante a atividade."
+ *     responses:
+ *       201:
+ *         description: Anotação clínica registrada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "33333333-3333-3333-3333-333333333333"
+ *                 terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                 paciente_id: "22222222-2222-2222-2222-222222222222"
+ *                 sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                 conteudo: "Paciente demonstrou excelente autorregulação sensorial durante a atividade."
+ *                 created_at: "2026-10-15T18:00:00Z"
+ *                 updated_at: "2026-10-15T18:00:00Z"
+ *       400:
+ *         description: Dados obrigatórios ausentes ou inválidos
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado por falta de vínculo institucional ativo (RN04)
+ *       404:
+ *         description: Sessão ou paciente não encontrado
+ */
+anotacaoRoutes.post(
+  '/',
+  authMiddleware,
+  async (req, res, next) => {
+    if (req.body?.sessao_id) {
+      return resolverContextoSessao(req as any, res, next);
+    } else {
+      return resolverContextoPaciente(req as any, res, next);
+    }
+  },
+  verificarVisibilidadePaciente,
+  async (req, res) => {
+    if (req.body?.sessao_id) {
+      return AnotacaoSessaoController.criar(req as any, res);
+    } else {
+      return AnotacaoPacienteController.criar(req as any, res);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /api/anotacao/{id}:
+ *   patch:
+ *     summary: Atualiza o conteúdo de uma anotação clínica existente
+ *     description: Permite alterar exclusivamente o texto da anotação. Acesso restrito ao terapeuta autor da nota (RF21).
+ *     tags: [Anotações Clínicas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da anotação clínica
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - conteudo
+ *             properties:
+ *               conteudo:
+ *                 type: string
+ *                 example: "Conteúdo clínico revisado com novas observações."
+ *     responses:
+ *       200:
+ *         description: Anotação atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "33333333-3333-3333-3333-333333333333"
+ *                 conteudo: "Conteúdo clínico revisado com novas observações."
+ *                 updated_at: "2026-10-15T18:05:00Z"
+ *       400:
+ *         description: Conteúdo vazio ou inválido
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Usuário não é o autor da anotação
+ *       404:
+ *         description: Anotação não encontrada
+ */
+anotacaoRoutes.patch(
+  '/:id',
+  authMiddleware,
+  async (req, res, next) => {
+    const id = String(req.params.id || '');
+    if (!validarUUID(id)) {
+      res.status(400).json({ error: 'O identificador da anotação deve ser um UUID válido.' });
+      return;
+    }
+    const anotacao = await AnotacaoClinicaModel.buscarPorId(id);
+    if (!anotacao) {
+      res.status(404).json({ error: 'Anotação clínica não encontrada.' });
+      return;
+    }
+    (req as any).pacienteAlvoId = anotacao.paciente_id;
+    (req as any).contextoAnotacao = anotacao;
+    next();
+  },
+  verificarVisibilidadePaciente,
+  AnotacaoPacienteController.atualizar
+);
+
+// ==============================================================================
+// 2. ROTAS DE ANOTAÇÕES GERAIS DE PACIENTE (/api/anotacao/paciente)
 // ==============================================================================
 
 /**
  * @swagger
  * /api/anotacao/paciente:
  *   post:
- *     summary: Records a general clinical note for a patient
- *     description: Creates a new note linked exclusively to the patient (sessao_id = null). Authorship (terapeuta_id) is extracted from the JWT token (RF21). Requires an active institutional link (RN04).
- *     tags: [Clinical Notes]
+ *     summary: Registra anotação clínica geral para o paciente
+ *     description: Cria uma nota vinculada exclusivamente ao prontuário do paciente (sessao_id = null). Autoria obtida do token JWT (RF21). Requer vínculo ativo (RN04).
+ *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -45,20 +196,27 @@ export const anotacaoRoutes = Router();
  *                 example: "11111111-1111-1111-1111-111111111111"
  *               conteudo:
  *                 type: string
- *                 example: "Patient demonstrated excellent emotional regulation during the session."
- *               terapeuta_id:
- *                 type: string
- *                 format: uuid
- *                 description: (Optional) If provided, must match the authenticated token. Mismatches return 403.
+ *                 example: "Paciente demonstrou excelente autorregulação emocional durante o atendimento."
  *     responses:
  *       201:
- *         description: Note created successfully
+ *         description: Anotação criada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "33333333-3333-3333-3333-333333333333"
+ *                 terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                 paciente_id: "11111111-1111-1111-1111-111111111111"
+ *                 sessao_id: null
+ *                 conteudo: "Paciente demonstrou excelente autorregulação emocional durante o atendimento."
+ *                 created_at: "2026-10-15T18:00:00Z"
+ *                 updated_at: "2026-10-15T18:00:00Z"
  *       400:
- *         description: Missing or invalid required fields
+ *         description: Campos obrigatórios ausentes ou inválidos
  *       401:
- *         description: Unauthenticated
+ *         description: Não autorizado
  *       403:
- *         description: No institutional link with patient (RN04) or mismatched therapist (anti-spoofing)
+ *         description: Sem vínculo com o paciente (RN04)
  */
 anotacaoRoutes.post(
   '/paciente',
@@ -72,9 +230,9 @@ anotacaoRoutes.post(
  * @swagger
  * /api/anotacao/paciente/{pacienteId}:
  *   get:
- *     summary: Lists general clinical notes for a patient
- *     description: Returns the history of general notes for the patient (sessao_id = null), ordered by descending date.
- *     tags: [Clinical Notes]
+ *     summary: Lista anotações clínicas gerais do paciente
+ *     description: Retorna o histórico de anotações do prontuário do paciente (sessao_id = null) em ordem cronológica decrescente.
+ *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -84,15 +242,27 @@ anotacaoRoutes.post(
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: UUID do paciente
  *     responses:
  *       200:
- *         description: Note list returned successfully
+ *         description: Lista de anotações retornada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 - id: "33333333-3333-3333-3333-333333333333"
+ *                   terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                   paciente_id: "11111111-1111-1111-1111-111111111111"
+ *                   sessao_id: null
+ *                   conteudo: "Paciente demonstrou excelente autorregulação emocional."
+ *                   created_at: "2026-10-15T18:00:00Z"
+ *                   updated_at: "2026-10-15T18:00:00Z"
  *       401:
- *         description: Unauthenticated
+ *         description: Não autorizado
  *       403:
- *         description: No institutional permission (RN04)
+ *         description: Sem vínculo ativo (RN04)
  *       404:
- *         description: Patient not found
+ *         description: Paciente não encontrado
  */
 anotacaoRoutes.get(
   '/paciente/:pacienteId',
@@ -104,45 +274,10 @@ anotacaoRoutes.get(
 
 /**
  * @swagger
- * /api/anotacao/paciente/{id}/hard:
- *   delete:
- *     summary: "[DEV/TESTS] Permanent hard delete of a patient note"
- *     tags: [Clinical Notes]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       204:
- *         description: Hard deleted successfully
- *       401:
- *         description: Unauthenticated
- *       403:
- *         description: Restricted to administrators
- *       404:
- *         description: Note not found
- */
-anotacaoRoutes.delete(
-  '/paciente/:id/hard',
-  authMiddleware,
-  adminMiddleware,
-  resolverContextoPaciente,
-  verificarVisibilidadePaciente,
-  AnotacaoPacienteController.deletarHard
-);
-
-/**
- * @swagger
  * /api/anotacao/paciente/{id}:
  *   patch:
- *     summary: Edits the content of a patient clinical note
- *     description: Allows changing only the note text. Restricted to the therapist who authored the note.
- *     tags: [Clinical Notes]
+ *     summary: Edita o conteúdo de uma anotação de paciente
+ *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -152,6 +287,7 @@ anotacaoRoutes.delete(
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: UUID da anotação
  *     requestBody:
  *       required: true
  *       content:
@@ -163,17 +299,25 @@ anotacaoRoutes.delete(
  *             properties:
  *               conteudo:
  *                 type: string
+ *                 example: "Texto clínico atualizado."
  *     responses:
  *       200:
- *         description: Note updated successfully
+ *         description: Anotação atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "33333333-3333-3333-3333-333333333333"
+ *                 conteudo: "Texto clínico atualizado."
+ *                 updated_at: "2026-10-15T18:05:00Z"
  *       400:
- *         description: Empty or invalid content
+ *         description: Conteúdo vazio ou inválido
  *       401:
- *         description: Unauthenticated
+ *         description: Não autorizado
  *       403:
- *         description: User is not the note author
+ *         description: Usuário não é o autor da anotação
  *       404:
- *         description: Note not found in this scope
+ *         description: Anotação não encontrada
  */
 anotacaoRoutes.patch(
   '/paciente/:id',
@@ -187,9 +331,43 @@ anotacaoRoutes.patch(
  * @swagger
  * /api/anotacao/paciente/{id}:
  *   delete:
- *     summary: Logical deletion (soft delete) of a patient note
- *     description: Sets soft_delete = true, preserving the immutability of the clinical history (RN05). Restricted to the note author.
- *     tags: [Clinical Notes]
+ *     summary: Exclusão lógica (soft delete) de anotação de paciente
+ *     description: Marca a anotação como inativa, preservando a imutabilidade do histórico clínico (RN05). Restrito ao autor.
+ *     tags: [Anotações Clínicas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da anotação
+ *     responses:
+ *       204:
+ *         description: Anotação desativada com sucesso (sem corpo de resposta)
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Apenas o autor pode excluir
+ *       404:
+ *         description: Anotação não encontrada
+ */
+anotacaoRoutes.delete(
+  '/paciente/:id',
+  authMiddleware,
+  resolverContextoPaciente,
+  verificarVisibilidadePaciente,
+  AnotacaoPacienteController.deletar
+);
+
+/**
+ * @swagger
+ * /api/anotacao/paciente/{id}/hard:
+ *   delete:
+ *     summary: "[DEV/TESTES] Exclusão física permanente de anotação de paciente"
+ *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -201,33 +379,34 @@ anotacaoRoutes.patch(
  *           format: uuid
  *     responses:
  *       204:
- *         description: Note deactivated successfully
+ *         description: Anotação excluída fisicamente
  *       401:
- *         description: Unauthenticated
+ *         description: Não autorizado
  *       403:
- *         description: User is not the note author
+ *         description: Restrito a administradores
  *       404:
- *         description: Note not found in this scope
+ *         description: Anotação não encontrada
  */
 anotacaoRoutes.delete(
-  '/paciente/:id',
+  '/paciente/:id/hard',
   authMiddleware,
+  adminMiddleware,
   resolverContextoPaciente,
   verificarVisibilidadePaciente,
-  AnotacaoPacienteController.deletar
+  AnotacaoPacienteController.deletarHard
 );
 
 // ==============================================================================
-// SESSION-LINKED NOTES ROUTES (/api/anotacao/sessao)
+// 3. ROTAS DE ANOTAÇÕES VINCULADAS A SESSÃO (/api/anotacao/sessao)
 // ==============================================================================
 
 /**
  * @swagger
  * /api/anotacao/sessao:
  *   post:
- *     summary: Records a clinical note associated with a session
- *     description: Links the note to the session and the corresponding patient. A cancelled session returns 400. Authorship via JWT (RF21).
- *     tags: [Clinical Notes]
+ *     summary: Registra anotação clínica associada a uma sessão
+ *     description: Vincula a nota à sessão e ao paciente correspondente. Sessão cancelada retorna 400. Autoria via JWT (RF21).
+ *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -243,22 +422,32 @@ anotacaoRoutes.delete(
  *               sessao_id:
  *                 type: string
  *                 format: uuid
+ *                 example: "11111111-1111-1111-1111-111111111111"
  *               conteudo:
  *                 type: string
- *               terapeuta_id:
- *                 type: string
- *                 format: uuid
+ *                 example: "Excelente foco atencional nos primeiros 10 minutos de partida."
  *     responses:
  *       201:
- *         description: Session note created successfully
+ *         description: Anotação de sessão criada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "33333333-3333-3333-3333-333333333333"
+ *                 terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                 paciente_id: "22222222-2222-2222-2222-222222222222"
+ *                 sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                 conteudo: "Excelente foco atencional nos primeiros 10 minutos de partida."
+ *                 created_at: "2026-10-15T18:00:00Z"
+ *                 updated_at: "2026-10-15T18:00:00Z"
  *       400:
- *         description: Cancelled session, free mode, or invalid data
+ *         description: Sessão cancelada, modo livre ou dados inválidos
  *       401:
- *         description: Unauthenticated
+ *         description: Não autorizado
  *       403:
- *         description: No institutional permission (RN04) or mismatched therapist
+ *         description: Sem permissão institucional (RN04)
  *       404:
- *         description: Session not found
+ *         description: Sessão não encontrada
  */
 anotacaoRoutes.post(
   '/sessao',
@@ -272,8 +461,8 @@ anotacaoRoutes.post(
  * @swagger
  * /api/anotacao/sessao/{sessaoId}:
  *   get:
- *     summary: Lists clinical notes linked to a specific session
- *     tags: [Clinical Notes]
+ *     summary: Lista anotações clínicas de uma sessão específica
+ *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -283,15 +472,27 @@ anotacaoRoutes.post(
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: UUID da sessão clínica
  *     responses:
  *       200:
- *         description: Session notes list
+ *         description: Lista de anotações da sessão
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 - id: "33333333-3333-3333-3333-333333333333"
+ *                   terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                   paciente_id: "22222222-2222-2222-2222-222222222222"
+ *                   sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                   conteudo: "Excelente foco atencional nos primeiros 10 minutos."
+ *                   created_at: "2026-10-15T18:00:00Z"
+ *                   updated_at: "2026-10-15T18:00:00Z"
  *       401:
- *         description: Unauthenticated
+ *         description: Não autorizado
  *       403:
- *         description: No institutional permission (RN04)
+ *         description: Sem permissão institucional (RN04)
  *       404:
- *         description: Session not found
+ *         description: Sessão não encontrada
  */
 anotacaoRoutes.get(
   '/sessao/:sessaoId',
@@ -303,45 +504,10 @@ anotacaoRoutes.get(
 
 /**
  * @swagger
- * /api/anotacao/sessao/{id}/hard:
- *   delete:
- *     summary: "[DEV/TESTS] Permanent hard delete of a session note"
- *     tags: [Clinical Notes]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       204:
- *         description: Hard deleted successfully
- *       401:
- *         description: Unauthenticated
- *       403:
- *         description: Restricted to administrators
- *       404:
- *         description: Note not found
- */
-anotacaoRoutes.delete(
-  '/sessao/:id/hard',
-  authMiddleware,
-  adminMiddleware,
-  resolverContextoSessao,
-  verificarVisibilidadePaciente,
-  AnotacaoSessaoController.deletarHard
-);
-
-/**
- * @swagger
  * /api/anotacao/sessao/{id}:
  *   patch:
- *     summary: Edits the content of a session clinical note
- *     description: Allows changing only the note text. Restricted to the therapist who authored the note.
- *     tags: [Clinical Notes]
+ *     summary: Edita o conteúdo de uma anotação de sessão
+ *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -362,17 +528,25 @@ anotacaoRoutes.delete(
  *             properties:
  *               conteudo:
  *                 type: string
+ *                 example: "Anotação de sessão atualizada."
  *     responses:
  *       200:
- *         description: Note updated successfully
+ *         description: Anotação atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "33333333-3333-3333-3333-333333333333"
+ *                 conteudo: "Anotação de sessão atualizada."
+ *                 updated_at: "2026-10-15T18:05:00Z"
  *       400:
- *         description: Empty or invalid content
+ *         description: Conteúdo vazio ou inválido
  *       401:
- *         description: Unauthenticated
+ *         description: Não autorizado
  *       403:
- *         description: User is not the note author
+ *         description: Usuário não é o autor
  *       404:
- *         description: Note not found in this scope
+ *         description: Anotação não encontrada
  */
 anotacaoRoutes.patch(
   '/sessao/:id',
@@ -386,9 +560,8 @@ anotacaoRoutes.patch(
  * @swagger
  * /api/anotacao/sessao/{id}:
  *   delete:
- *     summary: Logical deletion (soft delete) of a session note
- *     description: Sets soft_delete = true, preserving clinical immutability (RN05). Restricted to the note author.
- *     tags: [Clinical Notes]
+ *     summary: Exclusão lógica (soft delete) de anotação de sessão
+ *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -400,13 +573,13 @@ anotacaoRoutes.patch(
  *           format: uuid
  *     responses:
  *       204:
- *         description: Note deactivated successfully
+ *         description: Anotação desativada com sucesso
  *       401:
- *         description: Unauthenticated
+ *         description: Não autorizado
  *       403:
- *         description: User is not the note author
+ *         description: Usuário não é o autor
  *       404:
- *         description: Note not found in this scope
+ *         description: Anotação não encontrada
  */
 anotacaoRoutes.delete(
   '/sessao/:id',
@@ -414,4 +587,38 @@ anotacaoRoutes.delete(
   resolverContextoSessao,
   verificarVisibilidadePaciente,
   AnotacaoSessaoController.deletar
+);
+
+/**
+ * @swagger
+ * /api/anotacao/sessao/{id}/hard:
+ *   delete:
+ *     summary: "[DEV/TESTES] Exclusão física permanente de anotação de sessão"
+ *     tags: [Anotações Clínicas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Anotação excluída fisicamente
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Restrito a administradores
+ *       404:
+ *         description: Anotação não encontrada
+ */
+anotacaoRoutes.delete(
+  '/sessao/:id/hard',
+  authMiddleware,
+  adminMiddleware,
+  resolverContextoSessao,
+  verificarVisibilidadePaciente,
+  AnotacaoSessaoController.deletarHard
 );

@@ -87,7 +87,20 @@ export class PacienteController {
         return;
       }
 
-      res.status(200).json({ data: paciente });
+      const responsaveisNormalizados = Array.isArray(paciente.responsaveis)
+        ? paciente.responsaveis.map((r: any) => (r?.responsavel ? r.responsavel : r))
+        : [];
+      const terapeutasNormalizados = Array.isArray(paciente.terapeutas)
+        ? paciente.terapeutas.map((t: any) => (t?.terapeuta ? t.terapeuta : t))
+        : [];
+
+      res.status(200).json({
+        data: {
+          ...paciente,
+          responsaveis: responsaveisNormalizados,
+          terapeutas: terapeutasNormalizados,
+        },
+      });
     } catch (error) {
       console.error('[PacienteController.buscarPorId]', error);
       res.status(500).json({ error: 'Erro interno ao buscar paciente.' });

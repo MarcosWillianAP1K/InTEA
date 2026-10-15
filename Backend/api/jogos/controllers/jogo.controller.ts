@@ -20,7 +20,19 @@ export class JogoController {
       };
 
       const resultado = await JogoModel.listar(filtros);
-      res.json(resultado);
+      res.json({
+        data: resultado.data,
+        total: resultado.total,
+        page: resultado.page,
+        limit: resultado.limit,
+        totalPages: resultado.totalPages,
+        meta: {
+          total: resultado.total,
+          page: resultado.page,
+          limit: resultado.limit,
+          totalPages: resultado.totalPages,
+        },
+      });
     } catch (error) {
       console.error('[JogoController] Erro ao listar jogos:', error);
       res.status(500).json({ error: 'Erro ao listar catálogo de jogos' });
@@ -148,7 +160,12 @@ export class JogoController {
       res.status(200).json({
         podeGravar: true,
         tipoDetectado: resultado.tipoDetectado,
-        metricaHomologada: resultado.metricaHomologada
+        metricaHomologada: resultado.metricaHomologada,
+        data: {
+          podeGravar: true,
+          tipoDetectado: resultado.tipoDetectado,
+          metricaHomologada: resultado.metricaHomologada,
+        },
       });
     } catch (error) {
       console.error('[JogoController] Erro ao validar telemetria:', error);
