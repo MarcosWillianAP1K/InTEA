@@ -34,12 +34,12 @@
 * **Referência Documentação:** Seção 5.7 (Figura 4), RF14, RF16, RN05, AGENTS.md (Seção 6.2)
 * **Descrição:** Criar migração SQL `008_create_tabela_relatorio_e_anotacao.sql` e atualizar `database.sql` garantindo conformidade rigorosa com a 3ª Forma Normal (**3FN**): a tabela `relatorio_sessao` vincula unicamente `sessao_id UUID UNIQUE NOT NULL REFERENCES public.sessao(id) ON DELETE RESTRICT` e armazena `dados_ia_json JSONB`, parecer e `soft_delete`, **sem duplicar redundantemente `paciente_id`** (já unívoco em `sessao`, suportando **RN01** onde modo livre tem `paciente_id = NULL`). A tabela `anotacao_clinica` contém `paciente_id UUID NOT NULL REFERENCES public.paciente(id)`, `terapeuta_id UUID NOT NULL REFERENCES public.terapeuta(id)`, `sessao_id UUID REFERENCES public.sessao(id) ON DELETE SET NULL`, `conteudo TEXT NOT NULL` e `soft_delete BOOLEAN DEFAULT FALSE`. Implementar models TypeScript estritos e auditar políticas RLS para ambas as tabelas prevenindo bloqueios acidentais (`42501`).
 * **Critérios de Aceite:**
-  * [ ] Migration executada com sucesso e idempotente (`IF NOT EXISTS`).
-  * [ ] Conformidade 3FN: `relatorio_sessao` não duplica `paciente_id`, obtendo paciente via JOIN com `sessao`.
-  * [ ] Tabela `anotacao_clinica` permite registro vinculado a paciente com ou sem sessão associada.
-  * [ ] Políticas RLS auditadas garantindo acesso por vínculo institucional (**RN04**) e bypass de `service_role`.
-  * [ ] Models `RelatorioSessaoModel` e `AnotacaoClinicaModel` com TypeScript estrito (zero `any`).
-  * [ ] Trigger `impedir_hard_delete_clinico()` ativo bloqueando `DELETE` físico (**RN05**).
+  * [x] Migration executada com sucesso e idempotente (`IF NOT EXISTS`).
+  * [x] Conformidade 3FN: `relatorio_sessao` não duplica `paciente_id`, obtendo paciente via JOIN com `sessao`.
+  * [x] Tabela `anotacao_clinica` permite registro vinculado a paciente com ou sem sessão associada.
+  * [x] Políticas RLS auditadas garantindo acesso por vínculo institucional (**RN04**) e bypass de `service_role`.
+  * [x] Models `RelatorioSessaoModel` e `AnotacaoClinicaModel` com TypeScript estrito (zero `any`).
+  * [ ] Trigger `impedir_hard_delete_clinico()` ativo bloqueando `DELETE` físico (**RN05**) *(adiado deliberadamente para a sprint de hardening/polimento para viabilizar rotinas de teste)*.
 
 ---
 

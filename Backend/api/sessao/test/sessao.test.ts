@@ -8,11 +8,15 @@ import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { SessaoModel } from '../models/sessao.model.js';
 
 // Helper para criar mocks de request/response de forma padronizada
-function criarMocks(body: Record<string, unknown> = {}, params: Record<string, string> = {}) {
+function criarMocks(
+  body: Record<string, unknown> = {},
+  params: Record<string, string> = {},
+  user: Record<string, unknown> | null = { id: 'terapeuta-valido' }
+) {
   let statusCode = 200;
   let jsonResult: unknown = null;
 
-  const mockReq = { body, params } as unknown as import('express').Request;
+  const mockReq = { body, params, user } as unknown as import('express').Request;
   const mockRes = {
     status(code: number) {
       statusCode = code;
@@ -123,9 +127,8 @@ describe('SessaoController.atualizarStatus', () => {
 // iniciar — validações de entrada e regras RN01
 // =============================================================================
 describe('SessaoController.iniciar', () => {
-  it('deve rejeitar sem terapeuta_id ou jogo_id', async () => {
+  it('deve rejeitar sem jogo_id', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      terapeuta_id: 'terapeuta-1',
       codigo_pareamento: '4M5S-8U7B',
     });
 
@@ -138,7 +141,6 @@ describe('SessaoController.iniciar', () => {
 
   it('deve rejeitar sem codigo_pareamento', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      terapeuta_id: 'terapeuta-1',
       jogo_id: 'jogo-1',
       paciente_id: 'paciente-1',
     });
@@ -150,9 +152,43 @@ describe('SessaoController.iniciar', () => {
     expect((getJson() as { error: string }).error).toContain('codigo_pareamento');
   });
 
+  it('deve rejeitar com 401 quando o terapeuta não estiver autenticado no token (CA-2)', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {
+        jogo_id: 'jogo-1',
+        codigo_pareamento: '4M5S-8U7B',
+      },
+      {},
+      null // Sem usuário autenticado (req.user ausente)
+    );
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(401);
+    expect((getJson() as { error: string }).error).toContain('não autorizado');
+  });
+
+  it('deve rejeitar com 403 quando o terapeuta_id no body for divergente do usuário autenticado (anti-spoofing) (CA-3)', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {
+        terapeuta_id: 'uuid-do-terapeuta-divergente',
+        jogo_id: 'jogo-1',
+        codigo_pareamento: '4M5S-8U7B',
+      },
+      {},
+      { id: 'uuid-do-terapeuta-autenticado' }
+    );
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(403);
+    expect((getJson() as { error: string }).error).toContain('não autorizada');
+  });
+
   it('deve rejeitar modo_sessao inválido', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      terapeuta_id: 'terapeuta-1',
       jogo_id: 'jogo-1',
       codigo_pareamento: '4M5S-8U7B',
       modo_sessao: 'modo_inexistente',
@@ -167,7 +203,6 @@ describe('SessaoController.iniciar', () => {
 
   it('deve rejeitar sessão clínica sem paciente_id (RN01)', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      terapeuta_id: 'terapeuta-1',
       jogo_id: 'jogo-1',
       codigo_pareamento: '4M5S-8U7B',
       modo_sessao: 'sessao_clinica',
@@ -183,7 +218,6 @@ describe('SessaoController.iniciar', () => {
 
   it('deve rejeitar modo livre com paciente_id vinculado (RN01)', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      terapeuta_id: 'terapeuta-1',
       jogo_id: 'jogo-1',
       codigo_pareamento: '4M5S-8U7B',
       modo_sessao: 'modo_livre',
@@ -197,13 +231,51 @@ describe('SessaoController.iniciar', () => {
     expect((getJson() as { error: string }).error).toContain('RN01');
   });
 
-  it('deve permitir iniciar sessão com dados válidos', async () => {
+  it('deve permitir iniciar sessão extraindo terapeuta_id do token quando ausente no body (CA-1)', async () => {
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    const originalCriar = SessaoModel.criar;
+    let terapeutaIdRecebidoPeloModel = '';
+
+    // @ts-expect-error — mock temporário para teste unitário
+    SessaoModel.criar = async (dados: any) => {
+      terapeutaIdRecebidoPeloModel = dados.terapeuta_id;
+      return {
+        id: 'sessao-criada-123',
+        session_token: '4M5S-8U7B',
+        status_sessao: 'aguardando_pareamento',
+        modo_sessao: 'sessao_clinica',
+        paciente_id: 'paciente-123',
+        expira_em: new Date().toISOString(),
+      };
+    };
+
+    // Requisição SEM terapeuta_id no body
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {
+        jogo_id: 'jogo-1',
+        codigo_pareamento: '4M5S-8U7B',
+        modo_sessao: 'sessao_clinica',
+        paciente_id: 'paciente-123',
+      },
+      {},
+      { id: 'terapeuta-jwt-autenticado-xyz' }
+    );
+
+    await SessaoController.iniciar(mockReq, mockRes);
+    SessaoModel.criar = originalCriar;
+
+    expect(getStatus()).toBe(201);
+    expect(terapeutaIdRecebidoPeloModel).toBe('terapeuta-jwt-autenticado-xyz');
+    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('sessao-criada-123');
+  });
+
+  it('deve permitir iniciar sessão quando terapeuta_id no body for idêntico ao do token', async () => {
     const { SessaoController } = await import('../controllers/sessao.controller.js');
     const originalCriar = SessaoModel.criar;
 
     // @ts-expect-error — mock temporário para teste unitário
     SessaoModel.criar = async () => ({
-      id: 'sessao-criada-123',
+      id: 'sessao-criada-456',
       session_token: '4M5S-8U7B',
       status_sessao: 'aguardando_pareamento',
       modo_sessao: 'sessao_clinica',
@@ -211,19 +283,23 @@ describe('SessaoController.iniciar', () => {
       expira_em: new Date().toISOString(),
     });
 
-    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      terapeuta_id: 'terapeuta-valido',
-      jogo_id: 'jogo-1',
-      codigo_pareamento: '4M5S-8U7B',
-      modo_sessao: 'sessao_clinica',
-      paciente_id: 'paciente-123',
-    });
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {
+        terapeuta_id: 'terapeuta-coincidente',
+        jogo_id: 'jogo-1',
+        codigo_pareamento: '4M5S-8U7B',
+        modo_sessao: 'sessao_clinica',
+        paciente_id: 'paciente-123',
+      },
+      {},
+      { id: 'terapeuta-coincidente' }
+    );
 
     await SessaoController.iniciar(mockReq, mockRes);
     SessaoModel.criar = originalCriar;
 
     expect(getStatus()).toBe(201);
-    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('sessao-criada-123');
+    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('sessao-criada-456');
   });
 
   it('verificarVisibilidadePaciente deve permitir modo_livre sem paciente_id (RN01)', async () => {

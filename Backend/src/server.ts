@@ -8,8 +8,12 @@ import swaggerJsdoc from "swagger-jsdoc";
 import { apiRouter } from "../api/index.js";
 import { SessaoGateway } from "../core/websocket/sessao.gateway.js";
 import { TelemetriaService } from "../api/telemetria/services/telemetria.service.js";
+import { inicializarAuditoriaListeners } from "../api/auditoria/listeners/auditoria.listener.js";
 
 dotenv.config();
+
+// Inicializa ouvintes assíncronos de eventos de domínio (Auditoria e rastreabilidade forense)
+inicializarAuditoriaListeners();
 
 const app = express();
 const port = process.env.PORT || 3000;
