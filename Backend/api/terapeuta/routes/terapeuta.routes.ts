@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { TerapeutaController } from '../controllers/terapeuta.controller.js';
+import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
+import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/terapeuta
@@ -17,6 +19,8 @@ export const terapeutaRoutes = Router();
  *   get:
  *     summary: Lista terapeutas ativos
  *     tags: [Terapeuta]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: incluirInativos
@@ -26,10 +30,12 @@ export const terapeutaRoutes = Router();
  *     responses:
  *       200:
  *         description: Lista de terapeutas retornada com sucesso
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
  *       500:
  *         description: Erro interno do servidor
  */
-terapeutaRoutes.get('/', TerapeutaController.listar);
+terapeutaRoutes.get('/', authMiddleware, adminMiddleware, TerapeutaController.listar);
 
 /**
  * @swagger
@@ -37,6 +43,8 @@ terapeutaRoutes.get('/', TerapeutaController.listar);
  *   get:
  *     summary: Busca dados de um terapeuta pelo ID (UUID)
  *     tags: [Terapeuta]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -47,12 +55,18 @@ terapeutaRoutes.get('/', TerapeutaController.listar);
  *     responses:
  *       200:
  *         description: Terapeuta encontrado
+ *       400:
+ *         description: Identificador UUID inválido ou ausente
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (operação restrita a administradores ativos)
  *       404:
  *         description: Terapeuta não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-terapeutaRoutes.get('/:id', TerapeutaController.buscarPorId);
+terapeutaRoutes.get('/:id', authMiddleware, adminMiddleware, TerapeutaController.buscarPorId);
 
 // ------------------------------------------------------------------------------
 // 3. Persistência (Criação e Edição)
@@ -64,6 +78,8 @@ terapeutaRoutes.get('/:id', TerapeutaController.buscarPorId);
  *   post:
  *     summary: Cadastra um novo terapeuta e cria conta de login
  *     tags: [Terapeuta]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -81,12 +97,16 @@ terapeutaRoutes.get('/:id', TerapeutaController.buscarPorId);
  *         description: Terapeuta cadastrado e conta criada com sucesso
  *       400:
  *         description: Campos obrigatórios ausentes ou senha curta (< 6 caracteres)
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (operação restrita a administradores ativos)
  *       409:
  *         description: E-mail já cadastrado
  *       500:
  *         description: Erro interno do servidor
  */
-terapeutaRoutes.post('/', TerapeutaController.criar);
+terapeutaRoutes.post('/', authMiddleware, adminMiddleware, TerapeutaController.criar);
 
 /**
  * @swagger
@@ -94,6 +114,8 @@ terapeutaRoutes.post('/', TerapeutaController.criar);
  *   put:
  *     summary: Atualiza dados cadastrais de um terapeuta
  *     tags: [Terapeuta]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -113,12 +135,18 @@ terapeutaRoutes.post('/', TerapeutaController.criar);
  *     responses:
  *       200:
  *         description: Terapeuta atualizado com sucesso
+ *       400:
+ *         description: Dados de atualização inválidos
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (operação restrita a administradores ativos)
  *       404:
  *         description: Terapeuta não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-terapeutaRoutes.put('/:id', TerapeutaController.atualizar);
+terapeutaRoutes.put('/:id', authMiddleware, adminMiddleware, TerapeutaController.atualizar);
 
 // ------------------------------------------------------------------------------
 // 4. Exclusão e Reativação
@@ -130,6 +158,8 @@ terapeutaRoutes.put('/:id', TerapeutaController.atualizar);
  *   delete:
  *     summary: "[DEV/TESTES] Exclusão física permanente do terapeuta"
  *     tags: [Terapeuta]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -140,12 +170,16 @@ terapeutaRoutes.put('/:id', TerapeutaController.atualizar);
  *     responses:
  *       200:
  *         description: Terapeuta e credenciais removidos fisicamente
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (operação restrita a administradores ativos)
  *       404:
  *         description: Terapeuta não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-terapeutaRoutes.delete('/:id/hard', TerapeutaController.deletarHard);
+terapeutaRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, TerapeutaController.deletarHard);
 
 /**
  * @swagger
@@ -153,6 +187,8 @@ terapeutaRoutes.delete('/:id/hard', TerapeutaController.deletarHard);
  *   delete:
  *     summary: Soft Delete — Inativa o cadastro do terapeuta (status_ativo = false)
  *     tags: [Terapeuta]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -163,12 +199,16 @@ terapeutaRoutes.delete('/:id/hard', TerapeutaController.deletarHard);
  *     responses:
  *       200:
  *         description: Terapeuta desativado com sucesso (soft delete)
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (operação restrita a administradores ativos)
  *       404:
  *         description: Terapeuta não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-terapeutaRoutes.delete('/:id', TerapeutaController.desativar);
+terapeutaRoutes.delete('/:id', authMiddleware, adminMiddleware, TerapeutaController.desativar);
 
 /**
  * @swagger
@@ -176,6 +216,8 @@ terapeutaRoutes.delete('/:id', TerapeutaController.desativar);
  *   patch:
  *     summary: Reativa o cadastro de um terapeuta
  *     tags: [Terapeuta]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -186,9 +228,13 @@ terapeutaRoutes.delete('/:id', TerapeutaController.desativar);
  *     responses:
  *       200:
  *         description: Terapeuta reativado com sucesso
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (operação restrita a administradores ativos)
  *       404:
  *         description: Terapeuta não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-terapeutaRoutes.patch('/:id/reativar', TerapeutaController.reativar);
+terapeutaRoutes.patch('/:id/reativar', authMiddleware, adminMiddleware, TerapeutaController.reativar);

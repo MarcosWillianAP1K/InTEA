@@ -1,0 +1,54 @@
+# =============================================================================
+# docker-compose.override.yml — Hot-reload em Desenvolvimento (InTEA)
+#
+# O Docker Compose mescla automaticamente este arquivo com o docker-compose.yml
+# ao executar:
+#   docker compose up
+#
+# Com isso:
+# 1. Os volumes são montados da máquina host para os containers.
+# 2. O Backend roda com 'tsx watch' (reinicia a cada alteração em .ts).
+# 3. O Frontend roda com 'vite' (HMR instantâneo no navegador).
+#
+# Para rodar os containers no modo PRODUÇÃO estrito (Nginx + dist compilado):
+#   docker compose -f docker-compose.yml up --build
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Backend em modo Desenvolvimento (Hot-reload)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      target: development
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./Backend:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # ---------------------------------------------------------------------------
+  # Frontend em modo Desenvolvimento (Vite HMR)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      target: development
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5173/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

@@ -30,6 +30,26 @@ ENV VITE_API_URL=$VITE_API_URL \
 RUN npm run build
 
 # -----------------------------------------------------------------------------
+# Stage: Desenvolvimento (Hot-reload com Vite HMR e volumes)
+# -----------------------------------------------------------------------------
+FROM node:lts-alpine AS development
+
+RUN apk update && apk upgrade --no-cache
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm install
+
+COPY . .
+
+ENV NODE_ENV=development
+
+EXPOSE 5173
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+
+# -----------------------------------------------------------------------------
 # Stage 2: Produção com Nginx Alpine Slim (superfície mínima de ataque e CVEs)
 # -----------------------------------------------------------------------------
 FROM nginx:alpine-slim AS production
