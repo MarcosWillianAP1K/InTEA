@@ -23,9 +23,6 @@ export interface ManifestoJogo {
   suportaVR?: boolean;
 }
 
-// Estados possíveis de instalação
-export type StatusInstalacao = "instalado" | "disponivel" | "atualizacao";
-
 // Modelo completo do Jogo usado na interface
 export interface Jogo {
   id: string;
@@ -33,7 +30,6 @@ export interface Jogo {
   versao: string;
   descricaoClinica: string;
   objetivoTerapeutico: string;
-  statusInstalacao: StatusInstalacao;
   bannerUrl?: string;
   manifesto: ManifestoJogo;
 }
@@ -41,6 +37,5 @@ export interface Jogo {
 // Filtros para a barra de pesquisa/seleção
 export interface FiltrosJogos {
   objetivo?: string;
-  status?: StatusInstalacao | "todos";
   busca?: string;
 }

@@ -43,16 +43,11 @@ export const jogosRoutes = Router();
  *                   nome: "Aventura das Cores"
  *                   descricao: "Estimula atenção compartilhada e reconhecimento facial."
  *                   versao: "1.2.0"
- *                   status_instalacao: "instalado"
  *               meta:
  *                 total: 3
  *                 page: 1
  *                 limit: 10
  *                 totalPages: 1
- *               total: 3
- *               page: 1
- *               limit: 10
- *               totalPages: 1
  *       500:
  *         description: Erro interno ao listar catálogo de jogos
  *         content:
@@ -175,7 +170,6 @@ jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
  *                 nome: "Aventura das Cores"
  *                 descricao: "Estimula atenção compartilhada e reconhecimento facial."
  *                 versao: "1.2.0"
- *                 status_instalacao: "instalado"
  *                 manifesto_json:
  *                   id_jogo: "aventura-das-cores"
  *                   nome: "Aventura das Cores"

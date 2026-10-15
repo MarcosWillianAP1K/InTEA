@@ -22,10 +22,6 @@ export class JogoController {
       const resultado = await JogoModel.listar(filtros);
       res.json({
         data: resultado.data,
-        total: resultado.total,
-        page: resultado.page,
-        limit: resultado.limit,
-        totalPages: resultado.totalPages,
         meta: {
           total: resultado.total,
           page: resultado.page,

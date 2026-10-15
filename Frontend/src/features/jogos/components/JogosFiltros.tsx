@@ -7,13 +7,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
-import type { FiltrosJogos, StatusInstalacao } from "../types";
+import type { FiltrosJogos } from "../types";
 
 interface JogosFiltrosProps {
   filtros: FiltrosJogos;
   onFiltroBusca: (busca: string) => void;
   onFiltroObjetivo: (objetivo: string) => void;
-  onFiltroStatus?: (status: StatusInstalacao | "todos") => void;
   objetivosDisponiveis: string[];
 }
 
@@ -21,7 +20,6 @@ export function JogosFiltros({
   filtros,
   onFiltroBusca,
   onFiltroObjetivo,
-  onFiltroStatus,
   objetivosDisponiveis,
 }: JogosFiltrosProps) {
   return (
@@ -56,23 +54,6 @@ export function JogosFiltros({
             ))}
           </SelectContent>
         </Select>
-
-        {/* SELECT STATUS / INSTALAÇÃO */}
-        {onFiltroStatus && (
-          <Select
-            value={filtros.status || "todos"}
-            onValueChange={(v) => onFiltroStatus(v as StatusInstalacao | "todos")}
-          >
-            <SelectTrigger className="w-40 bg-card text-foreground border-border focus:border-[#0b3294]">
-              <SelectValue placeholder="Todos os status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os status</SelectItem>
-              <SelectItem value="instalado">Instalado</SelectItem>
-              <SelectItem value="disponivel">Disponível</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
       </div>
     </div>
   );

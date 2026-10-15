@@ -177,7 +177,6 @@ CREATE TABLE IF NOT EXISTS public.jogo (
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
     versao VARCHAR(50) NOT NULL,
-    status_instalacao VARCHAR(50) DEFAULT 'instalado' NOT NULL,
     manifesto_json JSONB NOT NULL DEFAULT '{}'::jsonb, -- Contrato 1: Manifesto de métricas
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL

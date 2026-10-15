@@ -28,7 +28,6 @@ const JOGOS_SEED = [
     nome: 'Aventura das Cores',
     descricao: 'Estimula atenção compartilhada e reconhecimento facial através de interação cromática e emparelhamento de cores.',
     versao: '1.2.0',
-    status_instalacao: 'instalado',
     manifesto_json: {
       id_jogo: 'aventura-das-cores',
       nome: 'Aventura das Cores',
@@ -44,7 +43,6 @@ const JOGOS_SEED = [
     nome: 'Formas Calmas',
     descricao: 'Foco em pareamento visual e regulação sensorial em ambiente desacelerado.',
     versao: '2.0.0',
-    status_instalacao: 'instalado',
     manifesto_json: {
       id_jogo: 'formas-calmas',
       nome: 'Formas Calmas',
@@ -60,7 +58,6 @@ const JOGOS_SEED = [
     nome: 'Som dos Animais',
     descricao: 'Associação auditivo-visual para desenvolvimento de linguagem e reconhecimento sonoro.',
     versao: '1.0.0',
-    status_instalacao: 'instalado',
     manifesto_json: {
       id_jogo: 'som-dos-animais',
       nome: 'Som dos Animais',
@@ -103,7 +100,7 @@ async function runSeed() {
     const { data, error } = await supabase
       .from('jogo')
       .insert(jogo)
-      .select('id, nome, versao, status_instalacao')
+      .select('id, nome, versao')
       .single();
 
     if (error) {

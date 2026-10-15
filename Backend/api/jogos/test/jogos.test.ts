@@ -5,7 +5,7 @@ import { Request, Response } from 'express';
 
 describe('Catálogo de Jogos (RF09)', () => {
   describe('JogoModel', () => {
-    it('deve listar os jogos com nome, versão, descrição e status de instalação', async () => {
+    it('deve listar os jogos com nome, versão e descrição', async () => {
       const resultado = await JogoModel.listar();
 
       expect(Array.isArray(resultado.data)).toBe(true);
@@ -15,7 +15,6 @@ describe('Catálogo de Jogos (RF09)', () => {
       expect(jogo).toHaveProperty('nome');
       expect(jogo).toHaveProperty('versao');
       expect(jogo).toHaveProperty('descricao');
-      expect(jogo).toHaveProperty('status_instalacao');
       // manifesto_json não deve aparecer na listagem resumida
       expect(jogo).not.toHaveProperty('manifesto_json');
     });

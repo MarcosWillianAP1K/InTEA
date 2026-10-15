@@ -20,7 +20,6 @@ export interface Jogo {
   nome: string;
   descricao: string;
   versao: string;
-  status_instalacao: 'instalado' | 'desatualizado' | 'nao_instalado' | 'em_execucao' | string;
   manifesto_json: ManifestoJogo;
   created_at?: string;
   updated_at?: string;
@@ -31,7 +30,6 @@ export interface JogoResumo {
   nome: string;
   descricao: string;
   versao: string;
-  status_instalacao: string;
 }
 
 export interface FiltrosJogo {
@@ -56,7 +54,6 @@ export class JogoModel {
       nome: 'Aventura das Cores',
       descricao: 'Estimula atenção compartilhada e reconhecimento facial através de interação cromática.',
       versao: '1.2.0',
-      status_instalacao: 'instalado',
       manifesto_json: {
         id_jogo: 'aventura-das-cores',
         nome: 'Aventura das Cores',
@@ -81,7 +78,6 @@ export class JogoModel {
       nome: 'Formas Calmas',
       descricao: 'Foco em pareamento visual e regulação sensorial em ambiente desacelerado.',
       versao: '2.0.0',
-      status_instalacao: 'instalado',
       manifesto_json: {
         id_jogo: 'formas-calmas',
         nome: 'Formas Calmas',
@@ -106,7 +102,6 @@ export class JogoModel {
       nome: 'Som dos Animais',
       descricao: 'Associação auditivo-visual para desenvolvimento de linguagem e reconhecimento sonoro.',
       versao: '1.0.0',
-      status_instalacao: 'instalado',
       manifesto_json: {
         id_jogo: 'som-dos-animais',
         nome: 'Som dos Animais',
@@ -154,7 +149,7 @@ export class JogoModel {
       try {
         let query = supabase
           .from('jogo')
-          .select('id, nome, descricao, versao, status_instalacao, manifesto_json', { count: 'exact' });
+          .select('id, nome, descricao, versao, manifesto_json', { count: 'exact' });
 
         // Filtro por objetivo_clinico dentro do JSONB (RF19)
         if (filtros.objetivo) {
@@ -170,8 +165,7 @@ export class JogoModel {
               id: j.id,
               nome: j.nome,
               descricao: j.descricao,
-              versao: j.versao,
-              status_instalacao: j.status_instalacao
+              versao: j.versao
             })),
             total,
             page,
@@ -201,8 +195,7 @@ export class JogoModel {
         id: j.id,
         nome: j.nome,
         descricao: j.descricao,
-        versao: j.versao,
-        status_instalacao: j.status_instalacao
+        versao: j.versao
       })),
       total,
       page,

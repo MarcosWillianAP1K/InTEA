@@ -8,7 +8,6 @@ export const JOGOS_MOCK: Jogo[] = [
     versao: "1.2",
     descricaoClinica: "Estimula atenção compartilhada e reconhecimento facial",
     objetivoTerapeutico: "Atenção Compartilhada",
-    statusInstalacao: "instalado",
     bannerUrl:
       "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=200&auto=format&fit=crop&q=60",
     manifesto: {
@@ -39,7 +38,6 @@ export const JOGOS_MOCK: Jogo[] = [
     descricaoClinica:
       "Foco em pareamento visual e regulação sensorial com feedback sonoro suave",
     objetivoTerapeutico: "Regulação Sensorial",
-    statusInstalacao: "instalado",
     bannerUrl:
       "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=200&auto=format&fit=crop&q=60",
     manifesto: {
@@ -65,7 +63,6 @@ export const JOGOS_MOCK: Jogo[] = [
     descricaoClinica:
       "Associação auditivo-visual para desenvolvimento de linguagem e imitação",
     objetivoTerapeutico: "Integração Auditiva",
-    statusInstalacao: "instalado",
     bannerUrl:
       "https://images.unsplash.com/photo-1474511320723-9a56873867b5?w=200&auto=format&fit=crop&q=60",
     manifesto: {
