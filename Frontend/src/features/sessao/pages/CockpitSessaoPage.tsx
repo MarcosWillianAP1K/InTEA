@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useSessionStore } from "../store/sessionStore";
 import { useSessionPersistence } from "../hooks/useSessionPersistence";
 import { useLiveTelemetry } from "../hooks/useLiveTelemetry";
+import { useClinicalTimer } from "../hooks/useClinicalTimer";
 import { SessionSocketManager } from "@/core/web.socket";
 import { ControlesClinicos } from "../components/ControlesClinicos";
 import { ModalFinalizarSessao } from "../components/ModalFinalizarSessao";
@@ -58,36 +59,16 @@ export function CockpitSessaoPage() {
   const [modalFinalizarAberto, setModalFinalizarAberto] = useState(false);
   const [isSubmittingFinalizar, setIsSubmittingFinalizar] = useState(false);
 
-  // 5. Cronômetro clínico de alta precisão
-  const [segundosDecorridos, setSegundosDecorridos] = useState(0);
-
-  useEffect(() => {
-    if (status !== "em_andamento" || isPausado) return;
-
-    const timer = setInterval(() => {
-      setSegundosDecorridos((prev) => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [status, isPausado]);
-
-  // Formata segundos para MM:SS ou HH:MM:SS
-  /** Converte segundos em formato MM:SS ou HH:MM:SS para exibição no cronômetro clínico */
-  const formatarTempo = (totalSegundos: number) => {
-    const horas = Math.floor(totalSegundos / 3600);
-    const minutos = Math.floor((totalSegundos % 3600) / 60);
-    const segundos = totalSegundos % 60;
-
-    if (horas > 0) {
-      return `${horas.toString().padStart(2, "0")}:${minutos.toString().padStart(2, "0")}:${segundos.toString().padStart(2, "0")}`;
-    }
-    return `${minutos.toString().padStart(2, "0")}:${segundos.toString().padStart(2, "0")}`;
-  };
-
-  const tempoFormatado = formatarTempo(segundosDecorridos);
+  // 5. Cronômetro clínico de alta precisão resiliente contra throttling e F5 (Card 5 - Fix)
+  const tokenSessao = pareamento?.sessionToken || paramSessaoId || "sessao-ativa";
+  const { tempoFormatado } = useClinicalTimer({
+    sessaoId: tokenSessao,
+    ativo: status === "em_andamento",
+    isPausado,
+  });
 
   // Handlers de intervenção clínica imediata
-  const tokenSessao = pareamento?.sessionToken || paramSessaoId || "sessao-ativa";
+
 
   /** Envia comando de pausa ao store e ao jogo remoto via WebSocket (RF21 — Intervenção Manual) */
   const handlePausar = () => {
