@@ -9,5 +9,7 @@ export * from "./components/ModalFinalizarSessao";
 export * from "./components/telemetria/TelemetriaCards";
 export * from "./components/telemetria/TelemetriaChart";
 export * from "./components/telemetria/TabletDiagnosticCard";
+export * from "./components/resultado/BlocoAnotacoesClinicas";
 export * from "./pages/CockpitSessaoPage";
+export * from "./pages/ResultadoSessaoPage";
 export * from "./services/sessaoService";

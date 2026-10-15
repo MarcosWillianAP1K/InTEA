@@ -140,9 +140,20 @@ export function CockpitSessaoPage() {
         await sessaoService.finalizar(idOuToken, anotacoes);
       }
 
-      toast.success("Sessão finalizada com sucesso! Prontuário atualizado.");
       setModalFinalizarAberto(false);
-      navigate("/games");
+
+      // Validação RN01 (Modo Livre vs Sessão Clínica com Paciente)
+      const isModoLivre = !config?.pacienteId;
+
+      if (isModoLivre) {
+        toast.info(
+          "Partida em Modo Livre concluída sem persistência em prontuário (RN01)."
+        );
+        navigate("/games");
+      } else {
+        toast.success("Sessão finalizada com sucesso! Prontuário atualizado.");
+        navigate(`/sessao/${encodeURIComponent(idOuToken)}/resultado`);
+      }
     } catch {
       toast.error("Erro ao consolidar finalização da sessão.");
     } finally {

@@ -187,12 +187,12 @@
 * **Referência Documentação:** Figura 12 (Tela da emissão do relatório de 1 paciente), RF14, AGENTS.md (Seção 6.3)
 * **Descrição:** Desenvolver a página principal da Tela de Resultados (`/sessao/:id/resultado`), exibida após o encerramento da sessão ou na consulta posterior via prontuário. Orquestra a busca de dados via `useParams`, gerencia os estados clínicos e distribui as informações para os componentes filhos nos slots. Implementa estritamente os **4 estados visuais de interface** da Seção 6.3 do AGENTS.md.
 * **Critérios de Aceite:**
-  * [ ] Layout moderno, responsivo e aderente ao protótipo de alta fidelidade (Figura 12).
-  * [ ] Cabeçalho clínico com identificação do paciente, registro profissional do terapeuta, badges de status e data/duração.
-  * [ ] **Loading State:** Skeleton Loaders estruturais com dimensões idênticas aos blocos finais, eliminando CLS (*Cumulative Layout Shift*).
-  * [ ] **Empty State:** Visual amigável caso a sessão não possua métricas consolidadas.
-  * [ ] **Error State:** Feedback claro de erro com botão "Tentar Novamente", sem exibir mensagens técnicas brutas de rede.
-  * [ ] **Success State:** Renderização fluida com transições suaves e slots populados pelos componentes de Luma.
+  * [x] Layout moderno, responsivo e aderente ao protótipo de alta fidelidade (Figura 12).
+  * [x] Cabeçalho clínico com identificação do paciente, registro profissional do terapeuta, badges de status e data/duração.
+  * [x] **Loading State:** Skeleton Loaders estruturais com dimensões idênticas aos blocos finais, eliminando CLS (*Cumulative Layout Shift*).
+  * [x] **Empty State:** Visual amigável caso a sessão não possua métricas consolidadas.
+  * [x] **Error State:** Feedback claro de erro com botão "Tentar Novamente", sem exibir mensagens técnicas brutas de rede.
+  * [x] **Success State:** Renderização fluida com transições suaves e slots populados pelos componentes de Luma.
 
 ---
 
@@ -206,10 +206,10 @@
 * **Referência Documentação:** RF13, RF14, RN01, Figura 3 (Diagrama de Sequência)
 * **Descrição:** Modificar o fluxo de encerramento em `CockpitSessaoPage.tsx`: após confirmar o término no modal e receber o retorno de sucesso do backend (`PATCH /api/sessao/:id/finalizar`), redirecionar o navegador para `/sessao/:id/resultado` caso seja sessão clínica com paciente. Para sessões em Modo Livre (**RN01**), redirecionar para a biblioteca de jogos (`/games`) com toast notificando que a partida livre foi concluída sem persistência em prontuário.
 * **Critérios de Aceite:**
-  * [ ] Sessão clínica finalizada navega automaticamente para `/sessao/:id/resultado`.
-  * [ ] Sessão em Modo Livre redireciona para `/games` com toast clínico explicativo (**RN01**).
-  * [ ] Botão de confirmação de encerramento desabilita com spinner (`isSubmitting`) prevenindo duplo clique.
-  * [ ] Limpeza (*cleanup*) dos listeners de WebSocket e timers ao desmontar o Cockpit.
+  * [x] Sessão clínica finalizada navega automaticamente para `/sessao/:id/resultado`.
+  * [x] Sessão em Modo Livre redireciona para `/games` com toast clínico explicativo (**RN01**).
+  * [x] Botão de confirmação de encerramento desabilita com spinner (`isSubmitting`) prevenindo duplo clique.
+  * [x] Limpeza (*cleanup*) dos listeners de WebSocket e timers ao desmontar o Cockpit.
 
 ---
 
@@ -223,10 +223,10 @@
 * **Referência Documentação:** RF16 (Bloco de Anotações), RF21 (Autoria Obrigatória), RN05, Figura 12
 * **Descrição:** Implementar componente de anotações clínicas na Tela de Resultados: exibe o texto preliminar digitado no modal de encerramento, permite ao terapeuta complementar com novas observações pós-sessão, oferece salvamento assíncrono com botão e indicador visual de estado ("Salvo", "Salvando...", "Erro") e exibe a autoria indelével do profissional (**RF21**). Previne cliques múltiplos concorrentes.
 * **Critérios de Aceite:**
-  * [ ] Textarea acessível com contagem de caracteres e salvamento com botão protegido contra duplo clique (`isSubmitting`).
-  * [ ] Indicadores visuais dos estados de persistência ("Salvando...", "Salvo com sucesso", "Falha ao salvar").
-  * [ ] Integração com `POST /api/anotacao` (para novas anotações) e `PATCH /api/anotacao/:id` (para edições).
-  * [ ] Exibição visível do nome e registro do terapeuta autor (**RF21**).
+  * [x] Textarea acessível com contagem de caracteres e salvamento com botão protegido contra duplo clique (`isSubmitting`).
+  * [x] Indicadores visuais dos estados de persistência ("Salvando...", "Salvo com sucesso", "Falha ao salvar").
+  * [x] Integração com `POST /api/anotacao` (para novas anotações) e `PATCH /api/anotacao/:id` (para edições).
+  * [x] Exibição visível do nome e registro do terapeuta autor (**RF21**).
 
 ---
 
@@ -240,10 +240,10 @@
 * **Referência Documentação:** Pipeline CI, Vitest, Testing Library
 * **Descrição:** Construir testes automatizados com Vitest e Testing Library cobrindo a renderização dos 4 estados visuais (Skeleton loader, Empty, Error com retry e Success), o fluxo de redirecionamento cockpit $\rightarrow$ resultado, o salvamento do bloco de anotações com prevenção de múltiplos cliques e o tratamento de Modo Livre.
 * **Critérios de Aceite:**
-  * [ ] 100% dos testes passando no Vitest (`npm test` no `Frontend/`).
-  * [ ] Validação dos 4 estados de interface (Skeleton, Empty, Error, Success).
-  * [ ] Testes de interação do bloco de anotações e bloqueio de cliques concorrentes.
-  * [ ] Sem warnings do React ou violações de acessibilidade nos testes.
+  * [x] 100% dos testes passando no Vitest (`npm test` no `Frontend/`).
+  * [x] Validação dos 4 estados de interface (Skeleton, Empty, Error, Success).
+  * [x] Testes de interação do bloco de anotações e bloqueio de cliques concorrentes.
+  * [x] Sem warnings do React ou violações de acessibilidade nos testes.
 
 ---
 
@@ -538,10 +538,10 @@
 * **Referência Documentação:** RF14, RF19, Seção 7.10 do Projeto InTEA
 * **Descrição:** Em `Frontend/src/features/sessao/pages/CockpitSessaoPage.tsx` (linha 145), após o terapeuta confirmar o encerramento da sessão clínica, o handler executa `navigate("/games")`, quebrando a continuidade do fluxo médico e impossibilitando a visualização dos resultados imediatos da sessão. Este card corrige o fluxo de transição para navegar diretamente para a Tela de Resultados Consolidados recém-criada (`/sessao/${idOuToken}/resultado`), carregando as métricas e o parecer automatizado da IA para revisão clínica.
 * **Critérios de Aceite:**
-  * [ ] Finalização de sessão clínica no Cockpit redireciona automaticamente para `/sessao/:id/resultado`.
-  * [ ] Sessões finalizadas em Modo Livre (sem paciente) redirecionam adequadamente para o catálogo de jogos (`/games`).
-  * [ ] Identificador da sessão preservado no parâmetro de rota sem perdas de estado ou erros de hidratação.
-  * [ ] Notificação toast de sucesso mantida durante a transição fluida de tela.
+  * [x] Finalização de sessão clínica no Cockpit redireciona automaticamente para `/sessao/:id/resultado`.
+  * [x] Sessões finalizadas em Modo Livre (sem paciente) redirecionam adequadamente para o catálogo de jogos (`/games`).
+  * [x] Identificador da sessão preservado no parâmetro de rota sem perdas de estado ou erros de hidratação.
+  * [x] Notificação toast de sucesso mantida durante a transição fluida de tela.
 
 ---
 
