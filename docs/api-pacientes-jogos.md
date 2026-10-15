@@ -1104,6 +1104,7 @@ Todas as respostas seguem formatos previsíveis:
 | `DELETE` | `/api/sessao/:id/cancelar` | Sim (JWT) | **RF12**, **RF13**, **RN05** | Cancela antecipadamente sessão pendente antes da conclusão clínica |
 | `PATCH` | `/api/sessao/:id/status` | Sim (JWT) | **RF12** | Transição manual controlada da máquina de estados (FSM) da sessão |
 | `GET` | `/api/sessao/:id/resultado` | Sim (JWT + Vínculo) | **RF14**, **RF17**, **RN01**, **RN04**, **RN05** | Consulta consolidada de resultados, IA (3FN), anotações e paciente pós-sessão |
+| `GET` | `/api/sessao/:id/exportar` | Sim (JWT + Vínculo) | **RF20**, **RN04**, **RN05**, **RNF06** | Exportação de laudo clínico estruturado e anonimizado (LGPD) para impressão e PDF |
 
 ---
 
@@ -1584,6 +1585,80 @@ Todas as respostas seguem formatos previsíveis:
 
 ---
 
+#### Rota 11: Exportação Estruturada de Laudo Clínico (RF20, RN04, RN05, RNF06)
+
+- **Método:** `GET`
+- **URL:** `/api/sessao/:id/exportar`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Path Parameters:** `id` (`string`, UUID da sessão).
+- **Contexto Clínico e Regras:**
+  - Gera documento consolidado e padronizado contendo laudo terapêutico completo para impressão ou geração de PDF.
+  - **Restrição de Estado:** Permite exportação exclusivamente para sessões com status `finalizada` (retorna `400 Bad Request` se em andamento, cancelada ou expirada).
+  - **Barreira Institucional (RN04):** Apenas o terapeuta titular ou profissionais com vínculo ativo na mesma clínica podem exportar o laudo (`403 Forbidden`).
+  - **Privacidade e LGPD:** CPF do paciente é automaticamente mascarado (ex: `***.982.***-25`).
+- **Respostas:**
+  - **Status `200 OK` (Laudo Clínico Estruturado):**
+
+    ```json
+    {
+      "sucesso": true,
+      "dados": {
+        "cabecalho": {
+          "instituicao": "InTEA — Plataforma de Terapia Assistida",
+          "clinica": "Clínica Desenvolver TEA",
+          "data_emissao": "14/10/2026 22:30",
+          "versao_documento": "1.0.0"
+        },
+        "paciente": {
+          "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "nome": "Lucas Gabriel Santos",
+          "idade": "7 anos",
+          "cpf_mascarado": "***.982.***-25"
+        },
+        "terapeuta": {
+          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "nome": "Dra. Juliana Ferreira",
+          "registro_profissional": "CRP 06/123456"
+        },
+        "sessao": {
+          "id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
+          "token_sessao": "4M5S-8U7B",
+          "modo": "Sessão Clínica",
+          "jogo": "Exploradores da Galáxia Sensorial",
+          "inicio": "14/10/2026 14:00",
+          "fim": "14/10/2026 14:25",
+          "duracao_formatada": "25 min 5s"
+        },
+        "desempenho_clinico": {
+          "taxa_conclusao": "92.4%",
+          "intervencoes_dda": 2,
+          "metricas_chave": [
+            { "metrica": "Tempo de Reação Médio", "valor": "320 ms", "tendencia": "Decrescente (Evolução Positiva)" }
+          ]
+        },
+        "parecer_ia": {
+          "sintese": "Desempenho atencional consistente com rápida adaptação aos estímulos sonoros.",
+          "recomendacoes": [
+            "Manter progressão de estímulos cromáticos na próxima sessão."
+          ]
+        },
+        "observacoes_clinicas": "Paciente apresentou excelente engajamento durante todo o ciclo.",
+        "assinatura_formal": {
+          "responsavel": "Dra. Juliana Ferreira - CRP 06/123456",
+          "hash_integridade": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "linha_assinatura": "____________________________________________"
+        }
+      }
+    }
+    ```
+
+  - **Status `400 Bad Request`:** Sessão não finalizada ou com dados clínicos inconsistentes.
+  - **Status `401 Unauthorized`:** Token JWT ausente ou expirado.
+  - **Status `403 Forbidden`:** Terapeuta sem vínculo com o paciente da sessão (**RN04**).
+  - **Status `404 Not Found`:** Sessão não encontrada.
+
+---
+
 ## 5. Módulo de Telemetria Clínica (`/api/telemetria`)
 
 ### 5.1 Resumo dos Endpoints
@@ -1814,11 +1889,95 @@ Todas as respostas seguem formatos previsíveis:
 
 ---
 
-## 7. Gateway WebSocket em Tempo Real (`/sessao`)
+## 7. Módulo de Anotações Clínicas e Pareceres (`/api/anotacao`)
+
+O módulo de anotações provê o registro médico-terapêutico estruturado pós-sessão e no prontuário geral do paciente (**RF16**). Garante autoria compulsória extraída do token JWT (**RF21**), isolamento multitenant por clínica (**RN04**) e histórico imutável via soft delete (**RN05**).
+
+### 7.1 Resumo dos Endpoints
+
+| Método | Endpoint | Protegido | Requisito / Regra | Finalidade |
+| :--- | :--- | :---: | :--- | :--- |
+| `POST` | `/api/anotacao/sessao` | Sim (JWT) | **RF16**, **RF21**, **RN04** | Registra anotação clínica vinculada diretamente a uma sessão |
+| `GET` | `/api/anotacao/sessao/:sessaoId` | Sim (JWT) | **RF16**, **RN04** | Lista anotações clínicas vinculadas a uma sessão específica |
+| `PATCH` | `/api/anotacao/sessao/:id` | Sim (JWT) | **RF16**, **RF21** | Edita o conteúdo de anotação de sessão (restrito ao autor) |
+| `DELETE` | `/api/anotacao/sessao/:id` | Sim (JWT) | **RN05**, **RF21** | Exclusão lógica (soft delete) mantendo prontuário imutável |
+| `POST` | `/api/anotacao/paciente` | Sim (JWT) | **RF16**, **RF21**, **RN04** | Registra parecer clínico geral no prontuário do paciente |
+| `GET` | `/api/anotacao/paciente/:pacienteId` | Sim (JWT) | **RF16**, **RN04** | Lista o histórico cronológico de pareceres gerais do paciente |
+| `PATCH` | `/api/anotacao/paciente/:id` | Sim (JWT) | **RF16**, **RF21** | Edita o conteúdo de anotação de paciente (restrito ao autor) |
+| `DELETE` | `/api/anotacao/paciente/:id` | Sim (JWT) | **RN05**, **RF21** | Exclusão lógica (soft delete) de anotação de paciente |
+
+---
+
+### 7.2 Detalhamento de Rotas — Anotações
+
+#### Rota 1: Criar Anotação de Sessão (RF16, RF21, RN04)
+
+- **Método:** `POST`
+- **URL:** `/api/anotacao/sessao`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`, `Content-Type: application/json`
+- **Request Body (JSON):**
+
+  ```json
+  {
+    "sessao_id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
+    "conteudo": "Paciente demonstrou excelente autorregulação nas fases com estímulos cromáticos complexos."
+  }
+  ```
+
+- **Respostas:**
+  - **Status `201 Created`:** Retorna a anotação criada com `id`, `sessao_id`, `terapeuta_id` (extraído do token) e `created_at`.
+  - **Status `400 Bad Request`:** Conteúdo vazio ou sessão em modo livre (RN01 proíbe anotação clínica sem prontuário).
+  - **Status `401 Unauthorized`:** Não autenticado.
+  - **Status `403 Forbidden`:** Terapeuta não possui vínculo ativo com o paciente da sessão (**RN04**).
+  - **Status `404 Not Found`:** Sessão não encontrada.
+
+#### Rota 2: Listar Anotações da Sessão (RF16, RN04)
+
+- **Método:** `GET`
+- **URL:** `/api/anotacao/sessao/:sessaoId`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Respostas:**
+  - **Status `200 OK`:** Array com anotações ativas da sessão ordenadas cronologicamente.
+  - **Status `403 Forbidden`:** Falta de vínculo institucional com o paciente da sessão (**RN04**).
+  - **Status `404 Not Found`:** Sessão não encontrada.
+
+#### Rota 3: Editar Conteúdo de Anotação (RF16, RF21)
+
+- **Método:** `PATCH`
+- **URL:** `/api/anotacao/sessao/:id` (ou `/api/anotacao/paciente/:id`)
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`, `Content-Type: application/json`
+- **Request Body (JSON):**
+
+  ```json
+  {
+    "conteudo": "Texto atualizado da anotação clínica com novos apontamentos."
+  }
+  ```
+
+- **Respostas:**
+  - **Status `200 OK`:** Anotação atualizada com sucesso.
+  - **Status `400 Bad Request`:** Conteúdo vazio ou inválido.
+  - **Status `403 Forbidden`:** Usuário logado não é o autor original da anotação (**RF21**).
+  - **Status `404 Not Found`:** Anotação não encontrada ou inativada.
+
+#### Rota 4: Exclusão Lógica de Anotação (Soft Delete — RN05)
+
+- **Método:** `DELETE`
+- **URL:** `/api/anotacao/sessao/:id` (ou `/api/anotacao/paciente/:id`)
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Regras:** Seta `soft_delete = true` e preenche `updated_at`. Nenhum dado é apagado fisicamente da base de dados.
+- **Respostas:**
+  - **Status `204 No Content`:** Anotação inativada logicamente com sucesso.
+  - **Status `403 Forbidden`:** Apenas o autor original pode inativar a anotação.
+  - **Status `404 Not Found`:** Anotação não encontrada.
+
+---
+
+## 8. Gateway WebSocket em Tempo Real (`/sessao`)
 
 O servidor Socket.IO opera integrado ao backend na porta `3000`, expondo o namespace `/sessao`. A comunicação é particionada por salas exclusivas (`session_<session_token>`), garantindo isolamento total entre pacientes e sessões concorrentes.
 
-### 7.1 Matriz de Eventos WebSocket
+### 8.1 Matriz de Eventos WebSocket
 
 | Evento | Direção | Emissor | Finalidade Técnica | Requisito / Regra |
 | :--- | :---: | :---: | :--- | :--- |
@@ -1838,7 +1997,7 @@ O servidor Socket.IO opera integrado ao backend na porta `3000`, expondo o names
 
 ---
 
-### 7.2 Exemplos de Payloads WebSocket
+### 8.2 Exemplos de Payloads WebSocket
 
 #### Evento: `sessao:telemetria` (Ingestão do Jogo para o Cockpit)
 
@@ -1883,7 +2042,7 @@ O servidor Socket.IO opera integrado ao backend na porta `3000`, expondo o names
 
 ---
 
-## 8. Matriz de Rastreabilidade (Requisitos x Rotas x Códigos HTTP)
+## 9. Matriz de Rastreabilidade (Requisitos x Rotas x Códigos HTTP)
 
 | Requisito / Regra | Rota / Mecanismo Principal | Códigos HTTP / Eventos WS | Detalhe de Implementação |
 | :--- | :--- | :--- | :--- |
@@ -1894,9 +2053,11 @@ O servidor Socket.IO opera integrado ao backend na porta `3000`, expondo o names
 | **RF12** (Gestão de Sessão) | `POST /api/sessao/iniciar`, `GET /api/sessao/:id`, `PATCH /status` | `200`, `201`, `400`, `404` | Orquestração da FSM e monitoramento ativo do ciclo. |
 | **RF13** (Ciclo e Encerramento) | `PATCH /api/sessao/:id/finalizar`, `DELETE /cancelar` | `200`, `400`, `404` | Encerramento formal, cálculo de duração e trilha de auditoria. |
 | **RF14** (Tela de Resultados) | `GET /api/sessao/:id/resultado` | `200`, `400`, `403`, `404` | Consulta consolidada de resultados, IA (3FN), anotações e paciente. |
+| **RF16** (Bloco de Anotações) | `POST`, `GET`, `PATCH`, `DELETE /api/anotacao/*` | `200`, `201`, `204`, `400`, `403`, `404` | Anotações pós-sessão e prontuário geral com autoria compulsória JWT. |
 | **RF17** (Contexto DDA e Relatório IA) | `PATCH /api/sessao/:id/finalizar`, `GET /api/sessao/:id/resultado` | `200`, `500` | Síntese clínica via IA persistida em `relatorio_sessao` (3FN ancorada em `sessao_id`). |
 | **RF18** (Vínculo Multiterapeuta) | `POST`, `DELETE /api/paciente/:id/terapeutas` | `200`, `201`, `400`, `401`, `403`, `404` | Associação de múltiplos terapeutas com barreira clínica multitenant. |
 | **RF19** (Filtros e Busca) | `GET /api/paciente`, `GET /api/jogos` | `200`, `400` | Paginação e busca avançada por idade, objetivo e CPF. |
+| **RF20** (Exportação de Relatórios) | `GET /api/sessao/:id/exportar` | `200`, `400`, `403`, `404` | Laudo clínico completo formatado com mascaramento LGPD pronto para PDF. |
 | **RF21** (Autoria Obrigatória) | `POST /api/sessao/iniciar`, `sessao:comando` | `201`, `401`, `403` | Bloqueio de comandos remotos emitidos pelo dispositivo do paciente. |
 | **RN01** (Modo Livre sem Persistência) | `POST /api/telemetria`, `PATCH /api/sessao/:id/finalizar`, `GET /api/sessao/:id/resultado` | `200` (`persistido: false`, `relatorio: null`) | Supressão mandatória de gravação de telemetria e relatório clínico no prontuário. |
 | **RN02** (Tipagem Estrita de Métrica) | `POST /api/jogos/:id/validar-telemetria` | `200`, `404`, `422` | Rejeição mandatória com status 422 para tipos divergentes. |
