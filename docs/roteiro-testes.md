@@ -1,39 +1,39 @@
-﻿# Roteiro de Testes Manuais e Crit├®rios de Aceite ÔÇö Sprint 7
+# Roteiro de Testes Manuais e Critérios de Aceite — Sprint 7
 
-> **Tarefa:** 5.6 ÔÇö `Docs: Casos de Teste e Crit├®rios de Aceite Formais`  
-> **M├│dulos cobertos:** Gerenciamento de Pacientes ┬À Biblioteca de Jogos Terap├¬uticos  
+> **Tarefa:** 5.6 — `Docs: Casos de Teste e Critérios de Aceite Formais`  
+> **Módulos cobertos:** Gerenciamento de Pacientes · Biblioteca de Jogos Terapêuticos  
 > **Requisitos rastreados:** RF06, RF09, RF11, RF18, RF19, RF21, RN02, RN04, RN05, RNF02
 
 ---
 
-## Conven├º├Áes
+## Convenções
 
-| Campo | Descri├º├úo |
+| Campo | Descrição |
 | :--- | :--- |
-| **CT-ID** | Identificador ├║nico do caso de teste |
-| **Requisito** | Requisito ou regra de neg├│cio validada |
-| **Tipo** | `Positivo` (fluxo feliz) ou `Negativo` (rejei├º├úo / seguran├ºa) |
-| **Precondi├º├úo** | Estado inicial necess├írio antes da execu├º├úo |
-| **Entrada** | Endpoint, payload ou a├º├úo do testador |
-| #### Passos | Sequ├¬ncia de a├º├Áes a executar |
+| **CT-ID** | Identificador único do caso de teste |
+| **Requisito** | Requisito ou regra de negócio validada |
+| **Tipo** | `Positivo` (fluxo feliz) ou `Negativo` (rejeição / segurança) |
+| **Precondição** | Estado inicial necessário antes da execução |
+| **Entrada** | Endpoint, payload ou ação do testador |
+| #### Passos | Sequência de ações a executar |
 | #### Resultado Esperado | Comportamento correto esperado do sistema |
-| **Status** | `[ ] Passou` ┬À `[ ] Falhou` ┬À `[ ] Pendente` |
+| **Status** | `[ ] Passou` · `[ ] Falhou` · `[ ] Pendente` |
 
 > **Ferramenta sugerida:** Postman ou Insomnia. Base URL: `http://localhost:3000/api`
 
 ---
 
-## M├│dulo 1 ÔÇö Gerenciamento de Pacientes
+## Módulo 1 — Gerenciamento de Pacientes
 
-### CT-P01 ÔÇö Cadastro de Paciente com Dados Completos
+### CT-P01 — Cadastro de Paciente com Dados Completos
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF06 ÔÇö Cadastro e Gest├úo de Pacientes |
+| **Requisito** | RF06 — Cadastro e Gestão de Pacientes |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | API em execu├º├úo; banco acess├¡vel |
+| **Precondição** | API em execução; banco acessível |
 
-**Entrada ÔÇö `POST /api/paciente`**
+**Entrada — `POST /api/paciente`**
 
 ```json
 {
@@ -42,12 +42,12 @@
   "cpf": "529.982.247-25",
   "telefone": "(11) 97777-6666",
   "cep": "04567-000",
-  "cidade": "S├úo Paulo",
+  "cidade": "São Paulo",
   "estado": "SP",
   "responsavel": {
     "nome": "Mariana Santos",
     "telefone": "(11) 98888-5555",
-    "parentesco": "M├úe"
+    "parentesco": "Mãe"
   }
 }
 ```
@@ -56,55 +56,55 @@
 
 1. Abrir Postman/Insomnia.
 2. Configurar `POST /api/paciente` com o body acima.
-3. Executar a requisi├º├úo.
+3. Executar a requisição.
 
 #### Resultado Esperado
 
 - HTTP **201 Created**
 - `data.id` presente (UUID gerado automaticamente)
 - `data.status_ativo: true`
-- `data.responsaveis[]` com a m├úe vinculada
+- `data.responsaveis[]` com a mãe vinculada
 - Mensagem: _"Paciente cadastrado com sucesso."_
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-P02 ÔÇö Rejei├º├úo de CPF Inv├ílido
+### CT-P02 — Rejeição de CPF Inválido
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF06 ÔÇö Valida├º├úo de DTO |
+| **Requisito** | RF06 — Validação de DTO |
 | **Tipo** | Negativo |
-| **Precondi├º├úo** | API em execu├º├úo |
+| **Precondição** | API em execução |
 
-**Entrada ÔÇö `POST /api/paciente`** com `"cpf": "111.111.111-11"` (todos os d├¡gitos iguais)
+**Entrada — `POST /api/paciente`** com `"cpf": "111.111.111-11"` (todos os dígitos iguais)
 
 #### Passos
 
 1. Configurar `POST /api/paciente`.
-2. Inserir CPF matematicamente inv├ílido.
-3. Executar a requisi├º├úo.
+2. Inserir CPF matematicamente inválido.
+3. Executar a requisição.
 
 #### Resultado Esperado
 
 - HTTP **400 Bad Request**
-- Campo `error` indicando falha de valida├º├úo
-- Campo `erros[]` descrevendo o CPF como inv├ílido
+- Campo `error` indicando falha de validação
+- Campo `erros[]` descrevendo o CPF como inválido
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-P03 ÔÇö Conflito por CPF J├í Cadastrado
+### CT-P03 — Conflito por CPF Já Cadastrado
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF06 ÔÇö Unicidade de CPF |
+| **Requisito** | RF06 — Unicidade de CPF |
 | **Tipo** | Negativo |
-| **Precondi├º├úo** | Paciente com CPF `529.982.247-25` j├í cadastrado (executar CT-P01 antes) |
+| **Precondição** | Paciente com CPF `529.982.247-25` já cadastrado (executar CT-P01 antes) |
 
-**Entrada ÔÇö `POST /api/paciente`** com o mesmo CPF do CT-P01
+**Entrada — `POST /api/paciente`** com o mesmo CPF do CT-P01
 
 #### Passos
 
@@ -114,21 +114,21 @@
 #### Resultado Esperado
 
 - HTTP **409 Conflict**
-- Mensagem: _"J├í existe um paciente cadastrado com este CPF."_
+- Mensagem: _"Já existe um paciente cadastrado com este CPF."_
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-P04 ÔÇö Listagem Padr├úo Exclui Pacientes Inativados
+### CT-P04 — Listagem Padrão Exclui Pacientes Inativados
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF06 ÔÇö Listagem; RN05 ÔÇö Soft Delete |
+| **Requisito** | RF06 — Listagem; RN05 — Soft Delete |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Ao menos 1 paciente ativo e 1 inativo no banco |
+| **Precondição** | Ao menos 1 paciente ativo e 1 inativo no banco |
 
-**Entrada ÔÇö `GET /api/paciente`** (sem par├ómetros)
+**Entrada — `GET /api/paciente`** (sem parâmetros)
 
 #### Passos
 
@@ -145,19 +145,19 @@
 
 ---
 
-### CT-P05 ÔÇö Busca por Nome e Faixa Et├íria com Pagina├º├úo
+### CT-P05 — Busca por Nome e Faixa Etária com Paginação
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF19 ÔÇö Busca e Filtros Avan├ºados |
+| **Requisito** | RF19 — Busca e Filtros Avançados |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Pacientes com idades variadas cadastrados |
+| **Precondição** | Pacientes com idades variadas cadastrados |
 
-**Entrada ÔÇö `GET /api/paciente?nome=Lucas&idadeMin=4&idadeMax=10&page=1&limit=5`**
+**Entrada — `GET /api/paciente?nome=Lucas&idadeMin=4&idadeMax=10&page=1&limit=5`**
 
 #### Passos
 
-1. Executar a `GET` com os par├ómetros acima.
+1. Executar a `GET` com os parâmetros acima.
 2. Analisar os registros e metadados retornados.
 
 #### Resultado Esperado
@@ -165,21 +165,21 @@
 - HTTP **200 OK**
 - Apenas pacientes cujo nome contenha _Lucas_ (case-insensitive)
 - Idades entre 4 e 10 anos
-- No m├íximo 5 registros por resposta
+- No máximo 5 registros por resposta
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-P06 ÔÇö Consulta de Prontu├írio com V├¡nculo Ativo (RN04)
+### CT-P06 — Consulta de Prontuário com Vínculo Ativo (RN04)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF06; RN04 ÔÇö Visibilidade por V├¡nculo |
+| **Requisito** | RF06; RN04 — Visibilidade por Vínculo |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Terapeuta com token JWT v├ílido e v├¡nculo ativo em `terapeuta_paciente` |
+| **Precondição** | Terapeuta com token JWT válido e vínculo ativo em `terapeuta_paciente` |
 
-**Entrada ÔÇö `GET /api/paciente/{uuid}`**
+**Entrada — `GET /api/paciente/{uuid}`**
 
 ```http
 Authorization: Bearer {token}
@@ -188,7 +188,7 @@ Authorization: Bearer {token}
 #### Passos
 
 1. Obter token JWT via login.
-2. Garantir que o terapeuta possui v├¡nculo com o paciente.
+2. Garantir que o terapeuta possui vínculo com o paciente.
 3. Executar `GET /api/paciente/{id}`.
 
 #### Resultado Esperado
@@ -200,15 +200,15 @@ Authorization: Bearer {token}
 
 ---
 
-### CT-P07 ÔÇö Bloqueio de Acesso sem V├¡nculo Ativo (RN04)
+### CT-P07 — Bloqueio de Acesso sem Vínculo Ativo (RN04)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RN04 ÔÇö Visibilidade por V├¡nculo e Institui├º├úo |
-| **Tipo** | Negativo ÔÇö seguran├ºa cl├¡nica |
-| **Precondi├º├úo** | Terapeuta com token JWT v├ílido **sem** v├¡nculo com o paciente consultado |
+| **Requisito** | RN04 — Visibilidade por Vínculo e Instituição |
+| **Tipo** | Negativo — segurança clínica |
+| **Precondição** | Terapeuta com token JWT válido **sem** vínculo com o paciente consultado |
 
-**Entrada ÔÇö `GET /api/paciente/{uuid-sem-vinculo}`**
+**Entrada — `GET /api/paciente/{uuid-sem-vinculo}`**
 
 ```http
 Authorization: Bearer {token}
@@ -216,27 +216,27 @@ Authorization: Bearer {token}
 
 #### Passos
 
-1. Autenticar terapeuta que **n├úo** est├í vinculado ao paciente.
+1. Autenticar terapeuta que **não** está vinculado ao paciente.
 2. Executar `GET /api/paciente/{id}`.
 
 #### Resultado Esperado
 
 - HTTP **403 Forbidden**
-- Mensagem: _"Acesso negado: o terapeuta n├úo possui v├¡nculo ativo com este paciente."_
+- Mensagem: _"Acesso negado: o terapeuta não possui vínculo ativo com este paciente."_
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-P08 ÔÇö Bloqueio por JWT Ausente ou Inv├ílido
+### CT-P08 — Bloqueio por JWT Ausente ou Inválido
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RNF02 ÔÇö Seguran├ºa; RN04 |
-| **Tipo** | Negativo ÔÇö autentica├º├úo |
-| **Precondi├º├úo** | Nenhum header de autentica├º├úo enviado |
+| **Requisito** | RNF02 — Segurança; RN04 |
+| **Tipo** | Negativo — autenticação |
+| **Precondição** | Nenhum header de autenticação enviado |
 
-**Entrada ÔÇö `GET /api/paciente/{id}`** sem header `Authorization`
+**Entrada — `GET /api/paciente/{id}`** sem header `Authorization`
 
 #### Passos
 
@@ -245,49 +245,49 @@ Authorization: Bearer {token}
 #### Resultado Esperado
 
 - HTTP **401 Unauthorized**
-- Mensagem: _"Acesso n├úo autorizado. Forne├ºa um token no cabe├ºalho Authorization: Bearer \<token\>."_
+- Mensagem: _"Acesso não autorizado. Forneça um token no cabeçalho Authorization: Bearer \<token\>."_
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-P09 ÔÇö Soft Delete: Inativa├º├úo sem Exclus├úo F├¡sica (RN05)
+### CT-P09 — Soft Delete: Inativação sem Exclusão Física (RN05)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RN05 ÔÇö Inalterabilidade do Hist├│rico Cl├¡nico |
+| **Requisito** | RN05 — Inalterabilidade do Histórico Clínico |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Paciente ativo com UUID conhecido |
+| **Precondição** | Paciente ativo com UUID conhecido |
 
-**Entrada ÔÇö `DELETE /api/paciente/{id}`**
+**Entrada — `DELETE /api/paciente/{id}`**
 
 #### Passos
 
 1. Executar `DELETE /api/paciente/{id}`.
 2. Verificar `status_ativo` na resposta.
-3. Executar `GET /api/paciente` e confirmar aus├¬ncia do paciente.
-4. Verificar **diretamente no banco** que o registro **n├úo foi deletado fisicamente**.
+3. Executar `GET /api/paciente` e confirmar ausência do paciente.
+4. Verificar **diretamente no banco** que o registro **não foi deletado fisicamente**.
 
 #### Resultado Esperado
 
 - HTTP **200 OK**
 - `data.status_ativo: false`
-- Paciente ausente da listagem padr├úo
-- Registro f├¡sico preservado no banco
+- Paciente ausente da listagem padrão
+- Registro físico preservado no banco
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-P10 ÔÇö Reativa├º├úo de Paciente Inativo
+### CT-P10 — Reativação de Paciente Inativo
 
 | Campo | Valor |
 | :--- | :--- |
 | **Requisito** | RF06; RN05 |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Paciente com `status_ativo: false` (executar CT-P09 antes) |
+| **Precondição** | Paciente com `status_ativo: false` (executar CT-P09 antes) |
 
-**Entrada ÔÇö `PATCH /api/paciente/{id}/reativar`**
+**Entrada — `PATCH /api/paciente/{id}/reativar`**
 
 #### Passos
 
@@ -300,21 +300,21 @@ Authorization: Bearer {token}
 - HTTP **200 OK**
 - `data.status_ativo: true`
 - Mensagem: _"Paciente reativado com sucesso."_
-- Paciente vis├¡vel novamente na listagem padr├úo
+- Paciente visível novamente na listagem padrão
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-P11 ÔÇö V├¡nculo de Terapeuta ao Paciente (RF18)
+### CT-P11 — Vínculo de Terapeuta ao Paciente (RF18)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF18 ÔÇö V├¡nculos Multiterapeuta; RF21 |
+| **Requisito** | RF18 — Vínculos Multiterapeuta; RF21 |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Paciente ativo; terapeuta ativo com a mesma `clinica_id`; token JWT v├ílido |
+| **Precondição** | Paciente ativo; terapeuta ativo com a mesma `clinica_id`; token JWT válido |
 
-**Entrada ÔÇö `POST /api/paciente/{id}/terapeutas`**
+**Entrada — `POST /api/paciente/{id}/terapeutas`**
 
 ```json
 { "terapeuta_id": "{uuid-do-terapeuta}" }
@@ -336,38 +336,38 @@ Authorization: Bearer {token}
 
 ---
 
-### CT-P12 ÔÇö Bloqueio de V├¡nculo entre Cl├¡nicas Distintas
+### CT-P12 — Bloqueio de Vínculo entre Clínicas Distintas
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF18; RN04 ÔÇö Isolamento Institucional |
-| **Tipo** | Negativo ÔÇö seguran├ºa multitenant |
-| **Precondi├º├úo** | Paciente em `clinica_id = A`; terapeuta em `clinica_id = B` |
+| **Requisito** | RF18; RN04 — Isolamento Institucional |
+| **Tipo** | Negativo — segurança multitenant |
+| **Precondição** | Paciente em `clinica_id = A`; terapeuta em `clinica_id = B` |
 
-**Entrada ÔÇö `POST /api/paciente/{id}/terapeutas`** com `terapeuta_id` de outra cl├¡nica
+**Entrada — `POST /api/paciente/{id}/terapeutas`** com `terapeuta_id` de outra clínica
 
 #### Passos
 
-1. Tentar vincular terapeuta de cl├¡nica diferente.
+1. Tentar vincular terapeuta de clínica diferente.
 
 #### Resultado Esperado
 
 - HTTP **400 Bad Request**
-- Mensagem: _"Bloqueio de seguran├ºa: N├úo ├® permitido vincular terapeutas de cl├¡nicas diferentes."_
+- Mensagem: _"Bloqueio de segurança: Não é permitido vincular terapeutas de clínicas diferentes."_
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-P13 ÔÇö Bloqueio de V├¡nculo com Paciente Inativo
+### CT-P13 — Bloqueio de Vínculo com Paciente Inativo
 
 | Campo | Valor |
 | :--- | :--- |
 | **Requisito** | RF18; RN05 |
 | **Tipo** | Negativo |
-| **Precondi├º├úo** | Paciente com `status_ativo: false` |
+| **Precondição** | Paciente com `status_ativo: false` |
 
-**Entrada ÔÇö `POST /api/paciente/{id-inativo}/terapeutas`**
+**Entrada — `POST /api/paciente/{id-inativo}/terapeutas`**
 
 #### Passos
 
@@ -377,21 +377,21 @@ Authorization: Bearer {token}
 #### Resultado Esperado
 
 - HTTP **400 Bad Request**
-- Mensagem: _"N├úo ├® poss├¡vel vincular terapeuta a um paciente inativo."_
+- Mensagem: _"Não é possível vincular terapeuta a um paciente inativo."_
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-P14 ÔÇö Atualiza├º├úo Parcial de Dados do Paciente
+### CT-P14 — Atualização Parcial de Dados do Paciente
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF06 ÔÇö Atualiza├º├úo de Paciente |
+| **Requisito** | RF06 — Atualização de Paciente |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Paciente cadastrado; terapeuta vinculado com token v├ílido |
+| **Precondição** | Paciente cadastrado; terapeuta vinculado com token válido |
 
-**Entrada ÔÇö `PUT /api/paciente/{id}`**
+**Entrada — `PUT /api/paciente/{id}`**
 
 ```json
 { "telefone": "(11) 99999-1122", "cidade": "Campinas" }
@@ -399,7 +399,7 @@ Authorization: Bearer {token}
 
 #### Passos
 
-1. Autenticar terapeuta com v├¡nculo ativo.
+1. Autenticar terapeuta com vínculo ativo.
 2. Executar `PUT /api/paciente/{id}` com body parcial.
 3. Confirmar novos valores com `GET /api/paciente/{id}`.
 
@@ -413,40 +413,40 @@ Authorization: Bearer {token}
 
 ---
 
-### CT-P15 ÔÇö Rejei├º├úo de UUID Malformado na Rota
+### CT-P15 — Rejeição de UUID Malformado na Rota
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF06 ÔÇö Valida├º├úo de Entrada |
+| **Requisito** | RF06 — Validação de Entrada |
 | **Tipo** | Negativo |
-| **Precondi├º├úo** | API em execu├º├úo |
+| **Precondição** | API em execução |
 
-**Entrada ÔÇö `GET /api/paciente/nao-e-uuid-valido`**
+**Entrada — `GET /api/paciente/nao-e-uuid-valido`**
 
 #### Passos
 
-1. Executar `GET` com string arbitr├íria no lugar do UUID.
+1. Executar `GET` com string arbitrária no lugar do UUID.
 
 #### Resultado Esperado
 
 - HTTP **400 Bad Request**
-- Mensagem: _"O par├ómetro ID deve ser um UUID v├ílido."_
+- Mensagem: _"O parâmetro ID deve ser um UUID válido."_
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-## M├│dulo 2 ÔÇö Biblioteca de Jogos Terap├¬uticos
+## Módulo 2 — Biblioteca de Jogos Terapêuticos
 
-### CT-J01 ÔÇö Listagem do Cat├ílogo Completo de Jogos
+### CT-J01 — Listagem do Catálogo Completo de Jogos
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF09 ÔÇö Biblioteca de Jogos Terap├¬uticos |
+| **Requisito** | RF09 — Biblioteca de Jogos Terapêuticos |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Seed executado com 3 jogos: _Aventura das Cores_, _Formas Calmas_, _O Som dos Animais_ |
+| **Precondição** | Seed executado com 3 jogos: _Aventura das Cores_, _Formas Calmas_, _O Som dos Animais_ |
 
-**Entrada ÔÇö `GET /api/jogos`**
+**Entrada — `GET /api/jogos`**
 
 #### Passos
 
@@ -458,19 +458,19 @@ Authorization: Bearer {token}
 - HTTP **200 OK**
 - `data[]` com ao menos 3 jogos, cada um com `nome`, `versao`, `descricao` e `status_instalacao`
 - Campo `manifesto_json` **ausente** na listagem resumida
-- Metadados de pagina├º├úo presentes
+- Metadados de paginação presentes
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-J02 ÔÇö Filtro por Objetivo Cl├¡nico
+### CT-J02 — Filtro por Objetivo Clínico
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF09; RF19 ÔÇö Filtros Avan├ºados |
+| **Requisito** | RF09; RF19 — Filtros Avançados |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Seed executado; jogos com objetivos distintos |
+| **Precondição** | Seed executado; jogos com objetivos distintos |
 
 #### Entradas
 
@@ -481,7 +481,7 @@ Authorization: Bearer {token}
 #### Passos
 
 1. Executar cada filtro separadamente.
-2. Verificar qual jogo ├® retornado em cada consulta.
+2. Verificar qual jogo é retornado em cada consulta.
 
 #### Resultado Esperado
 
@@ -497,19 +497,19 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 ---
 
-### CT-J03 ÔÇö Filtro com Objetivo Inexistente
+### CT-J03 — Filtro com Objetivo Inexistente
 
 | Campo | Valor |
 | :--- | :--- |
 | **Requisito** | RF09; RF19 |
-| **Tipo** | Negativo (sem correspond├¬ncia) |
-| **Precondi├º├úo** | Seed executado |
+| **Tipo** | Negativo (sem correspondência) |
+| **Precondição** | Seed executado |
 
-**Entrada ÔÇö `GET /api/jogos?objetivo=objetivo_inexistente`**
+**Entrada — `GET /api/jogos?objetivo=objetivo_inexistente`**
 
 #### Passos
 
-1. Executar a `GET` com objetivo que n├úo existe no cat├ílogo.
+1. Executar a `GET` com objetivo que não existe no catálogo.
 
 #### Resultado Esperado
 
@@ -521,13 +521,13 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 ---
 
-### CT-J04 ÔÇö Pagina├º├úo da Biblioteca de Jogos
+### CT-J04 — Paginação da Biblioteca de Jogos
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF19 ÔÇö Pagina├º├úo |
+| **Requisito** | RF19 — Paginação |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Seed com 3 jogos |
+| **Precondição** | Seed com 3 jogos |
 
 #### Entradas
 
@@ -536,33 +536,33 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 #### Passos
 
-1. Executar consulta da p├ígina 1.
-2. Executar consulta da p├ígina 2.
-3. Verificar que os jogos das duas p├íginas **n├úo se repetem**.
+1. Executar consulta da página 1.
+2. Executar consulta da página 2.
+3. Verificar que os jogos das duas páginas **não se repetem**.
 
 #### Resultado Esperado
 
-- P├ígina 1: 2 jogos; `totalPages ÔëÑ 2`
-- P├ígina 2: ao menos 1 jogo diferente dos da p├ígina 1
+- Página 1: 2 jogos; `totalPages ≥ 2`
+- Página 2: ao menos 1 jogo diferente dos da página 1
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-J05 ÔÇö Consulta de Detalhes com Manifesto JSON
+### CT-J05 — Consulta de Detalhes com Manifesto JSON
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF09; RNF02 ÔÇö Contrato de Dados |
+| **Requisito** | RF09; RNF02 — Contrato de Dados |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Jogo ID 1 (_Aventura das Cores_) no banco |
+| **Precondição** | Jogo ID 1 (_Aventura das Cores_) no banco |
 
-**Entrada ÔÇö `GET /api/jogos/1`**
+**Entrada — `GET /api/jogos/1`**
 
 #### Passos
 
 1. Executar `GET /api/jogos/1`.
-2. Verificar presen├ºa e estrutura do `manifesto_json`.
+2. Verificar presença e estrutura do `manifesto_json`.
 
 #### Resultado Esperado
 
@@ -574,15 +574,15 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 ---
 
-### CT-J06 ÔÇö Retorno 404 para Jogo Inexistente
+### CT-J06 — Retorno 404 para Jogo Inexistente
 
 | Campo | Valor |
 | :--- | :--- |
 | **Requisito** | RF09 |
 | **Tipo** | Negativo |
-| **Precondi├º├úo** | Banco sem jogo com ID `999999` |
+| **Precondição** | Banco sem jogo com ID `999999` |
 
-**Entrada ÔÇö `GET /api/jogos/999999`**
+**Entrada — `GET /api/jogos/999999`**
 
 #### Passos
 
@@ -591,21 +591,21 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 #### Resultado Esperado
 
 - HTTP **404 Not Found**
-- Mensagem: _"Jogo n├úo encontrado"_
+- Mensagem: _"Jogo não encontrado"_
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-J07 ÔÇö Valida├º├úo de Manifesto Conforme (RNF02)
+### CT-J07 — Validação de Manifesto Conforme (RNF02)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RNF02; RN02 ÔÇö Tipagem Estrita |
+| **Requisito** | RNF02; RN02 — Tipagem Estrita |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | API em execu├º├úo |
+| **Precondição** | API em execução |
 
-**Entrada ÔÇö `POST /api/jogos/validar-manifesto`**
+**Entrada — `POST /api/jogos/validar-manifesto`**
 
 ```json
 {
@@ -636,20 +636,20 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 ---
 
-### CT-J08 ÔÇö Rejei├º├úo de Manifesto com M├®trica Sem Tipo (RN02)
+### CT-J08 — Rejeição de Manifesto com Métrica Sem Tipo (RN02)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RN02 ÔÇö Tipagem Estrita sem Fallback; RNF02 |
-| **Tipo** | Negativo ÔÇö regra cl├¡nica cr├¡tica |
-| **Precondi├º├úo** | API em execu├º├úo |
+| **Requisito** | RN02 — Tipagem Estrita sem Fallback; RNF02 |
+| **Tipo** | Negativo — regra clínica crítica |
+| **Precondição** | API em execução |
 
-**Entrada ÔÇö `POST /api/jogos/validar-manifesto`**
+**Entrada — `POST /api/jogos/validar-manifesto`**
 
 ```json
 {
   "id_jogo": "jogo-invalido",
-  "nome": "Jogo Inv├ílido",
+  "nome": "Jogo Inválido",
   "versao": "1.0.0",
   "metricas_suportadas": [
     { "id_metrica": "engajamento" }
@@ -657,31 +657,31 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 }
 ```
 
-> Note que `tipo_metrica` est├í ausente ÔÇö isto viola a RN02.
+> Note que `tipo_metrica` está ausente — isto viola a RN02.
 
 #### Passos
 
-1. Executar `POST` com m├®trica sem `tipo_metrica`.
+1. Executar `POST` com métrica sem `tipo_metrica`.
 
 #### Resultado Esperado
 
 - HTTP **400 Bad Request**
 - `valido: false`
-- `erros[]` mencionando **RN02** e proibi├º├úo de fallback autom├ítico
+- `erros[]` mencionando **RN02** e proibição de fallback automático
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-J09 ÔÇö Telemetria Aprovada para Grava├º├úo (RN02)
+### CT-J09 — Telemetria Aprovada para Gravação (RN02)
 
 | Campo | Valor |
 | :--- | :--- |
 | **Requisito** | RN02; RNF02 |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Jogo ID 1 no banco com m├®trica num├®rica `tempo_resposta` |
+| **Precondição** | Jogo ID 1 no banco com métrica numérica `tempo_resposta` |
 
-**Entrada ÔÇö `POST /api/jogos/1/validar-telemetria`**
+**Entrada — `POST /api/jogos/1/validar-telemetria`**
 
 ```json
 {
@@ -710,15 +710,15 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 ---
 
-### CT-J10 ÔÇö Bloqueio de Telemetria com Tipo Incompat├¡vel (422)
+### CT-J10 — Bloqueio de Telemetria com Tipo Incompatível (422)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RN02 ÔÇö Proibi├º├úo de Fallback de M├®trica |
-| **Tipo** | Negativo ÔÇö viola├º├úo de regra cl├¡nica cr├¡tica |
-| **Precondi├º├úo** | Jogo ID 1 com `tempo_resposta` do tipo `numerica` |
+| **Requisito** | RN02 — Proibição de Fallback de Métrica |
+| **Tipo** | Negativo — violação de regra clínica crítica |
+| **Precondição** | Jogo ID 1 com `tempo_resposta` do tipo `numerica` |
 
-**Entrada ÔÇö `POST /api/jogos/1/validar-telemetria`**
+**Entrada — `POST /api/jogos/1/validar-telemetria`**
 
 ```json
 {
@@ -732,32 +732,32 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 }
 ```
 
-> Valor textual em m├®trica definida como num├®rica ÔÇö viola RN02.
+> Valor textual em métrica definida como numérica — viola RN02.
 
 #### Passos
 
-1. Executar `POST` com valor de tipo incompat├¡vel.
+1. Executar `POST` com valor de tipo incompatível.
 
 #### Resultado Esperado
 
 - HTTP **422 Unprocessable Entity**
 - `podeGravar: false`
-- `regraViolada: "RN02 - Fallback de M├®trica Proibido"`
+- `regraViolada: "RN02 - Fallback de Métrica Proibido"`
 - Mensagem descrevendo o tipo esperado versus o recebido
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-J11 ÔÇö Bloqueio de Telemetria com Valor Fora do Dom├¡nio
+### CT-J11 — Bloqueio de Telemetria com Valor Fora do Domínio
 
 | Campo | Valor |
 | :--- | :--- |
 | **Requisito** | RN02 |
-| **Tipo** | Negativo ÔÇö dom├¡nio de valores |
-| **Precondi├º├úo** | Jogo ID 1 com `nivel_frustracao` do tipo `categorica` e dom├¡nio `["baixo", "medio", "alto"]` |
+| **Tipo** | Negativo — domínio de valores |
+| **Precondição** | Jogo ID 1 com `nivel_frustracao` do tipo `categorica` e domínio `["baixo", "medio", "alto"]` |
 
-**Entrada ÔÇö `POST /api/jogos/1/validar-telemetria`**
+**Entrada — `POST /api/jogos/1/validar-telemetria`**
 
 ```json
 {
@@ -771,31 +771,31 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 }
 ```
 
-> `"desesperado"` n├úo pertence ao dom├¡nio `["baixo", "medio", "alto"]`.
+> `"desesperado"` não pertence ao domínio `["baixo", "medio", "alto"]`.
 
 #### Passos
 
-1. Executar `POST` com valor fora do dom├¡nio autorizado.
+1. Executar `POST` com valor fora do domínio autorizado.
 
 #### Resultado Esperado
 
 - HTTP **422 Unprocessable Entity**
 - `podeGravar: false`
-- Mensagem indicando que `"desesperado"` n├úo pertence ao dom├¡nio `[baixo, medio, alto]`
+- Mensagem indicando que `"desesperado"` não pertence ao domínio `[baixo, medio, alto]`
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-J12 ÔÇö Manifesto com Laudo de Conformidade
+### CT-J12 — Manifesto com Laudo de Conformidade
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RNF02 ÔÇö Contrato do Manifesto |
+| **Requisito** | RNF02 — Contrato do Manifesto |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Jogo ID 1 com manifesto cadastrado |
+| **Precondição** | Jogo ID 1 com manifesto cadastrado |
 
-**Entrada ÔÇö `GET /api/jogos/1/manifesto`**
+**Entrada — `GET /api/jogos/1/manifesto`**
 
 #### Passos
 
@@ -813,17 +813,17 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 ---
 
-## M├│dulo 3 ÔÇö Pareamento Remoto e Sess├Áes (Sprint 8)
+## Módulo 3 — Pareamento Remoto e Sessões (Sprint 8)
 
-### CT-S01 ÔÇö Pareamento Remoto Bem-Sucedido com Handshake e WebSocket
+### CT-S01 — Pareamento Remoto Bem-Sucedido com Handshake e WebSocket
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF10 ÔÇö Pareamento Remoto via Session Token (Fig. 3) |
+| **Requisito** | RF10 — Pareamento Remoto via Session Token (Fig. 3) |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Sess├úo criada com status `aguardando_conexao`; terapeuta conectado na sala WebSocket |
+| **Precondição** | Sessão criada com status `aguardando_conexao`; terapeuta conectado na sala WebSocket |
 
-**Entrada ÔÇö `POST /api/sessao/parear`**
+**Entrada — `POST /api/sessao/parear`**
 
 ```json
 {
@@ -840,9 +840,9 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 #### Passos
 
-1. Abrir conex├úo WebSocket no namespace `/sessao` com `role: 'terapeuta'` e entrar na sala da sess├úo `849-291`.
-2. O jogo remoto envia requisi├º├úo `POST /api/sessao/parear` com o token e metadados.
-3. Observar a resposta HTTP e a notifica├º├úo instant├ónea no canal WebSocket.
+1. Abrir conexão WebSocket no namespace `/sessao` com `role: 'terapeuta'` e entrar na sala da sessão `849-291`.
+2. O jogo remoto envia requisição `POST /api/sessao/parear` com o token e metadados.
+3. Observar a resposta HTTP e a notificação instantânea no canal WebSocket.
 
 #### Resultado Esperado
 
@@ -856,15 +856,15 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 ---
 
-### CT-S02 ÔÇö Normaliza├º├úo Autom├ítica de Token sem H├¡fen e com Espa├ºos
+### CT-S02 — Normalização Automática de Token sem Hífen e com Espaços
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF10, RNF03 ÔÇö Usabilidade e Toler├óncia de Formato |
+| **Requisito** | RF10, RNF03 — Usabilidade e Tolerância de Formato |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Sess├úo ativa com token `849-291` |
+| **Precondição** | Sessão ativa com token `849-291` |
 
-**Entrada ÔÇö `POST /api/sessao/parear`**
+**Entrada — `POST /api/sessao/parear`**
 
 ```json
 {
@@ -874,27 +874,27 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 #### Passos
 
-1. O jogador digita o PIN cont├¡nuo sem tra├ºos ou com espa├ºos residuais.
+1. O jogador digita o PIN contínuo sem traços ou com espaços residuais.
 2. Executar `POST /api/sessao/parear`.
 
 #### Resultado Esperado
 
 - HTTP **200 OK**
-- Token normalizado com sucesso e pareamento conclu├¡do.
+- Token normalizado com sucesso e pareamento concluído.
 
 **Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-S03 ÔÇö Rejei├º├úo de Token Expirado (RNF03)
+### CT-S03 — Rejeição de Token Expirado (RNF03)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RNF03 ÔÇö Seguran├ºa e Expira├º├úo Ef├¬mera de 15 Minutos |
+| **Requisito** | RNF03 — Segurança e Expiração Efêmera de 15 Minutos |
 | **Tipo** | Negativo |
-| **Precondi├º├úo** | Sess├úo emitida h├í mais de 15 minutos com `expira_em` no passado |
+| **Precondição** | Sessão emitida há mais de 15 minutos com `expira_em` no passado |
 
-**Entrada ÔÇö `POST /api/sessao/parear`**
+**Entrada — `POST /api/sessao/parear`**
 
 ```json
 {
@@ -910,21 +910,21 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 - HTTP **410 Gone**
 - `error: "Token de pareamento expirado"`
-- Detalhes informando a necessidade de gerar novo c├│digo no painel web.
+- Detalhes informando a necessidade de gerar novo código no painel web.
 
 **Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-S04 ÔÇö Rejei├º├úo de Token Inexistente ou Incorreto
+### CT-S04 — Rejeição de Token Inexistente ou Incorreto
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF10 ÔÇö Valida├º├úo de Integridade de Token |
+| **Requisito** | RF10 — Validação de Integridade de Token |
 | **Tipo** | Negativo |
-| **Precondi├º├úo** | Token n├úo cadastrado no banco |
+| **Precondição** | Token não cadastrado no banco |
 
-**Entrada ÔÇö `POST /api/sessao/parear`**
+**Entrada — `POST /api/sessao/parear`**
 
 ```json
 {
@@ -934,26 +934,26 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 #### Passos
 
-1. Submeter c├│digo PIN inexistente ou incorreto.
+1. Submeter código PIN inexistente ou incorreto.
 
 #### Resultado Esperado
 
 - HTTP **404 Not Found**
-- `error: "Sess├úo n├úo encontrada para o token informado"`
+- `error: "Sessão não encontrada para o token informado"`
 
 **Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-S05 ÔÇö Rejei├º├úo de Pareamento Concorrente (Sess├úo J├í em Andamento)
+### CT-S05 — Rejeição de Pareamento Concorrente (Sessão Já em Andamento)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RF10 ÔÇö Exclusividade de Conex├úo por Sess├úo |
+| **Requisito** | RF10 — Exclusividade de Conexão por Sessão |
 | **Tipo** | Negativo |
-| **Precondi├º├úo** | Sess├úo j├í pareada com status `em_andamento` |
+| **Precondição** | Sessão já pareada com status `em_andamento` |
 
-**Entrada ÔÇö `POST /api/sessao/parear`**
+**Entrada — `POST /api/sessao/parear`**
 
 ```json
 {
@@ -963,36 +963,36 @@ Cada consulta retorna exatamente **1 jogo**; `total: 1`.
 
 #### Passos
 
-1. Um segundo dispositivo tenta utilizar o mesmo PIN de uma sess├úo ativa.
+1. Um segundo dispositivo tenta utilizar o mesmo PIN de uma sessão ativa.
 
 #### Resultado Esperado
 
 - HTTP **409 Conflict**
-- `error: "Sess├úo j├í pareada ou em andamento"`
+- `error: "Sessão já pareada ou em andamento"`
 
 **Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
 
 ---
 
-### CT-S06 ÔÇö Monitoramento de Queda de Conex├úo e Reconex├úo (RNF04)
+### CT-S06 — Monitoramento de Queda de Conexão e Reconexão (RNF04)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RNF04 ÔÇö Resili├¬ncia de Conex├úo e Detec├º├úo de Presen├ºa |
+| **Requisito** | RNF04 — Resiliência de Conexão e Detecção de Presença |
 | **Tipo** | Positivo |
-| **Precondi├º├úo** | Dispositivo pareado ativo na sala WebSocket |
+| **Precondição** | Dispositivo pareado ativo na sala WebSocket |
 
 #### Passos
 
-1. Dispositivo conectado simula queda de sinal ou desconex├úo abrupta de rede.
+1. Dispositivo conectado simula queda de sinal ou desconexão abrupta de rede.
 2. Analisar o evento recebido na interface do terapeuta (`dispositivo_desconectado`).
 3. O dispositivo restabelece a rede e reconecta ao WebSocket com o mesmo token.
-4. Analisar o evento de reconex├úo (`dispositivo_reconectado`).
+4. Analisar o evento de reconexão (`dispositivo_reconectado`).
 
 #### Resultado Esperado
 
 - No momento da queda: evento `dispositivo_desconectado` com timestamp e causa.
-- No retorno da rede: evento `dispositivo_reconectado` com m├®trica exata de `tempo_offline_ms` e status `em_andamento`.
+- No retorno da rede: evento `dispositivo_reconectado` com métrica exata de `tempo_offline_ms` e status `em_andamento`.
 
 **Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
 
