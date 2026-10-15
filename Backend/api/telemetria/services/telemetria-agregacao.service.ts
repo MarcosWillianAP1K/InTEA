@@ -199,11 +199,12 @@ export function obterModaCategorica(valores: string[]): string {
 
 export class TelemetriaAgregacaoService {
   /**
-   * Função pura e desacoplada de agregação estatística em memória.
-   * Compila e sumariza eventos brutos respeitando estritamente a RN02.
+   * Pure in-memory statistical aggregation function.
+   * Compiles and summarizes raw telemetry events complying with clinical rule RN02.
    *
-   * @param eventos - Lista de eventos brutos de telemetria
-   * @param manifesto - Manifesto do jogo com especificações de métricas (opcional)
+   * @param eventos - Array of raw telemetry events.
+   * @param manifesto - Optional game manifest defining metric specifications.
+   * @returns Consolidated telemetry metrics and statistical aggregations.
    */
   static agregarEventos(
     eventos: TelemetriaEvento[],
@@ -444,9 +445,10 @@ export class TelemetriaAgregacaoService {
   }
 
   /**
-   * Compila e sumariza a telemetria de uma sessão buscando dados e manifesto no banco de dados.
+   * Compiles and summarizes session telemetry by retrieving events and game manifest from database.
    *
-   * @param sessaoId - Identificador único UUID da sessão
+   * @param sessaoId - Unique UUID identifier of the session.
+   * @returns Consolidated telemetry or null if session is not found.
    */
   static async compilarPorSessaoId(sessaoId: string): Promise<TelemetriaConsolidada | null> {
     if (!sessaoId) return null;
@@ -470,7 +472,11 @@ export class TelemetriaAgregacaoService {
   }
 
   /**
-   * Divide a sessão em janelas temporais e calcula a estabilidade do engajamento/atenção.
+   * Divides the session into temporal windows and calculates attention stability and engagement index.
+   *
+   * @param eventos - Array of raw telemetry events.
+   * @param duracaoSegundos - Total session duration in seconds.
+   * @returns Attention stability index, classification, and time window details.
    */
   private static calcularEstabilidadeAtencao(
     eventos: TelemetriaEvento[],
@@ -555,7 +561,9 @@ export class TelemetriaAgregacaoService {
   }
 
   /**
-   * Retorna estrutura padrão preenchida com valores nulos/zeros para sessões sem telemetria.
+   * Returns a default zeroed structure for sessions without telemetry events.
+   *
+   * @returns An empty consolidated telemetry object.
    */
   private static gerarConsolidacaoVazia(): TelemetriaConsolidada {
     return {

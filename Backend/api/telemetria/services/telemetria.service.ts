@@ -29,7 +29,10 @@ export type EntradaTelemetriaEvento = Omit<TelemetriaEvento, 'sessao_id' | 'data
 
 export class TelemetriaService {
   /**
-   * Resolve a sessão a partir do ID ou do Session Token (PIN)
+   * Resolves a session entity from its UUID or pairing PIN token.
+   *
+   * @param identificador - Session UUID or pairing token.
+   * @returns Resolved session record or null if not found.
    */
   private static async resolverSessao(identificador: string): Promise<Sessao | null> {
     if (!identificador || typeof identificador !== 'string') return null;
@@ -42,7 +45,11 @@ export class TelemetriaService {
   }
 
   /**
-   * Persiste um evento individual de telemetria respeitando RN01
+   * Persists an individual clinical telemetry event adhering to rule RN01.
+   *
+   * @param sessaoIdentificador - Session UUID or pairing code.
+   * @param evento - Telemetry event data payload.
+   * @returns Telemetry persistence result status and data.
    */
   static async persistirEvento(
     sessaoIdentificador: string,
@@ -89,8 +96,11 @@ export class TelemetriaService {
   }
 
   /**
-   * Persiste um lote de eventos de telemetria em batch insert respeitando RN01
-   * (Esta função é consumida pelo listener Socket.IO de João Marcos e pelo REST Controller)
+   * Persists a batch array of telemetry events adhering to rule RN01.
+   *
+   * @param sessaoIdentificador - Session UUID or pairing code.
+   * @param eventos - Array of telemetry events to ingest.
+   * @returns Batch persistence result status and processed count.
    */
   static async persistirLote(
     sessaoIdentificador: string,
@@ -144,7 +154,13 @@ export class TelemetriaService {
   }
 
   /**
-   * Consulta os eventos de telemetria de uma sessão com suporte a filtro por métrica e paginação
+   * Lists telemetry events for a session with optional metric filter and pagination.
+   *
+   * @param sessaoId - UUID of the session.
+   * @param idMetrica - Optional metric identifier to filter by.
+   * @param limite - Optional page size limit.
+   * @param pagina - 1-indexed page number (defaults to 1).
+   * @returns Array of telemetry event records.
    */
   static async listarPorSessao(
     sessaoId: string,

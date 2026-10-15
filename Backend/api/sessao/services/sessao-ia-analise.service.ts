@@ -7,15 +7,11 @@ import {
 
 export class SessaoIaAnaliseService {
   /**
-   * Sintetiza o relatório analítico do Agente de IA em estrita conformidade com o Contrato 4
-   * (docs/ModelosDeContratos/relatorio.json e RF14/RF17).
+   * Synthesizes the AI analytical report in strict compliance with Contract 4 (RF14/RF17).
    *
-   * Guardas Clínicas e de Negócio:
-   * 1. Apenas sessões finalizadas podem ser sintetizadas.
-   * 2. RN01: Modo livre e sessões sem paciente retornam null (sem prontuário nem IA).
-   *
-   * @param sessao - Dados da sessão clínica finalizada
-   * @param telemetria - Estatísticas consolidadas da telemetria (opcional; se omitida, calcula vazia/padrão)
+   * @param sessao - Finalized clinical session entity.
+   * @param telemetria - Consolidated telemetry statistics (optional).
+   * @returns Synthesized Contract 4 AI report, or null if invalid or in free mode.
    */
   static sintetizarRelatorio(
     sessao: Sessao,
@@ -73,9 +69,10 @@ export class SessaoIaAnaliseService {
   }
 
   /**
-   * Processa a síntese analítica da IA buscando a sessão e compilando sua telemetria no banco.
+   * Processes the AI analytical synthesis by retrieving the session and compiling its telemetry.
    *
-   * @param sessaoId - Identificador único UUID da sessão
+   * @param sessaoId - Unique UUID identifier of the session.
+   * @returns Synthesized AI report or null if free mode or session not found.
    */
   static async processarPorSessaoId(sessaoId: string): Promise<RelatorioIAContrato | null> {
     if (!sessaoId) return null;
@@ -93,7 +90,11 @@ export class SessaoIaAnaliseService {
   }
 
   /**
-   * Apura a quantidade total de intervenções de ajuste dinâmico de dificuldade (DDA) ocorridas.
+   * Calculates the total number of Dynamic Difficulty Adjustment (DDA) interventions.
+   *
+   * @param sessao - Session entity containing DDA context.
+   * @param telemetria - Consolidated telemetry data.
+   * @returns Total number of DDA modulations.
    */
   private static apurarIntervencoesDDA(
     sessao: Sessao,
@@ -123,7 +124,11 @@ export class SessaoIaAnaliseService {
   }
 
   /**
-   * Calcula a taxa de conclusão dos objetivos da sessão (0.0 a 100.0).
+   * Computes the session objectives completion rate (0.0 to 100.0).
+   *
+   * @param _sessao - Session entity.
+   * @param telemetria - Consolidated telemetry metrics.
+   * @returns Weighted completion rate percentage.
    */
   private static calcularTaxaConclusao(
     _sessao: Sessao,
@@ -148,7 +153,10 @@ export class SessaoIaAnaliseService {
   }
 
   /**
-   * Formata as métricas consolidadas de telemetria no schema exato do Contrato 4.
+   * Formats consolidated telemetry metrics into the Contract 4 schema.
+   *
+   * @param telemetria - Consolidated telemetry data.
+   * @returns Array of formatted AI aggregated metrics.
    */
   private static formatarMetricasAgregadas(
     telemetria?: TelemetriaConsolidada | null
@@ -184,7 +192,13 @@ export class SessaoIaAnaliseService {
   }
 
   /**
-   * Gera pareceres qualitativos contextuais e inteligentes com base no contexto DDA e telemetria.
+   * Generates intelligent qualitative clinical opinions based on DDA context and telemetry.
+   *
+   * @param sessao - Session entity.
+   * @param telemetria - Consolidated telemetry data.
+   * @param intervencoesDDA - Number of DDA interventions.
+   * @param taxaConclusao - Completion rate percentage.
+   * @returns Array of qualitative analytical opinion strings.
    */
   private static gerarAnalisesContextuais(
     sessao: Sessao,

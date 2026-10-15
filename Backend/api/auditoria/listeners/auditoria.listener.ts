@@ -12,8 +12,10 @@ import { MODO_SESSAO } from '../../sessao/models/sessao.model.js';
 let ouvintesRegistrados = false;
 
 /**
- * Inicializa a escuta de eventos do ciclo de vida da sessão para gravação
- * silenciosa e assíncrona na trilha de auditoria clínica (RF13, RNF06, RN05).
+ * Initializes domain event listeners for the session lifecycle, silently and
+ * asynchronously recording immutable audit logs (RF13, RNF06, RN05).
+ *
+ * @returns Void.
  */
 export function inicializarAuditoriaListeners(): void {
   if (ouvintesRegistrados) {

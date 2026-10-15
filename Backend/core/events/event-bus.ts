@@ -42,15 +42,23 @@ export class InTeaEventBus extends EventEmitter {
   }
 
   /**
-   * Emite um evento de domínio tipado para todos os ouvintes registrados (fire-and-forget).
+   * Emits a typed domain event to all registered listeners (fire-and-forget).
+   *
+   * @param evento - The domain event name.
+   * @param dados - Typed event payload.
+   * @returns True if the event had listeners, false otherwise.
    */
   emitir<K extends keyof EventosDoSistema>(evento: K, dados: EventosDoSistema[K]): boolean {
     return this.emit(evento, dados);
   }
 
   /**
-   * Emite um evento de domínio e aguarda a conclusão de todos os ouvintes assíncronos.
-   * Não lança erros caso algum ouvinte falhe, preservando a resiliência do emissor.
+   * Emits a typed domain event and awaits completion of all asynchronous listeners.
+   * Does not propagate listener errors to preserve emitter resilience.
+   *
+   * @param evento - The domain event name.
+   * @param dados - Typed event payload.
+   * @returns Resolves when all listeners have finished executing.
    */
   async emitirAsync<K extends keyof EventosDoSistema>(evento: K, dados: EventosDoSistema[K]): Promise<void> {
     const ouvintes = this.listeners(evento);
@@ -66,7 +74,11 @@ export class InTeaEventBus extends EventEmitter {
   }
 
   /**
-   * Registra um ouvinte assíncrono para um evento tipado específico.
+   * Registers a listener callback for a specific typed domain event.
+   *
+   * @param evento - The domain event name.
+   * @param ouvinte - Callback function handling the event data.
+   * @returns EventBus instance for chaining.
    */
   ouvir<K extends keyof EventosDoSistema>(
     evento: K,
@@ -76,7 +88,11 @@ export class InTeaEventBus extends EventEmitter {
   }
 
   /**
-   * Remove um ouvinte previamente registrado para um evento específico.
+   * Removes a previously registered listener callback for a domain event.
+   *
+   * @param evento - The domain event name.
+   * @param ouvinte - Callback function to unregister.
+   * @returns EventBus instance for chaining.
    */
   removerOuvinte<K extends keyof EventosDoSistema>(
     evento: K,
