@@ -16,6 +16,7 @@ import { TelemetriaController } from '../../telemetria/controllers/telemetria.co
 import { TelemetriaModel, TelemetriaEvento } from '../../telemetria/models/telemetria.model.js';
 import { AuditoriaController } from '../../auditoria/controllers/auditoria.controller.js';
 import { AuditoriaModel, AuditoriaSessao } from '../../auditoria/models/auditoria.model.js';
+import '../../auditoria/listeners/auditoria.listener.js';
 import { TelemetriaService } from '../../telemetria/services/telemetria.service.js';
 import { SessaoGateway } from '../../../core/websocket/sessao.gateway.js';
 import { Server as SocketIOServer } from 'socket.io';
@@ -128,10 +129,7 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
       vi.spyOn(RelatorioSessaoModel, 'criar').mockImplementation(async () => {
         relatorioPersistido = true;
         return {
-          id: 'relatorio-1',
           sessao_id: sessaoId,
-          terapeuta_id: terapeutaId,
-          paciente_id: pacienteId,
           conteudo: 'Resumo clinico',
           dados_ia_json: {} as any,
           soft_delete: false,

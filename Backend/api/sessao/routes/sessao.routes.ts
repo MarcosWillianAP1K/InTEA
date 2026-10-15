@@ -4,6 +4,7 @@
 
 import { Router } from 'express';
 import { SessaoController } from '../controllers/sessao.controller.js';
+import { SessaoExportarService } from '../services/sessao-exportar.service.js';
 
 // Middlewares de autenticação JWT e validação de vínculo clínico (RN04)
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
@@ -66,7 +67,6 @@ sessaoRoutes.get('/gerarCodigoPareamento', authMiddleware, SessaoController.gera
  *           schema:
  *             type: object
  *             required:
- *               - terapeuta_id
  *               - jogo_id
  *               - codigo_pareamento
  *             properties:
@@ -74,7 +74,7 @@ sessaoRoutes.get('/gerarCodigoPareamento', authMiddleware, SessaoController.gera
  *                 type: string
  *                 format: uuid
  *                 example: "11111111-1111-1111-1111-111111111111"
- *                 description: UUID do terapeuta responsável
+ *                 description: (Opcional) UUID do terapeuta responsável. Derivado primariamente do token JWT verificado (RF21). Se informado no body, deve coincidir com o usuário autenticado; divergências são bloqueadas com 403 Forbidden.
  *               jogo_id:
  *                 type: string
  *                 format: uuid
@@ -146,9 +146,9 @@ sessaoRoutes.get('/gerarCodigoPareamento', authMiddleware, SessaoController.gera
  *                   type: string
  *                   example: "O paciente_id é obrigatório para sessões clínicas (RN01)"
  *       401:
- *         description: Token JWT ausente ou inválido
+ *         description: Token JWT ausente, inválido ou identificador do terapeuta não encontrado
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo ativo com o paciente (RN04) ou de clínica divergente
+ *         description: Acesso negado — terapeuta informado no body divergente do token autenticado (anti-spoofing), sem vínculo ativo com o paciente (RN04) ou de clínica divergente
  *       500:
  *         description: Erro interno ao criar sessão
  */
@@ -431,6 +431,43 @@ sessaoRoutes.get('/:id', authMiddleware, SessaoController.buscarPorId);
 
 /**
  * @swagger
+ * /api/sessao/{id}/exportar:
+ *   get:
+ *     summary: Emite e exporta laudo clínico estruturado da sessão (RF20 / RNF06)
+ *     description: |
+ *       Gera payload estruturado e sanitizado para impressão e emissão de laudo médico formal,
+ *       reunindo dados da clínica, registro profissional do terapeuta, identificação do paciente
+ *       com CPF mascarado (LGPD), tabela consolidada de desempenho, parecer da IA e área formal para assinatura.
+ *     tags: [Sessão]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da sessão clínica finalizada
+ *     responses:
+ *       200:
+ *         description: Laudo clínico estruturado retornado com sucesso para exportação
+ *       400:
+ *         description: Sessão não está finalizada ou identificador inválido
+ *       401:
+ *         description: Token JWT ausente ou inválido
+ *       403:
+ *         description: Acesso negado por falta de vínculo institucional ativo (RN04)
+ *       404:
+ *         description: Sessão ou paciente não encontrado
+ *       500:
+ *         description: Erro interno ao emitir laudo para exportação
+ */
+sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoExportarService.handlerExportarHttp);
+
+
+/**
+ * @swagger
  * /api/sessao/{id}/finalizar:
  *   patch:
  *     summary: Finaliza uma sessão clínica em andamento
@@ -623,3 +660,115 @@ sessaoRoutes.delete('/:id/cancelar', authMiddleware, SessaoController.cancelar);
  *                   example: "Erro interno ao atualizar status da sessão"
  */
 sessaoRoutes.patch('/:id/status', authMiddleware, SessaoController.atualizarStatus);
+
+/**
+ * @swagger
+ * /api/sessao/{id}/resultado:
+ *   get:
+ *     summary: Consulta consolidada dos resultados clínicos e analíticos da sessão (RF14)
+ *     description: Retorna o consolidado completo de uma sessão finalizada, integrando metadados operacionais, dados do jogo, terapeuta, paciente, síntese do Agente de IA (Contrato 4) e anotações clínicas. Valida vínculo ativo e clínica (RN04) e suprime dados clínicos em Modo Livre (RN01).
+ *     tags: [Sessão]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da sessão finalizada
+ *     responses:
+ *       200:
+ *         description: Resultados consolidados da sessão obtidos com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     sessao:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           format: uuid
+ *                         session_token:
+ *                           type: string
+ *                         modo_sessao:
+ *                           type: string
+ *                           enum: [sessao_clinica, modo_livre]
+ *                         status_sessao:
+ *                           type: string
+ *                           example: "finalizada"
+ *                         data_hora_inicio:
+ *                           type: string
+ *                           format: date-time
+ *                         data_hora_fim:
+ *                           type: string
+ *                           format: date-time
+ *                         duracao_segundos:
+ *                           type: integer
+ *                           example: 1200
+ *                     jogo:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         nome:
+ *                           type: string
+ *                         versao:
+ *                           type: string
+ *                     terapeuta:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         nome:
+ *                           type: string
+ *                         crefito:
+ *                           type: string
+ *                     paciente:
+ *                       type: object
+ *                       nullable: true
+ *                       description: Nulo se a sessão for em Modo Livre (RN01)
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         nome:
+ *                           type: string
+ *                     relatorio:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         conteudo:
+ *                           type: string
+ *                         dados_ia_json:
+ *                           type: object
+ *                           description: Dados analíticos conforme Contrato 4 da IA
+ *                     anotacoes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           conteudo:
+ *                             type: string
+ *       400:
+ *         description: Sessão não está finalizada ou identificador inválido
+ *       401:
+ *         description: Não autorizado (JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado por falta de vínculo ativo ou clínica divergente (RN04)
+ *       404:
+ *         description: Sessão não encontrada
+ *       500:
+ *         description: Erro interno ao consultar resultado consolidado
+ */
+sessaoRoutes.get('/:id/resultado', authMiddleware, SessaoController.consultarResultado);
+

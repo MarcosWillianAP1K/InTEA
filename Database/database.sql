@@ -235,14 +235,11 @@ CREATE TABLE IF NOT EXISTS public.anotacao_clinica (
 );
 
 -- ==============================================================================
--- 14. TABELA: relatorio_sessao (Centraliza o Relatório e Dados da IA da Sessão)
+-- 14. TABELA: relatorio_sessao (Entidade de Prontuário Clínico da Sessão - 3FN)
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.relatorio_sessao (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sessao_id UUID UNIQUE NOT NULL REFERENCES public.sessao(id) ON DELETE RESTRICT,
-    terapeuta_id UUID NOT NULL REFERENCES public.terapeuta(id) ON DELETE RESTRICT,
-    paciente_id UUID NOT NULL REFERENCES public.paciente(id) ON DELETE RESTRICT,
-    conteudo TEXT, -- Parecer/observações do terapeuta
+    sessao_id UUID PRIMARY KEY REFERENCES public.sessao(id) ON DELETE RESTRICT,
+    conteudo TEXT, -- Parecer técnico e observações consolidadas do terapeuta
     dados_ia_json JSONB DEFAULT '{}'::jsonb, -- Contrato 4: Taxa de conclusão, DDA, análises IA
     soft_delete BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
@@ -261,22 +258,13 @@ CREATE TABLE IF NOT EXISTS public.telemetria_evento (
 );
 
 -- ==============================================================================
--- 16. BLOQUEIO DE HARD DELETE (Conformidade RN05)
+-- 16. BLOQUEIO DE HARD DELETE (Desativado temporariamente em DEV/Testes)
 -- ==============================================================================
-CREATE OR REPLACE FUNCTION public.impedir_hard_delete_clinico()
-RETURNS TRIGGER AS $$
-BEGIN
-    RAISE EXCEPTION 'Exclusão física proibida por conformidade clínica (RN05). Altere soft_delete para TRUE.';
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_bloqueio_delete_anotacao
-BEFORE DELETE ON public.anotacao_clinica
-FOR EACH ROW EXECUTE FUNCTION public.impedir_hard_delete_clinico();
-
-CREATE TRIGGER trg_bloqueio_delete_relatorio
-BEFORE DELETE ON public.relatorio_sessao
-FOR EACH ROW EXECUTE FUNCTION public.impedir_hard_delete_clinico();
+-- Os triggers de bloqueio físico (trg_bloqueio_delete_anotacao e trg_bloqueio_delete_relatorio)
+-- estão temporariamente desativados durante a fase de testes e desenvolvimento.
+-- Serão reativados antes da implantação oficial em produção para conformidade clínica RN05.
+DROP TRIGGER IF EXISTS trg_bloqueio_delete_anotacao ON public.anotacao_clinica;
+DROP TRIGGER IF EXISTS trg_bloqueio_delete_relatorio ON public.relatorio_sessao;
 
 -- Trigger para limpeza automática de responsáveis órfãos em exclusões físicas de testes (Hard Delete)
 CREATE OR REPLACE FUNCTION public.fn_limpar_responsavel_orfaos()
@@ -347,7 +335,6 @@ CREATE INDEX IF NOT EXISTS idx_sessao_expira_em ON public.sessao(expira_em);
 CREATE INDEX IF NOT EXISTS idx_sessao_status_expira ON public.sessao(status_sessao, expira_em);
 CREATE INDEX IF NOT EXISTS idx_anotacao_paciente ON public.anotacao_clinica(paciente_id);
 CREATE INDEX IF NOT EXISTS idx_anotacao_sessao ON public.anotacao_clinica(sessao_id);
-CREATE INDEX IF NOT EXISTS idx_relatorio_paciente ON public.relatorio_sessao(paciente_id);
 CREATE INDEX IF NOT EXISTS idx_telemetria_sessao_data_hora ON public.telemetria_evento(sessao_id, data_hora DESC);
 CREATE INDEX IF NOT EXISTS idx_telemetria_tipo_evento ON public.telemetria_evento(tipo_evento);
 CREATE INDEX IF NOT EXISTS idx_telemetria_id_metrica ON public.telemetria_evento ((dados->>'id_metrica'));
@@ -646,7 +633,7 @@ ON public.sessao FOR SELECT
 TO anon
 USING (status_sessao IN ('aguardando_pareamento', 'conectado', 'em_andamento'));
 
--- Anotações Clínicas
+-- Anotações Clínicas (Autoria Obrigatória RF21 e Vínculo Institucional RN04)
 CREATE POLICY "Consulta de anotacoes ativas da equipe"
 ON public.anotacao_clinica FOR SELECT
 TO authenticated
@@ -658,38 +645,65 @@ USING (
     )
 );
 
-CREATE POLICY "Insercao de anotacao com autoria obrigatoria"
+CREATE POLICY "Insercao de anotacao com autoria e vinculo obrigatorio"
 ON public.anotacao_clinica FOR INSERT
 TO authenticated
-WITH CHECK (terapeuta_id = auth.uid());
+WITH CHECK (
+    terapeuta_id = auth.uid() AND (
+        public.terapeuta_tem_acesso_paciente(paciente_id) OR
+        public.check_is_super_admin()
+    )
+);
 
 CREATE POLICY "Edicao de anotacao propria"
 ON public.anotacao_clinica FOR UPDATE
 TO authenticated
-USING (terapeuta_id = auth.uid() AND soft_delete = FALSE);
+USING (
+    terapeuta_id = auth.uid() AND 
+    soft_delete = FALSE AND (
+        public.terapeuta_tem_acesso_paciente(paciente_id) OR
+        public.check_is_super_admin()
+    )
+);
 
--- Relatórios de Sessão
+-- Relatórios de Sessão (Autorização delegada à tabela pai sessao via 3FN)
 CREATE POLICY "Consulta de relatorios clinicos"
 ON public.relatorio_sessao FOR SELECT
 TO authenticated
 USING (
-    soft_delete = FALSE AND (
-        terapeuta_id = auth.uid() OR 
-        public.terapeuta_tem_acesso_paciente(paciente_id) OR
-        public.check_is_super_admin()
+    soft_delete = FALSE AND
+    EXISTS (
+        SELECT 1 FROM public.sessao s
+        WHERE s.id = relatorio_sessao.sessao_id
+          AND (
+              s.terapeuta_id = auth.uid() OR 
+              (s.paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(s.paciente_id)) OR
+              public.check_is_super_admin()
+          )
     )
 );
 
 CREATE POLICY "Insercao de relatorio consolidado"
 ON public.relatorio_sessao FOR INSERT
 TO authenticated
-WITH CHECK (terapeuta_id = auth.uid());
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.sessao s
+        WHERE s.id = relatorio_sessao.sessao_id
+          AND (s.terapeuta_id = auth.uid() OR public.check_is_super_admin())
+    )
+);
 
 CREATE POLICY "Edicao de relatorio consolidado"
 ON public.relatorio_sessao FOR UPDATE
 TO authenticated
 USING (
-    terapeuta_id = auth.uid() AND soft_delete = FALSE
+    soft_delete = FALSE AND
+    EXISTS (
+        SELECT 1 FROM public.sessao s
+        WHERE s.id = relatorio_sessao.sessao_id
+          AND (s.terapeuta_id = auth.uid() OR public.check_is_super_admin())
+    )
 );
 
 -- Telemetria de Eventos

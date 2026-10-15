@@ -29,12 +29,13 @@ export async function verificarVisibilidadePaciente(
 ): Promise<void> {
   try {
     // 1. Partidas em modo livre (RN01) não possuem paciente vinculado
-    if (req.body?.modo_sessao === 'modo_livre' && !req.body?.paciente_id) {
+    // Se pacienteAlvoId estiver injetado (ex: rotas de anotação), o bypass de modo_livre é ignorado
+    if (!req.pacienteAlvoId && req.body?.modo_sessao === 'modo_livre' && !req.body?.paciente_id) {
       return next();
     }
 
-    // 2. Extração do identificador do paciente a partir dos parâmetros da requisição
-    const pacienteId = String(req.params.id || req.params.pacienteId || req.body?.paciente_id || '');
+    // 2. Extração do identificador do paciente a partir dos parâmetros da requisição ou resolvedor
+    const pacienteId = String(req.pacienteAlvoId || req.params.id || req.params.pacienteId || req.body?.paciente_id || '');
 
     if (!pacienteId || pacienteId === 'undefined') {
       res.status(400).json({ error: 'O parâmetro ID do paciente é obrigatório.' });

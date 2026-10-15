@@ -15,5 +15,7 @@ export * from "./components/resultado/MetricasConsolidadasCards";
 export * from "./components/resultado/GraficoEvolutivoResultado";
 export * from "./components/resultado/PainelInsightsIA";
 export * from "./components/resultado/BotaoExportarRelatorio";
+export * from "./components/resultado/BlocoAnotacoesClinicas";
 export * from "./pages/CockpitSessaoPage";
+export * from "./pages/ResultadoSessaoPage";
 export * from "./services/sessaoService";

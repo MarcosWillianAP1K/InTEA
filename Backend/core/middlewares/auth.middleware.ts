@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../supabase/supabase.client.js';
 
-// Estende a interface Request do Express para incluir o usuário autenticado
+// Estende a interface Request do Express para incluir o usuário autenticado e contexto clínico
 export interface AuthenticatedRequest extends Request {
   user?: any;
+  pacienteAlvoId?: string;
+  contextoAnotacao?: any;
 }
 
 /**

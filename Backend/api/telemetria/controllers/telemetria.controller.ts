@@ -4,6 +4,7 @@
 
 import { Request, Response } from 'express';
 import { TelemetriaService } from '../services/telemetria.service.js';
+import { TelemetriaAgregacaoService } from '../services/telemetria-agregacao.service.js';
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { validarUUID } from '../../../core/utils/validators.js';
@@ -186,4 +187,51 @@ export class TelemetriaController {
       res.status(500).json({ error: 'Erro interno ao buscar eventos de telemetria' });
     }
   }
+
+  /**
+   * Obtém as estatísticas e métricas agregadas da telemetria de uma sessão (Sprint 10 - Card 2.1)
+   * GET /api/telemetria/sessao/:sessaoId/agregada
+   */
+  static async obterEstatisticasSessao(req: Request, res: Response): Promise<void> {
+    try {
+      const sessaoId = String(req.params.sessaoId || '');
+
+      if (!sessaoId || !validarUUID(sessaoId)) {
+        res.status(400).json({ error: 'Parâmetro sessaoId obrigatório e deve ser um UUID válido' });
+        return;
+      }
+
+      // Validação de existência da sessão e regra RN04 (Visibilidade Institucional)
+      const sessao = await SessaoModel.buscarPorId(sessaoId);
+      if (!sessao) {
+        res.status(404).json({ error: 'Sessão não encontrada' });
+        return;
+      }
+
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const isSuperAdmin = usuarioLogado?.user_metadata?.is_super_admin === true;
+      const isDonoDaSessao = sessao.terapeuta_id === usuarioLogado?.id;
+
+      if (!isSuperAdmin && !isDonoDaSessao) {
+        res.status(403).json({
+          error: 'Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04).',
+        });
+        return;
+      }
+
+      const consolidado = await TelemetriaAgregacaoService.compilarPorSessaoId(sessaoId);
+      if (!consolidado) {
+        res.status(404).json({ error: 'Não foi possível consolidar a telemetria para a sessão especificada' });
+        return;
+      }
+
+      res.status(200).json({
+        data: consolidado,
+      });
+    } catch (error) {
+      console.error('[TelemetriaController] Erro ao agregar telemetria da sessão:', error);
+      res.status(500).json({ error: 'Erro interno ao agregar telemetria da sessão' });
+    }
+  }
 }
+

@@ -23,10 +23,7 @@ export interface RelatorioIAContrato {
 }
 
 export interface RelatorioSessao {
-  id: string;
-  sessao_id: string;
-  terapeuta_id: string;
-  paciente_id: string;
+  sessao_id: string; // Chave primária (3FN: PK compartilhada 1:1 com public.sessao)
   conteudo: string | null;
   dados_ia_json: RelatorioIAContrato;
   soft_delete: boolean;
@@ -36,15 +33,13 @@ export interface RelatorioSessao {
 
 export interface CriarRelatorioDTO {
   sessao_id: string;
-  terapeuta_id: string;
-  paciente_id: string;
   conteudo?: string | null;
   dados_ia_json: RelatorioIAContrato;
 }
 
 export class RelatorioSessaoModel {
   /**
-   * Persiste o relatório e os dados consolidados da IA na tabela 'relatorio_sessao'.
+   * Persiste o relatório e os dados consolidados da IA na tabela 'relatorio_sessao' (3FN pura).
    */
   static async criar(dto: CriarRelatorioDTO): Promise<RelatorioSessao | null> {
     try {
@@ -52,8 +47,6 @@ export class RelatorioSessaoModel {
         .from('relatorio_sessao')
         .insert({
           sessao_id: dto.sessao_id,
-          terapeuta_id: dto.terapeuta_id,
-          paciente_id: dto.paciente_id,
           conteudo: dto.conteudo || null,
           dados_ia_json: dto.dados_ia_json,
         })

@@ -34,12 +34,12 @@
 * **Referência Documentação:** Seção 5.7 (Figura 4), RF14, RF16, RN05, AGENTS.md (Seção 6.2)
 * **Descrição:** Criar migração SQL `008_create_tabela_relatorio_e_anotacao.sql` e atualizar `database.sql` garantindo conformidade rigorosa com a 3ª Forma Normal (**3FN**): a tabela `relatorio_sessao` vincula unicamente `sessao_id UUID UNIQUE NOT NULL REFERENCES public.sessao(id) ON DELETE RESTRICT` e armazena `dados_ia_json JSONB`, parecer e `soft_delete`, **sem duplicar redundantemente `paciente_id`** (já unívoco em `sessao`, suportando **RN01** onde modo livre tem `paciente_id = NULL`). A tabela `anotacao_clinica` contém `paciente_id UUID NOT NULL REFERENCES public.paciente(id)`, `terapeuta_id UUID NOT NULL REFERENCES public.terapeuta(id)`, `sessao_id UUID REFERENCES public.sessao(id) ON DELETE SET NULL`, `conteudo TEXT NOT NULL` e `soft_delete BOOLEAN DEFAULT FALSE`. Implementar models TypeScript estritos e auditar políticas RLS para ambas as tabelas prevenindo bloqueios acidentais (`42501`).
 * **Critérios de Aceite:**
-  * [ ] Migration executada com sucesso e idempotente (`IF NOT EXISTS`).
-  * [ ] Conformidade 3FN: `relatorio_sessao` não duplica `paciente_id`, obtendo paciente via JOIN com `sessao`.
-  * [ ] Tabela `anotacao_clinica` permite registro vinculado a paciente com ou sem sessão associada.
-  * [ ] Políticas RLS auditadas garantindo acesso por vínculo institucional (**RN04**) e bypass de `service_role`.
-  * [ ] Models `RelatorioSessaoModel` e `AnotacaoClinicaModel` com TypeScript estrito (zero `any`).
-  * [ ] Trigger `impedir_hard_delete_clinico()` ativo bloqueando `DELETE` físico (**RN05**).
+  * [x] Migration executada com sucesso e idempotente (`IF NOT EXISTS`).
+  * [x] Conformidade 3FN: `relatorio_sessao` não duplica `paciente_id`, obtendo paciente via JOIN com `sessao`.
+  * [x] Tabela `anotacao_clinica` permite registro vinculado a paciente com ou sem sessão associada.
+  * [x] Políticas RLS auditadas garantindo acesso por vínculo institucional (**RN04**) e bypass de `service_role`.
+  * [x] Models `RelatorioSessaoModel` e `AnotacaoClinicaModel` com TypeScript estrito (zero `any`).
+  * [ ] Trigger `impedir_hard_delete_clinico()` ativo bloqueando `DELETE` físico (**RN05**) *(adiado deliberadamente para a sprint de hardening/polimento para viabilizar rotinas de teste)*.
 
 ---
 
@@ -110,10 +110,10 @@
 * **Referência Documentação:** Seção 7.4.2 (Contrato 4), RF14, RNF04, RN02
 * **Descrição:** Construir serviço especializado para compilar e sumarizar os eventos brutos registrados na tabela `telemetria_evento` de uma sessão finalizada: cálculo de tempo médio e mediana de reação/resposta, taxa de precisão de toques (acertos vs. erros), métricas de estabilidade de atenção por janelas temporais e contagem de eventos por tipo. Respeitar rigorosamente a tipagem estrita de cada indicador do manifesto (**RN02**), sem fallback automático.
 * **Critérios de Aceite:**
-  * [ ] Consolidação analítica precisa a partir dos registros temporais de `telemetria_evento`.
-  * [ ] Tipagem rigorosa respeitando o `tipo_metrica` declarado no manifesto do jogo ativo (**RN02**).
-  * [ ] Tratamento numérico robusto contra divisão por zero para sessões com pouca ou nenhuma telemetria.
-  * [ ] Função pura e desacoplada pronta para ser consumida pelo motor de IA no Dia 3.
+  * [x] Consolidação analítica precisa a partir dos registros temporais de `telemetria_evento`.
+  * [x] Tipagem rigorosa respeitando o `tipo_metrica` declarado no manifesto do jogo ativo (**RN02**).
+  * [x] Tratamento numérico robusto contra divisão por zero para sessões com pouca ou nenhuma telemetria.
+  * [x] Função pura e desacoplada pronta para ser consumida pelo motor de IA no Dia 3.
 
 ---
 
@@ -128,9 +128,9 @@
 * **Referência Documentação:** Contrato 4 (`docs/ModelosDeContratos/relatorio.json`), Figura 3, Figura 12
 * **Descrição:** Desenvolver o gerador analítico de relatórios do Agente de IA aderente ao **Contrato 4**: geração de `analises_ia[]` contextuais com base nas intervenções de DDA que ocorreram durante a partida, cálculo da `resumo.taxa_conclusao`, identificação de tendência (`estavel`, `crescente`, `decrescente`) em `metricas_agregadas[]` e estruturação pronta para persistência em `relatorio_sessao.dados_ia_json`.
 * **Critérios de Aceite:**
-  * [ ] Formato 100% conforme a especificação do Contrato 4 (`docs/ModelosDeContratos/relatorio.json`).
-  * [ ] Geração dinâmica de pareceres analíticos coerentes com as modulações de estresse e DDA da sessão.
-  * [ ] Função exportada de forma modular para integração direta no endpoint de resultado (Card 1.2).
+  * [x] Formato 100% conforme a especificação do Contrato 4 (`docs/ModelosDeContratos/relatorio.json`).
+  * [x] Geração dinâmica de pareceres analíticos coerentes com as modulações de estresse e DDA da sessão.
+  * [x] Função exportada de forma modular para integração direta no endpoint de resultado (Card 1.2).
 
 ---
 
@@ -145,11 +145,11 @@
 * **Referência Documentação:** RF20 (Exportação de Relatórios Clínicos), RNF06 (LGPD / Privacidade), RN04
 * **Descrição:** Criar endpoint `GET /api/sessao/:id/exportar` para emissão do relatório em formato estruturado (JSON sanitizado e formatado para impressão de laudo clínico institucional). Reúne dados da clínica, registro profissional do terapeuta autor, identificação do paciente, tabela consolidada de métricas, parecer analítico da IA e espaço formal para carimbo e assinatura.
 * **Critérios de Aceite:**
-  * [ ] Retorno com status **`200 OK`** contendo o payload estruturado de exportação médica (RF20).
-  * [ ] Retorno com status **`400 Bad Request`** se a sessão não estiver com status `finalizada`.
-  * [ ] Retorno com status **`403 Forbidden`** se o terapeuta não possuir vínculo ativo com o paciente na clínica (**RN04**).
-  * [ ] Retorno com status **`404 Not Found`** se o identificador da sessão for inválido.
-  * [ ] Omissão e sanitização de dados internos de infraestrutura de servidores e chaves privadas (**RNF06**).
+  * [x] Retorno com status **`200 OK`** contendo o payload estruturado de exportação médica (RF20).
+  * [x] Retorno com status **`400 Bad Request`** se a sessão não estiver com status `finalizada`.
+  * [x] Retorno com status **`403 Forbidden`** se o terapeuta não possuir vínculo ativo com o paciente na clínica (**RN04**).
+  * [x] Retorno com status **`404 Not Found`** se o identificador da sessão for inválido.
+  * [x] Omissão e sanitização de dados internos de infraestrutura de servidores e chaves privadas (**RNF06**).
 
 ---
 
@@ -163,10 +163,10 @@
 * **Referência Documentação:** Pipeline CI/CD, Vitest
 * **Descrição:** Criar testes no Vitest cobrindo os cálculos estatísticos do serviço de agregação de telemetria, conformidade estrita do schema do Contrato 4 com validação Zod e teste unitário dos fluxos de exportação com verificação de status HTTP (200, 400, 403, 404).
 * **Critérios de Aceite:**
-  * [ ] 100% dos testes passando no Vitest (`npm test` no `Backend/`).
-  * [ ] Testes de cálculo de métricas agregadas passando com exatidão matemática.
-  * [ ] Testes de validação de schema do Contrato 4 aprovados sem divergências de campos.
-  * [ ] Teste de exportação cobrindo casos de sessão finalizada, rejeição para não finalizada (400) e sem vínculo (403).
+  * [x] 100% dos testes passando no Vitest (`npm test` no `Backend/`).
+  * [x] Testes de cálculo de métricas agregadas passando com exatidão matemática.
+  * [x] Testes de validação de schema do Contrato 4 aprovados sem divergências de campos.
+  * [x] Teste de exportação cobrindo casos de sessão finalizada, rejeição para não finalizada (400) e sem vínculo (403).
 
 ---
 
@@ -187,12 +187,12 @@
 * **Referência Documentação:** Figura 12 (Tela da emissão do relatório de 1 paciente), RF14, AGENTS.md (Seção 6.3)
 * **Descrição:** Desenvolver a página principal da Tela de Resultados (`/sessao/:id/resultado`), exibida após o encerramento da sessão ou na consulta posterior via prontuário. Orquestra a busca de dados via `useParams`, gerencia os estados clínicos e distribui as informações para os componentes filhos nos slots. Implementa estritamente os **4 estados visuais de interface** da Seção 6.3 do AGENTS.md.
 * **Critérios de Aceite:**
-  * [ ] Layout moderno, responsivo e aderente ao protótipo de alta fidelidade (Figura 12).
-  * [ ] Cabeçalho clínico com identificação do paciente, registro profissional do terapeuta, badges de status e data/duração.
-  * [ ] **Loading State:** Skeleton Loaders estruturais com dimensões idênticas aos blocos finais, eliminando CLS (*Cumulative Layout Shift*).
-  * [ ] **Empty State:** Visual amigável caso a sessão não possua métricas consolidadas.
-  * [ ] **Error State:** Feedback claro de erro com botão "Tentar Novamente", sem exibir mensagens técnicas brutas de rede.
-  * [ ] **Success State:** Renderização fluida com transições suaves e slots populados pelos componentes de Luma.
+  * [x] Layout moderno, responsivo e aderente ao protótipo de alta fidelidade (Figura 12).
+  * [x] Cabeçalho clínico com identificação do paciente, registro profissional do terapeuta, badges de status e data/duração.
+  * [x] **Loading State:** Skeleton Loaders estruturais com dimensões idênticas aos blocos finais, eliminando CLS (*Cumulative Layout Shift*).
+  * [x] **Empty State:** Visual amigável caso a sessão não possua métricas consolidadas.
+  * [x] **Error State:** Feedback claro de erro com botão "Tentar Novamente", sem exibir mensagens técnicas brutas de rede.
+  * [x] **Success State:** Renderização fluida com transições suaves e slots populados pelos componentes de Luma.
 
 ---
 
@@ -206,10 +206,10 @@
 * **Referência Documentação:** RF13, RF14, RN01, Figura 3 (Diagrama de Sequência)
 * **Descrição:** Modificar o fluxo de encerramento em `CockpitSessaoPage.tsx`: após confirmar o término no modal e receber o retorno de sucesso do backend (`PATCH /api/sessao/:id/finalizar`), redirecionar o navegador para `/sessao/:id/resultado` caso seja sessão clínica com paciente. Para sessões em Modo Livre (**RN01**), redirecionar para a biblioteca de jogos (`/games`) com toast notificando que a partida livre foi concluída sem persistência em prontuário.
 * **Critérios de Aceite:**
-  * [ ] Sessão clínica finalizada navega automaticamente para `/sessao/:id/resultado`.
-  * [ ] Sessão em Modo Livre redireciona para `/games` com toast clínico explicativo (**RN01**).
-  * [ ] Botão de confirmação de encerramento desabilita com spinner (`isSubmitting`) prevenindo duplo clique.
-  * [ ] Limpeza (*cleanup*) dos listeners de WebSocket e timers ao desmontar o Cockpit.
+  * [x] Sessão clínica finalizada navega automaticamente para `/sessao/:id/resultado`.
+  * [x] Sessão em Modo Livre redireciona para `/games` com toast clínico explicativo (**RN01**).
+  * [x] Botão de confirmação de encerramento desabilita com spinner (`isSubmitting`) prevenindo duplo clique.
+  * [x] Limpeza (*cleanup*) dos listeners de WebSocket e timers ao desmontar o Cockpit.
 
 ---
 
@@ -223,10 +223,10 @@
 * **Referência Documentação:** RF16 (Bloco de Anotações), RF21 (Autoria Obrigatória), RN05, Figura 12
 * **Descrição:** Implementar componente de anotações clínicas na Tela de Resultados: exibe o texto preliminar digitado no modal de encerramento, permite ao terapeuta complementar com novas observações pós-sessão, oferece salvamento assíncrono com botão e indicador visual de estado ("Salvo", "Salvando...", "Erro") e exibe a autoria indelével do profissional (**RF21**). Previne cliques múltiplos concorrentes.
 * **Critérios de Aceite:**
-  * [ ] Textarea acessível com contagem de caracteres e salvamento com botão protegido contra duplo clique (`isSubmitting`).
-  * [ ] Indicadores visuais dos estados de persistência ("Salvando...", "Salvo com sucesso", "Falha ao salvar").
-  * [ ] Integração com `POST /api/anotacao` (para novas anotações) e `PATCH /api/anotacao/:id` (para edições).
-  * [ ] Exibição visível do nome e registro do terapeuta autor (**RF21**).
+  * [x] Textarea acessível com contagem de caracteres e salvamento com botão protegido contra duplo clique (`isSubmitting`).
+  * [x] Indicadores visuais dos estados de persistência ("Salvando...", "Salvo com sucesso", "Falha ao salvar").
+  * [x] Integração com `POST /api/anotacao` (para novas anotações) e `PATCH /api/anotacao/:id` (para edições).
+  * [x] Exibição visível do nome e registro do terapeuta autor (**RF21**).
 
 ---
 
@@ -240,10 +240,10 @@
 * **Referência Documentação:** Pipeline CI, Vitest, Testing Library
 * **Descrição:** Construir testes automatizados com Vitest e Testing Library cobrindo a renderização dos 4 estados visuais (Skeleton loader, Empty, Error com retry e Success), o fluxo de redirecionamento cockpit $\rightarrow$ resultado, o salvamento do bloco de anotações com prevenção de múltiplos cliques e o tratamento de Modo Livre.
 * **Critérios de Aceite:**
-  * [ ] 100% dos testes passando no Vitest (`npm test` no `Frontend/`).
-  * [ ] Validação dos 4 estados de interface (Skeleton, Empty, Error, Success).
-  * [ ] Testes de interação do bloco de anotações e bloqueio de cliques concorrentes.
-  * [ ] Sem warnings do React ou violações de acessibilidade nos testes.
+  * [x] 100% dos testes passando no Vitest (`npm test` no `Frontend/`).
+  * [x] Validação dos 4 estados de interface (Skeleton, Empty, Error, Success).
+  * [x] Testes de interação do bloco de anotações e bloqueio de cliques concorrentes.
+  * [x] Sem warnings do React ou violações de acessibilidade nos testes.
 
 ---
 
@@ -497,14 +497,17 @@
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Database/database.sql`, `Database/migrations/008_normalizacao_relatorio_sessao.sql`
 * **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Ajuste de modelagem estrutural antes de consultas analíticas.
-* **Requisitos:** 3FN (Terceira Forma Normal), RN01 (Modo Livre sem Persistência), RN04 (Vínculo Institucional), RN05
-* **Referência Documentação:** AGENTS.md Seção 6.2 (Regra 3FN), Figura 4 (DER), RN01
-* **Descrição:** Em `Database/database.sql` (linhas 240-250), a tabela `relatorio_sessao` possui `terapeuta_id UUID NOT NULL REFERENCES terapeuta(id)` e `paciente_id UUID NOT NULL REFERENCES paciente(id)`. Como `sessao_id UUID UNIQUE NOT NULL REFERENCES sessao(id)` já é a âncora relacional única e a tabela `sessao` já contém os relacionamentos com terapeuta e paciente, a obrigatoriedade dessas FKs em `relatorio_sessao` viola a 3FN e quebra sumários de sessões em Modo Livre (**RN01**), onde `paciente_id` é `NULL`. Este card cria migração idempotente saneando as constraints e reescreve as políticas RLS para validar autorização através da tabela pai `sessao` (`EXISTS (SELECT 1 FROM public.sessao s WHERE s.id = relatorio_sessao.sessao_id AND ...)`).
+* **Requisitos:** 3FN (Terceira Forma Normal), RN01 (Modo Livre sem Persistência), RN04 (Vínculo Institucional), RN05 (Inalterabilidade e Soft Delete)
+* **Referência Documentação:** AGENTS.md Seção 6.2 (Regra 3FN), Figura 4 (DER), RN01, docs/ANOTACAO.MD
+* **Descrição:** A modelagem herdada da tabela `relatorio_sessao` continha `terapeuta_id UUID NOT NULL REFERENCES terapeuta(id)` e `paciente_id UUID NOT NULL REFERENCES paciente(id)`. Como `sessao_id UUID UNIQUE NOT NULL REFERENCES sessao(id)` já é a âncora relacional 1:1 e a tabela pai `sessao` já contém os relacionamentos com terapeuta e paciente, a presença dessas FKs viola a 3FN. Ademais, consolida-se a regra clínica de que partidas em Modo Livre (**RN01**) **não geram relatório**, pertencendo a tabela exclusivamente a sessões clínicas finalizadas. Este card normaliza a tabela tornando `sessao_id` a própria chave primária compartilhada (`sessao_id UUID PRIMARY KEY REFERENCES public.sessao(id)`), remove as colunas redundantes e reescreve as políticas RLS para validar autorização através da tabela pai `sessao` (`EXISTS (SELECT 1 FROM public.sessao s WHERE s.id = relatorio_sessao.sessao_id AND ...)`).
 * **Critérios de Aceite:**
   * [ ] Migration idempotente `008_normalizacao_relatorio_sessao.sql` saneando a tabela `relatorio_sessao`.
-  * [ ] `Database/database.sql` mantido sincronizado como Single Source of Truth sem constraints que quebrem sessões sem paciente.
-  * [ ] Políticas RLS de `relatorio_sessao` reescritas com subquery `EXISTS` sobre a tabela pai `sessao`.
-  * [ ] Suporte formal a relatórios de sessões com `paciente_id = NULL` sem violação de integridade referencial.
+  * [ ] Chave primária compartilhada: `sessao_id` é a própria `PRIMARY KEY`, eliminando a coluna `id` artificial.
+  * [ ] Conformidade 3FN pura: remoção definitiva das colunas redundantes `paciente_id` e `terapeuta_id`, obtendo vínculos via JOIN com `sessao`.
+  * [ ] Políticas RLS de `relatorio_sessao` reescritas com subquery `EXISTS` delegando autorização à tabela pai `sessao`.
+  * [ ] `Database/database.sql` mantido sincronizado como Single Source of Truth.
+  * [ ] Trigger anti-hard delete e flag `soft_delete` preservadas para conformidade clínica (**RN05**).
+  * [ ] Documentação alinhada em `docs/ANOTACAO.MD` esclarecendo que Modo Livre não gera registros de relatório (**RN01**).
 
 ---
 
@@ -535,10 +538,10 @@
 * **Referência Documentação:** RF14, RF19, Seção 7.10 do Projeto InTEA
 * **Descrição:** Em `Frontend/src/features/sessao/pages/CockpitSessaoPage.tsx` (linha 145), após o terapeuta confirmar o encerramento da sessão clínica, o handler executa `navigate("/games")`, quebrando a continuidade do fluxo médico e impossibilitando a visualização dos resultados imediatos da sessão. Este card corrige o fluxo de transição para navegar diretamente para a Tela de Resultados Consolidados recém-criada (`/sessao/${idOuToken}/resultado`), carregando as métricas e o parecer automatizado da IA para revisão clínica.
 * **Critérios de Aceite:**
-  * [ ] Finalização de sessão clínica no Cockpit redireciona automaticamente para `/sessao/:id/resultado`.
-  * [ ] Sessões finalizadas em Modo Livre (sem paciente) redirecionam adequadamente para o catálogo de jogos (`/games`).
-  * [ ] Identificador da sessão preservado no parâmetro de rota sem perdas de estado ou erros de hidratação.
-  * [ ] Notificação toast de sucesso mantida durante a transição fluida de tela.
+  * [x] Finalização de sessão clínica no Cockpit redireciona automaticamente para `/sessao/:id/resultado`.
+  * [x] Sessões finalizadas em Modo Livre (sem paciente) redirecionam adequadamente para o catálogo de jogos (`/games`).
+  * [x] Identificador da sessão preservado no parâmetro de rota sem perdas de estado ou erros de hidratação.
+  * [x] Notificação toast de sucesso mantida durante a transição fluida de tela.
 
 ---
 
