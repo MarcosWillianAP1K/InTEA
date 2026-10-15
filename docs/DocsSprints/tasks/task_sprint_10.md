@@ -110,10 +110,10 @@
 * **Referência Documentação:** Seção 7.4.2 (Contrato 4), RF14, RNF04, RN02
 * **Descrição:** Construir serviço especializado para compilar e sumarizar os eventos brutos registrados na tabela `telemetria_evento` de uma sessão finalizada: cálculo de tempo médio e mediana de reação/resposta, taxa de precisão de toques (acertos vs. erros), métricas de estabilidade de atenção por janelas temporais e contagem de eventos por tipo. Respeitar rigorosamente a tipagem estrita de cada indicador do manifesto (**RN02**), sem fallback automático.
 * **Critérios de Aceite:**
-  * [ ] Consolidação analítica precisa a partir dos registros temporais de `telemetria_evento`.
-  * [ ] Tipagem rigorosa respeitando o `tipo_metrica` declarado no manifesto do jogo ativo (**RN02**).
-  * [ ] Tratamento numérico robusto contra divisão por zero para sessões com pouca ou nenhuma telemetria.
-  * [ ] Função pura e desacoplada pronta para ser consumida pelo motor de IA no Dia 3.
+  * [x] Consolidação analítica precisa a partir dos registros temporais de `telemetria_evento`.
+  * [x] Tipagem rigorosa respeitando o `tipo_metrica` declarado no manifesto do jogo ativo (**RN02**).
+  * [x] Tratamento numérico robusto contra divisão por zero para sessões com pouca ou nenhuma telemetria.
+  * [x] Função pura e desacoplada pronta para ser consumida pelo motor de IA no Dia 3.
 
 ---
 
@@ -128,9 +128,9 @@
 * **Referência Documentação:** Contrato 4 (`docs/ModelosDeContratos/relatorio.json`), Figura 3, Figura 12
 * **Descrição:** Desenvolver o gerador analítico de relatórios do Agente de IA aderente ao **Contrato 4**: geração de `analises_ia[]` contextuais com base nas intervenções de DDA que ocorreram durante a partida, cálculo da `resumo.taxa_conclusao`, identificação de tendência (`estavel`, `crescente`, `decrescente`) em `metricas_agregadas[]` e estruturação pronta para persistência em `relatorio_sessao.dados_ia_json`.
 * **Critérios de Aceite:**
-  * [ ] Formato 100% conforme a especificação do Contrato 4 (`docs/ModelosDeContratos/relatorio.json`).
-  * [ ] Geração dinâmica de pareceres analíticos coerentes com as modulações de estresse e DDA da sessão.
-  * [ ] Função exportada de forma modular para integração direta no endpoint de resultado (Card 1.2).
+  * [x] Formato 100% conforme a especificação do Contrato 4 (`docs/ModelosDeContratos/relatorio.json`).
+  * [x] Geração dinâmica de pareceres analíticos coerentes com as modulações de estresse e DDA da sessão.
+  * [x] Função exportada de forma modular para integração direta no endpoint de resultado (Card 1.2).
 
 ---
 
@@ -145,11 +145,11 @@
 * **Referência Documentação:** RF20 (Exportação de Relatórios Clínicos), RNF06 (LGPD / Privacidade), RN04
 * **Descrição:** Criar endpoint `GET /api/sessao/:id/exportar` para emissão do relatório em formato estruturado (JSON sanitizado e formatado para impressão de laudo clínico institucional). Reúne dados da clínica, registro profissional do terapeuta autor, identificação do paciente, tabela consolidada de métricas, parecer analítico da IA e espaço formal para carimbo e assinatura.
 * **Critérios de Aceite:**
-  * [ ] Retorno com status **`200 OK`** contendo o payload estruturado de exportação médica (RF20).
-  * [ ] Retorno com status **`400 Bad Request`** se a sessão não estiver com status `finalizada`.
-  * [ ] Retorno com status **`403 Forbidden`** se o terapeuta não possuir vínculo ativo com o paciente na clínica (**RN04**).
-  * [ ] Retorno com status **`404 Not Found`** se o identificador da sessão for inválido.
-  * [ ] Omissão e sanitização de dados internos de infraestrutura de servidores e chaves privadas (**RNF06**).
+  * [x] Retorno com status **`200 OK`** contendo o payload estruturado de exportação médica (RF20).
+  * [x] Retorno com status **`400 Bad Request`** se a sessão não estiver com status `finalizada`.
+  * [x] Retorno com status **`403 Forbidden`** se o terapeuta não possuir vínculo ativo com o paciente na clínica (**RN04**).
+  * [x] Retorno com status **`404 Not Found`** se o identificador da sessão for inválido.
+  * [x] Omissão e sanitização de dados internos de infraestrutura de servidores e chaves privadas (**RNF06**).
 
 ---
 
@@ -163,10 +163,10 @@
 * **Referência Documentação:** Pipeline CI/CD, Vitest
 * **Descrição:** Criar testes no Vitest cobrindo os cálculos estatísticos do serviço de agregação de telemetria, conformidade estrita do schema do Contrato 4 com validação Zod e teste unitário dos fluxos de exportação com verificação de status HTTP (200, 400, 403, 404).
 * **Critérios de Aceite:**
-  * [ ] 100% dos testes passando no Vitest (`npm test` no `Backend/`).
-  * [ ] Testes de cálculo de métricas agregadas passando com exatidão matemática.
-  * [ ] Testes de validação de schema do Contrato 4 aprovados sem divergências de campos.
-  * [ ] Teste de exportação cobrindo casos de sessão finalizada, rejeição para não finalizada (400) e sem vínculo (403).
+  * [x] 100% dos testes passando no Vitest (`npm test` no `Backend/`).
+  * [x] Testes de cálculo de métricas agregadas passando com exatidão matemática.
+  * [x] Testes de validação de schema do Contrato 4 aprovados sem divergências de campos.
+  * [x] Teste de exportação cobrindo casos de sessão finalizada, rejeição para não finalizada (400) e sem vínculo (403).
 
 ---
 
