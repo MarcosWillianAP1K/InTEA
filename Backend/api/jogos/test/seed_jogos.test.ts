@@ -14,13 +14,12 @@ describe('Seed do Catálogo de Jogos (RF09)', () => {
       }
     });
 
-    it('cada jogo deve ter nome, versão, descrição e status de instalação preenchidos', async () => {
+    it('cada jogo deve ter nome, versão e descrição preenchidos', async () => {
       const { data: jogos } = await JogoModel.listar();
       for (const jogo of jogos) {
         expect(jogo.nome).toBeTruthy();
         expect(jogo.versao).toBeTruthy();
         expect(jogo.descricao).toBeTruthy();
-        expect(jogo.status_instalacao).toBe('instalado');
       }
     });
   });

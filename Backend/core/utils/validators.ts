@@ -103,7 +103,7 @@ export function validarTelefone(telefone: string): boolean {
  * @param dataStr - The date string candidate in YYYY-MM-DD format.
  * @returns Object indicating validity and an optional error message in English or localized string.
  */
-export function validarDataNascimento(dataStr: string): { valida: boolean; erro?: string } {
+export function validarDataNascimento(dataStr?: unknown): { valida: boolean; erro?: string } {
   if (!dataStr || typeof dataStr !== 'string') {
     return { valida: false, erro: 'Data de nascimento é obrigatória.' };
   }
@@ -141,52 +141,77 @@ export function validarDataNascimento(dataStr: string): { valida: boolean; erro?
   return { valida: true };
 }
 
+export interface CriarPacientePayloadRaw {
+  nome?: unknown;
+  data_nascimento?: unknown;
+  cpf?: unknown;
+  cep?: unknown;
+  telefone?: unknown;
+  responsavel?: {
+    nome?: unknown;
+    cpf?: unknown;
+    telefone?: unknown;
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+}
+
+export interface AtualizarPacientePayloadRaw {
+  nome?: unknown;
+  data_nascimento?: unknown;
+  cpf?: unknown;
+  cep?: unknown;
+  telefone?: unknown;
+  [key: string]: unknown;
+}
+
 /**
  * Validates the complete payload DTO for creating a new patient record (POST /api/paciente).
  *
  * @param payload - The request body object containing patient and optional guardian details.
  * @returns Object containing boolean status `valido` and array of validation errors `erros`.
  */
-export function validarCriarPacienteDTO(payload: any): { valido: boolean; erros: string[] } {
+export function validarCriarPacienteDTO(payload: unknown): { valido: boolean; erros: string[] } {
+  const p = (payload && typeof payload === 'object') ? (payload as Record<string, unknown>) : null;
   const erros: string[] = [];
 
   // Nome obrigatório
-  if (!payload?.nome || typeof payload.nome !== 'string' || payload.nome.trim().length < 2) {
+  if (!p?.nome || typeof p.nome !== 'string' || p.nome.trim().length < 2) {
     erros.push('O campo "nome" é obrigatório e deve conter ao menos 2 caracteres.');
   }
 
   // Data de nascimento
-  const checagemData = validarDataNascimento(payload?.data_nascimento);
+  const checagemData = validarDataNascimento(p?.data_nascimento);
   if (!checagemData.valida) {
     erros.push(checagemData.erro!);
   }
 
   // CPF obrigatório e matematicamente válido
-  if (!payload?.cpf || typeof payload.cpf !== 'string') {
+  if (!p?.cpf || typeof p.cpf !== 'string') {
     erros.push('O campo "cpf" é obrigatório.');
-  } else if (!validarCPF(payload.cpf)) {
+  } else if (!validarCPF(p.cpf)) {
     erros.push('O CPF informado é inválido.');
   }
 
   // CEP opcional
-  if (payload?.cep && !validarCEP(payload.cep)) {
+  if (p?.cep && typeof p.cep === 'string' && !validarCEP(p.cep)) {
     erros.push('O CEP informado é inválido. Utilize o formato 00000-000 ou 8 dígitos numéricos.');
   }
 
   // Telefone opcional
-  if (payload?.telefone && typeof payload.telefone === 'string') {
-    if (!validarTelefone(payload.telefone)) {
+  if (p?.telefone && typeof p.telefone === 'string') {
+    if (!validarTelefone(p.telefone)) {
       erros.push('O telefone informado é inválido. Deve conter DDD válido e o dígito 9 na frente (ex: +55 (11) 98765-4321 ou 11987654321).');
     }
   }
 
   // Responsável opcional
-  if (payload?.responsavel) {
-    const resp = payload.responsavel;
+  if (p?.responsavel && typeof p.responsavel === 'object') {
+    const resp = p.responsavel as Record<string, unknown>;
     if (!resp.nome || typeof resp.nome !== 'string' || resp.nome.trim().length < 2) {
       erros.push('O responsável deve conter um "nome" válido.');
     }
-    if (resp.cpf && !validarCPF(resp.cpf)) {
+    if (resp.cpf && typeof resp.cpf === 'string' && !validarCPF(resp.cpf)) {
       erros.push('O CPF do responsável é inválido.');
     }
     if (resp.telefone && typeof resp.telefone === 'string') {
@@ -208,36 +233,41 @@ export function validarCriarPacienteDTO(payload: any): { valido: boolean; erros:
  * @param payload - The request body object containing fields to update.
  * @returns Object containing boolean status `valido` and array of validation errors `erros`.
  */
-export function validarAtualizarPacienteDTO(payload: any): { valido: boolean; erros: string[] } {
+export function validarAtualizarPacienteDTO(payload: unknown): { valido: boolean; erros: string[] } {
+  const p = (payload && typeof payload === 'object') ? (payload as Record<string, unknown>) : null;
   const erros: string[] = [];
 
-  if (payload?.nome !== undefined) {
-    if (typeof payload.nome !== 'string' || payload.nome.trim().length < 2) {
+  if (p?.nome !== undefined) {
+    if (typeof p.nome !== 'string' || p.nome.trim().length < 2) {
       erros.push('O campo "nome" deve conter ao menos 2 caracteres.');
     }
   }
 
-  if (payload?.data_nascimento !== undefined) {
-    const checagemData = validarDataNascimento(payload.data_nascimento);
-    if (!checagemData.valida) {
-      erros.push(checagemData.erro!);
+  if (p?.data_nascimento !== undefined && p.data_nascimento !== null) {
+    if (typeof p.data_nascimento !== 'string') {
+      erros.push('Data de nascimento deve estar no formato AAAA-MM-DD (ISO 8601).');
+    } else {
+      const checagemData = validarDataNascimento(p.data_nascimento);
+      if (!checagemData.valida) {
+        erros.push(checagemData.erro!);
+      }
     }
   }
 
-  if (payload?.cpf !== undefined && payload.cpf !== null) {
-    if (!validarCPF(payload.cpf)) {
+  if (p?.cpf !== undefined && p.cpf !== null) {
+    if (typeof p.cpf !== 'string' || !validarCPF(p.cpf)) {
       erros.push('O CPF informado é inválido.');
     }
   }
 
-  if (payload?.cep !== undefined && payload.cep !== null) {
-    if (!validarCEP(payload.cep)) {
+  if (p?.cep !== undefined && p.cep !== null) {
+    if (typeof p.cep !== 'string' || !validarCEP(p.cep)) {
       erros.push('O CEP informado é inválido. Utilize o formato 00000-000 ou 8 dígitos numéricos.');
     }
   }
 
-  if (payload?.telefone !== undefined && payload.telefone !== null) {
-    if (!validarTelefone(payload.telefone)) {
+  if (p?.telefone !== undefined && p.telefone !== null) {
+    if (typeof p.telefone !== 'string' || !validarTelefone(p.telefone)) {
       erros.push('O telefone informado é inválido. Deve conter DDD válido e o dígito 9 na frente.');
     }
   }

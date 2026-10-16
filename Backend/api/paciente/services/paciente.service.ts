@@ -1,0 +1,295 @@
+// ==============================================================================
+// InTEA: Serviço de Pacientes (Camada de Domínio / Fat Service)
+// ==============================================================================
+// Conformidade: RF10, RN04 (Visibilidade Institucional), RN05 (Soft Delete)
+// ==============================================================================
+
+import {
+  PacienteModel,
+  Paciente,
+  CriarPacienteDTO,
+  AtualizarPacienteDTO,
+  FiltrosPacienteDTO,
+  RespostaListagemPaciente,
+  ResponsavelVinculado,
+  TerapeutaVinculado,
+} from '../models/paciente.model.js';
+import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
+import {
+  validarUUID,
+  validarCriarPacienteDTO,
+  validarAtualizarPacienteDTO,
+} from '../../../core/utils/validators.js';
+import {
+  formatarCPF,
+  formatarCEP,
+  formatarTelefone,
+} from '../../../core/utils/formatters.js';
+
+export class PacienteServiceError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number = 400,
+    public detalhes?: unknown
+  ) {
+    super(message);
+    this.name = 'PacienteServiceError';
+  }
+}
+
+export class PacienteService {
+  /**
+   * Lists patients with search filters, pagination, and institutional visibility rules (RN04).
+   *
+   * @param filtros - Search, age, pagination, and active-status filters.
+   * @param usuarioLogado - Authenticated user extracting clinician identity.
+   * @param verTodosPacientes - If true and user is super admin, bypasses therapist link filtering.
+   * @returns Paginated patient data and metadata.
+   */
+  static async listar(
+    filtros: FiltrosPacienteDTO,
+    usuarioLogado?: UsuarioAutenticado,
+    verTodosPacientes: boolean = false
+  ): Promise<RespostaListagemPaciente> {
+    const isSuperAdmin =
+      usuarioLogado?.is_super_admin === true ||
+      usuarioLogado?.user_metadata?.is_super_admin === true;
+
+    // Regra RN04: Terapeutas comuns só visualizam seus próprios pacientes vinculados
+    if (usuarioLogado && !(isSuperAdmin && verTodosPacientes)) {
+      filtros.terapeutaId = usuarioLogado.id;
+    }
+
+    return await PacienteModel.listar(filtros);
+  }
+
+  /**
+   * Retrieves a single patient by UUID and normalizes relation arrays.
+   *
+   * @param id - Patient UUID.
+   * @returns Patient record or null if not found.
+   */
+  static async buscarPorId(id: string): Promise<Paciente | null> {
+    if (!id || id === 'undefined') {
+      throw new PacienteServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(id)) {
+      throw new PacienteServiceError('O parâmetro ID deve ser um UUID válido.', 400);
+    }
+
+    const paciente = await PacienteModel.buscarPorId(id);
+    if (!paciente) {
+      return null;
+    }
+
+    // Normalização segura sem `any`
+    const responsaveisNormalizados: ResponsavelVinculado[] = Array.isArray(paciente.responsaveis)
+      ? paciente.responsaveis.map((r: unknown) => {
+          if (r && typeof r === 'object' && 'responsavel' in r) {
+            return (r as { responsavel: ResponsavelVinculado }).responsavel;
+          }
+          return r as ResponsavelVinculado;
+        })
+      : [];
+
+    const terapeutasNormalizados: TerapeutaVinculado[] = Array.isArray(paciente.terapeutas)
+      ? paciente.terapeutas.map((t: unknown) => {
+          if (t && typeof t === 'object' && 'terapeuta' in t) {
+            return (t as { terapeuta: TerapeutaVinculado }).terapeuta;
+          }
+          return t as TerapeutaVinculado;
+        })
+      : [];
+
+    return {
+      ...paciente,
+      responsaveis: responsaveisNormalizados,
+      terapeutas: terapeutasNormalizados,
+    };
+  }
+
+  /**
+   * Creates a new patient record with sanitized demographic data and masks.
+   *
+   * @param dto - New patient payload data.
+   * @returns Newly created patient record.
+   */
+  static async criar(dto: CriarPacienteDTO): Promise<Paciente> {
+    // 1. Validação estrutural do payload
+    const validacao = validarCriarPacienteDTO(dto);
+    if (!validacao.valido) {
+      throw new PacienteServiceError('Erro de validação nos dados do paciente.', 400, validacao.erros);
+    }
+
+    // 2. Normalização e aplicação de máscaras canônicas
+    dto.cpf = formatarCPF(dto.cpf);
+    if (dto.cep) dto.cep = formatarCEP(dto.cep);
+    if (dto.telefone) dto.telefone = formatarTelefone(dto.telefone);
+
+    if (dto.responsavel) {
+      if (dto.responsavel.cpf) dto.responsavel.cpf = formatarCPF(dto.responsavel.cpf);
+      if (dto.responsavel.telefone) dto.responsavel.telefone = formatarTelefone(dto.responsavel.telefone);
+    }
+
+    // 3. Persistência
+    return await PacienteModel.criar(dto);
+  }
+
+  /**
+   * Updates demographic or contact fields of an existing patient.
+   *
+   * @param id - Patient UUID.
+   * @param dto - Partial update fields.
+   * @returns Updated patient record.
+   */
+  static async atualizar(id: string, dto: AtualizarPacienteDTO): Promise<Paciente> {
+    if (!id || id === 'undefined') {
+      throw new PacienteServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(id)) {
+      throw new PacienteServiceError('O parâmetro ID deve ser um UUID válido.', 400);
+    }
+
+    const validacao = validarAtualizarPacienteDTO(dto);
+    if (!validacao.valido) {
+      throw new PacienteServiceError('Erro de validação na atualização do paciente.', 400, validacao.erros);
+    }
+
+    // Normalização de máscaras
+    if (dto.cpf) dto.cpf = formatarCPF(dto.cpf);
+    if (dto.cep) dto.cep = formatarCEP(dto.cep);
+    if (dto.telefone) dto.telefone = formatarTelefone(dto.telefone);
+
+    const existente = await PacienteModel.buscarPorId(id);
+    if (!existente) {
+      throw new PacienteServiceError('Paciente não encontrado para atualização.', 404);
+    }
+
+    return await PacienteModel.atualizar(id, dto);
+  }
+
+  /**
+   * Soft deletes a patient (RN05: status_ativo = false).
+   *
+   * @param id - Patient UUID.
+   * @returns Object indicating deactivated patient and whether it was already inactive.
+   */
+  static async desativar(id: string): Promise<{ paciente: Paciente; jaInativo: boolean }> {
+    if (!id || id === 'undefined') {
+      throw new PacienteServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(id)) {
+      throw new PacienteServiceError('O parâmetro ID deve ser um UUID válido.', 400);
+    }
+
+    const existente = await PacienteModel.buscarPorId(id);
+    if (!existente) {
+      throw new PacienteServiceError('Paciente não encontrado para desativação.', 404);
+    }
+
+    if (!existente.status_ativo) {
+      return { paciente: existente, jaInativo: true };
+    }
+
+    const desativado = await PacienteModel.desativar(id);
+    return { paciente: desativado, jaInativo: false };
+  }
+
+  /**
+   * Reactivates an inactive patient record.
+   *
+   * @param id - Patient UUID.
+   * @returns Reactivated patient.
+   */
+  static async reativar(id: string): Promise<Paciente> {
+    if (!id || id === 'undefined') {
+      throw new PacienteServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(id)) {
+      throw new PacienteServiceError('O parâmetro ID deve ser um UUID válido.', 400);
+    }
+
+    const existente = await PacienteModel.buscarPorId(id);
+    if (!existente) {
+      throw new PacienteServiceError('Paciente não encontrado para reativação.', 404);
+    }
+
+    return await PacienteModel.reativar(id);
+  }
+
+  /**
+   * Permanently hard deletes a patient record (Dev/Testing only).
+   *
+   * @param id - Patient UUID.
+   */
+  static async deletarHard(id: string): Promise<void> {
+    if (!id || id === 'undefined') {
+      throw new PacienteServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(id)) {
+      throw new PacienteServiceError('O parâmetro ID deve ser um UUID válido.', 400);
+    }
+
+    const existente = await PacienteModel.buscarPorId(id);
+    if (!existente) {
+      throw new PacienteServiceError('Paciente não encontrado para exclusão física.', 404);
+    }
+
+    await PacienteModel.deletarHard(id);
+  }
+
+  /**
+   * Associates a therapist with a patient (terapeuta_paciente link).
+   *
+   * @param pacienteId - Patient UUID.
+   * @param terapeutaId - Therapist UUID.
+   */
+  static async vincularTerapeuta(pacienteId: string, terapeutaId: string): Promise<void> {
+    if (!pacienteId || !validarUUID(pacienteId)) {
+      throw new PacienteServiceError('O ID do paciente deve ser um UUID válido.', 400);
+    }
+
+    if (!terapeutaId || !validarUUID(terapeutaId)) {
+      throw new PacienteServiceError('O campo "terapeuta_id" deve ser um UUID válido.', 400);
+    }
+
+    await PacienteModel.vincularTerapeuta(pacienteId, terapeutaId);
+  }
+
+  /**
+   * Removes association between a therapist and a patient.
+   *
+   * @param pacienteId - Patient UUID.
+   * @param terapeutaId - Therapist UUID.
+   */
+  static async desvincularTerapeuta(pacienteId: string, terapeutaId: string): Promise<void> {
+    if (!pacienteId || !validarUUID(pacienteId)) {
+      throw new PacienteServiceError('O parâmetro "id" deve ser um UUID válido.', 400);
+    }
+
+    if (!terapeutaId || !validarUUID(terapeutaId)) {
+      throw new PacienteServiceError('O parâmetro "terapeutaId" deve ser um UUID válido.', 400);
+    }
+
+    await PacienteModel.desvincularTerapeuta(pacienteId, terapeutaId);
+  }
+
+  /**
+   * Lists therapists linked to a specific patient.
+   *
+   * @param pacienteId - Patient UUID.
+   * @returns Array of linked therapists.
+   */
+  static async listarTerapeutas(pacienteId: string): Promise<TerapeutaVinculado[]> {
+    if (!pacienteId || !validarUUID(pacienteId)) {
+      throw new PacienteServiceError('O parâmetro ID deve ser um UUID válido.', 400);
+    }
+
+    return (await PacienteModel.listarTerapeutasVinculados(pacienteId)) as TerapeutaVinculado[];
+  }
+}

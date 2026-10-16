@@ -144,7 +144,7 @@ export async function resolverContextoSessao(
       }
 
       req.pacienteAlvoId = sessao.paciente_id;
-      req.contextoAnotacao = { sessao };
+      req.contextoSessao = sessao;
       return next();
     }
 
@@ -168,7 +168,7 @@ export async function resolverContextoSessao(
       }
 
       req.pacienteAlvoId = sessao.paciente_id;
-      req.contextoAnotacao = { sessao };
+      req.contextoSessao = sessao;
       return next();
     }
 
@@ -203,3 +203,18 @@ export async function resolverContextoSessao(
     res.status(500).json({ error: 'Erro interno ao resolver contexto da anotação de sessão.' });
   }
 }
+
+/**
+ * Resolves context for unified /api/anotacao route by delegating to session or patient resolver.
+ */
+export async function resolverContextoAnotacaoUnificada(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  if (req.body?.sessao_id) {
+    return resolverContextoSessao(req, res, next);
+  }
+  return resolverContextoPaciente(req, res, next);
+}
+

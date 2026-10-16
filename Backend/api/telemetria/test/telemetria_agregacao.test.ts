@@ -373,7 +373,6 @@ describe('Card 2.1 — TelemetriaAgregacaoService.compilarPorSessaoId (Banco Moc
       nome: 'Labirinto Cognitivo',
       descricao: 'Teste',
       versao: '1.0.0',
-      status_instalacao: 'instalado',
       manifesto_json: {
         id_jogo: 'game-uuid-01',
         nome: 'Labirinto Cognitivo',

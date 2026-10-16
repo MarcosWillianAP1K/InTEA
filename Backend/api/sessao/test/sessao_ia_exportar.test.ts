@@ -287,7 +287,6 @@ describe('Card 2.3 — SessaoExportarService.gerarLaudoExportacao (Regras de Neg
       nome: 'Labirinto Cognitivo Sensorial',
       descricao: 'Teste',
       versao: '1.2.0',
-      status_instalacao: 'instalado',
       manifesto_json: {
         id_jogo: 'jogo-uuid-1',
         nome: 'Labirinto Cognitivo Sensorial',

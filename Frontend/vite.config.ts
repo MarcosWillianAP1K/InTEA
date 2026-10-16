@@ -14,9 +14,12 @@ export default defineConfig(() => {
       },
     },
     server: {
-      open: true,
+      open: false,
       port: 5173,
       host: true,
+      watch: {
+        usePolling: true,
+      },
     },
     build: {
       chunkSizeWarningLimit: 1000,

@@ -18,7 +18,7 @@ export const sessaoRoutes = Router();
 
 /**
  * @swagger
- * /api/sessao/gerarCodigoPareamento:
+ * /api/sessao/codigo-pareamento:
  *   get:
  *     summary: Gera um código legível único de pareamento remoto (PIN)
  *     description: Gera um código alfanumérico único de pareamento (ex. '4M5S-8U7B') para ser inserido no game externo pelo paciente, verificando unicidade contra sessões existentes.
@@ -30,26 +30,25 @@ export const sessaoRoutes = Router();
  *         description: Código de pareamento gerado com sucesso
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 codigo:
- *                   type: string
- *                   example: "4M5S-8U7B"
+ *             example:
+ *               message: "Código de pareamento gerado com sucesso"
+ *               data:
+ *                 codigo: "4M5S-8U7B"
+ *               codigo: "4M5S-8U7B"
  *       401:
  *         description: Token JWT ausente ou inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       500:
  *         description: Erro ao gerar código de pareamento
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Erro interno ao gerar código de pareamento"
+ *             example:
+ *               error: "Erro interno ao gerar código de pareamento"
  */
-sessaoRoutes.get('/gerarCodigoPareamento', authMiddleware, SessaoController.gerarCodigoPareamento);
+sessaoRoutes.get('/codigo-pareamento', authMiddleware, SessaoController.gerarCodigoPareamento);
 
 /**
  * @swagger
@@ -258,13 +257,13 @@ sessaoRoutes.post('/parear', SessaoController.parear);
 
 // =============================================================================
 // ROTAS COM PARÂMETROS DINÂMICOS
-// REGRA: /buscarPorToken/:token ANTES de /:id — o Express avalia rotas em ordem de registro.
-// Se /:id vier primeiro, a string "buscarPorToken" seria capturada como valor de :id.
+// REGRA: /token/:token ANTES de /:id — o Express avalia rotas em ordem de registro.
+// Se /:id vier primeiro, a string "token" seria capturada como valor de :id.
 // =============================================================================
 
 /**
  * @swagger
- * /api/sessao/buscarPorToken/{token}:
+ * /api/sessao/token/{token}:
  *   get:
  *     summary: Busca uma sessão pelo código/token de pareamento (PIN)
  *     description: Consulta os dados de uma sessão ativa a partir do código alfanumérico de pareamento digitado. Retorna a sessão completa incluindo status e configurações.
@@ -327,7 +326,7 @@ sessaoRoutes.post('/parear', SessaoController.parear);
  *       500:
  *         description: Erro interno ao buscar sessão por token
  */
-sessaoRoutes.get('/buscarPorToken/:token', authMiddleware, SessaoController.buscarPorToken);
+sessaoRoutes.get('/token/:token', authMiddleware, SessaoController.buscarPorToken);
 
 /**
  * @swagger
@@ -346,8 +345,36 @@ sessaoRoutes.get('/buscarPorToken/:token', authMiddleware, SessaoController.busc
  *     responses:
  *       200:
  *         description: Status da sessão retornado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                 session_token: "4M5S-8U7B"
+ *                 status_sessao: "conectado"
+ *                 modo_sessao: "sessao_clinica"
+ *                 dispositivo_info: null
+ *                 presenca_dispositivo: null
+ *                 expira_em: "2026-10-15T18:00:00.000Z"
+ *                 data_hora_inicio: "2026-10-15T17:45:00.000Z"
+ *       400:
+ *         description: Token não fornecido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token não fornecido"
  *       404:
  *         description: Sessão não encontrada
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Sessão não encontrada"
+ *       500:
+ *         description: Erro interno ao consultar status da sessão
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro ao consultar status da sessão"
  */
 sessaoRoutes.get('/:token/status', SessaoController.consultarStatus);
 
@@ -452,18 +479,89 @@ sessaoRoutes.get('/:id', authMiddleware, SessaoController.buscarPorId);
  *     responses:
  *       200:
  *         description: Laudo clínico estruturado retornado com sucesso para exportação
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 cabecalho:
+ *                   instituicao: "Clínica Integrada InTEA"
+ *                   cnpj_clinica: "12.345.678/0001-90"
+ *                   emissao_em: "2026-10-15T18:00:00.000Z"
+ *                   codigo_autenticidade: "LAUDO-4M5S-20261015"
+ *                 paciente:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   nome: "Pedro Henrique Silveira"
+ *                   data_nascimento: "2018-06-15"
+ *                   idade_anos: 8
+ *                   cpf_mascarado: "***.982.247-**"
+ *                   diagnostico_base: "Transtorno do Espectro Autista (TEA)"
+ *                   responsavel_legal:
+ *                     nome: "Juliana Silveira"
+ *                     parentesco: "Mãe"
+ *                     telefone: "(11) 99887-6655"
+ *                 terapeuta:
+ *                   id: "11111111-1111-1111-1111-111111111111"
+ *                   nome: "Dra. Mariana Costa"
+ *                   registro_profissional: "CREFITO-3/12345-TO"
+ *                   especialidade: "Terapia Ocupacional e Integração Sensorial"
+ *                   email_contato: "mariana.costa@intea.com.br"
+ *                 sessao:
+ *                   id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                   token_pareamento: "4M5S-8U7B"
+ *                   jogo:
+ *                     nome: "Jogo da Memória Sensorial"
+ *                     versao: "1.0.0"
+ *                   data_hora_inicio: "2026-10-15T17:30:00.000Z"
+ *                   data_hora_fim: "2026-10-15T17:50:00.000Z"
+ *                   duracao_segundos: 1200
+ *                   duracao_formatada: "20 min"
+ *                   modo: "sessao_clinica"
+ *                 metricas_tabela:
+ *                   - indicador: "Tempo Médio de Resposta"
+ *                     valor_obtido: "1.4s"
+ *                     unidade: "segundos"
+ *                     interpretacao_clinica: "Adequado"
+ *                 analise_ia:
+ *                   parecer_geral: "Paciente demonstrou excelente engajamento nas atividades sensoriais com foco atencional sustentado."
+ *                   engajamento_estimado: "alto"
+ *                   recomendacoes_clinicas:
+ *                     - "Manter estímulos visuais de intensidade média"
+ *                 assinatura:
+ *                   terapeuta_nome: "Dra. Mariana Costa"
+ *                   registro_profissional: "CREFITO-3/12345-TO"
+ *                   data_assinatura: "2026-10-15"
  *       400:
  *         description: Sessão não está finalizada ou identificador inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "A sessão precisa estar finalizada para exportação do laudo clínico."
  *       401:
  *         description: Token JWT ausente ou inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado por falta de vínculo institucional ativo (RN04)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado: você não possui vínculo com este paciente (RN04)."
  *       404:
  *         description: Sessão ou paciente não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Sessão não encontrada"
  *       500:
  *         description: Erro interno ao emitir laudo para exportação
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao emitir laudo clínico para exportação."
  */
-sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoExportarService.handlerExportarHttp);
+sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoController.exportar);
 
 
 /**
@@ -488,24 +586,18 @@ sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoExportarService.handlerE
  *         description: Sessão finalizada com sucesso
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     status_sessao:
- *                       type: string
- *                       example: "finalizada"
- *                     data_hora_fim:
- *                       type: string
- *                       format: date-time
- *                       nullable: true
+ *             example:
+ *               message: "Sessão finalizada com sucesso"
+ *               data:
+ *                 id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                 status_sessao: "finalizada"
+ *                 data_hora_fim: "2026-10-15T18:00:00.000Z"
  *       401:
  *         description: Token JWT ausente ou inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       404:
  *         description: Sessão não encontrada para finalização
  *         content:
@@ -543,18 +635,11 @@ sessaoRoutes.patch('/:id/finalizar', authMiddleware, SessaoController.finalizar)
  *         description: Sessão cancelada com sucesso
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     status_sessao:
- *                       type: string
- *                       example: "cancelada"
+ *             example:
+ *               message: "Sessão cancelada com sucesso"
+ *               data:
+ *                 id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                 status_sessao: "cancelada"
  *       400:
  *         description: Sessão já está em status terminal (finalizada, expirada ou cancelada)
  *         content:
@@ -750,6 +835,115 @@ sessaoRoutes.patch('/:id/status', authMiddleware, SessaoController.atualizarStat
  *                         dados_ia_json:
  *                           type: object
  *                           description: Dados analíticos conforme Contrato 4 da IA
+ *                     cabecalho:
+ *                       type: object
+ *                       properties:
+ *                         paciente:
+ *                           type: object
+ *                           nullable: true
+ *                           description: Dados demográficos e clínicos do paciente (nulo em Modo Livre - RN01)
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               format: uuid
+ *                             nome:
+ *                               type: string
+ *                             data_nascimento:
+ *                               type: string
+ *                               format: date
+ *                             idade_anos:
+ *                               type: integer
+ *                             diagnostico:
+ *                               type: string
+ *                             gatilhos_evitar:
+ *                               type: array
+ *                               items:
+ *                                 type: string
+ *                             nivel_estresse_inicial:
+ *                               type: integer
+ *                         terapeuta:
+ *                           type: object
+ *                           nullable: true
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               format: uuid
+ *                             nome:
+ *                               type: string
+ *                             registro_profissional:
+ *                               type: string
+ *                             crefito:
+ *                               type: string
+ *                             especialidade:
+ *                               type: string
+ *                         jogo:
+ *                           type: object
+ *                           nullable: true
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               format: uuid
+ *                             nome:
+ *                               type: string
+ *                             titulo:
+ *                               type: string
+ *                             versao:
+ *                               type: string
+ *                             descricao:
+ *                               type: string
+ *                     metricas_cards:
+ *                       type: object
+ *                       description: Indicadores quantitativos de desempenho copilados a partir da telemetria
+ *                       properties:
+ *                         pontuacao_geral:
+ *                           type: number
+ *                         taxa_conclusao:
+ *                           type: number
+ *                         total_toques:
+ *                           type: integer
+ *                         total_acertos:
+ *                           type: integer
+ *                         total_erros:
+ *                           type: integer
+ *                         taxa_precisao_percentual:
+ *                           type: number
+ *                         tempo_medio_resposta_ms:
+ *                           type: integer
+ *                         estabilidade_foco:
+ *                           type: number
+ *                         intervencoes_dda:
+ *                           type: integer
+ *                     insights_ia:
+ *                       type: object
+ *                       nullable: true
+ *                       description: Síntese analítica do Agente de IA aderente ao Contrato 4
+ *                     grafico_evolutivo:
+ *                       type: object
+ *                       description: Curva intra-sessão de tentativas e tempos de resposta
+ *                       properties:
+ *                         tipo:
+ *                           type: string
+ *                           example: "intra_sessao"
+ *                         tempo_medio_referencia:
+ *                           type: number
+ *                         tentativas:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               tentativa:
+ *                                 type: integer
+ *                               segundo:
+ *                                 type: integer
+ *                               tempoFormatado:
+ *                                 type: string
+ *                               tempo_resposta_segundos:
+ *                                 type: number
+ *                               acerto:
+ *                                 type: boolean
+ *                               intervencaoDda:
+ *                                 type: object
+ *                                 nullable: true
  *                     anotacoes:
  *                       type: array
  *                       items:

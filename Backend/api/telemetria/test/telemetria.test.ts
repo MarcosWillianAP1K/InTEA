@@ -759,6 +759,11 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
       limite: 10,
       pagina: 2,
       total_pagina: 1,
+      meta: {
+        limite: 10,
+        pagina: 2,
+        total_pagina: 1,
+      },
     });
     expect(TelemetriaService.listarPorSessao).toHaveBeenCalledWith(
       'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',

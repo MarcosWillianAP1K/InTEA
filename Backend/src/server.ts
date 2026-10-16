@@ -61,6 +61,7 @@ const swaggerSpec = swaggerJsdoc({
       { name: "Sessão", description: "Gerenciamento de sessões clínicas e pareamento remoto" },
       { name: "Telemetria", description: "Ingestão e consulta de telemetria contínua da sessão" },
       { name: "Auditoria", description: "Trilha de auditoria clínica e conformidade LGPD da sessão" },
+      { name: "Anotações Clínicas", description: "Prontuário clínico e anotações vinculadas a pacientes e sessões" },
     ],
     components: {
       securitySchemes: {
@@ -68,15 +69,14 @@ const swaggerSpec = swaggerJsdoc({
           type: "http",
           scheme: "bearer",
           bearerFormat: "JWT",
-          description: "Insira o token JWT gerado no endpoint /api/terapeuta/login",
+          description: "Insira o token JWT gerado no endpoint /api/auth/login",
         },
       },
     },
   },
-  apis: [
-    "./dist/api/**/*.routes.js",
-    "./api/**/*.routes.ts",
-  ],
+  apis: import.meta.url.includes("/dist/")
+    ? ["./dist/api/**/*.routes.js"]
+    : ["./api/**/*.routes.ts"],
 });
 
 app.use(

@@ -103,10 +103,11 @@ describe('Filtro por Objetivo e Paginação de Jogos (RF19)', () => {
 
       expect(getStatus()).toBe(200);
       expect(getJson()).toHaveProperty('data');
-      expect(getJson()).toHaveProperty('total');
-      expect(getJson()).toHaveProperty('page');
-      expect(getJson()).toHaveProperty('limit');
-      expect(getJson()).toHaveProperty('totalPages');
+      expect(getJson()).toHaveProperty('meta');
+      expect(getJson().meta).toHaveProperty('total');
+      expect(getJson().meta).toHaveProperty('page');
+      expect(getJson().meta).toHaveProperty('limit');
+      expect(getJson().meta).toHaveProperty('totalPages');
     });
 
     it('deve filtrar por ?objetivo=foco_atencional e retornar apenas "Aventura das Cores"', async () => {
@@ -127,8 +128,8 @@ describe('Filtro por Objetivo e Paginação de Jogos (RF19)', () => {
       await JogoController.listar(req, res);
 
       expect(getStatus()).toBe(200);
-      expect(getJson().page).toBe(2);
-      expect(getJson().limit).toBe(2);
+      expect(getJson().meta.page).toBe(2);
+      expect(getJson().meta.limit).toBe(2);
     });
 
     it('deve retornar lista vazia para objetivo inexistente com total 0', async () => {
@@ -139,7 +140,7 @@ describe('Filtro por Objetivo e Paginação de Jogos (RF19)', () => {
 
       expect(getStatus()).toBe(200);
       expect(getJson().data).toHaveLength(0);
-      expect(getJson().total).toBe(0);
+      expect(getJson().meta.total).toBe(0);
     });
   });
 });

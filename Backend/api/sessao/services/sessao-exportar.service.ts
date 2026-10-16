@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, Sessao } from '../models/sessao.model.js';
-import { PacienteModel, Paciente } from '../../paciente/models/paciente.model.js';
+import { PacienteModel, Paciente, ResponsavelVinculado } from '../../paciente/models/paciente.model.js';
 import { TerapeutaModel, Terapeuta } from '../../terapeuta/models/terapeuta.model.js';
 import { JogoModel } from '../../jogos/models/jogo.model.js';
 import {
@@ -10,7 +10,7 @@ import {
 } from '../../telemetria/services/telemetria-agregacao.service.js';
 import { SessaoIaAnaliseService } from './sessao-ia-analise.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
-import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { AuthenticatedRequest, UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
 
 
 export interface CabecalhoLaudo {
@@ -149,7 +149,7 @@ export class SessaoExportarService {
    */
   static async gerarLaudoExportacao(
     sessaoId: string,
-    usuarioAutenticado: { id: string; user_metadata?: { is_super_admin?: boolean } } | null
+    usuarioAutenticado?: UsuarioAutenticado | { id: string; user_metadata?: { is_super_admin?: boolean } } | null
   ): Promise<RespostaServicoExportar> {
     // 1. Validação do parâmetro de identificação da sessão
     if (!sessaoId || !validarUUID(sessaoId)) {
@@ -302,8 +302,13 @@ export class SessaoExportarService {
     // 15. Identificação de responsável legal sanitizado
     let responsavelLegal = null;
     if (Array.isArray(pacienteDb.responsaveis) && pacienteDb.responsaveis.length > 0) {
-      const respObj = pacienteDb.responsaveis[0]?.responsavel || pacienteDb.responsaveis[0];
-      if (respObj && typeof respObj === 'object') {
+      const primeiro = pacienteDb.responsaveis[0];
+      const respObj: ResponsavelVinculado | undefined =
+        primeiro && typeof primeiro === 'object' && 'responsavel' in primeiro
+          ? (primeiro as { responsavel: ResponsavelVinculado }).responsavel
+          : (primeiro as ResponsavelVinculado | undefined);
+
+      if (respObj) {
         responsavelLegal = {
           nome: String(respObj.nome || 'Responsável Legal'),
           parentesco: respObj.parentesco ? String(respObj.parentesco) : undefined,

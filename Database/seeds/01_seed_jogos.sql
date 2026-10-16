@@ -4,12 +4,11 @@
 -- ==============================================================================
 
 -- Jogo 1: Aventura das Cores
-INSERT INTO public.jogo (nome, descricao, versao, status_instalacao, manifesto_json)
+INSERT INTO public.jogo (nome, descricao, versao, manifesto_json)
 SELECT
     'Aventura das Cores',
     'Estimula atenção compartilhada e reconhecimento facial através de interação cromática e emparelhamento de cores.',
     '1.2.0',
-    'instalado',
     '{
         "id_jogo": "aventura-das-cores",
         "nome": "Aventura das Cores",
@@ -33,12 +32,11 @@ WHERE NOT EXISTS (
 );
 
 -- Jogo 2: Formas Calmas
-INSERT INTO public.jogo (nome, descricao, versao, status_instalacao, manifesto_json)
+INSERT INTO public.jogo (nome, descricao, versao, manifesto_json)
 SELECT
     'Formas Calmas',
     'Foco em pareamento visual e regulação sensorial em ambiente desacelerado.',
     '2.0.0',
-    'instalado',
     '{
         "id_jogo": "formas-calmas",
         "nome": "Formas Calmas",
@@ -62,12 +60,11 @@ WHERE NOT EXISTS (
 );
 
 -- Jogo 3: Som dos Animais
-INSERT INTO public.jogo (nome, descricao, versao, status_instalacao, manifesto_json)
+INSERT INTO public.jogo (nome, descricao, versao, manifesto_json)
 SELECT
     'Som dos Animais',
     'Associação auditivo-visual para desenvolvimento de linguagem e reconhecimento sonoro.',
     '1.0.0',
-    'instalado',
     '{
         "id_jogo": "som-dos-animais",
         "nome": "Som dos Animais",

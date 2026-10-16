@@ -20,6 +20,29 @@ COPY . .
 RUN npm run build
 
 # -----------------------------------------------------------------------------
+# Stage: Desenvolvimento (Hot-reload com tsx watch e volumes)
+# -----------------------------------------------------------------------------
+FROM node:lts-alpine AS development
+
+RUN apk update && apk upgrade --no-cache \
+    && apk add --no-cache dumb-init
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm install
+
+COPY . .
+
+ENV NODE_ENV=development \
+    PORT=3000
+
+EXPOSE 3000
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["npm", "run", "dev"]
+
+# -----------------------------------------------------------------------------
 # Stage 2: Imagem final de Produção
 # -----------------------------------------------------------------------------
 FROM node:lts-alpine AS production

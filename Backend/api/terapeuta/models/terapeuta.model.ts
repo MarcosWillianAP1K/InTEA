@@ -4,6 +4,13 @@ import { supabase } from '../../../core/supabase/supabase.client.js';
 // 1. INTERFACES E DTOs (TypeScript)
 // ==============================================================================
 
+export interface AreaFoco {
+  id?: string;
+  nome?: string;
+  descricao?: string | null;
+  [key: string]: unknown;
+}
+
 /**
  * Representa a entidade Terapeuta mapeada no banco de dados e sincronizada com auth.users.
  */
@@ -21,7 +28,7 @@ export interface Terapeuta {
   status_ativo: boolean;           // Controle de Soft Delete
   created_at: string;
   updated_at: string;
-  areas_foco?: any[];              // Áreas de foco associadas (opcional na listagem)
+  areas_foco?: (AreaFoco | { areas_foco: AreaFoco })[]; // Áreas de foco associadas (opcional na listagem)
 }
 
 /**

@@ -64,8 +64,37 @@ export const pacienteRoutes = Router();
  *     responses:
  *       200:
  *         description: Lista de pacientes e metadados de paginação retornados com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 - id: "123e4567-e89b-12d3-a456-426614174000"
+ *                   nome: "Pedro Henrique Silveira"
+ *                   data_nascimento: "2018-06-15"
+ *                   cpf: "529.982.247-25"
+ *                   telefone: "(11) 98765-4321"
+ *                   cep: "01310-100"
+ *                   cidade: "São Paulo"
+ *                   estado: "SP"
+ *                   status_ativo: true
+ *                   created_at: "2026-09-27T21:41:27.762Z"
+ *               meta:
+ *                 total: 1
+ *                 pagina: 1
+ *                 limite: 10
+ *                 total_paginas: 1
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao listar pacientes."
  */
 pacienteRoutes.get('/', authMiddleware, PacienteController.listar);
 
@@ -87,16 +116,63 @@ pacienteRoutes.get('/', authMiddleware, PacienteController.listar);
  *     responses:
  *       200:
  *         description: Paciente encontrado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "123e4567-e89b-12d3-a456-426614174000"
+ *                 nome: "Pedro Henrique Silveira"
+ *                 data_nascimento: "2018-06-15"
+ *                 cpf: "529.982.247-25"
+ *                 telefone: "(11) 98765-4321"
+ *                 cep: "01310-100"
+ *                 cidade: "São Paulo"
+ *                 estado: "SP"
+ *                 status_ativo: true
+ *                 responsaveis:
+ *                   - id: "223e4567-e89b-12d3-a456-426614174001"
+ *                     nome: "Juliana Silveira"
+ *                     telefone: "(11) 99887-6655"
+ *                     cpf: "364.721.890-50"
+ *                     parentesco: "Mãe"
+ *                     principal: true
+ *                 terapeutas:
+ *                   - id: "323e4567-e89b-12d3-a456-426614174002"
+ *                     nome: "Dra. Mariana Costa"
+ *                     email: "mariana.costa@intea.com.br"
+ *                     registro_profissional: "CREFITO-3/12345-TO"
+ *                     crefito: "CREFITO-3/12345-TO"
+ *                     especialidade: "Terapia Ocupacional e Integração Sensorial"
  *       400:
  *         description: Identificador UUID inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID do paciente inválido."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado (sem vínculo ativo com o paciente)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado: terapeuta não possui vínculo com este paciente (RN04)."
  *       404:
  *         description: Paciente não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Paciente não encontrado."
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao buscar paciente."
  */
 pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarPorId);
 
@@ -132,12 +208,40 @@ pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, Pacien
  *     responses:
  *       201:
  *         description: Paciente cadastrado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Paciente cadastrado com sucesso"
+ *               data:
+ *                 id: "123e4567-e89b-12d3-a456-426614174000"
+ *                 nome: "Pedro Henrique Silveira"
+ *                 data_nascimento: "2018-06-15"
+ *                 cpf: "529.982.247-25"
+ *                 status_ativo: true
  *       400:
  *         description: Erro de validação nos dados do paciente ou CPF inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "O campo 'nome' é obrigatório."
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       409:
  *         description: CPF já cadastrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Já existe um paciente cadastrado com este CPF."
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao cadastrar paciente."
  */
 pacienteRoutes.post('/', authMiddleware, PacienteController.criar);
 
@@ -167,16 +271,46 @@ pacienteRoutes.post('/', authMiddleware, PacienteController.criar);
  *     responses:
  *       200:
  *         description: Paciente atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Paciente atualizado com sucesso"
+ *               data:
+ *                 id: "123e4567-e89b-12d3-a456-426614174000"
+ *                 nome: "Pedro Henrique Silveira Lima"
+ *                 telefone: "(11) 99999-8888"
+ *                 cidade: "Campinas"
+ *                 status_ativo: true
  *       400:
  *         description: Erro de validação nos dados fornecidos
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID do paciente inválido."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado (sem vínculo ativo com o paciente)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado: terapeuta não possui vínculo com este paciente (RN04)."
  *       404:
  *         description: Paciente não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Paciente não encontrado."
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao atualizar paciente."
  */
 pacienteRoutes.put('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.atualizar);
 
@@ -202,10 +336,40 @@ pacienteRoutes.put('/:id', authMiddleware, verificarVisibilidadePaciente, Pacien
  *     responses:
  *       200:
  *         description: Paciente excluído fisicamente com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Paciente excluído fisicamente com sucesso"
+ *       400:
+ *         description: Identificador UUID inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID do paciente inválido."
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
+ *       403:
+ *         description: Acesso negado (operação restrita a administradores ativos)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
  *       404:
  *         description: Paciente não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Paciente não encontrado."
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao excluir paciente."
  */
 pacienteRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, PacienteController.deletarHard);
 
@@ -227,10 +391,44 @@ pacienteRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, PacienteCont
  *     responses:
  *       200:
  *         description: Paciente desativado com sucesso (soft delete)
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Paciente desativado com sucesso (soft delete)"
+ *               data:
+ *                 id: "123e4567-e89b-12d3-a456-426614174000"
+ *                 nome: "Pedro Henrique Silveira"
+ *                 status_ativo: false
+ *       400:
+ *         description: Identificador UUID inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID do paciente inválido."
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
+ *       403:
+ *         description: Acesso negado (operação restrita a administradores ativos)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
  *       404:
  *         description: Paciente não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Paciente não encontrado."
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao desativar paciente."
  */
 pacienteRoutes.delete('/:id', authMiddleware, adminMiddleware, PacienteController.desativar);
 
@@ -252,10 +450,44 @@ pacienteRoutes.delete('/:id', authMiddleware, adminMiddleware, PacienteControlle
  *     responses:
  *       200:
  *         description: Paciente reativado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Paciente reativado com sucesso"
+ *               data:
+ *                 id: "123e4567-e89b-12d3-a456-426614174000"
+ *                 nome: "Pedro Henrique Silveira"
+ *                 status_ativo: true
+ *       400:
+ *         description: Identificador UUID inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID do paciente inválido."
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
+ *       403:
+ *         description: Acesso negado (operação restrita a administradores ativos)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
  *       404:
  *         description: Paciente não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Paciente não encontrado."
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao reativar paciente."
  */
 pacienteRoutes.patch('/:id/reativar', authMiddleware, adminMiddleware, PacienteController.reativar);
 
@@ -281,16 +513,48 @@ pacienteRoutes.patch('/:id/reativar', authMiddleware, adminMiddleware, PacienteC
  *     responses:
  *       200:
  *         description: Lista de terapeutas vinculados retornada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 - id: "323e4567-e89b-12d3-a456-426614174002"
+ *                   nome: "Dra. Mariana Costa"
+ *                   email: "mariana.costa@intea.com.br"
+ *                   registro_profissional: "CREFITO-3/12345-TO"
+ *                   crefito: "CREFITO-3/12345-TO"
+ *                   especialidade: "Terapia Ocupacional e Integração Sensorial"
+ *       400:
+ *         description: Identificador UUID inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "ID do paciente inválido."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado (sem vínculo ativo com o paciente)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado: terapeuta não possui vínculo com este paciente (RN04)."
  *       404:
  *         description: Paciente não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Paciente não encontrado."
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao listar terapeutas do paciente."
  */
-pacienteRoutes.get('/:id/terapeutas', PacienteController.listarTerapeutas);
+pacienteRoutes.get('/:id/terapeutas', authMiddleware, PacienteController.listarTerapeutas);
 
 /**
  * @swagger
@@ -316,16 +580,39 @@ pacienteRoutes.get('/:id/terapeutas', PacienteController.listarTerapeutas);
  *     responses:
  *       201:
  *         description: Terapeuta vinculado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Terapeuta vinculado ao paciente com sucesso"
+ *               data:
+ *                 paciente_id: "123e4567-e89b-12d3-a456-426614174000"
+ *                 terapeuta_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
  *       400:
  *         description: Terapeuta de clínica diferente, paciente inativo ou IDs inválidos
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "O campo 'terapeuta_id' é obrigatório e deve ser um UUID válido."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       404:
  *         description: Paciente ou terapeuta não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Paciente ou terapeuta não encontrado."
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao vincular terapeuta ao paciente."
  */
-pacienteRoutes.post('/:id/terapeutas', PacienteController.vincularTerapeuta);
+pacienteRoutes.post('/:id/terapeutas', authMiddleware, PacienteController.vincularTerapeuta);
 
 /**
  * @swagger
@@ -351,13 +638,33 @@ pacienteRoutes.post('/:id/terapeutas', PacienteController.vincularTerapeuta);
  *     responses:
  *       200:
  *         description: Vínculo removido com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Vínculo do terapeuta com o paciente removido com sucesso"
  *       400:
  *         description: Parâmetros UUID inválidos
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "IDs fornecidos são inválidos."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       404:
  *         description: Paciente não encontrado
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Paciente não encontrado."
  *       500:
  *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao desvincular terapeuta."
  */
-pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', PacienteController.desvincularTerapeuta);
+pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, PacienteController.desvincularTerapeuta);

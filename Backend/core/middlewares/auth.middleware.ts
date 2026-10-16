@@ -1,11 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase/supabase.client.js';
+import type { AnotacaoClinica } from '../../api/anotacao/models/anotacao.model.js';
+import type { Sessao } from '../../api/sessao/models/sessao.model.js';
+
+export type UsuarioAutenticado = Partial<User> & {
+  id: string;
+  email?: string;
+  is_super_admin?: boolean;
+  user_metadata?: {
+    is_super_admin?: boolean;
+    nome?: string;
+    [key: string]: unknown;
+  };
+  app_metadata?: {
+    [key: string]: unknown;
+  };
+  clinica_id?: string | null;
+};
 
 // Estende a interface Request do Express para incluir o usuário autenticado e contexto clínico
 export interface AuthenticatedRequest extends Request {
-  user?: any;
+  user?: UsuarioAutenticado;
   pacienteAlvoId?: string;
-  contextoAnotacao?: any;
+  contextoAnotacao?: AnotacaoClinica;
+  contextoSessao?: Sessao;
 }
 
 /**
@@ -56,7 +75,7 @@ export async function authMiddleware(
     // Anexa o usuário logado na requisição para consumo pelos controllers
     req.user = user;
     next();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[authMiddleware]', error);
     res.status(500).json({ error: 'Erro interno ao validar autenticação.' });
   }

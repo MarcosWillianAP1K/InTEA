@@ -161,7 +161,7 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
       expect(responseJson.erros.length).toBeGreaterThan(0);
     });
 
-    it('obterManifesto: deve retornar o manifesto do jogo e status de validação 200', async () => {
+    it('buscarPorId: deve retornar o manifesto do jogo e status de validação 200', async () => {
       let statusCode = 200;
       let responseJson: any = null;
 
@@ -180,7 +180,7 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
         }
       } as unknown as Response;
 
-      await JogoController.obterManifesto(req, res);
+      await JogoController.buscarPorId(req, res);
 
       expect(statusCode).toBe(200);
       expect(responseJson.data).toBeDefined();
@@ -188,7 +188,7 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
       expect(responseJson.validacao.erros).toHaveLength(0);
     });
 
-    it('obterManifesto: deve responder 404 quando o jogo não existe', async () => {
+    it('buscarPorId: deve responder 404 quando o jogo não existe', async () => {
       let statusCode = 200;
       let responseJson: any = null;
 
@@ -207,7 +207,7 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
         }
       } as unknown as Response;
 
-      await JogoController.obterManifesto(req, res);
+      await JogoController.buscarPorId(req, res);
 
       expect(statusCode).toBe(404);
       expect(responseJson.error).toBe('Jogo não encontrado');

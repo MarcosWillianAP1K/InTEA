@@ -62,16 +62,52 @@ export const telemetriaRoutes = Router();
  *     responses:
  *       201:
  *         description: Evento de telemetria persistido com sucesso na sessão clínica
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Evento de telemetria registrado com sucesso"
+ *               data:
+ *                 id: "99999999-9999-9999-9999-999999999999"
+ *                 sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                 tipo_evento: "interacao_paciente"
+ *                 dados:
+ *                   id_metrica: "tempo_resposta"
+ *                   valor: 3.5
+ *                 data_hora: "2026-09-01T15:30:22Z"
+ *               persistido: true
  *       200:
  *         description: Evento processado em memória (Modo Livre não persiste telemetria - RN01)
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Evento processado em memória (Modo Livre não persiste telemetria - RN01)"
+ *               persistido: false
  *       400:
  *         description: Dados incompletos ou payload inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Campos obrigatórios ausentes: sessao_id/token_sessao, tipo_evento, dados e dados.id_metrica são obrigatórios"
  *       404:
  *         description: Sessão não encontrada
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Sessão não encontrada"
  *       409:
  *         description: Conflito — a sessão não está em andamento (status finalizada, cancelada ou aguardando)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Não é possível registrar telemetria para uma sessão que não está em andamento."
+ *               detalhes: "sessao_inativa"
+ *               persistido: false
  *       500:
  *         description: Erro interno ao registrar evento de telemetria
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao registrar evento de telemetria"
  */
 telemetriaRoutes.post('/', TelemetriaController.registrar);
 
@@ -124,16 +160,55 @@ telemetriaRoutes.post('/', TelemetriaController.registrar);
  *     responses:
  *       201:
  *         description: Lote de telemetria registrado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Lote de telemetria registrado com sucesso"
+ *               total: 2
+ *               data:
+ *                 - id: "99999999-9999-9999-9999-999999999999"
+ *                   sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                   tipo_evento: "interacao_paciente"
+ *                   dados:
+ *                     id_metrica: "tempo_resposta"
+ *                     valor: 2.8
+ *                   data_hora: "2026-09-01T15:30:25Z"
+ *               persistido: true
  *       200:
  *         description: Lote processado em memória (Modo Livre - RN01)
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Lote processado em memória (Modo Livre não persiste telemetria - RN01)"
+ *               total: 2
+ *               persistido: false
  *       400:
  *         description: Parâmetros inválidos, elemento do lote malformado ou limite de 500 excedido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Identificador de sessão (sessao_id ou token_sessao) e array eventos são obrigatórios"
  *       404:
  *         description: Sessão não encontrada
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Sessão não encontrada"
  *       409:
  *         description: Conflito — a sessão não está em andamento (status finalizada, cancelada ou aguardando)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Não é possível registrar telemetria para uma sessão que não está em andamento."
+ *               detalhes: "sessao_inativa"
+ *               total: 2
+ *               persistido: false
  *       500:
  *         description: Erro interno ao registrar lote
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao registrar lote de telemetria"
  */
 telemetriaRoutes.post('/lote', TelemetriaController.registrarLote);
 
@@ -180,37 +255,52 @@ telemetriaRoutes.post('/lote', TelemetriaController.registrarLote);
  *         description: Histórico de telemetria retornado com sucesso
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                         format: uuid
- *                       sessao_id:
- *                         type: string
- *                         format: uuid
- *                       tipo_evento:
- *                         type: string
- *                       dados:
- *                         type: object
- *                       data_hora:
- *                         type: string
- *                         format: date-time
+ *             example:
+ *               data:
+ *                 - id: "99999999-9999-9999-9999-999999999999"
+ *                   sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                   tipo_evento: "interacao_paciente"
+ *                   dados:
+ *                     id_metrica: "tempo_resposta"
+ *                     valor: 2.5
+ *                   data_hora: "2026-09-01T15:30:22Z"
+ *               meta:
+ *                 pagina: 1
+ *                 limite: 10
+ *                 total_pagina: 1
+ *               pagina: 1
+ *               limite: 10
+ *               total_pagina: 1
  *       400:
  *         description: Parâmetro sessaoId ausente ou não é um UUID válido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Parâmetro sessaoId obrigatório e deve ser um UUID válido"
  *       401:
  *         description: Token JWT ausente ou inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado — terapeuta sem vínculo institucional com a sessão clínica (RN04)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04)."
  *       404:
  *         description: Sessão não encontrada
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Sessão não encontrada"
  *       500:
  *         description: Erro interno ao buscar eventos de telemetria
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao buscar eventos de telemetria"
  */
 telemetriaRoutes.get('/sessao/:sessaoId', authMiddleware, TelemetriaController.listarPorSessao);
 
@@ -237,16 +327,50 @@ telemetriaRoutes.get('/sessao/:sessaoId', authMiddleware, TelemetriaController.l
  *     responses:
  *       200:
  *         description: Estatísticas consolidadas da telemetria retornadas com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                 total_eventos: 42
+ *                 metricas_consolidadas:
+ *                   tempo_resposta:
+ *                     tipo: "numerica"
+ *                     media: 2.45
+ *                     mediana: 2.3
+ *                     minimo: 1.2
+ *                     maximo: 4.5
+ *                     total_amostras: 42
  *       400:
  *         description: Parâmetro sessaoId ausente ou não é um UUID válido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Parâmetro sessaoId obrigatório e deve ser um UUID válido"
  *       401:
  *         description: Token JWT ausente ou inválido
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Token JWT não fornecido"
  *       403:
  *         description: Acesso negado — terapeuta sem vínculo institucional com a sessão clínica (RN04)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04)."
  *       404:
  *         description: Sessão não encontrada ou sem dados
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Sessão não encontrada"
  *       500:
  *         description: Erro interno ao compilar estatísticas da telemetria
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Erro interno ao agregar telemetria da sessão"
  */
 telemetriaRoutes.get('/sessao/:sessaoId/agregada', authMiddleware, TelemetriaController.obterEstatisticasSessao);
 

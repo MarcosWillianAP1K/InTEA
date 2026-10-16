@@ -15,7 +15,6 @@ export function BibliotecaJogosPage() {
   const [filtros, setFiltros] = useState<FiltrosJogos>({
     busca: "",
     objetivo: "todos",
-    status: "todos",
   });
 
   const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
@@ -67,7 +66,6 @@ export function BibliotecaJogosPage() {
           onFiltroObjetivo={(objetivo) =>
             setFiltros((prev) => ({ ...prev, objetivo }))
           }
-          onFiltroStatus={(status) => setFiltros((prev) => ({ ...prev, status }))}
           objetivosDisponiveis={objetivosDisponiveis}
         />
 

@@ -33,10 +33,9 @@ export class AuthController {
       res.status(200).json({
         data: {
           access_token: resultado.access_token,
+          refresh_token: resultado.session.refresh_token ?? null,
           token_type: 'Bearer',
           expires_in: resultado.session.expires_in,
-          user: resultado.user,
-          perfil: resultado.perfil,
         },
         message: 'Login realizado com sucesso.',
       });
@@ -76,15 +75,16 @@ export class AuthController {
   }
 
   /**
-   * Handles GET /api/auth/me to return profile data for the authenticated caller.
+   * Handles GET /api/auth/me to return organized profile and session metadata for the authenticated caller.
    *
    * @param req - Authenticated Express request containing user credentials in `req.user`.
-   * @param res - Express response returning the current user and therapist profile.
+   * @param res - Express response returning the therapist profile and structured metadata.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async me(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id;
+      const user = req.user;
+      const userId = user?.id;
 
       if (!userId) {
         res.status(401).json({ error: 'Usuário não autenticado.' });
@@ -93,10 +93,46 @@ export class AuthController {
 
       const perfil = await AuthModel.buscarPerfilPorId(userId);
 
+      if (!perfil) {
+        res.status(404).json({ error: 'Perfil de terapeuta associado ao token não encontrado.' });
+        return;
+      }
+
+      // Normaliza áreas de foco caso venham aninhadas pelo relacionamento
+      const areasFocoNormalizadas = Array.isArray(perfil.areas_foco)
+        ? perfil.areas_foco.map((item: any) => (item?.areas_foco ? item.areas_foco : item))
+        : [];
+
+      // 1. Dados cadastrais completos do perfil
+      const dadosPerfil = {
+        id: perfil.id,
+        nome: perfil.nome,
+        email: perfil.email,
+        telefone: perfil.telefone ?? null,
+        registro_profissional: perfil.registro_profissional ?? perfil.crefito ?? null,
+        especialidade: perfil.especialidade ?? null,
+        crefito: perfil.crefito ?? perfil.registro_profissional ?? null,
+        tempo_experiencia_anos: perfil.tempo_experiencia_anos ?? 0,
+        clinica_id: perfil.clinica_id ?? null,
+        areas_foco: areasFocoNormalizadas,
+      };
+
+      // 2. Metadados de sessão, autenticação e auditoria
+      const metadados = {
+        is_admin: Boolean(perfil.is_super_admin ?? user?.user_metadata?.is_super_admin ?? false),
+        autenticado: user?.role === 'authenticated' || Boolean(user?.id),
+        email_confirmado: Boolean(user?.email_confirmed_at || user?.confirmed_at || user?.user_metadata?.email_verified),
+        telefone_confirmado: Boolean(user?.phone_confirmed_at),
+        status_ativo: Boolean(perfil.status_ativo),
+        last_sign_in_at: user?.last_sign_in_at ?? null,
+        created_at: perfil.created_at ?? user?.created_at ?? null,
+        updated_at: perfil.updated_at ?? user?.updated_at ?? null,
+      };
+
       res.status(200).json({
         data: {
-          user: req.user,
-          perfil,
+          perfil: dadosPerfil,
+          metadados,
         },
       });
     } catch (error: any) {

@@ -8,6 +8,7 @@ import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { SessaoResultadoService } from '../services/sessao-resultado.service.js';
+import { SessaoExportarService } from '../services/sessao-exportar.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { eventBus } from '../../../core/events/event-bus.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
@@ -298,6 +299,7 @@ export class SessaoController {
           ...sessaoAtualizada,
           relatorio: relatorioIA || undefined,
         },
+        message: 'Sessão finalizada com sucesso.',
       });
     } catch (error) {
       console.error('[SessaoController] Erro ao finalizar sessão:', error);
@@ -356,7 +358,10 @@ export class SessaoController {
         userAgent: (req.headers?.['user-agent'] as string) || null,
       });
 
-      res.json({ data: sessaoCancelada });
+      res.json({
+        data: sessaoCancelada,
+        message: 'Sessão cancelada com sucesso.',
+      });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao cancelar sessão' });
     }
@@ -582,7 +587,10 @@ export class SessaoController {
         return;
       }
 
-      res.json({ codigo });
+      res.json({
+        data: { codigo },
+        codigo,
+      });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao gerar código de pareamento' });
     }
@@ -662,4 +670,15 @@ export class SessaoController {
       res.status(500).json({ error: 'Erro interno ao consultar resultado consolidado da sessão.' });
     }
   }
+
+  /**
+   * Handles GET /api/sessao/:id/exportar to generate structured clinical reports (RF20).
+   *
+   * @param req - Authenticated Express request.
+   * @param res - Express response returning clinical report JSON or error status.
+   */
+  static async exportar(req: Request, res: Response): Promise<void> {
+    return SessaoExportarService.handlerExportarHttp(req, res);
+  }
 }
+

@@ -89,11 +89,16 @@ export class AnotacaoPacienteController {
         return;
       }
 
-      const anotacao = req.contextoAnotacao;
       const { conteudo } = req.body || {};
 
       if (conteudo === undefined || typeof conteudo !== 'string') {
         res.status(400).json({ error: 'O campo conteudo é obrigatório para atualização.' });
+        return;
+      }
+
+      const anotacao = req.contextoAnotacao;
+      if (!anotacao) {
+        res.status(404).json({ error: 'Anotação clínica não encontrada.' });
         return;
       }
 
@@ -129,6 +134,11 @@ export class AnotacaoPacienteController {
       }
 
       const anotacao = req.contextoAnotacao;
+      if (!anotacao) {
+        res.status(404).json({ error: 'Anotação clínica não encontrada.' });
+        return;
+      }
+
       const resultado = await AnotacaoService.softDelete(anotacao, usuarioLogadoId);
 
       if (!resultado.sucesso) {

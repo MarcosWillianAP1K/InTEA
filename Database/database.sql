@@ -1,6 +1,7 @@
 -- ==============================================================================
 -- PROJETO InTEA: MODELAGEM RELACIONAL SUPABASE (PostgreSQL)
 -- Modelo Otimizado, Padronizado em UUID, Gestão de Pacientes, Terapeutas e Laudos
+-- (Políticas de RLS desativadas para a fase de desenvolvimento e prototipação ágil)
 -- ==============================================================================
 
 -- 1. Extensões para UUID e Criptografia
@@ -176,10 +177,11 @@ CREATE TABLE IF NOT EXISTS public.jogo (
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
     versao VARCHAR(50) NOT NULL,
-    status_instalacao VARCHAR(50) DEFAULT 'instalado' NOT NULL,
+    status_jogo VARCHAR(30) DEFAULT 'ativo' NOT NULL, -- 'ativo', 'desativado', 'manutencao', 'em_breve'
     manifesto_json JSONB NOT NULL DEFAULT '{}'::jsonb, -- Contrato 1: Manifesto de métricas
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+    CONSTRAINT chk_status_jogo CHECK (status_jogo IN ('ativo', 'desativado', 'manutencao', 'em_breve'))
 );
 
 -- ==============================================================================
@@ -258,7 +260,47 @@ CREATE TABLE IF NOT EXISTS public.telemetria_evento (
 );
 
 -- ==============================================================================
--- 16. BLOQUEIO DE HARD DELETE (Desativado temporariamente em DEV/Testes)
+-- 16. TABELA: auditoria_sessao (Trilha de Auditoria Clínica de Sessão - RF13, RNF06, RN04, RN05)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.auditoria_sessao (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sessao_id UUID NOT NULL REFERENCES public.sessao(id) ON DELETE CASCADE,
+    terapeuta_id UUID REFERENCES public.terapeuta(id) ON DELETE SET NULL,
+    origem VARCHAR(50) NOT NULL, -- 'terapeuta_web', 'dispositivo_jogo', 'sistema_dda'
+    acao VARCHAR(80) NOT NULL,   -- 'sessao_criada', 'dispositivo_pareado', 'sessao_finalizada', 'sessao_cancelada', etc.
+    detalhes_json JSONB DEFAULT '{}'::jsonb NOT NULL,
+    ip VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+-- Trigger de Imutabilidade Estrita
+CREATE OR REPLACE FUNCTION public.impedir_modificacao_auditoria_sessao()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Operacao proibida: Registros da trilha de auditoria clinica sao estritamente imutaveis (RN05 / RNF06).'
+        USING ERRCODE = '23505';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_mutacao_auditoria ON public.auditoria_sessao;
+CREATE TRIGGER trg_bloqueio_mutacao_auditoria
+    BEFORE UPDATE OR DELETE ON public.auditoria_sessao
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_modificacao_auditoria_sessao();
+
+-- Índices de Otimização da Auditoria
+CREATE INDEX IF NOT EXISTS idx_auditoria_sessao_created 
+    ON public.auditoria_sessao(sessao_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_terapeuta 
+    ON public.auditoria_sessao(terapeuta_id);
+CREATE INDEX IF NOT EXISTS idx_auditoria_acao 
+    ON public.auditoria_sessao(acao);
+CREATE INDEX IF NOT EXISTS idx_auditoria_detalhes_gin 
+    ON public.auditoria_sessao USING gin (detalhes_json);
+
+-- ==============================================================================
+-- 17. BLOQUEIO DE HARD DELETE (Desativado temporariamente em DEV/Testes)
 -- ==============================================================================
 -- Os triggers de bloqueio físico (trg_bloqueio_delete_anotacao e trg_bloqueio_delete_relatorio)
 -- estão temporariamente desativados durante a fase de testes e desenvolvimento.
@@ -289,7 +331,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.fn_limpar_responsavel_orfaos();
 
 -- ==============================================================================
--- 16. SUPABASE STORAGE: BUCKET PRIVADO DE LAUDOS
+-- 18. SUPABASE STORAGE: BUCKET PRIVADO DE LAUDOS
 -- ==============================================================================
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
@@ -313,7 +355,7 @@ ON CONFLICT (id) DO UPDATE SET
     ]::text[];
 
 -- ==============================================================================
--- 17. ÍNDICES DE PERFORMANCE E BUSCA (RF19)
+-- 19. ÍNDICES DE PERFORMANCE E BUSCA (RF19)
 -- ==============================================================================
 CREATE INDEX IF NOT EXISTS idx_terapeuta_telefone ON public.terapeuta(telefone);
 CREATE INDEX IF NOT EXISTS idx_terapeuta_crefito ON public.terapeuta(crefito);
@@ -357,26 +399,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.fn_sessao_set_updated_at();
 
 -- ==============================================================================
--- 18. FUNÇÕES AUXILIARES DE RLS
--- ==============================================================================
-CREATE OR REPLACE FUNCTION public.check_is_super_admin()
-RETURNS BOOLEAN AS $$
-  SELECT COALESCE(
-    (SELECT is_super_admin FROM public.terapeuta WHERE id = auth.uid()),
-    FALSE
-  );
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
-
-CREATE OR REPLACE FUNCTION public.terapeuta_tem_acesso_paciente(p_paciente_id UUID)
-RETURNS BOOLEAN AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.terapeuta_paciente
-    WHERE terapeuta_id = auth.uid() AND paciente_id = p_paciente_id
-  );
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
-
--- ==============================================================================
--- 19. TRIGGER DE CRIAÇÃO DO TERAPEUTA VIA AUTH
+-- 20. TRIGGER DE CRIAÇÃO DO TERAPEUTA VIA AUTH
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -415,399 +438,6 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- ==============================================================================
--- 20. ROW LEVEL SECURITY (RLS)
--- ==============================================================================
-ALTER TABLE public.clinica ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.terapeuta ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.areas_foco ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.terapeuta_area_foco ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.paciente ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.responsavel ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.paciente_responsavel ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.dados_clinicos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.terapeuta_paciente ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.gatilhos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.paciente_gatilho ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.laudo_clinico ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.jogo ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.sessao ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.anotacao_clinica ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.relatorio_sessao ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.telemetria_evento ENABLE ROW LEVEL SECURITY;
-
--- Catálogo de Jogos
-CREATE POLICY "Jogos visiveis para terapeutas autenticados"
-ON public.jogo FOR SELECT
-TO authenticated
-USING (true);
-
--- Terapeuta
-CREATE POLICY "Terapeutas autenticados podem visualizar perfis"
-ON public.terapeuta FOR SELECT
-TO authenticated
-USING (true);
-
-CREATE POLICY "Terapeuta pode atualizar o proprio perfil"
-ON public.terapeuta FOR UPDATE
-TO authenticated
-USING (id = auth.uid() OR public.check_is_super_admin());
-
--- Áreas de Foco
-CREATE POLICY "Areas de foco visiveis para terapeutas"
-ON public.areas_foco FOR SELECT
-TO authenticated
-USING (true);
-
-CREATE POLICY "Apenas admin gerencia catalogo de areas de foco"
-ON public.areas_foco FOR ALL
-TO authenticated
-USING (public.check_is_super_admin());
-
--- Vínculo Terapeuta - Área de Foco
-CREATE POLICY "Areas de foco vinculadas visiveis para autenticados"
-ON public.terapeuta_area_foco FOR SELECT
-TO authenticated
-USING (true);
-
-CREATE POLICY "Terapeuta gerencia suas proprias areas de foco"
-ON public.terapeuta_area_foco FOR ALL
-TO authenticated
-USING (terapeuta_id = auth.uid() OR public.check_is_super_admin());
-
--- Pacientes (Vínculo formal ou SuperAdmin)
-CREATE POLICY "Acesso aos pacientes vinculados"
-ON public.paciente FOR ALL
-TO authenticated
-USING (
-    public.check_is_super_admin() OR public.terapeuta_tem_acesso_paciente(id)
-);
-
--- Responsáveis
-CREATE POLICY "Terapeutas acessam responsaveis vinculados"
-ON public.responsavel FOR SELECT
-TO authenticated
-USING (
-    public.check_is_super_admin() OR
-    EXISTS (
-        SELECT 1 FROM public.paciente_responsavel pr
-        WHERE pr.responsavel_id = responsavel.id
-          AND public.terapeuta_tem_acesso_paciente(pr.paciente_id)
-    )
-);
-
-CREATE POLICY "Terapeutas podem cadastrar responsaveis"
-ON public.responsavel FOR INSERT
-TO authenticated
-WITH CHECK (true);
-
-CREATE POLICY "Terapeutas podem atualizar responsaveis vinculados"
-ON public.responsavel FOR UPDATE
-TO authenticated
-USING (
-    public.check_is_super_admin() OR
-    EXISTS (
-        SELECT 1 FROM public.paciente_responsavel pr
-        WHERE pr.responsavel_id = responsavel.id
-          AND public.terapeuta_tem_acesso_paciente(pr.paciente_id)
-    )
-);
-
--- Vínculo Paciente - Responsável
-CREATE POLICY "Gestao do vinculo paciente responsavel"
-ON public.paciente_responsavel FOR ALL
-TO authenticated
-USING (
-    public.check_is_super_admin() OR public.terapeuta_tem_acesso_paciente(paciente_id)
-);
-
--- Dados Clínicos
-CREATE POLICY "Acesso aos dados clinicos do paciente"
-ON public.dados_clinicos FOR ALL
-TO authenticated
-USING (
-    public.check_is_super_admin() OR public.terapeuta_tem_acesso_paciente(paciente_id)
-);
-
--- Catálogo de Gatilhos
-CREATE POLICY "Gatilhos visiveis para terapeutas"
-ON public.gatilhos FOR SELECT
-TO authenticated
-USING (true);
-
-CREATE POLICY "Apenas admin gerencia catalogo de gatilhos"
-ON public.gatilhos FOR ALL
-TO authenticated
-USING (public.check_is_super_admin());
-
--- Gatilhos do Paciente
-CREATE POLICY "Gestao dos gatilhos do paciente"
-ON public.paciente_gatilho FOR ALL
-TO authenticated
-USING (
-    public.check_is_super_admin() OR public.terapeuta_tem_acesso_paciente(paciente_id)
-);
-
--- Laudos Clínicos
-CREATE POLICY "Consulta de laudos de pacientes vinculados"
-ON public.laudo_clinico FOR SELECT
-TO authenticated
-USING (
-    public.check_is_super_admin() OR public.terapeuta_tem_acesso_paciente(paciente_id)
-);
-
-CREATE POLICY "Insercao de laudo por terapeuta vinculado"
-ON public.laudo_clinico FOR INSERT
-TO authenticated
-WITH CHECK (
-    terapeuta_id = auth.uid() AND
-    (public.check_is_super_admin() OR public.terapeuta_tem_acesso_paciente(paciente_id))
-);
-
-CREATE POLICY "Edicao de metadados do proprio laudo"
-ON public.laudo_clinico FOR UPDATE
-TO authenticated
-USING (
-    terapeuta_id = auth.uid() OR public.check_is_super_admin()
-);
-
-CREATE POLICY "Exclusao de laudo pelo autor ou admin"
-ON public.laudo_clinico FOR DELETE
-TO authenticated
-USING (
-    terapeuta_id = auth.uid() OR public.check_is_super_admin()
-);
-
--- Políticas para Supabase Storage (storage.objects)
-CREATE POLICY "Acesso de leitura a laudos no Storage"
-ON storage.objects FOR SELECT
-TO authenticated
-USING (
-    bucket_id = 'laudos' AND (
-        public.check_is_super_admin() OR
-        EXISTS (
-            SELECT 1 FROM public.laudo_clinico lc
-            WHERE lc.arquivo_caminho = storage.objects.name
-              AND (lc.terapeuta_id = auth.uid() OR public.terapeuta_tem_acesso_paciente(lc.paciente_id))
-        )
-    )
-);
-
-CREATE POLICY "Upload de laudos no Storage"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (
-    bucket_id = 'laudos' AND
-    auth.role() = 'authenticated'
-);
-
-CREATE POLICY "Exclusao de laudos no Storage"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (
-    bucket_id = 'laudos' AND (
-        public.check_is_super_admin() OR
-        owner = auth.uid() OR
-        EXISTS (
-            SELECT 1 FROM public.laudo_clinico lc
-            WHERE lc.arquivo_caminho = storage.objects.name
-              AND lc.terapeuta_id = auth.uid()
-        )
-    )
-);
-
--- Sessões
-CREATE POLICY "Terapeuta gerencia suas sessoes"
-ON public.sessao FOR ALL
-TO authenticated
-USING (
-    terapeuta_id = auth.uid() OR
-    (paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(paciente_id)) OR
-    public.check_is_super_admin()
-);
-
--- Pareamento Remoto do Jogo via session_token
-CREATE POLICY "Pareamento via token para jogo externo"
-ON public.sessao FOR SELECT
-TO anon
-USING (status_sessao IN ('aguardando_pareamento', 'conectado', 'em_andamento'));
-
--- Anotações Clínicas (Autoria Obrigatória RF21 e Vínculo Institucional RN04)
-CREATE POLICY "Consulta de anotacoes ativas da equipe"
-ON public.anotacao_clinica FOR SELECT
-TO authenticated
-USING (
-    soft_delete = FALSE AND (
-        terapeuta_id = auth.uid() OR 
-        public.terapeuta_tem_acesso_paciente(paciente_id) OR
-        public.check_is_super_admin()
-    )
-);
-
-CREATE POLICY "Insercao de anotacao com autoria e vinculo obrigatorio"
-ON public.anotacao_clinica FOR INSERT
-TO authenticated
-WITH CHECK (
-    terapeuta_id = auth.uid() AND (
-        public.terapeuta_tem_acesso_paciente(paciente_id) OR
-        public.check_is_super_admin()
-    )
-);
-
-CREATE POLICY "Edicao de anotacao propria"
-ON public.anotacao_clinica FOR UPDATE
-TO authenticated
-USING (
-    terapeuta_id = auth.uid() AND 
-    soft_delete = FALSE AND (
-        public.terapeuta_tem_acesso_paciente(paciente_id) OR
-        public.check_is_super_admin()
-    )
-);
-
--- Relatórios de Sessão (Autorização delegada à tabela pai sessao via 3FN)
-CREATE POLICY "Consulta de relatorios clinicos"
-ON public.relatorio_sessao FOR SELECT
-TO authenticated
-USING (
-    soft_delete = FALSE AND
-    EXISTS (
-        SELECT 1 FROM public.sessao s
-        WHERE s.id = relatorio_sessao.sessao_id
-          AND (
-              s.terapeuta_id = auth.uid() OR 
-              (s.paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(s.paciente_id)) OR
-              public.check_is_super_admin()
-          )
-    )
-);
-
-CREATE POLICY "Insercao de relatorio consolidado"
-ON public.relatorio_sessao FOR INSERT
-TO authenticated
-WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM public.sessao s
-        WHERE s.id = relatorio_sessao.sessao_id
-          AND (s.terapeuta_id = auth.uid() OR public.check_is_super_admin())
-    )
-);
-
-CREATE POLICY "Edicao de relatorio consolidado"
-ON public.relatorio_sessao FOR UPDATE
-TO authenticated
-USING (
-    soft_delete = FALSE AND
-    EXISTS (
-        SELECT 1 FROM public.sessao s
-        WHERE s.id = relatorio_sessao.sessao_id
-          AND (s.terapeuta_id = auth.uid() OR public.check_is_super_admin())
-    )
-);
-
--- Telemetria de Eventos
-CREATE POLICY "Consulta de telemetria da sessao"
-ON public.telemetria_evento FOR SELECT
-TO authenticated
-USING (
-    EXISTS (
-        SELECT 1 FROM public.sessao s
-        WHERE s.id = telemetria_evento.sessao_id
-          AND (
-              s.terapeuta_id = auth.uid() OR 
-              (s.paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(s.paciente_id)) OR
-              public.check_is_super_admin()
-          )
-    )
-);
-
-CREATE POLICY "Insercao de telemetria autorizada"
-ON public.telemetria_evento FOR INSERT
-TO authenticated
-WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM public.sessao s
-        WHERE s.id = telemetria_evento.sessao_id
-          AND (
-              s.terapeuta_id = auth.uid() OR
-              public.check_is_super_admin()
-          )
-    )
-);
-
--- ==============================================================================
--- 20.1 TRILHA DE AUDITORIA CLÍNICA DE SESSÃO (RF13, RNF06, RN04, RN05)
--- ==============================================================================
-
-CREATE TABLE IF NOT EXISTS public.auditoria_sessao (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sessao_id UUID NOT NULL REFERENCES public.sessao(id) ON DELETE CASCADE,
-    terapeuta_id UUID REFERENCES public.terapeuta(id) ON DELETE SET NULL,
-    origem VARCHAR(50) NOT NULL, -- 'terapeuta_web', 'dispositivo_jogo', 'sistema_dda'
-    acao VARCHAR(80) NOT NULL,   -- 'sessao_criada', 'dispositivo_pareado', 'sessao_finalizada', 'sessao_cancelada', etc.
-    detalhes_json JSONB DEFAULT '{}'::jsonb NOT NULL,
-    ip VARCHAR(45) NULL,
-    user_agent TEXT NULL,
-    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
-);
-
--- Trigger de Imutabilidade Estrita
-CREATE OR REPLACE FUNCTION public.impedir_modificacao_auditoria_sessao()
-RETURNS TRIGGER AS $$
-BEGIN
-    RAISE EXCEPTION 'Operacao proibida: Registros da trilha de auditoria clinica sao estritamente imutaveis (RN05 / RNF06).'
-        USING ERRCODE = '23505';
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_bloqueio_mutacao_auditoria ON public.auditoria_sessao;
-CREATE TRIGGER trg_bloqueio_mutacao_auditoria
-    BEFORE UPDATE OR DELETE ON public.auditoria_sessao
-    FOR EACH ROW
-    EXECUTE FUNCTION public.impedir_modificacao_auditoria_sessao();
-
--- Índices de Otimização
-CREATE INDEX IF NOT EXISTS idx_auditoria_sessao_created 
-    ON public.auditoria_sessao(sessao_id, created_at ASC);
-CREATE INDEX IF NOT EXISTS idx_auditoria_terapeuta 
-    ON public.auditoria_sessao(terapeuta_id);
-CREATE INDEX IF NOT EXISTS idx_auditoria_acao 
-    ON public.auditoria_sessao(acao);
-CREATE INDEX IF NOT EXISTS idx_auditoria_detalhes_gin 
-    ON public.auditoria_sessao USING gin (detalhes_json);
-
--- RLS
-ALTER TABLE public.auditoria_sessao ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Consulta de auditoria da sessao autorizada"
-ON public.auditoria_sessao FOR SELECT
-TO authenticated
-USING (
-    EXISTS (
-        SELECT 1 FROM public.sessao s
-        WHERE s.id = auditoria_sessao.sessao_id
-          AND (
-              s.terapeuta_id = auth.uid() OR 
-              (s.paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(s.paciente_id)) OR
-              public.check_is_super_admin()
-          )
-    )
-);
-
-CREATE POLICY "Insercao de auditoria autorizada"
-ON public.auditoria_sessao FOR INSERT
-TO authenticated
-WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM public.sessao s
-        WHERE s.id = auditoria_sessao.sessao_id
-          AND (
-              s.terapeuta_id = auth.uid() OR
-              public.check_is_super_admin()
-          )
-    )
-);
 
 -- ==============================================================================
 -- 21. SEMENTES DE DADOS (Seeds Iniciais)
