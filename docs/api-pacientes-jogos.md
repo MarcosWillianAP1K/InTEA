@@ -724,11 +724,13 @@ Todas as respostas seguem formatos previsíveis:
 
 | Método | Endpoint | Protegido | Requisito / Regra | Finalidade |
 | :--- | :--- | :---: | :--- | :--- |
-| `GET` | `/api/jogos` | Não | **RF09**, **RF19** | Catálogo de jogos terapêuticos com filtros e paginação |
-| `GET` | `/api/jogos/:id` | Não | **RF09**, **RNF02** | Detalhes do jogo e manifesto JSON |
-| `GET` | `/api/jogos/:id/manifesto` | Não | **RNF02** | Manifesto de métricas com laudo de conformidade |
-| `POST` | `/api/jogos/validar-manifesto` | Não | **RNF02**, **RN02** | Validação sintática e semântica de manifesto de jogo |
-| `POST` | `/api/jogos/:id/validar-telemetria` | Não | **RN02**, **RNF02** | Validação estrita de evento antes de persistir no prontuário |
+| `GET` | `/api/jogos` | Não | **RF09**, **RF19** | Catálogo de jogos terapêuticos com filtros por objetivo clínico e status operacional (Acesso Livre) |
+| `POST` | `/api/jogos` | Sim (JWT + Admin) | **RF09** | Cadastro de novo jogo com slug técnico automático e validação de manifesto |
+| `GET` | `/api/jogos/:id` | Sim (JWT) | **RF09**, **RNF02** | Detalhes consolidados do jogo, manifesto clínico e laudo de conformidade |
+| `PATCH` / `PUT` | `/api/jogos/:id` | Sim (JWT + Admin) | **RF09** | Atualização cadastral ou alteração de status operacional (`ativo`, `desativado`, `manutencao`, `em_breve`) |
+| `DELETE` | `/api/jogos/:id` | Sim (JWT + Admin) | **RF09** | Hard delete físico (com proteção relacional e bloqueio caso possua sessões) |
+| `POST` | `/api/jogos/validar-manifesto` | Sim (JWT) | **RNF02**, **RN02** | Validação sintática e semântica de manifesto de jogo |
+| `POST` | `/api/jogos/:id/validar-telemetria` | Não (PIN/Token) | **RN02**, **RNF02** | Validação estrita de evento antes de persistir no prontuário |
 
 ---
 
@@ -737,20 +739,20 @@ Todas as respostas seguem formatos previsíveis:
 #### Rota 1: Catálogo Geral de Jogos (Biblioteca Terapêutica)
 
 - **Método:** `GET`
-
 - **URL:** `/api/jogos`
 - **Query Parameters:**
 
 | Parâmetro | Tipo | Obrigatório | Padrão | Descrição | Exemplo |
 | :--- | :---: | :---: | :---: | :--- | :--- |
 | `objetivo` | `string` | Não | — | Filtro por objetivo clínico (ex: `foco_atencional`, `regulacao_emocional`, `linguagem`) | `foco_atencional` |
+| `status` | `string` | Não | — | Filtro por status operacional (`ativo`, `desativado`, `manutencao`, `em_breve`) | `ativo` |
 | `page` | `integer` | Não | `1` | Página atual dos resultados | `1` |
 | `limit` | `integer` | Não | `10` | Quantidade de jogos retornados por página | `10` |
 
 - **Exemplo de Chamada:**
 
   ```http
-  GET /api/jogos?objetivo=foco_atencional&page=1&limit=10 HTTP/1.1
+  GET /api/jogos?objetivo=foco_atencional&status=ativo&page=1&limit=10 HTTP/1.1
   Host: localhost:3000
   ```
 
@@ -761,41 +763,28 @@ Todas as respostas seguem formatos previsíveis:
     {
       "data": [
         {
-          "id": "1",
+          "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+          "id_jogo": "aventura-das-cores",
           "nome": "Aventura das Cores",
           "descricao": "Estimula atenção compartilhada e reconhecimento facial através de estímulos cromáticos.",
           "versao": "1.2.0",
-          "status_instalacao": "instalado",
+          "status": "ativo",
           "objetivo_clinico": "foco_atencional",
-          "manifesto_json": {
-            "id_jogo": "aventura-das-cores",
-            "nome": "Aventura das Cores",
-            "versao": "1.2.0",
-            "objetivo_clinico": "foco_atencional",
-            "metricas_suportadas": [
-              {
-                "id_metrica": "tempo_resposta",
-                "tipo_metrica": "numerica",
-                "unidade": "segundos"
-              },
-              {
-                "id_metrica": "nivel_frustracao",
-                "tipo_metrica": "categorica",
-                "valores": ["baixo", "medio", "alto"]
-              }
-            ]
-          }
-        },
-        {
-          "id": "2",
-          "nome": "Formas Calmas",
-          "descricao": "Exercício de autorregulação e atenção sustentada com encaixe geométrico relaxante.",
-          "versao": "1.0.0",
-          "status_instalacao": "instalado",
-          "objetivo_clinico": "regulacao_emocional"
+          "metricas_suportadas": [
+            {
+              "id_metrica": "tempo_resposta",
+              "tipo_metrica": "numerica",
+              "unidade": "segundos"
+            },
+            {
+              "id_metrica": "nivel_frustracao",
+              "tipo_metrica": "categorica",
+              "valores": ["baixo", "medio", "alto"]
+            }
+          ]
         }
       ],
-      "total": 2,
+      "total": 1,
       "page": 1,
       "limit": 10,
       "totalPages": 1
@@ -812,17 +801,94 @@ Todas as respostas seguem formatos previsíveis:
 
 ---
 
-#### Rota 2: Consultar Detalhes de um Jogo Específico
+#### Rota 2: Cadastrar Novo Jogo no Catálogo
+
+- **Método:** `POST`
+- **URL:** `/api/jogos`
+- **Headers Requeridos:** `Content-Type: application/json`
+- **Descrição Técnica:**
+  - Cria um novo jogo no catálogo clínico.
+  - O identificador técnico (`id_jogo`) é gerado automaticamente a partir do `nome` (em minúsculas, substituindo espaços e pontuações por hífens).
+  - O campo `status` operacional pode ser informado (`ativo`, `desativado`, `manutencao`, `em_breve`), tendo como padrão `'ativo'`.
+  - As métricas passam por validação formal de integridade contra o Contrato 1 (**RN02** e **RNF02**).
+
+- **Exemplo de Request Body:**
+
+  ```json
+  {
+    "nome": "Labirinto das Emoções",
+    "descricao": "Jogo para treino de reconhecimento de expressões e regulação afetiva.",
+    "versao": "1.0.0",
+    "objetivo_clinico": "regulacao_emocional",
+    "status": "ativo",
+    "metricas_suportadas": [
+      {
+        "id_metrica": "tempo_decisao",
+        "tipo_metrica": "numerica",
+        "unidade": "segundos"
+      },
+      {
+        "id_metrica": "expressao_identificada",
+        "tipo_metrica": "categorica",
+        "valores": ["alegria", "tristeza", "raiva", "neutro"]
+      }
+    ]
+  }
+  ```
+
+- **Respostas:**
+  - **Status `201 Created`:**
+
+    ```json
+    {
+      "data": {
+        "id": "e9876543-21ba-4c5d-6e7f-8a9b0c1d2e3f",
+        "id_jogo": "labirinto-das-emocoes",
+        "nome": "Labirinto das Emoções",
+        "descricao": "Jogo para treino de reconhecimento de expressões e regulação afetiva.",
+        "versao": "1.0.0",
+        "status": "ativo",
+        "objetivo_clinico": "regulacao_emocional",
+        "metricas_suportadas": [
+          {
+            "id_metrica": "tempo_decisao",
+            "tipo_metrica": "numerica",
+            "unidade": "segundos"
+          },
+          {
+            "id_metrica": "expressao_identificada",
+            "tipo_metrica": "categorica",
+            "valores": ["alegria", "tristeza", "raiva", "neutro"]
+          }
+        ]
+      },
+      "message": "Jogo cadastrado com sucesso"
+    }
+    ```
+
+  - **Status `400 Bad Request`:**
+
+    ```json
+    {
+      "error": "Campos obrigatórios ausentes: nome, versao e metricas_suportadas"
+    }
+    ```
+
+---
+
+#### Rota 3: Consultar Detalhes Consolidados de um Jogo Específico
 
 - **Método:** `GET`
-
 - **URL:** `/api/jogos/:id`
 - **Path Parameters:**
-  - `id` (`string`, obrigatório): Identificador numérico ou slug do jogo.
+  - `id` (`string`, obrigatório): UUID ou slug (`id_jogo`) do jogo.
+- **Descrição Técnica:**
+  - Endpoint único canônico consolidado que retorna tanto os metadados do jogo (`id`, `id_jogo`, `nome`, `descricao`, `versao`, `status`, `objetivo_clinico`, `metricas_suportadas`) quanto o laudo de conformidade clínica do manifesto (`validacao: { valido, erros }`).
+
 - **Exemplo de Chamada:**
 
   ```http
-  GET /api/jogos/1 HTTP/1.1
+  GET /api/jogos/aventura-das-cores HTTP/1.1
   Host: localhost:3000
   ```
 
@@ -832,63 +898,23 @@ Todas as respostas seguem formatos previsíveis:
     ```json
     {
       "data": {
-        "id": "1",
+        "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+        "id_jogo": "aventura-das-cores",
         "nome": "Aventura das Cores",
         "descricao": "Estimula atenção compartilhada e reconhecimento facial.",
         "versao": "1.2.0",
-        "status_instalacao": "instalado",
-        "manifesto_json": {
-          "id_jogo": "aventura-das-cores",
-          "nome": "Aventura das Cores",
-          "versao": "1.2.0",
-          "metricas_suportadas": [
-            {
-              "id_metrica": "tempo_resposta",
-              "tipo_metrica": "numerica",
-              "unidade": "segundos"
-            },
-            {
-              "id_metrica": "nivel_frustracao",
-              "tipo_metrica": "categorica",
-              "valores": ["baixo", "medio", "alto"]
-            }
-          ]
-        }
-      }
-    }
-    ```
-
-  - **Status `404 Not Found`:**
-
-    ```json
-    {
-      "error": "Jogo não encontrado"
-    }
-    ```
-
----
-
-#### Rota 3: Obter Manifesto e Relatório de Conformidade do Jogo
-
-- **Método:** `GET`
-
-- **URL:** `/api/jogos/:id/manifesto`
-- **Finalidade:** Inspeciona o campo `manifesto_json` do jogo e avalia a conformidade com as regras de tipagem estrita (**RN02** e **RNF02**).
-- **Path Parameters:** `id` (`string`, obrigatório).
-- **Respostas:**
-  - **Status `200 OK`:**
-
-    ```json
-    {
-      "data": {
-        "id_jogo": "aventura-das-cores",
-        "nome": "Aventura das Cores",
-        "versao": "1.2.0",
+        "status": "ativo",
+        "objetivo_clinico": "foco_atencional",
         "metricas_suportadas": [
           {
             "id_metrica": "tempo_resposta",
             "tipo_metrica": "numerica",
             "unidade": "segundos"
+          },
+          {
+            "id_metrica": "nivel_frustracao",
+            "tipo_metrica": "categorica",
+            "valores": ["baixo", "medio", "alto"]
           }
         ]
       },
@@ -909,7 +935,120 @@ Todas as respostas seguem formatos previsíveis:
 
 ---
 
-#### Rota 4: Validação Externa de Manifesto de Jogos (Contrato 1 - RNF02)
+#### Rota 4: Atualizar Metadados ou Status Operacional do Jogo
+
+- **Método:** `PATCH` ou `PUT`
+- **URL:** `/api/jogos/:id`
+- **Path Parameters:**
+  - `id` (`string`, obrigatório): UUID ou slug (`id_jogo`) do jogo.
+- **Request Body (campos opcionais):**
+  - `nome` (`string`): Novo nome do jogo.
+  - `descricao` (`string`): Nova descrição clínica.
+  - `versao` (`string`): Nova versão semântica (ex: `1.3.0`).
+  - `objetivo_clinico` (`string`): Novo objetivo clínico.
+  - `status` (`string`): Novo status operacional (`ativo`, `desativado`, `manutencao`, `em_breve`).
+  - `metricas_suportadas` (`array`): Novo conjunto de métricas suportadas.
+
+- **Exemplo de Chamada (Suspensão para Manutenção):**
+
+  ```http
+  PATCH /api/jogos/aventura-das-cores HTTP/1.1
+  Host: localhost:3000
+  Content-Type: application/json
+
+  {
+    "status": "manutencao",
+    "descricao": "Temporariamente suspenso para ajuste de latência."
+  }
+  ```
+
+- **Respostas:**
+  - **Status `200 OK`:**
+
+    ```json
+    {
+      "data": {
+        "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+        "id_jogo": "aventura-das-cores",
+        "nome": "Aventura das Cores",
+        "descricao": "Temporariamente suspenso para ajuste de latência.",
+        "versao": "1.2.0",
+        "status": "manutencao",
+        "objetivo_clinico": "foco_atencional",
+        "metricas_suportadas": [...]
+      },
+      "message": "Jogo atualizado com sucesso"
+    }
+    ```
+
+  - **Status `400 Bad Request`:**
+
+    ```json
+    {
+      "error": "Status inválido. Valores permitidos: ativo, desativado, manutencao, em_breve"
+    }
+    ```
+
+  - **Status `404 Not Found`:**
+
+    ```json
+    {
+      "error": "Jogo não encontrado"
+    }
+    ```
+
+---
+
+#### Rota 5: Exclusão Permanente do Jogo (Hard Delete / Dev)
+
+- **Método:** `DELETE`
+- **URL:** `/api/jogos/:id`
+- **Path Parameters:**
+  - `id` (`string`, obrigatório): UUID ou slug (`id_jogo`) do jogo.
+- **Descrição Técnica:**
+  - Exclusão física do registro da tabela `public.jogo`.
+  - **Proteção Relacional:** Caso o jogo possua sessões vinculadas na tabela `public.sessao`, o banco de dados rejeita a operação com código `23503` (Foreign Key Restrict). O servidor intercepta essa restrição e responde com **`409 Conflict`**, recomendando a inativação através do status `desativado`.
+
+- **Exemplo de Chamada:**
+
+  ```http
+  DELETE /api/jogos/labirinto-das-emocoes HTTP/1.1
+  Host: localhost:3000
+  ```
+
+- **Respostas:**
+  - **Status `200 OK` (Excluído com Sucesso):**
+
+    ```json
+    {
+      "message": "Jogo excluído permanentemente com sucesso",
+      "data": {
+        "id": "e9876543-21ba-4c5d-6e7f-8a9b0c1d2e3f",
+        "id_jogo": "labirinto-das-emocoes",
+        "nome": "Labirinto das Emoções"
+      }
+    }
+    ```
+
+  - **Status `409 Conflict` (Possui Sessões Vinculadas):**
+
+    ```json
+    {
+      "error": "Não é possível excluir o jogo pois existem sessões clínicas vinculadas a ele. Altere o status do jogo para 'desativado' usando PATCH /api/jogos/:id."
+    }
+    ```
+
+  - **Status `404 Not Found`:**
+
+    ```json
+    {
+      "error": "Jogo não encontrado"
+    }
+    ```
+
+---
+
+#### Rota 6: Validação Externa de Manifesto de Jogos (Contrato 1 - RNF02)
 
 - **Método:** `POST`
 
@@ -981,7 +1120,7 @@ Todas as respostas seguem formatos previsíveis:
 
 ---
 
-#### Rota 5: Validação de Telemetria com Tipagem Estrita (RN02)
+#### Rota 7: Validação de Telemetria com Tipagem Estrita (RN02)
 
 - **Método:** `POST`
 
@@ -1094,11 +1233,11 @@ Todas as respostas seguem formatos previsíveis:
 
 | Método | Endpoint | Protegido | Requisito / Regra | Finalidade |
 | :--- | :--- | :---: | :--- | :--- |
-| `GET` | `/api/sessao/gerarCodigoPareamento` | Sim (JWT) | **RF10** | Gera código legível único de pareamento remoto (PIN) |
+| `GET` | `/api/sessao/codigo-pareamento` | Sim (JWT) | **RF10** | Gera código legível único de pareamento remoto (PIN) |
 | `POST` | `/api/sessao/iniciar` | Sim (JWT + Vínculo) | **RF12**, **RF13**, **RN01**, **RN03**, **RN04** | Inicia nova sessão clínica ou em modo livre, emite token e vincula contexto DDA |
 | `POST` | `/api/sessao/parear` | Não (Launcher Game) | **RF10**, **RNF03** | Handshake de pareamento remoto do tablet/VR confirmando conexão ativa |
 | `GET` | `/api/sessao/:id` | Sim (JWT) | **RF12**, **RN04** | Consulta dados completos e estado atual da sessão por UUID interno |
-| `GET` | `/api/sessao/buscarPorToken/:token` | Sim (JWT) | **RF10** | Consulta dados da sessão através do código alfanumérico (PIN) |
+| `GET` | `/api/sessao/token/:token` | Sim (JWT) | **RF10** | Consulta dados da sessão através do código alfanumérico (PIN) |
 | `GET` | `/api/sessao/:token/status` | Não | **RF10**, **RNF04** | Polling de status e diagnóstico de presença do dispositivo remoto |
 | `PATCH` | `/api/sessao/:id/finalizar` | Sim (JWT) | **RF13**, **RF17**, **RF21**, **RN01**, **RN04**, **RN05**, **RNF06** | Encerra formalmente a sessão, aciona síntese de IA e grava na trilha de auditoria |
 | `DELETE` | `/api/sessao/:id/cancelar` | Sim (JWT) | **RF12**, **RF13**, **RN05** | Cancela antecipadamente sessão pendente antes da conclusão clínica |
@@ -1113,7 +1252,7 @@ Todas as respostas seguem formatos previsíveis:
 #### Rota 1: Gerar Código Legível de Pareamento Remoto (PIN)
 
 - **Método:** `GET`
-- **URL:** `/api/sessao/gerarCodigoPareamento`
+- **URL:** `/api/sessao/codigo-pareamento`
 - **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
 - **Finalidade:** Gera um código PIN legível e seguro (ex.: `4M5S-8U7B`), garantindo unicidade no banco de dados para digitação facilitada no jogo externo pelo paciente ou mediador.
 - **Respostas:**
@@ -1290,7 +1429,7 @@ Todas as respostas seguem formatos previsíveis:
 #### Rota 5: Consultar Sessão por Código de Pareamento (PIN)
 
 - **Método:** `GET`
-- **URL:** `/api/sessao/buscarPorToken/:token`
+- **URL:** `/api/sessao/token/:token`
 - **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
 - **Path Parameters:** `token` (`string`, obrigatório, ex: `4M5S-8U7B`).
 - **Respostas:**
@@ -2048,7 +2187,7 @@ O servidor Socket.IO opera integrado ao backend na porta `3000`, expondo o names
 | :--- | :--- | :--- | :--- |
 | **RF06** (CRUD Paciente) | `POST`, `GET`, `PUT`, `DELETE /api/paciente` | `200`, `201`, `400`, `404`, `409` | Validação de DTOs, vínculos familiares e soft delete. |
 | **RF09** (Biblioteca de Jogos) | `GET /api/jogos`, `GET /api/jogos/:id` | `200`, `404`, `500` | Catálogo com objetivos clínicos e status de instalação. |
-| **RF10** (Pareamento Remoto) | `POST /api/sessao/parear`, `GET /api/sessao/gerarCodigoPareamento` | `200`, `400`, `404`, `409`, `410` | Handshake PIN de 8 caracteres, TTL de 15 minutos e WebSocket. |
+| **RF10** (Pareamento Remoto) | `POST /api/sessao/parear`, `GET /api/sessao/codigo-pareamento` | `200`, `400`, `404`, `409`, `410` | Handshake PIN de 8 caracteres, TTL de 15 minutos e WebSocket. |
 | **RF11** (Modo Livre) | `POST /api/sessao/iniciar` (`modo_sessao: modo_livre`) | `200`, `201` | Partidas recreativas sem vínculo a prontuário clínico. |
 | **RF12** (Gestão de Sessão) | `POST /api/sessao/iniciar`, `GET /api/sessao/:id`, `PATCH /status` | `200`, `201`, `400`, `404` | Orquestração da FSM e monitoramento ativo do ciclo. |
 | **RF13** (Ciclo e Encerramento) | `PATCH /api/sessao/:id/finalizar`, `DELETE /cancelar` | `200`, `400`, `404` | Encerramento formal, cálculo de duração e trilha de auditoria. |

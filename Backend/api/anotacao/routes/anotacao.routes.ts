@@ -8,13 +8,14 @@ import { Router } from 'express';
 import { AnotacaoPacienteController } from '../controllers/anotacao-paciente.controller.js';
 import { AnotacaoSessaoController } from '../controllers/anotacao-sessao.controller.js';
 import { AnotacaoClinicaModel } from '../models/anotacao.model.js';
-import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
+import { authMiddleware, AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import {
   resolverContextoPaciente,
   resolverContextoSessao,
+  resolverContextoAnotacaoUnificada,
 } from '../middlewares/anotacao-contexto.middleware.js';
 
 export const anotacaoRoutes = Router();
@@ -80,20 +81,14 @@ export const anotacaoRoutes = Router();
 anotacaoRoutes.post(
   '/',
   authMiddleware,
-  async (req, res, next) => {
-    if (req.body?.sessao_id) {
-      return resolverContextoSessao(req as any, res, next);
-    } else {
-      return resolverContextoPaciente(req as any, res, next);
-    }
-  },
+  (req, res, next) => resolverContextoAnotacaoUnificada(req as AuthenticatedRequest, res, next),
   verificarVisibilidadePaciente,
   async (req, res) => {
-    if (req.body?.sessao_id) {
-      return AnotacaoSessaoController.criar(req as any, res);
-    } else {
-      return AnotacaoPacienteController.criar(req as any, res);
+    const authReq = req as AuthenticatedRequest;
+    if (authReq.body?.sessao_id) {
+      return AnotacaoSessaoController.criar(authReq, res);
     }
+    return AnotacaoPacienteController.criar(authReq, res);
   }
 );
 
@@ -159,8 +154,9 @@ anotacaoRoutes.patch(
       res.status(404).json({ error: 'Anotação clínica não encontrada.' });
       return;
     }
-    (req as any).pacienteAlvoId = anotacao.paciente_id;
-    (req as any).contextoAnotacao = anotacao;
+    const authReq = req as AuthenticatedRequest;
+    authReq.pacienteAlvoId = anotacao.paciente_id;
+    authReq.contextoAnotacao = anotacao;
     next();
   },
   verificarVisibilidadePaciente,

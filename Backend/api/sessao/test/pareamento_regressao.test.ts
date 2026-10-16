@@ -295,8 +295,15 @@ describe('Card 2.4 - Testes E2E de Pareamento Remoto e Não-Regressão (CT-S01 a
     expect(Array.isArray(jsonJogos.data)).toBe(true);
     expect(jsonJogos.data.length).toBeGreaterThan(0);
 
-    // 2. Validação de manifesto RN02 e detalhes unificados no endpoint canônico GET /api/jogos/:id
-    const resJogo = await fetch(`http://localhost:${port}/api/jogos/1`);
+    // 2. Validação de manifesto RN02 e detalhes unificados no endpoint canônico GET /api/jogos/:id (com autenticação)
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: '11111111-1111-1111-1111-111111111111', email: 'terapeuta@intea.com' } as any },
+      error: null
+    });
+
+    const resJogo = await fetch(`http://localhost:${port}/api/jogos/1`, {
+      headers: { Authorization: 'Bearer mock-valid-token' }
+    });
     const jsonJogo = (await resJogo.json()) as any;
     expect(resJogo.status).toBe(200);
     expect(jsonJogo.data).toBeDefined();

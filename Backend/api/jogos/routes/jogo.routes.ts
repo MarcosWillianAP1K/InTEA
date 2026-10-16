@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { JogoController } from '../controllers/jogo.controller.js';
+import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
+import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/jogos (Catálogo de Jogos, Manifestos e Telemetria)
@@ -12,7 +14,7 @@ export const jogosRoutes = Router();
  * /api/jogos:
  *   get:
  *     summary: Lista o catálogo de jogos com suporte a filtros e paginação
- *     description: Retorna a biblioteca de jogos terapêuticos com suporte a filtro por objetivo clínico e paginação de resultados.
+ *     description: Retorna a biblioteca de jogos terapêuticos com suporte a filtro por objetivo clínico, status operacional e paginação de resultados. Rota aberta ao público / cockpit.
  *     tags: [Jogos]
  *     parameters:
  *       - in: query
@@ -20,6 +22,12 @@ export const jogosRoutes = Router();
  *         schema:
  *           type: string
  *         description: "Filtrar por objetivo clínico (ex: foco_atencional, regulacao_emocional, desenvolvimento_linguagem)"
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [ativo, desativado, manutencao, em_breve]
+ *         description: "Filtrar por status operacional do jogo"
  *       - in: query
  *         name: page
  *         schema:
@@ -43,11 +51,15 @@ export const jogosRoutes = Router();
  *                   nome: "Aventura das Cores"
  *                   descricao: "Estimula atenção compartilhada e reconhecimento facial."
  *                   versao: "1.2.0"
+ *                   status: "ativo"
+ *                   status_jogo: "ativo"
  *               meta:
  *                 total: 3
  *                 page: 1
  *                 limit: 10
  *                 totalPages: 1
+ *       400:
+ *         description: Parâmetro de busca ou status inválido
  *       500:
  *         description: Erro interno ao listar catálogo de jogos
  *         content:
@@ -59,11 +71,105 @@ jogosRoutes.get('/', JogoController.listar);
 
 /**
  * @swagger
+ * /api/jogos:
+ *   post:
+ *     summary: Cadastra um novo jogo terapêutico no catálogo (Restrito a Administradores)
+ *     description: Cadastra um novo jogo com validação estrita de manifesto e geração automatizada de slug técnico (id_jogo). Exige autenticação e privilégios de super admin.
+ *     tags: [Jogos]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nome
+ *               - descricao
+ *               - versao
+ *               - objetivo_clinico
+ *               - metricas_suportadas
+ *             properties:
+ *               nome:
+ *                 type: string
+ *                 example: "Super Memória Musical"
+ *               descricao:
+ *                 type: string
+ *                 example: "Estimula memória de trabalho e discriminação auditiva."
+ *               versao:
+ *                 type: string
+ *                 example: "1.0.0"
+ *               status:
+ *                 type: string
+ *                 enum: [ativo, desativado, manutencao, em_breve]
+ *                 example: "ativo"
+ *               objetivo_clinico:
+ *                 type: string
+ *                 example: "desenvolvimento_linguagem"
+ *               metricas_suportadas:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - id_metrica
+ *                     - tipo_metrica
+ *                   properties:
+ *                     id_metrica:
+ *                       type: string
+ *                       example: "tempo_memorizacao"
+ *                     tipo_metrica:
+ *                       type: string
+ *                       enum: [numerica, categorica]
+ *                       example: "numerica"
+ *                     unidade:
+ *                       type: string
+ *                       example: "segundos"
+ *     responses:
+ *       201:
+ *         description: Jogo cadastrado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Jogo cadastrado com sucesso"
+ *               data:
+ *                 id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *                 id_jogo: "super-memoria-musical"
+ *                 nome: "Super Memória Musical"
+ *                 descricao: "Estimula memória de trabalho e discriminação auditiva."
+ *                 versao: "1.0.0"
+ *                 status: "ativo"
+ *                 status_jogo: "ativo"
+ *                 objetivo_clinico: "desenvolvimento_linguagem"
+ *                 metricas_suportadas:
+ *                   - id_metrica: "tempo_memorizacao"
+ *                     tipo_metrica: "numerica"
+ *                     unidade: "segundos"
+ *               validacao:
+ *                 valido: true
+ *                 erros: []
+ *       400:
+ *         description: Dados incompletos, status ou manifesto inválido
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (requer privilégios de administrador)
+ *       409:
+ *         description: Conflito (já existe jogo cadastrado com o mesmo slug)
+ *       500:
+ *         description: Erro interno ao cadastrar jogo
+ */
+jogosRoutes.post('/', authMiddleware, adminMiddleware, JogoController.cadastrar);
+
+/**
+ * @swagger
  * /api/jogos/validar-manifesto:
  *   post:
  *     summary: Valida a conformidade de um manifesto de jogo
- *     description: Valida a estrutura JSON de um manifesto contra o Contrato 1 de integração de jogos terapêuticos.
+ *     description: Valida a estrutura JSON de um manifesto contra o Contrato 1 de integração de jogos terapêuticos. Exige autenticação de terapeuta/dev.
  *     tags: [Jogos]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -136,6 +242,8 @@ jogosRoutes.get('/', JogoController.listar);
  *               error: "Manifesto do jogo inválido"
  *               erros:
  *                 - "Campo 'nome' é obrigatório"
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
  *       500:
  *         description: Erro interno ao processar validação
  *         content:
@@ -143,22 +251,24 @@ jogosRoutes.get('/', JogoController.listar);
  *             example:
  *               error: "Erro interno ao validar manifesto"
  */
-jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
+jogosRoutes.post('/validar-manifesto', authMiddleware, JogoController.validarManifesto);
 
 /**
  * @swagger
  * /api/jogos/{id}:
  *   get:
  *     summary: Consulta detalhes completos e manifesto clínico de um jogo pelo ID
- *     description: Retorna as informações do jogo unificadas com seu manifesto clínico de métricas e laudo de conformidade (RF09, RNF02).
+ *     description: Retorna as informações do jogo unificadas com seu manifesto clínico de métricas e laudo de conformidade (RF09, RNF02). Exige autenticação.
  *     tags: [Jogos]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: Identificador do jogo (ID numérico ou UUID)
+ *         description: Identificador do jogo (ID numérico, UUID ou slug)
  *     responses:
  *       200:
  *         description: Detalhes do jogo e manifesto retornados com sucesso
@@ -171,6 +281,8 @@ jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
  *                 nome: "Aventura das Cores"
  *                 descricao: "Estimula atenção compartilhada e reconhecimento facial através de interação cromática."
  *                 versao: "1.2.0"
+ *                 status: "ativo"
+ *                 status_jogo: "ativo"
  *                 objetivo_clinico: "foco_atencional"
  *                 metricas_suportadas:
  *                   - id_metrica: "tempo_resposta"
@@ -182,6 +294,8 @@ jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
  *               validacao:
  *                 valido: true
  *                 erros: []
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
  *       404:
  *         description: Jogo não encontrado
  *         content:
@@ -195,7 +309,137 @@ jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
  *             example:
  *               error: "Erro ao buscar detalhes do jogo"
  */
-jogosRoutes.get('/:id', JogoController.buscarPorId);
+jogosRoutes.get('/:id', authMiddleware, JogoController.buscarPorId);
+
+/**
+ * @swagger
+ * /api/jogos/{id}:
+ *   patch:
+ *     summary: Atualiza os dados cadastrais ou o status operacional de um jogo (Restrito a Administradores)
+ *     description: Permite atualizar nome, descrição, versão, métricas e/ou alterar o status do jogo ('ativo', 'desativado', 'manutencao', 'em_breve'). Exige autenticação e privilégios de super admin.
+ *     tags: [Jogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Identificador do jogo (ID numérico, UUID ou slug)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [ativo, desativado, manutencao, em_breve]
+ *                 example: "manutencao"
+ *               nome:
+ *                 type: string
+ *                 example: "Aventura das Cores Remaster"
+ *               descricao:
+ *                 type: string
+ *                 example: "Versão aprimorada com novas fases cromáticas."
+ *               versao:
+ *                 type: string
+ *                 example: "1.3.0"
+ *     responses:
+ *       200:
+ *         description: Jogo atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Jogo atualizado com sucesso"
+ *               data:
+ *                 id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *                 id_jogo: "aventura-das-cores"
+ *                 nome: "Aventura das Cores Remaster"
+ *                 descricao: "Versão aprimorada com novas fases cromáticas."
+ *                 versao: "1.3.0"
+ *                 status: "manutencao"
+ *                 status_jogo: "manutencao"
+ *               validacao:
+ *                 valido: true
+ *                 erros: []
+ *       400:
+ *         description: Status ou dados inválidos
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (requer privilégios de administrador)
+ *       404:
+ *         description: Jogo não encontrado
+ *       500:
+ *         description: Erro interno ao atualizar jogo
+ *   put:
+ *     summary: Substitui ou atualiza os dados do jogo (Restrito a Administradores)
+ *     description: Atualização completa ou parcial de atributos do jogo. Exige autenticação e privilégios de super admin.
+ *     tags: [Jogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Identificador do jogo (ID numérico, UUID ou slug)
+ *     responses:
+ *       200:
+ *         description: Jogo atualizado com sucesso
+ *       400:
+ *         description: Status ou dados inválidos
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Acesso negado
+ *       404:
+ *         description: Jogo não encontrado
+ *       500:
+ *         description: Erro interno ao atualizar jogo
+ *   delete:
+ *     summary: Executa hard delete de um jogo do catálogo (Restrito a Administradores)
+ *     description: Remove permanentemente o jogo da base de dados. Caso existam sessões clínicas vinculadas, a exclusão é rejeitada por integridade referencial com status 409. Exige privilégios de super admin.
+ *     tags: [Jogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Identificador do jogo (ID numérico, UUID ou slug)
+ *     responses:
+ *       200:
+ *         description: Jogo excluído com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Jogo excluído com sucesso"
+ *               id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado (requer privilégios de administrador)
+ *       404:
+ *         description: Jogo não encontrado
+ *       409:
+ *         description: Conflito de integridade referencial (jogo vinculado a sessões clínicas)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Não é possível excluir o jogo pois existem sessões clínicas vinculadas a ele. Recomenda-se desativá-lo alterando seu status para 'desativado'."
+ *       500:
+ *         description: Erro interno ao excluir jogo
+ */
+jogosRoutes.patch('/:id', authMiddleware, adminMiddleware, JogoController.atualizar);
+jogosRoutes.put('/:id', authMiddleware, adminMiddleware, JogoController.atualizar);
+jogosRoutes.delete('/:id', authMiddleware, adminMiddleware, JogoController.excluir);
 
 /**
  * @swagger

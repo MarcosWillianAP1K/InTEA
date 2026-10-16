@@ -18,7 +18,7 @@ export const sessaoRoutes = Router();
 
 /**
  * @swagger
- * /api/sessao/gerarCodigoPareamento:
+ * /api/sessao/codigo-pareamento:
  *   get:
  *     summary: Gera um código legível único de pareamento remoto (PIN)
  *     description: Gera um código alfanumérico único de pareamento (ex. '4M5S-8U7B') para ser inserido no game externo pelo paciente, verificando unicidade contra sessões existentes.
@@ -47,12 +47,9 @@ export const sessaoRoutes = Router();
  *           application/json:
  *             schema:
  *               type: object
- *               properties:
- *                 error:
- *                   type: string
  *                   example: "Erro interno ao gerar código de pareamento"
  */
-sessaoRoutes.get('/gerarCodigoPareamento', authMiddleware, SessaoController.gerarCodigoPareamento);
+sessaoRoutes.get('/codigo-pareamento', authMiddleware, SessaoController.gerarCodigoPareamento);
 
 /**
  * @swagger
@@ -261,13 +258,13 @@ sessaoRoutes.post('/parear', SessaoController.parear);
 
 // =============================================================================
 // ROTAS COM PARÂMETROS DINÂMICOS
-// REGRA: /buscarPorToken/:token ANTES de /:id — o Express avalia rotas em ordem de registro.
-// Se /:id vier primeiro, a string "buscarPorToken" seria capturada como valor de :id.
+// REGRA: /token/:token ANTES de /:id — o Express avalia rotas em ordem de registro.
+// Se /:id vier primeiro, a string "token" seria capturada como valor de :id.
 // =============================================================================
 
 /**
  * @swagger
- * /api/sessao/buscarPorToken/{token}:
+ * /api/sessao/token/{token}:
  *   get:
  *     summary: Busca uma sessão pelo código/token de pareamento (PIN)
  *     description: Consulta os dados de uma sessão ativa a partir do código alfanumérico de pareamento digitado. Retorna a sessão completa incluindo status e configurações.
@@ -328,9 +325,8 @@ sessaoRoutes.post('/parear', SessaoController.parear);
  *                   type: string
  *                   example: "Código de sessão inválido ou expirado"
  *       500:
- *         description: Erro interno ao buscar sessão por token
  */
-sessaoRoutes.get('/buscarPorToken/:token', authMiddleware, SessaoController.buscarPorToken);
+sessaoRoutes.get('/token/:token', authMiddleware, SessaoController.buscarPorToken);
 
 /**
  * @swagger
@@ -565,7 +561,7 @@ sessaoRoutes.get('/:id', authMiddleware, SessaoController.buscarPorId);
  *             example:
  *               error: "Erro interno ao emitir laudo clínico para exportação."
  */
-sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoExportarService.handlerExportarHttp);
+sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoController.exportar);
 
 
 /**

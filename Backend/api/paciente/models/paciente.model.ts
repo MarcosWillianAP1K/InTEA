@@ -4,6 +4,26 @@ import { supabase } from '../../../core/supabase/supabase.client.js';
 // 1. INTERFACES E TIPAGENS (TypeScript)
 // ==============================================================================
 
+export interface ResponsavelVinculado {
+  id?: string;
+  nome?: string;
+  cpf?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  parentesco?: string | null;
+  [key: string]: unknown;
+}
+
+export interface TerapeutaVinculado {
+  id?: string;
+  nome?: string;
+  email?: string | null;
+  telefone?: string | null;
+  registro_profissional?: string | null;
+  especialidade?: string | null;
+  [key: string]: unknown;
+}
+
 /**
  * Representa a entidade Paciente exatamente como mapeada no banco de dados Supabase.
  */
@@ -24,8 +44,8 @@ export interface Paciente {
   bairro: string | null;           // Bairro
   numero: string | null;           // Número da residência
   complemento: string | null;      // Complemento (apto, bloco, casa 2, etc.)
-  responsaveis?: any[];            // Responsáveis vinculados
-  terapeutas?: any[];              // Terapeutas vinculados
+  responsaveis?: (ResponsavelVinculado | { responsavel: ResponsavelVinculado })[];
+  terapeutas?: (TerapeutaVinculado | { terapeuta: TerapeutaVinculado })[];
 }
 
 /**

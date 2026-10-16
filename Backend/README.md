@@ -81,7 +81,24 @@ npm test
 
 ### Catálogo e Biblioteca de Jogos (`/api/jogos`)
 
-- `GET /api/jogos` — Catálogo geral de jogos com filtro por objetivo clínico (**RF09**)
-- `GET /api/jogos/:id` — Detalhes completos do jogo, manifesto clínico e laudo de conformidade (**RF09**, **RNF02**)
+- `GET /api/jogos` — Catálogo geral de jogos com filtros por objetivo clínico e status operacional (`ativo`, `desativado`, `manutencao`, `em_breve`) (**RF09**)
+- `POST /api/jogos` — Cadastro de novo jogo no catálogo com geração automática de slug técnico (`id_jogo`) e status inicial (**RF09**)
+- `GET /api/jogos/:id` — Detalhes completos do jogo, manifesto clínico unificado e laudo de conformidade (**RF09**, **RNF02**)
+- `PUT /api/jogos/:id` ou `PATCH /api/jogos/:id` — Atualização de metadados do jogo ou transição de status operacional (**RF09**)
+- `DELETE /api/jogos/:id` — Exclusão permanente (hard delete para devs) com bloqueio relacional caso possua sessões vinculadas (**RF09**)
 - `POST /api/jogos/validar-manifesto` — Validador formal de manifestos contra o Contrato 1 (**RNF02**)
 - `POST /api/jogos/:id/validar-telemetria` — Validação estrita de telemetria com bloqueio de métricas sem tipo (**RN02**)
+
+### Sessão e Pareamento Remoto (`/api/sessao`)
+
+- `GET /api/sessao/codigo-pareamento` — Emissão de código alfanumérico único de pareamento remoto (PIN) (**RF10**)
+- `POST /api/sessao/iniciar` — Inicialização de sessão clínica ou modo livre com injeção de contexto DDA (**RF12**, **RN03**)
+- `POST /api/sessao/parear` — Handshake do dispositivo externo conectando à sala WebSocket (**RF10**)
+- `GET /api/sessao/:id` — Consulta de estado e metadados da sessão por UUID
+- `GET /api/sessao/token/:token` — Consulta de dados da sessão através do token/PIN (**RF10**)
+- `GET /api/sessao/:token/status` — Polling de status e presença do dispositivo remoto (**RF10**)
+- `PATCH /api/sessao/:id/finalizar` — Encerramento formal com geração de síntese de IA e auditoria (**RF13**, **RF17**)
+- `DELETE /api/sessao/:id/cancelar` — Cancelamento controlado de sessão pendente (**RF13**)
+- `PATCH /api/sessao/:id/status` — Transição manual de máquina de estados da sessão
+- `GET /api/sessao/:id/resultado` — Consulta consolidada de telemetria, IA e anotações pós-sessão (**RF14**)
+- `GET /api/sessao/:id/exportar` — Emissão de laudo clínico estruturado e anonimizado em formato LGPD (**RF20**)

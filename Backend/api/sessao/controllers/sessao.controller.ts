@@ -8,6 +8,7 @@ import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { SessaoResultadoService } from '../services/sessao-resultado.service.js';
+import { SessaoExportarService } from '../services/sessao-exportar.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { eventBus } from '../../../core/events/event-bus.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
@@ -669,4 +670,15 @@ export class SessaoController {
       res.status(500).json({ error: 'Erro interno ao consultar resultado consolidado da sessão.' });
     }
   }
+
+  /**
+   * Handles GET /api/sessao/:id/exportar to generate structured clinical reports (RF20).
+   *
+   * @param req - Authenticated Express request.
+   * @param res - Express response returning clinical report JSON or error status.
+   */
+  static async exportar(req: Request, res: Response): Promise<void> {
+    return SessaoExportarService.handlerExportarHttp(req, res);
+  }
 }
+

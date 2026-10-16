@@ -74,3 +74,23 @@ export function formatarTelefone(telefone: string | null | undefined): string {
   // Se não bater com a regra de 11 ou 13 dígitos, retorna o valor original
   return telefone;
 }
+
+/**
+ * Safely extracts an error message string from an unknown exception object.
+ * Avoids the need for `(error as any).message`.
+ *
+ * @param error - The caught exception of unknown type.
+ * @returns Human-readable error message.
+ */
+export function obterMensagemErro(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (error && typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
+    return (error as { message: string }).message;
+  }
+  return String(error || 'Erro desconhecido');
+}
