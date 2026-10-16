@@ -74,10 +74,9 @@ const swaggerSpec = swaggerJsdoc({
       },
     },
   },
-  apis: [
-    "./dist/api/**/*.routes.js",
-    "./api/**/*.routes.ts",
-  ],
+  apis: import.meta.url.includes("/dist/")
+    ? ["./dist/api/**/*.routes.js"]
+    : ["./api/**/*.routes.ts"],
 });
 
 app.use(

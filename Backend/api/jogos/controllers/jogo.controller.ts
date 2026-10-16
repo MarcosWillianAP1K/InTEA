@@ -36,10 +36,10 @@ export class JogoController {
   }
 
   /**
-   * Handles GET /api/jogos/:id to retrieve full game details including its manifest JSON.
+   * Handles GET /api/jogos/:id to retrieve unified game details with its clinical manifest and compliance report (RF09, RNF02).
    *
    * @param req - Express request containing the game ID in URL parameter `:id`.
-   * @param res - Express response returning the game details or 404 if not found.
+   * @param res - Express response returning unified game details or 404 if not found.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
@@ -52,42 +52,26 @@ export class JogoController {
         return;
       }
 
-      res.json({ data: jogo });
-    } catch (error) {
-      console.error('[JogoController] Erro ao buscar jogo por ID:', error);
-      res.status(500).json({ error: 'Erro ao buscar detalhes do jogo' });
-    }
-  }
-
-  /**
-   * Handles GET /api/jogos/:id/manifesto to inspect and validate game manifest compliance.
-   *
-   * @param req - Express request containing the game ID in URL parameter `:id`.
-   * @param res - Express response returning the manifest data and compliance validation results.
-   * @returns Resolves when the HTTP response has been sent.
-   */
-  static async obterManifesto(req: Request, res: Response): Promise<void> {
-    try {
-      const id = String(req.params.id);
-      const jogo = await JogoModel.buscarPorId(id);
-
-      if (!jogo) {
-        res.status(404).json({ error: 'Jogo não encontrado' });
-        return;
-      }
-
       const validacao = ManifestoValidator.validar(jogo.manifesto_json);
 
       res.json({
-        data: jogo.manifesto_json,
+        data: {
+          id: jogo.id,
+          id_jogo: jogo.manifesto_json?.id_jogo ?? String(jogo.id),
+          nome: jogo.nome,
+          descricao: jogo.descricao,
+          versao: jogo.versao,
+          objetivo_clinico: jogo.manifesto_json?.objetivo_clinico,
+          metricas_suportadas: jogo.manifesto_json?.metricas_suportadas ?? []
+        },
         validacao: {
           valido: validacao.valido,
           erros: validacao.erros
         }
       });
     } catch (error) {
-      console.error('[JogoController] Erro ao obter manifesto:', error);
-      res.status(500).json({ error: 'Erro ao consultar manifesto do jogo' });
+      console.error('[JogoController] Erro ao buscar jogo por ID:', error);
+      res.status(500).json({ error: 'Erro ao buscar detalhes do jogo' });
     }
   }
 

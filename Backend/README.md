@@ -82,8 +82,6 @@ npm test
 ### Catálogo e Biblioteca de Jogos (`/api/jogos`)
 
 - `GET /api/jogos` — Catálogo geral de jogos com filtro por objetivo clínico (**RF09**)
-
-- `GET /api/jogos/:id` — Detalhes completos do jogo e manifesto JSON (**RF09**, **RNF02**)
-- `GET /api/jogos/:id/manifesto` — Manifesto com laudo de conformidade (**RNF02**)
+- `GET /api/jogos/:id` — Detalhes completos do jogo, manifesto clínico e laudo de conformidade (**RF09**, **RNF02**)
 - `POST /api/jogos/validar-manifesto` — Validador formal de manifestos contra o Contrato 1 (**RNF02**)
 - `POST /api/jogos/:id/validar-telemetria` — Validação estrita de telemetria com bloqueio de métricas sem tipo (**RN02**)

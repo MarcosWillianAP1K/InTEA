@@ -1,65 +1,60 @@
-# Anotações Técnicas e Alinhamento de Modelagem Clínica
+# Anotações Técnicas e Alinhamento de Rotas — Módulo de Jogos
 
-> **Data:** 13/10/2026  
-> **Módulo:** Banco de Dados / Sessão / Relatório Clínico  
-> **Destinatários:** Equipe InTEA, com destaque para `@Raildom` (Documentação LaTeX, OpenAPI e Casos de Teste) e `@MarcosWillianAP1K` (Back-end 1 / BD)
-
----
-
-## 1. Diretriz Mandatória sobre Modo Livre (RN01)
-
-### O Princípio Clínico e Operacional
-* **Partidas em Modo Livre NÃO geram, NÃO processam e NÃO persistem relatórios clínicos nem telemetria.**
-* **Justificativa Clínica:** O Modo Livre (`modo_sessao = 'modo_livre'`) existe para uso desvinculado de prontuário (calibração de jogo, demonstração institucional, ambientação do paciente ou jogo recreativo avulso). Nessas partidas, `paciente_id` é estritamente `NULL`.
-* **Sem Violação de Prontuário:** Um relatório clínico no InTEA é um documento médico/terapêutico com valor formal. Não faz sentido clínico ou jurídico emitir parecer ou laudo de IA para uma entidade sem paciente.
-* **Comportamento da API:** No encerramento de sessão em Modo Livre (`PATCH /api/sessao/:id/finalizar`), a sessão transiciona para `finalizada`, mas o campo `relatorio` é retornado como `undefined`/`null`, e nenhuma linha é inserida na tabela `public.relatorio_sessao`.
+> **Data:** 15/10/2026  
+> **Módulo:** Jogos / Catálogo / Manifesto Clínico  
+> **Destinatários:** Equipe InTEA (Front-end e Back-end)
 
 ---
 
-## 2. Normalização 3FN da Tabela `public.relatorio_sessao`
+## 1. Unificação e Consolidação de Rotas de Jogos
 
-### Decisão Arquitetural e Chave Primária Compartilhada
-1. **Relação Existencial de 1:1:** Uma sessão clínica finalizada possui no máximo um relatório. Portanto, a chave primária da tabela `relatorio_sessao` é a própria chave estrangeira da sessão pai:
-   $$\text{PK} = \text{FK} = \text{sessao\_id UUID PRIMARY KEY REFERENCES public.sessao(id) ON DELETE RESTRICT}$$
-2. **Eliminação do ID Artificial:** A coluna substituta `id UUID` foi eliminada da modelagem de banco, simplificando a integridade referencial e removendo índices únicos redundantes.
-3. **Remoção das Colunas Redundantes (3FN Pura):**
-   * As colunas `paciente_id` e `terapeuta_id` foram **definitivamente removidas** da tabela `relatorio_sessao`.
-   * Toda consulta ao paciente, terapeuta ou clínica responsável pelo relatório deve ser resolvida via `JOIN` natural com a tabela pai `public.sessao`.
-4. **Estrutura Final Saneada:**
-   * `sessao_id UUID PRIMARY KEY REFERENCES public.sessao(id)`
-   * `conteudo TEXT` (parecer técnico e anotações do terapeuta)
-   * `dados_ia_json JSONB` (Contrato 4 oficial da IA)
-   * `soft_delete BOOLEAN DEFAULT FALSE NOT NULL` (RN05)
-   * `created_at TIMESTAMPTZ`
-   * `updated_at TIMESTAMPTZ`
+### Contexto do Problema
+Anteriormente, existiam duas rotas concorrentes para consulta individual de jogos:
+1. `GET /api/jogos/:id` (Consulta genérica com duplicação de dados entre a raiz do payload e o `manifesto_json`).
+2. `GET /api/jogos/:id/manifesto` (Consulta do manifesto e laudo de conformidade clínica, porém carente do `id` do banco de dados e da `descricao` do jogo).
+
+### Decisão Arquitetural RESTful
+* **Eliminação de Sub-rota Redundante:** A sub-rota `GET /api/jogos/:id/manifesto` foi descontinuada e apagada.
+* **Centralização no Endpoint Canônico CRUD:** A rota padrão RESTful `GET /api/jogos/:id` passa a ser a **rota única** para detalhes completos do jogo, unificando no mesmo payload tanto os dados cadastrais da plataforma (`id`, `nome`, `descricao`, `versao`) quanto os metadados clínicos do manifesto (`objetivo_clinico`, `metricas_suportadas`) e o laudo de validação clínica (`validacao`).
 
 ---
 
-## 3. Segurança e Políticas RLS (Row Level Security)
+## 2. Estrutura Consolidada do Retorno (`GET /api/jogos/:id`)
 
-* **Delegação via Subquery `EXISTS`:**
-  As políticas de `SELECT`, `INSERT` e `UPDATE` de `relatorio_sessao` agora consultam a tabela pai `sessao` de forma determinística:
-  ```sql
-  EXISTS (
-      SELECT 1 FROM public.sessao s
-      WHERE s.id = relatorio_sessao.sessao_id
-        AND (
-            s.terapeuta_id = auth.uid() OR 
-            (s.paciente_id IS NOT NULL AND public.terapeuta_tem_acesso_paciente(s.paciente_id)) OR
-            public.check_is_super_admin()
-        )
-  )
-  ```
-* **Bypass de Inserção:** Permite que o terapeuta responsável pela sessão (ou SuperAdmin) insira ou edite o parecer consolidado.
+```json
+{
+  "data": {
+    "id": 1,
+    "id_jogo": "aventura-das-cores",
+    "nome": "Aventura das Cores",
+    "descricao": "Estimula atenção compartilhada e reconhecimento facial através de interação cromática.",
+    "versao": "1.2.0",
+    "objetivo_clinico": "foco_atencional",
+    "metricas_suportadas": [
+      {
+        "id_metrica": "tempo_resposta",
+        "tipo_metrica": "numerica",
+        "unidade": "segundos"
+      },
+      {
+        "id_metrica": "nivel_frustracao",
+        "tipo_metrica": "categorica",
+        "valores": ["baixo", "medio", "alto"]
+      }
+    ]
+  },
+  "validacao": {
+    "valido": true,
+    "erros": []
+  }
+}
+```
 
 ---
 
-## 4. Ações Requeridas para o Responsável de Documentação (`@Raildom`)
+## 3. Diretriz para o Front-end
 
-1. **Especificação OpenAPI / Swagger (`docs/api-pacientes-jogos.md`):**
-   * Assegurar que o esquema de dados do relatório identifique o relatório por `sessao_id` como âncora principal.
-   * Documentar no endpoint `GET /api/sessao/:id/resultado` e `PATCH /api/sessao/:id/finalizar` que o retorno para Modo Livre possui `paciente: null` e omite `relatorio`.
-2. **Roteiro de Testes Manuais (`docs/roteiro-testes.md`):**
-   * Nos casos de teste de Modo Livre (ex: `CT-S05` / `CT-S16`), explicitar que o resultado esperado é a ausência de persistência na tabela `relatorio_sessao`.
-3. **Capítulo LaTeX Oficial (`docs/*.tex`):**
-   * No DER (Diagrama Entidade-Relacionamento) e no Dicionário de Dados, atualizar a tabela `relatorio_sessao` com `sessao_id` como PK compartilhada (relação 1:1) e sem as colunas redundantes `paciente_id` e `terapeuta_id`.
+* **Situação Atual do Front-end:** Atualmente, a biblioteca de jogos (`jogosService.ts`) utiliza dados locais mockados (`JOGOS_MOCK`) e não realiza requisições HTTP para os endpoints individuais de jogo.
+* **Próxima Etapa de Integração:** Quando a integração HTTP para exibição dos detalhes/manifesto do jogo for conectada no Front-end, deve-se consumir exclusivamente o endpoint canônico:
+  $$\text{GET /api/jogos/:id}$$
+  Esse endpoint já provê tudo o que o front-end, cockpit ou tablet necessitam para configurar e validar uma sessão clínica.

@@ -149,8 +149,8 @@ jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
  * @swagger
  * /api/jogos/{id}:
  *   get:
- *     summary: Consulta detalhes completos de um jogo pelo ID
- *     description: Retorna as informações do jogo e o seu manifesto JSON de métricas.
+ *     summary: Consulta detalhes completos e manifesto clínico de um jogo pelo ID
+ *     description: Retorna as informações do jogo unificadas com seu manifesto clínico de métricas e laudo de conformidade (RF09, RNF02).
  *     tags: [Jogos]
  *     parameters:
  *       - in: path
@@ -161,19 +161,27 @@ jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
  *         description: Identificador do jogo (ID numérico ou UUID)
  *     responses:
  *       200:
- *         description: Detalhes do jogo encontrados com sucesso
+ *         description: Detalhes do jogo e manifesto retornados com sucesso
  *         content:
  *           application/json:
  *             example:
  *               data:
- *                 id: "1"
+ *                 id: 1
+ *                 id_jogo: "aventura-das-cores"
  *                 nome: "Aventura das Cores"
- *                 descricao: "Estimula atenção compartilhada e reconhecimento facial."
+ *                 descricao: "Estimula atenção compartilhada e reconhecimento facial através de interação cromática."
  *                 versao: "1.2.0"
- *                 manifesto_json:
- *                   id_jogo: "aventura-das-cores"
- *                   nome: "Aventura das Cores"
- *                   versao: "1.2.0"
+ *                 objetivo_clinico: "foco_atencional"
+ *                 metricas_suportadas:
+ *                   - id_metrica: "tempo_resposta"
+ *                     tipo_metrica: "numerica"
+ *                     unidade: "segundos"
+ *                   - id_metrica: "nivel_frustracao"
+ *                     tipo_metrica: "categorica"
+ *                     valores: ["baixo", "medio", "alto"]
+ *               validacao:
+ *                 valido: true
+ *                 erros: []
  *       404:
  *         description: Jogo não encontrado
  *         content:
@@ -188,51 +196,6 @@ jogosRoutes.post('/validar-manifesto', JogoController.validarManifesto);
  *               error: "Erro ao buscar detalhes do jogo"
  */
 jogosRoutes.get('/:id', JogoController.buscarPorId);
-
-/**
- * @swagger
- * /api/jogos/{id}/manifesto:
- *   get:
- *     summary: Retorna e valida o manifesto de métricas de um jogo
- *     description: Obtém o manifesto_json do jogo e executa a verificação de conformidade das métricas suportadas.
- *     tags: [Jogos]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Identificador do jogo (ID numérico ou UUID)
- *     responses:
- *       200:
- *         description: Manifesto retornado com o relatório de conformidade
- *         content:
- *           application/json:
- *             example:
- *               data:
- *                 id_jogo: "aventura-das-cores"
- *                 nome: "Aventura das Cores"
- *                 versao: "1.2.0"
- *                 metricas_suportadas:
- *                   - id_metrica: "tempo_resposta"
- *                     tipo_metrica: "numerica"
- *               validacao:
- *                 valido: true
- *                 erros: []
- *       404:
- *         description: Jogo não encontrado
- *         content:
- *           application/json:
- *             example:
- *               error: "Jogo não encontrado"
- *       500:
- *         description: Erro interno ao consultar manifesto do jogo
- *         content:
- *           application/json:
- *             example:
- *               error: "Erro ao consultar manifesto do jogo"
- */
-jogosRoutes.get('/:id/manifesto', JogoController.obterManifesto);
 
 /**
  * @swagger

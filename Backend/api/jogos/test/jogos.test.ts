@@ -60,7 +60,7 @@ describe('Catálogo de Jogos (RF09)', () => {
       expect(responseData.data.length).toBeGreaterThanOrEqual(3);
     });
 
-    it('buscarPorId: deve retornar 200 e o jogo com manifesto_json', async () => {
+    it('buscarPorId: deve retornar 200 com payload unificado e validação do manifesto', async () => {
       let responseData: any = null;
       let statusCode = 200;
 
@@ -83,8 +83,15 @@ describe('Catálogo de Jogos (RF09)', () => {
 
       expect(statusCode).toBe(200);
       expect(responseData).toHaveProperty('data');
+      expect(responseData.data.id).toBe(1);
       expect(responseData.data.nome).toBe('Aventura das Cores');
-      expect(responseData.data.manifesto_json).toBeDefined();
+      expect(responseData.data.descricao).toBeDefined();
+      expect(responseData.data.versao).toBe('1.2.0');
+      expect(responseData.data.id_jogo).toBe('aventura-das-cores');
+      expect(Array.isArray(responseData.data.metricas_suportadas)).toBe(true);
+      expect(responseData).toHaveProperty('validacao');
+      expect(responseData.validacao.valido).toBe(true);
+      expect(responseData.validacao.erros).toHaveLength(0);
     });
 
     it('buscarPorId: deve responder 404 quando o jogo não for encontrado', async () => {

@@ -295,12 +295,14 @@ describe('Card 2.4 - Testes E2E de Pareamento Remoto e Não-Regressão (CT-S01 a
     expect(Array.isArray(jsonJogos.data)).toBe(true);
     expect(jsonJogos.data.length).toBeGreaterThan(0);
 
-    // 2. Validação de manifesto RN02 continua estrita
-    const resManifesto = await fetch(`http://localhost:${port}/api/jogos/1/manifesto`);
-    const jsonManifesto = (await resManifesto.json()) as any;
-    expect(resManifesto.status).toBe(200);
-    expect(jsonManifesto.data).toBeDefined();
-    expect(jsonManifesto.validacao.valido).toBe(true);
+    // 2. Validação de manifesto RN02 e detalhes unificados no endpoint canônico GET /api/jogos/:id
+    const resJogo = await fetch(`http://localhost:${port}/api/jogos/1`);
+    const jsonJogo = (await resJogo.json()) as any;
+    expect(resJogo.status).toBe(200);
+    expect(jsonJogo.data).toBeDefined();
+    expect(jsonJogo.data.id).toBe(1);
+    expect(jsonJogo.data.nome).toBe('Aventura das Cores');
+    expect(jsonJogo.validacao.valido).toBe(true);
   });
 
   it('Não-Regressão Pacientes: Listagem, busca e conformidade RN05 continuam íntegras', async () => {
