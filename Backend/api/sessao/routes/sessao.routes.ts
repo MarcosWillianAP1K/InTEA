@@ -45,9 +45,8 @@ export const sessaoRoutes = Router();
  *         description: Erro ao gerar código de pareamento
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *                   example: "Erro interno ao gerar código de pareamento"
+ *             example:
+ *               error: "Erro interno ao gerar código de pareamento"
  */
 sessaoRoutes.get('/codigo-pareamento', authMiddleware, SessaoController.gerarCodigoPareamento);
 
@@ -325,6 +324,7 @@ sessaoRoutes.post('/parear', SessaoController.parear);
  *                   type: string
  *                   example: "Código de sessão inválido ou expirado"
  *       500:
+ *         description: Erro interno ao buscar sessão por token
  */
 sessaoRoutes.get('/token/:token', authMiddleware, SessaoController.buscarPorToken);
 
