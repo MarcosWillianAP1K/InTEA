@@ -1634,7 +1634,88 @@ Todas as respostas seguem formatos previsíveis:
           "modo_sessao": "sessao_clinica",
           "data_hora_inicio": "2026-10-07T23:30:15.000Z",
           "data_hora_fim": "2026-10-07T23:55:20.000Z",
-          "duracao_segundos": 1505
+          "duracao_segundos": 1505,
+          "duracao_formatada": "25 min 5s"
+        },
+        "cabecalho": {
+          "paciente": {
+            "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "nome": "Lucas Gabriel Santos",
+            "data_nascimento": "2019-04-10",
+            "idade_anos": 7,
+            "diagnostico": "TEA Nível 2 de Suporte",
+            "gatilhos_evitar": ["som_alto", "luz_forte"],
+            "nivel_estresse_inicial": 2
+          },
+          "terapeuta": {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "nome": "Dra. Juliana Ferreira",
+            "registro_profissional": "CRP 06/123456",
+            "crefito": "CRP 06/123456",
+            "especialidade": "Terapia Ocupacional / Psicologia"
+          },
+          "jogo": {
+            "id": "8b5a034f-9e77-4ad3-9b6e-1d54e5cf4291",
+            "nome": "Exploradores da Galáxia Sensorial",
+            "titulo": "Exploradores da Galáxia Sensorial",
+            "versao": "1.2.0",
+            "descricao": "Jogo de estimulação de atenção compartilhada e autorregulação."
+          }
+        },
+        "metricas_cards": {
+          "pontuacao_geral": 450,
+          "taxa_conclusao": 92.4,
+          "total_toques": 40,
+          "total_acertos": 37,
+          "total_erros": 3,
+          "taxa_precisao_percentual": 92.5,
+          "tempo_medio_resposta_ms": 1420,
+          "estabilidade_foco": 88.0,
+          "intervencoes_dda": 2
+        },
+        "insights_ia": {
+          "token_sessao": "4M5S-8U7B",
+          "duracao_segundos": 1505,
+          "resumo": {
+            "taxa_conclusao": 92.4,
+            "intervencoes_dda": 2
+          },
+          "analises_ia": [
+            "Desempenho de foco atencional acima da média histórica do paciente.",
+            "Sem indícios de fadiga sensorial durante o ciclo ativo."
+          ],
+          "metricas_agregadas": [
+            {
+              "id_metrica": "tempo_reacao_ms",
+              "valor_dominante": "320",
+              "tendencia": "decrescente"
+            }
+          ]
+        },
+        "grafico_evolutivo": {
+          "tipo": "intra_sessao",
+          "tempo_medio_referencia": 1.42,
+          "tentativas": [
+            {
+              "tentativa": 1,
+              "segundo": 45,
+              "tempoFormatado": "00:45",
+              "tempo_resposta_segundos": 1.4,
+              "acerto": true,
+              "intervencaoDda": null
+            },
+            {
+              "tentativa": 2,
+              "segundo": 92,
+              "tempoFormatado": "01:32",
+              "tempo_resposta_segundos": 2.2,
+              "acerto": false,
+              "intervencaoDda": {
+                "tipoIntervencao": "Modulação de Estímulo",
+                "momentoFormatado": "01:32"
+              }
+            }
+          ]
         },
         "paciente": {
           "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",

@@ -12,6 +12,7 @@ import { SessaoController } from '../controllers/sessao.controller.js';
 import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, Sessao } from '../models/sessao.model.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { AnotacaoClinicaModel } from '../../anotacao/models/anotacao.model.js';
+import { TelemetriaModel } from '../../telemetria/models/telemetria.model.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 
 describe('SessaoResultadoService — Endpoint GET /api/sessao/:id/resultado (RF14, RN01, RN04)', () => {
@@ -40,6 +41,7 @@ describe('SessaoResultadoService — Endpoint GET /api/sessao/:id/resultado (RF1
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(TelemetriaModel, 'buscarPorSessaoId').mockResolvedValue([]);
   });
 
   it('deve retornar 400 Bad Request se o sessaoId informado for inválido (não-UUID)', async () => {
@@ -604,6 +606,216 @@ describe('SessaoResultadoService — Endpoint GET /api/sessao/:id/resultado (RF1
     expect(res.status).toBe(500);
     expect(res.erro).toContain('Erro interno ao consultar resultado consolidado');
   });
+
+  it('deve consolidar o bloco cabecalho com diagnostico_base e gatilhos derivados do contexto DDA e dados_clinicos', async () => {
+    const sessaoComDda: Sessao = {
+      ...mockSessaoFinalizada,
+      contexto_dda_json: {
+        nivel_estresse_inicial: 3,
+        gatilhos_a_evitar: ['som_alto', 'luz_forte'],
+        objetivo_clinico: 'Foco Atencional',
+      },
+    };
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(sessaoComDda);
+    vi.spyOn(RelatorioSessaoModel, 'buscarPorSessaoId').mockResolvedValue(null);
+    vi.spyOn(AnotacaoClinicaModel, 'listarPorSessao').mockResolvedValue([]);
+    vi.spyOn(TelemetriaModel, 'buscarPorSessaoId').mockResolvedValue([]);
+
+    vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
+      if (table === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaId, clinica_id: clinicaId, is_super_admin: false, status_ativo: true, nome: 'Dr. Marcos', crefito: '12345-TO', especialidade: 'Terapia Ocupacional' },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: pacienteId, clinica_id: clinicaId, status_ativo: true, nome: 'Enzo Gabriel', data_nascimento: '2019-04-12' },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'terapeuta_paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { paciente_id: pacienteId },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'dados_clinicos') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { diagnostico_base: 'TEA Nível 2 de Suporte', gatilhos_sensoriais: ['som_alto'] },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'jogo') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: jogoId, nome: 'Aventura das Cores', versao: '1.2.0', descricao: 'Estimula atenção compartilhada' },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(true);
+    expect(res.dados).toBeDefined();
+
+    const cabecalho = res.dados!.cabecalho;
+    expect(cabecalho.paciente?.nome).toBe('Enzo Gabriel');
+    expect(cabecalho.paciente?.diagnostico).toBe('TEA Nível 2 de Suporte');
+    expect(cabecalho.paciente?.gatilhos_evitar).toEqual(['som_alto', 'luz_forte']);
+    expect(cabecalho.paciente?.nivel_estresse_inicial).toBe(3);
+    expect(cabecalho.paciente?.idade_anos).toBeGreaterThan(0);
+
+    expect(cabecalho.terapeuta?.nome).toBe('Dr. Marcos');
+    expect(cabecalho.terapeuta?.crefito).toBe('12345-TO');
+
+    expect(cabecalho.jogo?.nome).toBe('Aventura das Cores');
+    expect(cabecalho.jogo?.titulo).toBe('Aventura das Cores');
+    expect(cabecalho.jogo?.descricao).toBe('Estimula atenção compartilhada');
+  });
+
+  it('deve consolidar metricas_cards e grafico_evolutivo com telemetria e intervenções DDA mapeadas', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(mockSessaoFinalizada);
+    vi.spyOn(RelatorioSessaoModel, 'buscarPorSessaoId').mockResolvedValue({
+      sessao_id: sessaoId,
+      conteudo: 'Parecer sintetizado',
+      dados_ia_json: {
+        token_sessao: 'ABCD-1234',
+        duracao_segundos: 1200,
+        resumo: { taxa_conclusao: 95, intervencoes_dda: 1 },
+        analises_ia: ['Ótima regulação'],
+        metricas_agregadas: [],
+      },
+      soft_delete: false,
+      created_at: '2026-10-14T10:20:00Z',
+      updated_at: '2026-10-14T10:20:00Z',
+    });
+    vi.spyOn(AnotacaoClinicaModel, 'listarPorSessao').mockResolvedValue([]);
+
+    vi.spyOn(TelemetriaModel, 'buscarPorSessaoId').mockResolvedValue([
+      {
+        sessao_id: sessaoId,
+        tipo_evento: 'acerto',
+        dados: { id_metrica: 'tempo_resposta', valor: 1.4 },
+        data_hora: '2026-10-14T10:01:00Z',
+      },
+      {
+        sessao_id: sessaoId,
+        tipo_evento: 'modulacao_dda',
+        dados: { id_metrica: 'dda', valor: 'Modulação de Estímulo' },
+        data_hora: '2026-10-14T10:01:02Z',
+      },
+      {
+        sessao_id: sessaoId,
+        tipo_evento: 'erro',
+        dados: { id_metrica: 'tempo_resposta', valor: 2.2 },
+        data_hora: '2026-10-14T10:02:00Z',
+      },
+    ]);
+
+    vi.spyOn(supabase, 'from').mockImplementation((table: string) => {
+      if (table === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaId, clinica_id: clinicaId, is_super_admin: false, status_ativo: true, nome: 'Dr. Marcos' },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: pacienteId, clinica_id: clinicaId, status_ativo: true, nome: 'Lucas' },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'terapeuta_paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { paciente_id: pacienteId },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      if (table === 'jogo') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: jogoId, nome: 'Ilha dos Sentidos', versao: '1.0' },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
+    expect(res.sucesso).toBe(true);
+
+    const metricas = res.dados!.metricas_cards;
+    expect(metricas.total_acertos).toBe(1);
+    expect(metricas.total_erros).toBe(1);
+    expect(metricas.taxa_conclusao).toBe(95);
+    expect(metricas.intervencoes_dda).toBe(1);
+    expect(metricas.pontuacao_geral).toBeGreaterThan(0);
+
+    const grafico = res.dados!.grafico_evolutivo;
+    expect(grafico.tipo).toBe('intra_sessao');
+    expect(grafico.tentativas).toHaveLength(2);
+    expect(grafico.tentativas[0].acerto).toBe(true);
+    expect(grafico.tentativas[0].intervencaoDda?.tipoIntervencao).toBe('Modulação de Estímulo');
+    expect(grafico.tentativas[1].acerto).toBe(false);
+  });
 });
 
 describe('SessaoController.consultarResultado — Integração REST e Códigos HTTP', () => {
@@ -665,6 +877,28 @@ describe('SessaoController.consultarResultado — Integração REST e Códigos H
         paciente: null,
         relatorio: null,
         anotacoes: [],
+        cabecalho: {
+          paciente: null,
+          terapeuta: null,
+          jogo: null,
+        },
+        metricas_cards: {
+          pontuacao_geral: 0,
+          taxa_conclusao: 0,
+          total_toques: 0,
+          total_acertos: 0,
+          total_erros: 0,
+          taxa_precisao_percentual: 0,
+          tempo_medio_resposta_ms: 0,
+          estabilidade_foco: 0,
+          intervencoes_dda: 0,
+        },
+        insights_ia: null,
+        grafico_evolutivo: {
+          tipo: 'intra_sessao',
+          tempo_medio_referencia: 0,
+          tentativas: [],
+        },
       },
     });
 

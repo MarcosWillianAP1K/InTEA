@@ -105,3 +105,36 @@ O antigo campo `status_instalacao` foi removido (Migration 011) e substituído p
 5. **Prevenção de Duplicidade de Slug no Cadastro:**
    - O método `cadastrar` agora valida se já existe algum jogo cadastrado com o slug gerado (`id_jogo`), retornando **409 Conflict** caso haja duplicidade.
 
+---
+
+## 5. Auditoria de Resultados da Sessão e Gráficos Evolutivos Dinâmicos
+
+### 5.1 Diferenciação Arquitetural: `/resultado` vs. `/exportar`
+
+| Critério | `GET /api/sessao/:id/resultado` (**RF14**) | `GET /api/sessao/:id/exportar` (**RF20**) |
+| :--- | :--- | :--- |
+| **Finalidade** | **Cockpit e Tela Interativa de Resultados:** exibição em tempo real para navegação clínica, edição de anotações e visualização de dashboards interativos na web. | **Laudo Médico-Legal e Impressão Formal:** geração de documento PDF estático sanitizado, assinado digitalmente e preparado para entrega a responsáveis ou instituições. |
+| **Público-Alvo** | Terapeuta em consulta ativa no painel InTEA. | Paciente, familiares, planos de saúde ou prontuário institucional físico. |
+| **Metadados Específicos** | Estruturas orientadas a componentes de tela (cards de métricas, série temporal intra e inter-sessão, slots de anotação). | Cabeçalho institucional formal (CNPJ da clínica, código de autenticidade SHA-256, termos de responsabilidade do conselho profissional). |
+
+### 5.2 Especificação dos Gráficos Evolutivos Dinâmicos (Histórico Longitudinal)
+
+Fica registrado para o roadmap de aprimoramento da Tela de Resultados e relatórios a concepção do **Gráfico Evolutivo Dinâmico Longitudinal**:
+
+1. **Objetivo Clínico:**
+   - Permitir ao terapeuta visualizar não apenas a foto estática da sessão atual, mas o **filme da evolução clínica do paciente** ao longo de múltiplas sessões realizadas com o **mesmo jogo**.
+
+2. **Mecânica dos Dados (Vetor em Ordem Cronológica):**
+   - A rota de resultado agregará consultas históricas de sessões finalizadas com chave composta `(paciente_id, jogo_id)` ordenadas por `data_hora_inicio ASC`.
+   - Cada ponto do vetor conterá:
+     - `data_sessao`: Data e hora da realização da intervenção.
+     - `sessao_id`: UUID de referência.
+     - `pontuacao`: Score final consolidado alcançado pelo paciente naquela partida.
+     - `taxa_acertos`: Percentual de acertos em relação às tentativas.
+     - `tempo_medio_resposta_ms`: Curva de velocidade de reação ao estímulo.
+     - `intervencoes_dda`: Quantidade de modulações de dificuldade acionadas pelo motor de IA.
+
+3. **Status de Implementação:**
+   - Estrutura deixada documentada e em aberto para modelagem nos serviços analíticos subsequentes, sem bloquear a exibição dos cards e métricas intra-sessão da versão corrente.
+
+

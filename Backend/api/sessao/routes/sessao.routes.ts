@@ -835,6 +835,115 @@ sessaoRoutes.patch('/:id/status', authMiddleware, SessaoController.atualizarStat
  *                         dados_ia_json:
  *                           type: object
  *                           description: Dados analíticos conforme Contrato 4 da IA
+ *                     cabecalho:
+ *                       type: object
+ *                       properties:
+ *                         paciente:
+ *                           type: object
+ *                           nullable: true
+ *                           description: Dados demográficos e clínicos do paciente (nulo em Modo Livre - RN01)
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               format: uuid
+ *                             nome:
+ *                               type: string
+ *                             data_nascimento:
+ *                               type: string
+ *                               format: date
+ *                             idade_anos:
+ *                               type: integer
+ *                             diagnostico:
+ *                               type: string
+ *                             gatilhos_evitar:
+ *                               type: array
+ *                               items:
+ *                                 type: string
+ *                             nivel_estresse_inicial:
+ *                               type: integer
+ *                         terapeuta:
+ *                           type: object
+ *                           nullable: true
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               format: uuid
+ *                             nome:
+ *                               type: string
+ *                             registro_profissional:
+ *                               type: string
+ *                             crefito:
+ *                               type: string
+ *                             especialidade:
+ *                               type: string
+ *                         jogo:
+ *                           type: object
+ *                           nullable: true
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               format: uuid
+ *                             nome:
+ *                               type: string
+ *                             titulo:
+ *                               type: string
+ *                             versao:
+ *                               type: string
+ *                             descricao:
+ *                               type: string
+ *                     metricas_cards:
+ *                       type: object
+ *                       description: Indicadores quantitativos de desempenho copilados a partir da telemetria
+ *                       properties:
+ *                         pontuacao_geral:
+ *                           type: number
+ *                         taxa_conclusao:
+ *                           type: number
+ *                         total_toques:
+ *                           type: integer
+ *                         total_acertos:
+ *                           type: integer
+ *                         total_erros:
+ *                           type: integer
+ *                         taxa_precisao_percentual:
+ *                           type: number
+ *                         tempo_medio_resposta_ms:
+ *                           type: integer
+ *                         estabilidade_foco:
+ *                           type: number
+ *                         intervencoes_dda:
+ *                           type: integer
+ *                     insights_ia:
+ *                       type: object
+ *                       nullable: true
+ *                       description: Síntese analítica do Agente de IA aderente ao Contrato 4
+ *                     grafico_evolutivo:
+ *                       type: object
+ *                       description: Curva intra-sessão de tentativas e tempos de resposta
+ *                       properties:
+ *                         tipo:
+ *                           type: string
+ *                           example: "intra_sessao"
+ *                         tempo_medio_referencia:
+ *                           type: number
+ *                         tentativas:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               tentativa:
+ *                                 type: integer
+ *                               segundo:
+ *                                 type: integer
+ *                               tempoFormatado:
+ *                                 type: string
+ *                               tempo_resposta_segundos:
+ *                                 type: number
+ *                               acerto:
+ *                                 type: boolean
+ *                               intervencaoDda:
+ *                                 type: object
+ *                                 nullable: true
  *                     anotacoes:
  *                       type: array
  *                       items:
