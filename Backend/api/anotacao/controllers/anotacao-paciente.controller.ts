@@ -73,6 +73,28 @@ export class AnotacaoPacienteController {
   }
 
   /**
+   * Handles GET /api/anotacao/:id to retrieve a single clinical note by UUID.
+   * Reuses `req.contextoAnotacao` resolved by middleware.
+   *
+   * @param req - Authenticated Express request.
+   * @param res - Express response returning status 200 with `{ data: req.contextoAnotacao }`.
+   */
+  static async buscarPorId(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const anotacao = req.contextoAnotacao;
+      if (!anotacao) {
+        res.status(404).json({ error: 'Anotação clínica não encontrada.' });
+        return;
+      }
+
+      res.status(200).json({ data: anotacao });
+    } catch (error) {
+      console.error('[AnotacaoPacienteController.buscarPorId]', error);
+      res.status(500).json({ error: 'Erro interno ao consultar anotação clínica.' });
+    }
+  }
+
+  /**
    * Handles PATCH /api/anotacao/paciente/:id to update the content of an existing patient note.
    *
    * @param req - Authenticated Express request containing note ID and new content in body.

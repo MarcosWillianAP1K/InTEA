@@ -8,6 +8,7 @@ import { Request, Response } from 'express';
 import { CriarTerapeutaDTO, AtualizarTerapeutaDTO } from '../models/terapeuta.model.js';
 import { TerapeutaService, TerapeutaServiceError } from '../services/terapeuta.service.js';
 import { obterMensagemErro } from '../../../core/utils/formatters.js';
+import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 
 export class TerapeutaController {
   /**
@@ -19,9 +20,14 @@ export class TerapeutaController {
   static async listar(req: Request, res: Response): Promise<void> {
     try {
       const incluirInativos = req.query.incluirInativos === 'true';
-      const terapeutas = await TerapeutaService.listar(incluirInativos);
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const terapeutas = await TerapeutaService.listar(incluirInativos, usuarioLogado);
       res.status(200).json({ data: terapeutas });
     } catch (error: unknown) {
+      if (error instanceof TerapeutaServiceError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
       console.error('[TerapeutaController.listar]', error);
       res.status(500).json({
         error: 'Erro interno ao listar terapeutas.',
@@ -39,7 +45,8 @@ export class TerapeutaController {
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
-      const terapeuta = await TerapeutaService.buscarPorId(id);
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const terapeuta = await TerapeutaService.buscarPorId(id, usuarioLogado);
 
       if (!terapeuta) {
         res.status(404).json({ error: 'Terapeuta não encontrado.' });
@@ -107,8 +114,9 @@ export class TerapeutaController {
     try {
       const id = String(req.params.id);
       const dto: AtualizarTerapeutaDTO = req.body;
+      const usuarioLogado = (req as AuthenticatedRequest).user;
 
-      const atualizado = await TerapeutaService.atualizar(id, dto);
+      const atualizado = await TerapeutaService.atualizar(id, dto, usuarioLogado);
 
       res.status(200).json({
         data: atualizado,

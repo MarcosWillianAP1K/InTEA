@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { TerapeutaController } from '../controllers/terapeuta.controller.js';
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
+import { meMiddleware } from '../../../core/middlewares/me.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/terapeuta
@@ -17,7 +18,7 @@ export const terapeutaRoutes = Router();
  * @swagger
  * /api/terapeuta:
  *   get:
- *     summary: Lista terapeutas ativos
+ *     summary: Lista terapeutas ativos (escopo de clínica para usuários comuns ou todos para SuperAdmin)
  *     tags: [Terapeuta]
  *     security:
  *       - bearerAuth: []
@@ -47,10 +48,6 @@ export const terapeutaRoutes = Router();
  *                   areas_foco: []
  *                   created_at: "2026-09-27T21:41:27.762Z"
  *                   updated_at: "2026-10-15T17:48:17.033Z"
- *               meta:
- *                 total: 1
- *                 ativos: 1
- *                 inativos: 0
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
  *         content:
@@ -64,7 +61,7 @@ export const terapeutaRoutes = Router();
  *             example:
  *               error: "Erro interno ao listar terapeutas"
  */
-terapeutaRoutes.get('/', authMiddleware, adminMiddleware, TerapeutaController.listar);
+terapeutaRoutes.get('/', authMiddleware, TerapeutaController.listar);
 
 /**
  * @swagger
@@ -114,11 +111,11 @@ terapeutaRoutes.get('/', authMiddleware, adminMiddleware, TerapeutaController.li
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado (operação restrita a administradores ativos)
+ *         description: Acesso negado (o terapeuta pertence a uma instituição clínica diferente - RN04)
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
+ *               error: "Acesso negado: o terapeuta pertence a uma instituição clínica diferente."
  *       404:
  *         description: Terapeuta não encontrado
  *         content:
@@ -132,7 +129,7 @@ terapeutaRoutes.get('/', authMiddleware, adminMiddleware, TerapeutaController.li
  *             example:
  *               error: "Erro interno ao buscar terapeuta"
  */
-terapeutaRoutes.get('/:id', authMiddleware, adminMiddleware, TerapeutaController.buscarPorId);
+terapeutaRoutes.get('/:id', authMiddleware, TerapeutaController.buscarPorId);
 
 // ------------------------------------------------------------------------------
 // 3. Persistência (Criação e Edição)
@@ -210,7 +207,7 @@ terapeutaRoutes.post('/', authMiddleware, adminMiddleware, TerapeutaController.c
  * @swagger
  * /api/terapeuta/{id}:
  *   put:
- *     summary: Atualiza dados cadastrais de um terapeuta
+ *     summary: Atualiza dados cadastrais de um terapeuta (auto-gestão ou SuperAdmin)
  *     tags: [Terapeuta]
  *     security:
  *       - bearerAuth: []
@@ -260,11 +257,11 @@ terapeutaRoutes.post('/', authMiddleware, adminMiddleware, TerapeutaController.c
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado (operação restrita a administradores ativos)
+ *         description: Acesso negado (tentativa de atualizar outro usuário ou alterar campos protegidos sem ser SuperAdmin)
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
+ *               error: "Acesso negado: você não tem permissão para alterar ou acessar recursos de outro usuário."
  *       404:
  *         description: Terapeuta não encontrado
  *         content:
@@ -278,7 +275,7 @@ terapeutaRoutes.post('/', authMiddleware, adminMiddleware, TerapeutaController.c
  *             example:
  *               error: "Erro interno ao atualizar dados do terapeuta"
  */
-terapeutaRoutes.put('/:id', authMiddleware, adminMiddleware, TerapeutaController.atualizar);
+terapeutaRoutes.put('/:id', authMiddleware, meMiddleware({ allowAdmin: true }), TerapeutaController.atualizar);
 
 // ------------------------------------------------------------------------------
 // 4. Exclusão e Reativação
@@ -343,7 +340,7 @@ terapeutaRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, TerapeutaCo
  * @swagger
  * /api/terapeuta/{id}:
  *   delete:
- *     summary: Soft Delete — Inativa o cadastro do terapeuta (status_ativo = false)
+ *     summary: Soft Delete — Inativa o cadastro do terapeuta (auto-inativação ou SuperAdmin)
  *     tags: [Terapeuta]
  *     security:
  *       - bearerAuth: []
@@ -378,11 +375,11 @@ terapeutaRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, TerapeutaCo
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado (operação restrita a administradores ativos)
+ *         description: Acesso negado (tentativa de inativar outro usuário sem ser SuperAdmin)
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado. Perfil de administrador ativo obrigatório."
+ *               error: "Acesso negado: você não tem permissão para alterar ou acessar recursos de outro usuário."
  *       404:
  *         description: Terapeuta não encontrado
  *         content:
@@ -396,7 +393,7 @@ terapeutaRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, TerapeutaCo
  *             example:
  *               error: "Erro interno ao desativar terapeuta"
  */
-terapeutaRoutes.delete('/:id', authMiddleware, adminMiddleware, TerapeutaController.desativar);
+terapeutaRoutes.delete('/:id', authMiddleware, meMiddleware({ allowAdmin: true }), TerapeutaController.desativar);
 
 /**
  * @swagger

@@ -7,15 +7,14 @@
 import { Router } from 'express';
 import { AnotacaoPacienteController } from '../controllers/anotacao-paciente.controller.js';
 import { AnotacaoSessaoController } from '../controllers/anotacao-sessao.controller.js';
-import { AnotacaoClinicaModel } from '../models/anotacao.model.js';
 import { authMiddleware, AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
-import { validarUUID } from '../../../core/utils/validators.js';
 import {
   resolverContextoPaciente,
   resolverContextoSessao,
   resolverContextoAnotacaoUnificada,
+  resolverContextoAnotacaoPorId,
 } from '../middlewares/anotacao-contexto.middleware.js';
 
 export const anotacaoRoutes = Router();
@@ -95,9 +94,59 @@ anotacaoRoutes.post(
 /**
  * @swagger
  * /api/anotacao/{id}:
+ *   get:
+ *     summary: Consulta uma anotação clínica pelo ID (UUID)
+ *     description: Retorna os dados da anotação clínica. Requer vínculo institucional ativo com o paciente (RN04).
+ *     tags: [Anotações Clínicas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da anotação clínica
+ *     responses:
+ *       200:
+ *         description: Anotação clínica encontrada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 id: "33333333-3333-3333-3333-333333333333"
+ *                 terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                 paciente_id: "22222222-2222-2222-2222-222222222222"
+ *                 sessao_id: null
+ *                 conteudo: "Paciente demonstrou excelente autorregulação sensorial."
+ *                 created_at: "2026-10-15T18:00:00Z"
+ *                 updated_at: "2026-10-15T18:00:00Z"
+ *       400:
+ *         description: ID inválido
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado por falta de vínculo ativo ou clínica divergente (RN04)
+ *       404:
+ *         description: Anotação clínica não encontrada
+ *       500:
+ *         description: Erro interno ao consultar anotação clínica
+ */
+anotacaoRoutes.get(
+  '/:id',
+  authMiddleware,
+  resolverContextoAnotacaoPorId,
+  verificarVisibilidadePaciente,
+  AnotacaoPacienteController.buscarPorId
+);
+
+/**
+ * @swagger
+ * /api/anotacao/{id}:
  *   patch:
  *     summary: Atualiza o conteúdo de uma anotação clínica existente
- *     description: Permite alterar exclusivamente o texto da anotação. Acesso restrito ao terapeuta autor da nota (RF21).
+ *     description: Permite alterar exclusivamente o texto da anotação. Acesso restrito ao terapeuta autor da nota (RF21) com vínculo ativo (RN04).
  *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
@@ -136,31 +185,95 @@ anotacaoRoutes.post(
  *       401:
  *         description: Não autorizado
  *       403:
- *         description: Usuário não é o autor da anotação
+ *         description: Usuário não é o autor da anotação ou sem vínculo ativo (RN04)
  *       404:
  *         description: Anotação não encontrada
  */
 anotacaoRoutes.patch(
   '/:id',
   authMiddleware,
-  async (req, res, next) => {
-    const id = String(req.params.id || '');
-    if (!validarUUID(id)) {
-      res.status(400).json({ error: 'O identificador da anotação deve ser um UUID válido.' });
-      return;
-    }
-    const anotacao = await AnotacaoClinicaModel.buscarPorId(id);
-    if (!anotacao) {
-      res.status(404).json({ error: 'Anotação clínica não encontrada.' });
-      return;
-    }
-    const authReq = req as AuthenticatedRequest;
-    authReq.pacienteAlvoId = anotacao.paciente_id;
-    authReq.contextoAnotacao = anotacao;
-    next();
-  },
+  resolverContextoAnotacaoPorId,
   verificarVisibilidadePaciente,
   AnotacaoPacienteController.atualizar
+);
+
+/**
+ * @swagger
+ * /api/anotacao/{id}/hard:
+ *   delete:
+ *     summary: "[DEV/TESTES] Exclusão física permanente de anotação clínica"
+ *     description: Remove fisicamente o registro do banco de dados. Exclusivo para SuperAdmin.
+ *     tags: [Anotações Clínicas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da anotação clínica
+ *     responses:
+ *       204:
+ *         description: Anotação excluída fisicamente com sucesso
+ *       400:
+ *         description: ID inválido
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Acesso negado (restrito a administradores e requer vínculo ativo)
+ *       404:
+ *         description: Anotação não encontrada
+ *       500:
+ *         description: Erro interno ao executar exclusão física
+ */
+anotacaoRoutes.delete(
+  '/:id/hard',
+  authMiddleware,
+  adminMiddleware,
+  resolverContextoAnotacaoPorId,
+  verificarVisibilidadePaciente,
+  AnotacaoPacienteController.deletarHard
+);
+
+/**
+ * @swagger
+ * /api/anotacao/{id}:
+ *   delete:
+ *     summary: Exclusão lógica (soft delete) de anotação clínica
+ *     description: Inativa a anotação clínica preservando o histórico imutável (RN05). Restrito ao terapeuta autor da anotação (RF21) com vínculo ativo (RN04).
+ *     tags: [Anotações Clínicas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da anotação clínica
+ *     responses:
+ *       204:
+ *         description: Anotação clínica desativada com sucesso
+ *       400:
+ *         description: ID inválido
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Acesso negado — apenas o autor com vínculo ativo pode inativar a anotação (RF21, RN04)
+ *       404:
+ *         description: Anotação não encontrada
+ *       500:
+ *         description: Erro interno ao desativar anotação clínica
+ */
+anotacaoRoutes.delete(
+  '/:id',
+  authMiddleware,
+  resolverContextoAnotacaoPorId,
+  verificarVisibilidadePaciente,
+  AnotacaoPacienteController.deletar
 );
 
 // ==============================================================================

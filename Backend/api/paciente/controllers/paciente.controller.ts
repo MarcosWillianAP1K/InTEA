@@ -84,7 +84,8 @@ export class PacienteController {
   static async criar(req: Request, res: Response): Promise<void> {
     try {
       const dto: CriarPacienteDTO = req.body;
-      const novoPaciente = await PacienteService.criar(dto);
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const novoPaciente = await PacienteService.criar(dto, usuarioLogado);
 
       res.status(201).json({
         data: novoPaciente,

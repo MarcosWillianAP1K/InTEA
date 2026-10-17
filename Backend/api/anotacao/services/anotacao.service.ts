@@ -6,6 +6,7 @@
 // ==============================================================================
 
 import { AnotacaoClinicaModel, AnotacaoClinica } from '../models/anotacao.model.js';
+import { validarUUID } from '../../../core/utils/validators.js';
 
 export interface RespostaServico<T = unknown> {
   sucesso: boolean;
@@ -142,21 +143,55 @@ export class AnotacaoService {
   }
 
   /**
-   * Applies logical soft delete to a clinical note (`soft_delete = true`), preserving history (RN05).
+   * Retrieves a clinical note by its UUID.
    *
-   * @param anotacao - Existing clinical note record.
+   * @param id - UUID of the clinical note.
+   * @returns Service response containing the clinical note record.
+   */
+  static async buscarPorId(id: string): Promise<RespostaServico<AnotacaoClinica>> {
+    if (!id || !validarUUID(id)) {
+      return { sucesso: false, status: 400, erro: 'ID inválido. Forneça um UUID válido.' };
+    }
+
+    const anotacao = await AnotacaoClinicaModel.buscarPorId(id);
+    if (!anotacao) {
+      return { sucesso: false, status: 404, erro: 'Anotação clínica não encontrada.' };
+    }
+
+    return { sucesso: true, status: 200, dados: anotacao };
+  }
+
+  /**
+   * Applies logical soft delete to a clinical note (`soft_delete = true`), preserving history (RN05).
+   * Validates strict author ownership (RF21).
+   *
+   * @param alvo - Existing clinical note record or its UUID.
    * @param usuarioLogadoId - UUID of the authenticated user.
    * @returns Service response with HTTP status 204 on success.
    */
   static async softDelete(
-    anotacao: AnotacaoClinica,
+    alvo: string | AnotacaoClinica,
     usuarioLogadoId: string
   ): Promise<RespostaServico<void>> {
+    let anotacao: AnotacaoClinica | null = null;
+
+    if (typeof alvo === 'string') {
+      if (!alvo || !validarUUID(alvo)) {
+        return { sucesso: false, status: 400, erro: 'ID inválido. Forneça um UUID válido.' };
+      }
+      anotacao = await AnotacaoClinicaModel.buscarPorId(alvo);
+      if (!anotacao) {
+        return { sucesso: false, status: 404, erro: 'Anotação clínica não encontrada.' };
+      }
+    } else {
+      anotacao = alvo;
+    }
+
     if (anotacao.terapeuta_id !== usuarioLogadoId) {
       return {
         sucesso: false,
         status: 403,
-        erro: 'Acesso negado: apenas o terapeuta autor pode excluir esta anotação clínica.',
+        erro: 'Acesso negado: apenas o terapeuta autor pode inativar esta anotação clínica.',
       };
     }
 
@@ -181,8 +216,9 @@ export class AnotacaoService {
         return { sucesso: false, status: 404, erro: 'Anotação não encontrada para exclusão física.' };
       }
       return { sucesso: true, status: 204 };
-    } catch (err: any) {
-      return { sucesso: false, status: 500, erro: err?.message || 'Erro ao executar hard delete.' };
+    } catch (err: unknown) {
+      const mensagem = err instanceof Error ? err.message : 'Erro ao executar hard delete.';
+      return { sucesso: false, status: 500, erro: mensagem };
     }
   }
 }

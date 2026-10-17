@@ -218,3 +218,38 @@ export async function resolverContextoAnotacaoUnificada(
   return resolverContextoPaciente(req, res, next);
 }
 
+/**
+ * Middleware that resolves clinical note context by note ID for canonical root routes (/api/anotacao/:id).
+ * Injects req.pacienteAlvoId = anotacao.paciente_id and req.contextoAnotacao = anotacao.
+ *
+ * @param req - Authenticated Express request.
+ * @param res - Express response.
+ * @param next - Express next middleware function.
+ */
+export async function resolverContextoAnotacaoPorId(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const id = String(req.params.id || '').trim();
+
+    if (!id || !validarUUID(id)) {
+      res.status(400).json({ error: 'ID de anotação inválido. Forneça um UUID válido.' });
+      return;
+    }
+
+    const anotacao = await AnotacaoClinicaModel.buscarPorId(id);
+    if (!anotacao) {
+      res.status(404).json({ error: 'Anotação clínica não encontrada.' });
+      return;
+    }
+
+    req.pacienteAlvoId = anotacao.paciente_id;
+    req.contextoAnotacao = anotacao;
+    next();
+  } catch (error: unknown) {
+    res.status(500).json({ error: 'Erro interno ao resolver contexto da anotação clínica.' });
+  }
+}
+
