@@ -40,8 +40,8 @@ export function NavProjects({
                 className={cn(
                   "h-auto! p-3! text-[0.825rem] rounded-xl font-medium transition-colors",
                   isActive
-                    ? "bg-[#0b3294] text-white hover:bg-[#0b3294] hover:text-white"
-                    : "hover:bg-[#0b3294]/10 hover:text-[#0b3294] dark:hover:bg-blue-950/40 dark:hover:text-blue-300",
+                    ? "bg-primary text-primary-foreground hover:bg-primary-hover hover:text-primary-foreground"
+                    : "hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20 dark:hover:text-primary",
                 )}
               >
                 <Link to={item.url}>

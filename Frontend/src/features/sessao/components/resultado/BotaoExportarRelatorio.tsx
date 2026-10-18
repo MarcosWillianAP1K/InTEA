@@ -85,7 +85,7 @@ export function BotaoExportarRelatorio({
           {isExporting ? (
             <Loader2 className="h-4 w-4 animate-spin text-primary" />
           ) : (
-            <Printer className="h-4 w-4 text-[#0b3294] dark:text-blue-400" />
+            <Printer className="h-4 w-4 text-primary" />
           )}
           <span>{isExporting ? "Gerando..." : "Imprimir Laudo"}</span>
         </Button>
@@ -101,7 +101,7 @@ export function BotaoExportarRelatorio({
         variant="default"
         disabled={isExporting}
         onClick={handleImprimir}
-        className="rounded-xl bg-[#0b3294] hover:bg-[#092875] text-white font-medium flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+        className="rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground font-medium flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
       >
         {isExporting ? (
           <Loader2 className="h-4 w-4 animate-spin" />

@@ -80,7 +80,7 @@ export function PainelPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="h-14 w-14 rounded-2xl bg-[#0b3294] text-white flex items-center justify-center font-bold text-xl shadow-md">
+                <div className="h-14 w-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-xl shadow-md">
                   {pacienteDestaque.name.slice(0, 2).toUpperCase()}
                 </div>
                 <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500 dark:border-background" />
@@ -91,7 +91,7 @@ export function PainelPage() {
                   <h2 className="text-xl font-bold tracking-tight text-foreground">
                     {pacienteDestaque.name}
                   </h2>
-                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-[#0b3294] dark:bg-blue-950/60 dark:text-blue-300">
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary dark:bg-primary/20 dark:text-primary-foreground">
                     {pacienteDestaque.category}
                   </span>
                   <span className="text-xs text-muted-foreground">• {pacienteDestaque.age} anos</span>
@@ -117,7 +117,7 @@ export function PainelPage() {
               <button
                 type="button"
                 onClick={handleNovaSessao}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0b3294] px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#082570] cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground shadow-xs transition-colors hover:bg-primary-hover cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Iniciar Sessão
@@ -132,11 +132,11 @@ export function PainelPage() {
         <div className="p-5 rounded-2xl border border-border bg-card flex flex-col gap-2 shadow-xs transition-shadow hover:shadow-sm">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold uppercase tracking-wider">Sessões Realizadas</span>
-            <div className="h-8 w-8 rounded-lg bg-blue-50 text-[#0b3294] flex items-center justify-center dark:bg-blue-950/40 dark:text-blue-400">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center dark:bg-primary/20">
               <Calendar className="h-4 w-4" />
             </div>
           </div>
-          <span className="text-3xl font-extrabold text-[#0b3294] dark:text-blue-400">
+          <span className="text-3xl font-extrabold text-primary">
             {loading ? "..." : (metricas?.sessoesNoMes ?? 24)}
           </span>
           <span className="text-xs text-muted-foreground">
@@ -205,7 +205,7 @@ export function PainelPage() {
           <button
             type="button"
             onClick={handleNovaSessao}
-            className="text-xs font-semibold text-[#0b3294] dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
           >
             Nova Intervenção
             <ChevronRight className="h-3.5 w-3.5" />
@@ -242,7 +242,7 @@ export function PainelPage() {
 
           <Link
             to="/pacientes"
-            className="text-xs font-semibold text-[#0b3294] dark:text-blue-400 hover:underline flex items-center gap-1"
+            className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
           >
             Ver todos os pacientes
             <ChevronRight className="h-3.5 w-3.5" />
@@ -265,7 +265,7 @@ export function PainelPage() {
                 {listaPacientes.slice(0, 5).map((p) => (
                   <tr key={p.id} className="transition-colors hover:bg-slate-50/50 dark:hover:bg-muted/30">
                     <td className="px-6 py-4 font-semibold text-foreground flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-blue-100 text-[#0b3294] flex items-center justify-center font-bold text-xs dark:bg-blue-950 dark:text-blue-300">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs dark:bg-primary/20 dark:text-primary-foreground">
                         {p.name.slice(0, 2).toUpperCase()}
                       </div>
                       <span>{p.name}</span>

@@ -235,7 +235,7 @@ export function ModalPreSessao() {
             {/* SEÇÃO 1: Seleção Dinâmica de Paciente (RN01) */}
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[#0b3294] dark:text-blue-400">
+                <div className="flex items-center gap-2 text-primary">
                   <User className="h-4 w-4 stroke-[2.2]" />
                   <h3 className="text-sm font-bold tracking-tight text-foreground">
                     Paciente em Atendimento
@@ -277,7 +277,7 @@ export function ModalPreSessao() {
 
             {/* SEÇÃO 2: Contexto DDA */}
             <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-2 text-[#0b3294] dark:text-blue-400">
+              <div className="flex items-center gap-2 text-primary">
                 <Brain className="h-4 w-4 stroke-[2.2]" />
                 <h3 className="text-sm font-bold tracking-tight text-foreground">
                   Contexto DDA
@@ -293,7 +293,7 @@ export function ModalPreSessao() {
                     </span>
                     <span
                       data-testid="valor-estresse"
-                      className="text-lg font-bold text-[#0b3294] dark:text-blue-400"
+                      className="text-lg font-bold text-primary"
                     >
                       {nivelEstresse}
                     </span>
@@ -310,7 +310,7 @@ export function ModalPreSessao() {
                       onChange={(e) =>
                         handleNivelEstresseChange(Number(e.target.value))
                       }
-                      className="w-full h-2 bg-muted-foreground/20 rounded-lg appearance-none cursor-pointer accent-[#0b3294] dark:accent-blue-500 hover:bg-muted-foreground/30 transition-colors"
+                      className="w-full h-2 bg-muted-foreground/20 rounded-lg appearance-none cursor-pointer accent-primary hover:bg-muted-foreground/30 transition-colors"
                     />
                     <div className="flex justify-between text-2xs text-muted-foreground font-medium">
                       <span>Baixo</span>
@@ -331,7 +331,7 @@ export function ModalPreSessao() {
                       onClick={() => handleToggleGatilho("Som Alto")}
                       className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all border ${
                         gatilhosAtivos.includes("Som Alto")
-                          ? "bg-[#0b3294] dark:bg-blue-600 text-white border-transparent shadow-xs hover:bg-[#061e52] dark:hover:bg-blue-700"
+                          ? "bg-primary text-primary-foreground border-transparent shadow-xs hover:bg-primary-hover"
                           : "bg-card text-foreground border-border hover:border-muted-foreground/40 hover:bg-muted"
                       }`}
                     >
@@ -345,7 +345,7 @@ export function ModalPreSessao() {
                       onClick={() => handleToggleGatilho("Luz Intensa")}
                       className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all border ${
                         gatilhosAtivos.includes("Luz Intensa")
-                          ? "bg-[#0b3294] dark:bg-blue-600 text-white border-transparent shadow-xs hover:bg-[#061e52] dark:hover:bg-blue-700"
+                          ? "bg-primary text-primary-foreground border-transparent shadow-xs hover:bg-primary-hover"
                           : "bg-card text-foreground border-border hover:border-muted-foreground/40 hover:bg-muted"
                       }`}
                     >
@@ -359,7 +359,7 @@ export function ModalPreSessao() {
                       onClick={() => handleToggleGatilho("Pressão de Tempo")}
                       className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all border ${
                         gatilhosAtivos.includes("Pressão de Tempo")
-                          ? "bg-[#0b3294] dark:bg-blue-600 text-white border-transparent shadow-xs hover:bg-[#061e52] dark:hover:bg-blue-700"
+                          ? "bg-primary text-primary-foreground border-transparent shadow-xs hover:bg-primary-hover"
                           : "bg-card text-foreground border-border hover:border-muted-foreground/40 hover:bg-muted"
                       }`}
                     >
@@ -373,7 +373,7 @@ export function ModalPreSessao() {
 
             {/* SEÇÃO 3: Pareamento Remoto */}
             <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-2 text-[#0b3294] dark:text-blue-400">
+              <div className="flex items-center gap-2 text-primary">
                 <Cast className="h-4 w-4 stroke-[2.2]" />
                 <h3 className="text-sm font-bold tracking-tight text-foreground">
                   Pareamento Remoto
@@ -395,7 +395,7 @@ export function ModalPreSessao() {
                   <button
                     type="button"
                     onClick={handleCopiarPIN}
-                    className="p-2 rounded-xl text-muted-foreground bg-card border border-border hover:border-[#0b3294] dark:hover:border-blue-400 hover:text-foreground hover:bg-muted transition-all shadow-2xs"
+                    className="p-2 rounded-xl text-muted-foreground bg-card border border-border hover:border-primary hover:text-foreground hover:bg-muted transition-all shadow-2xs"
                     title="Copiar Código"
                   >
                     {copiado ? (
@@ -418,7 +418,7 @@ export function ModalPreSessao() {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-1.5">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-[#0b3294] dark:text-blue-400">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
                         <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
                         <span>Aguardando conexão...</span>
                       </div>
@@ -426,7 +426,7 @@ export function ModalPreSessao() {
                         type="button"
                         data-testid="btn-simular-pareamento"
                         onClick={handleSimularConexao}
-                        className="text-2xs text-[#0b3294] dark:text-blue-400 hover:underline cursor-pointer font-medium mt-0.5"
+                        className="text-2xs text-primary hover:underline cursor-pointer font-medium mt-0.5"
                       >
                         Simular conexão do tablet
                       </button>
@@ -461,7 +461,7 @@ export function ModalPreSessao() {
             disabled={!podeIniciar}
             className={`flex items-center gap-2 text-xs font-semibold px-6 py-2.5 h-auto rounded-xl transition-all ${
               podeIniciar
-                ? "bg-[#0b3294] hover:bg-[#0b3294]/90 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shadow-md hover:shadow-lg cursor-pointer"
+                ? "bg-primary hover:bg-primary-hover text-primary-foreground shadow-md hover:shadow-lg cursor-pointer"
                 : "bg-muted text-muted-foreground cursor-not-allowed opacity-80 border border-border"
             }`}
           >

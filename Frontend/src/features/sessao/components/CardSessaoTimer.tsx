@@ -69,19 +69,19 @@ export function CardSessaoTimer({
   return (
     <div
       data-testid={testId || (sessaoId ? `sessao-card-${sessaoId}` : "card-sessao-timer")}
-      className={`flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 md:gap-8 px-5 py-4 rounded-xl bg-[#FEFCFF] dark:bg-card border border-[#DCE9FF] dark:border-border shadow-xs hover:shadow-sm transition-all ${className}`}
+      className={`flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 md:gap-8 px-5 py-4 rounded-xl bg-surface border border-border-subtle shadow-xs hover:shadow-sm transition-all ${className}`}
     >
       {/* 1. SEÇÃO ATIVIDADE (Figma: 'Atividade') */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="flex items-center justify-center rounded-lg bg-[#E5EEFF] dark:bg-blue-950/60 p-2.5 text-[#1E40AF] dark:text-blue-400 shrink-0">
-          <Gamepad2 className="h-6 w-6 stroke-[2]" />
+        <div className="flex items-center justify-center rounded-lg bg-surface-highlight p-2.5 text-primary shrink-0">
+          <Gamepad2 className="h-6 w-6 stroke-2" />
         </div>
 
         <div className="flex flex-col min-w-0">
-          <span className="text-2xs font-medium text-[#444653] dark:text-muted-foreground truncate">
+          <span className="text-2xs font-medium text-foreground truncate">
             {pacienteNome}
           </span>
-          <span className="text-base sm:text-lg font-semibold text-[#1E40AF] dark:text-blue-300 truncate">
+          <span className="text-base sm:text-lg font-semibold text-primary truncate">
             Atividade atual: {jogoTitulo}
           </span>
         </div>
@@ -89,12 +89,12 @@ export function CardSessaoTimer({
 
       {/* 2. SEÇÃO COUNTDOWN TIMER & AÇÃO (Figma: 'Countdown timer') */}
       <div className="flex flex-wrap items-center justify-between md:justify-center gap-3">
-        <div className="flex items-center gap-3 px-3.5 py-2 rounded-lg bg-[#E5EEFF] dark:bg-blue-950/40">
+        <div className="flex items-center gap-3 px-3.5 py-2 rounded-lg bg-surface-highlight">
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-[#00288E] dark:text-blue-300 shrink-0" />
+            <Clock className="h-5 w-5 text-primary shrink-0" />
             <span
               data-testid="countdown-display"
-              className="font-mono text-xl sm:text-2xl font-bold text-[#00288E] dark:text-blue-300 tracking-tight"
+              className="font-mono text-xl sm:text-2xl font-bold text-primary tracking-tight"
             >
               {tempoExibido}
             </span>
@@ -103,7 +103,7 @@ export function CardSessaoTimer({
           <button
             type="button"
             onClick={handleConcluir}
-            className="flex items-center justify-center px-3.5 py-2 rounded-full bg-[#1E40AF] hover:bg-[#1e3a8a] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            className="flex items-center justify-center px-3.5 py-2 rounded-full bg-primary-dark hover:bg-primary-hover text-primary-foreground text-xs font-semibold shadow-xs transition-colors cursor-pointer"
           >
             Concluir sessão
           </button>
@@ -115,7 +115,7 @@ export function CardSessaoTimer({
           onClick={handleAcessarCockpit}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-white dark:bg-muted text-foreground hover:bg-slate-50 dark:hover:bg-muted/80 text-xs font-semibold transition-colors cursor-pointer"
         >
-          <Activity className="h-3.5 w-3.5 text-[#0b3294] dark:text-blue-400" />
+          <Activity className="h-3.5 w-3.5 text-primary" />
           <span>Cockpit</span>
         </button>
       </div>
@@ -128,8 +128,8 @@ export function CardSessaoTimer({
             <span>Finalizado</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#6FFBBE] text-[#002113] text-xs font-semibold">
-            <span className="h-2 w-2 rounded-full bg-[#003D27] animate-pulse" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-status-success-bg text-status-success-text text-xs font-semibold">
+            <span className="h-2 w-2 rounded-full bg-status-success-icon animate-pulse" />
             <span>{isEmAndamento ? "Conectado" : status}</span>
           </div>
         )}

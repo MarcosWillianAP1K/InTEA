@@ -308,8 +308,8 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
         <form onSubmit={handleSubmit} className="space-y-7 pt-2 text-sm">
        
           <div>
-            <div className="border-b-2 border-[#0b3294] pb-1.5 mb-4">
-              <h2 className="text-[#0b3294] dark:text-blue-400 font-bold text-base">
+            <div className="border-b-2 border-primary pb-1.5 mb-4">
+              <h2 className="text-primary dark:text-blue-400 font-bold text-base">
                 Dados Basicos do Paciente
               </h2>
             </div>
@@ -319,7 +319,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
               <div className="flex flex-col items-center gap-2 shrink-0 self-center md:self-start">
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-28 h-28 rounded-full border-2 border-dashed border-[#0b3294]/40 bg-muted/40 hover:bg-[#0b3294]/5 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all group relative"
+                  className="w-28 h-28 rounded-full border-2 border-dashed border-primary/40 bg-muted/40 hover:bg-primary/5 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all group relative"
                   title="Clique para adicionar foto"
                 >
                   {photoPreview ? (
@@ -329,7 +329,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="flex flex-col items-center text-muted-foreground group-hover:text-[#0b3294]">
+                    <div className="flex flex-col items-center text-muted-foreground group-hover:text-primary">
                       <User className="w-12 h-12 stroke-[1.2]" />
                     </div>
                   )}
@@ -354,7 +354,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
-                      className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                      className="h-10 bg-muted/30 focus-visible:border-primary"
                     />
                   </div>
                   <div className="sm:col-span-3">
@@ -363,7 +363,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       value={birthDate}
                       onChange={(e) => setBirthDate(formatDate(e.target.value))}
                       maxLength={10}
-                      className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                      className="h-10 bg-muted/30 focus-visible:border-primary"
                     />
                   </div>
                   <div className="sm:col-span-3">
@@ -372,7 +372,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       value={phone}
                       onChange={(e) => setPhone(formatPhone(e.target.value))}
                       maxLength={15}
-                      className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                      className="h-10 bg-muted/30 focus-visible:border-primary"
                     />
                   </div>
                 </div>
@@ -385,7 +385,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       value={cpf}
                       onChange={(e) => setCpf(formatCpfCnpj(e.target.value))}
                       maxLength={18}
-                      className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                      className="h-10 bg-muted/30 focus-visible:border-primary"
                     />
                   </div>
                   <div className="sm:col-span-3 relative">
@@ -394,10 +394,10 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       value={cep}
                       onChange={(e) => handlePatientCepChange(e.target.value)}
                       maxLength={9}
-                      className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                      className="h-10 bg-muted/30 focus-visible:border-primary"
                     />
                     {loadingCep && (
-                      <Loader2 className="h-4 w-4 animate-spin text-[#0b3294] absolute right-3 top-1/2 -translate-y-1/2" />
+                      <Loader2 className="h-4 w-4 animate-spin text-primary absolute right-3 top-1/2 -translate-y-1/2" />
                     )}
                   </div>
                   <div className="sm:col-span-4">
@@ -405,7 +405,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       placeholder="Cidade"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                      className="h-10 bg-muted/30 focus-visible:border-primary"
                     />
                   </div>
                   <div className="sm:col-span-2">
@@ -413,7 +413,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       placeholder="Estado"
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                      className="h-10 bg-muted/30 focus-visible:border-primary"
                     />
                   </div>
                 </div>
@@ -425,7 +425,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       placeholder="Endereço"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                      className="h-10 bg-muted/30 focus-visible:border-primary"
                     />
                   </div>
                   <div className="sm:col-span-4">
@@ -433,7 +433,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       placeholder="Bairro"
                       value={neighborhood}
                       onChange={(e) => setNeighborhood(e.target.value)}
-                      className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                      className="h-10 bg-muted/30 focus-visible:border-primary"
                     />
                   </div>
                   <div className="sm:col-span-2">
@@ -441,7 +441,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                       placeholder="Nº"
                       value={number}
                       onChange={(e) => setNumber(e.target.value)}
-                      className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                      className="h-10 bg-muted/30 focus-visible:border-primary"
                     />
                   </div>
                 </div>
@@ -450,8 +450,8 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
           </div>
 
           <div>
-            <div className="border-b-2 border-[#0b3294] pb-1.5 mb-4">
-              <h2 className="text-[#0b3294] dark:text-blue-400 font-bold text-base">
+            <div className="border-b-2 border-primary pb-1.5 mb-4">
+              <h2 className="text-primary dark:text-blue-400 font-bold text-base">
                 Dados do Responsavel
               </h2>
             </div>
@@ -464,7 +464,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     placeholder="Nome completo"
                     value={respName}
                     onChange={(e) => setRespName(e.target.value)}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -473,7 +473,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respBirthDate}
                     onChange={(e) => setRespBirthDate(formatDate(e.target.value))}
                     maxLength={10}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-3">
@@ -482,7 +482,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respPhone}
                     onChange={(e) => setRespPhone(formatPhone(e.target.value))}
                     maxLength={15}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -491,7 +491,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respCpf}
                     onChange={(e) => setRespCpf(formatCpfCnpj(e.target.value))}
                     maxLength={18}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
               </div>
@@ -505,10 +505,10 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     onChange={(e) => handleRespCepChange(e.target.value)}
                     disabled={respSameAddress}
                     maxLength={9}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                   {loadingRespCep && !respSameAddress && (
-                    <Loader2 className="h-4 w-4 animate-spin text-[#0b3294] absolute right-3 top-1/2 -translate-y-1/2" />
+                    <Loader2 className="h-4 w-4 animate-spin text-primary absolute right-3 top-1/2 -translate-y-1/2" />
                   )}
                 </div>
                 <div className="sm:col-span-3">
@@ -517,7 +517,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respSameAddress ? city : respCity}
                     onChange={(e) => setRespCity(e.target.value)}
                     disabled={respSameAddress}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-1">
@@ -526,7 +526,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respSameAddress ? state : respState}
                     onChange={(e) => setRespState(e.target.value)}
                     disabled={respSameAddress}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-3">
@@ -535,7 +535,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respSameAddress ? address : respAddress}
                     onChange={(e) => setRespAddress(e.target.value)}
                     disabled={respSameAddress}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -544,7 +544,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respSameAddress ? neighborhood : respNeighborhood}
                     onChange={(e) => setRespNeighborhood(e.target.value)}
                     disabled={respSameAddress}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-1">
@@ -553,7 +553,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respSameAddress ? number : respNumber}
                     onChange={(e) => setRespNumber(e.target.value)}
                     disabled={respSameAddress}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
               </div>
@@ -565,7 +565,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                   id="respSameAddressModal"
                   checked={respSameAddress}
                   onChange={(e) => setRespSameAddress(e.target.checked)}
-                  className="rounded border-border accent-[#0b3294] h-4 w-4"
+                  className="rounded border-border accent-primary h-4 w-4"
                 />
                 <label
                   htmlFor="respSameAddressModal"
@@ -581,8 +581,8 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
               3. DADOS DO RESPONSÁVEL EXTRA (OPCIONAL)
              ========================================= */}
           <div>
-            <div className="border-b-2 border-[#0b3294] pb-1.5 mb-4">
-              <h2 className="text-[#0b3294] dark:text-blue-400 font-bold text-base">
+            <div className="border-b-2 border-primary pb-1.5 mb-4">
+              <h2 className="text-primary dark:text-blue-400 font-bold text-base">
                 Dados do Responsavel Extra <span className="text-xs font-normal text-muted-foreground">(Opcional)</span>
               </h2>
             </div>
@@ -595,7 +595,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     placeholder="Nome completo"
                     value={respExtraName}
                     onChange={(e) => setRespExtraName(e.target.value)}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -604,7 +604,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respExtraBirthDate}
                     onChange={(e) => setRespExtraBirthDate(formatDate(e.target.value))}
                     maxLength={10}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-3">
@@ -613,7 +613,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respExtraPhone}
                     onChange={(e) => setRespExtraPhone(formatPhone(e.target.value))}
                     maxLength={15}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -622,7 +622,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respExtraCpf}
                     onChange={(e) => setRespExtraCpf(formatCpfCnpj(e.target.value))}
                     maxLength={18}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
               </div>
@@ -636,10 +636,10 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     onChange={(e) => handleRespExtraCepChange(e.target.value)}
                     disabled={respExtraSameAddress}
                     maxLength={9}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                   {loadingRespExtraCep && !respExtraSameAddress && (
-                    <Loader2 className="h-4 w-4 animate-spin text-[#0b3294] absolute right-3 top-1/2 -translate-y-1/2" />
+                    <Loader2 className="h-4 w-4 animate-spin text-primary absolute right-3 top-1/2 -translate-y-1/2" />
                   )}
                 </div>
                 <div className="sm:col-span-3">
@@ -648,7 +648,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respExtraSameAddress ? city : respExtraCity}
                     onChange={(e) => setRespExtraCity(e.target.value)}
                     disabled={respExtraSameAddress}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-1">
@@ -657,7 +657,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respExtraSameAddress ? state : respExtraState}
                     onChange={(e) => setRespExtraState(e.target.value)}
                     disabled={respExtraSameAddress}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-3">
@@ -666,7 +666,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respExtraSameAddress ? address : respExtraAddress}
                     onChange={(e) => setRespExtraAddress(e.target.value)}
                     disabled={respExtraSameAddress}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -675,7 +675,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respExtraSameAddress ? neighborhood : respExtraNeighborhood}
                     onChange={(e) => setRespExtraNeighborhood(e.target.value)}
                     disabled={respExtraSameAddress}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
                 <div className="sm:col-span-1">
@@ -684,7 +684,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     value={respExtraSameAddress ? number : respExtraNumber}
                     onChange={(e) => setRespExtraNumber(e.target.value)}
                     disabled={respExtraSameAddress}
-                    className="h-10 bg-muted/30 focus-visible:border-[#0b3294]"
+                    className="h-10 bg-muted/30 focus-visible:border-primary"
                   />
                 </div>
               </div>
@@ -696,7 +696,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                   id="respExtraSameAddressModal"
                   checked={respExtraSameAddress}
                   onChange={(e) => setRespExtraSameAddress(e.target.checked)}
-                  className="rounded border-border accent-[#0b3294] h-4 w-4"
+                  className="rounded border-border accent-primary h-4 w-4"
                 />
                 <label
                   htmlFor="respExtraSameAddressModal"
@@ -712,8 +712,8 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
               4. POSSÍVEIS GATILHOS
              ========================================= */}
           <div>
-            <div className="border-b-2 border-[#0b3294] pb-1.5 mb-4">
-              <h2 className="text-[#0b3294] dark:text-blue-400 font-bold text-base">
+            <div className="border-b-2 border-primary pb-1.5 mb-4">
+              <h2 className="text-primary dark:text-blue-400 font-bold text-base">
                 Possiveis Gatilhos
               </h2>
             </div>
@@ -729,7 +729,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     onClick={() => handleToggleTrigger(trigger)}
                     className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border ${
                       isSelected
-                        ? "bg-[#0b3294] text-white border-[#0b3294] shadow-xs"
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
                         : "bg-muted/40 text-foreground/80 border-border hover:bg-muted"
                     }`}
                   >
@@ -747,7 +747,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     key={custom}
                     type="button"
                     onClick={() => handleToggleTrigger(custom)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-[#0b3294] text-white border border-[#0b3294] shadow-xs"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground border border-primary shadow-xs"
                   >
                     <Check className="w-3.5 h-3.5" />
                     {custom}
@@ -773,7 +773,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                     type="button"
                     size="sm"
                     onClick={handleAddCustomTrigger}
-                    className="h-8 px-2.5 text-xs bg-[#0b3294] hover:bg-[#0b3294]/90 text-white"
+                    className="h-8 px-2.5 text-xs bg-primary hover:bg-primary-hover text-primary-foreground"
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </Button>
@@ -786,15 +786,15 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
               5. LAUDO MÉDICO (OPCIONAL)
              ========================================= */}
           <div>
-            <div className="border-b-2 border-[#0b3294] pb-1.5 mb-4">
-              <h2 className="text-[#0b3294] dark:text-blue-400 font-bold text-base">
+            <div className="border-b-2 border-primary pb-1.5 mb-4">
+              <h2 className="text-primary dark:text-blue-400 font-bold text-base">
                 Laudo Medico <span className="text-xs font-normal text-muted-foreground">(Opcional)</span>
               </h2>
             </div>
 
             <div
               onClick={() => laudoInputRef.current?.click()}
-              className="border-2 border-dashed border-[#0b3294]/30 rounded-2xl p-6 bg-muted/20 hover:bg-[#0b3294]/5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors text-center"
+              className="border-2 border-dashed border-primary/30 rounded-2xl p-6 bg-muted/20 hover:bg-primary/5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors text-center"
             >
               <input
                 type="file"
@@ -805,7 +805,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
               />
               {uploadedFileName ? (
                 <div className="flex items-center gap-2 text-foreground font-medium">
-                  <FileText className="h-6 w-6 text-[#0b3294]" />
+                  <FileText className="h-6 w-6 text-primary" />
                   <span>{uploadedFileName}</span>
                   <Button
                     type="button"
@@ -822,7 +822,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                 </div>
               ) : (
                 <>
-                  <Upload className="h-8 w-8 text-[#0b3294]" />
+                  <Upload className="h-8 w-8 text-primary" />
                   <span className="text-xs text-muted-foreground">
                     Arraste o arquivo. (PDF, DOCX...) ou clique para selecionar
                   </span>
@@ -837,7 +837,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
           <div className="pt-3">
             <Button
               type="submit"
-              className="w-full bg-[#0b3294] hover:bg-[#0b3294]/90 text-white font-bold h-12 text-base rounded-xl shadow-md cursor-pointer transition-all flex items-center justify-center gap-2"
+              className="w-full bg-primary hover:bg-primary-hover text-primary-foreground font-bold h-12 text-base rounded-xl shadow-md cursor-pointer transition-all flex items-center justify-center gap-2"
             >
               <Plus className="w-5 h-5 stroke-[2.5]" />
               Adicionar Paciente

@@ -25,10 +25,10 @@ export function NavHeader() {
           >
             {!isCollapsed && (
               <div>
-                <div className="text-[2.5rem] font-extrabold leading-none tracking-[-0.06em] text-[#0b3294]">
+                <div className="text-[2.5rem] font-extrabold leading-none tracking-[-0.06em] text-primary">
                   InTEA
                 </div>
-                <div className="mt-1 text-sm font-semibold tracking-[-0.02em] text-slate-600">
+                <div className="mt-1 text-sm font-semibold tracking-[-0.02em] text-muted-foreground">
                   Clinical Orchestration
                 </div>
               </div>

@@ -68,7 +68,7 @@ export function TabletDiagnosticCard({
     >
       <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-          <Tablet className="h-4 w-4 text-[#0b3294] dark:text-blue-400" />
+          <Tablet className="h-4 w-4 text-primary" />
           <span>Diagnóstico do Tablet</span>
         </CardTitle>
 
@@ -147,7 +147,7 @@ export function TabletDiagnosticCard({
           {/* Sinal Wi-Fi */}
           <div className="flex flex-col gap-1">
             <span className="text-2xs text-muted-foreground font-medium flex items-center gap-1">
-              {isConectado ? <Wifi className="h-3 w-3 text-[#0b3294] dark:text-blue-400" /> : <WifiOff className="h-3 w-3 text-destructive" />} Sinal
+              {isConectado ? <Wifi className="h-3 w-3 text-primary" /> : <WifiOff className="h-3 w-3 text-destructive" />} Sinal
             </span>
             <span
               data-testid="valor-sinal"

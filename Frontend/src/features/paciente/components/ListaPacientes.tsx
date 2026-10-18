@@ -70,7 +70,7 @@ const STATUS_CONFIG: Record<
   IN_PROGRESS: {
     label: "Em andamento",
     badgeClass:
-      "border-[#0b3294]/40 text-[#0b3294] dark:text-blue-400 bg-[#0b3294]/10",
+      "border-primary/40 text-primary dark:text-blue-400 bg-primary/10",
   },
   FINISHED: {
     label: "Finalizado",
@@ -80,7 +80,7 @@ const STATUS_CONFIG: Record<
   EVALUATION: {
     label: "Em avaliação",
     badgeClass:
-      "border-[#0b3294]/30 text-[#0b3294] dark:text-blue-300 bg-[#0b3294]/5",
+      "border-primary/30 text-primary dark:text-blue-300 bg-primary/5",
   },
   ATTENTION: {
     label: "Atenção",
@@ -149,7 +149,7 @@ export function ListaPacientes({
             placeholder="Buscar paciente..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 focus-visible:border-[#0b3294] focus-visible:ring-[#0b3294]/30"
+            className="pl-9 focus-visible:border-primary focus-visible:ring-primary/30"
           />
         </div>
 
@@ -157,7 +157,7 @@ export function ListaPacientes({
         <div className="flex flex-wrap items-center gap-2.5">
           {/* SELECT CATEGORIA / NÍVEL */}
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-47.5 focus:border-[#0b3294]">
+            <SelectTrigger className="w-47.5 focus:border-primary">
               <SelectValue placeholder="Selecione uma categoria" />
             </SelectTrigger>
             <SelectContent>
@@ -172,7 +172,7 @@ export function ListaPacientes({
 
           {/* SELECT STATUS */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-37.5 focus:border-[#0b3294]">
+            <SelectTrigger className="w-37.5 focus:border-primary">
               <SelectValue placeholder="Todos os status" />
             </SelectTrigger>
             <SelectContent>
@@ -184,7 +184,7 @@ export function ListaPacientes({
 
           {/* SELECT ORDENAÇÃO */}
           <Select value={sortOrder} onValueChange={setSortOrder}>
-            <SelectTrigger className="w-35 focus:border-[#0b3294]">
+            <SelectTrigger className="w-35 focus:border-primary">
               <SelectValue placeholder="Mais recentes" />
             </SelectTrigger>
             <SelectContent>
@@ -204,7 +204,7 @@ export function ListaPacientes({
               onClick={() => setVisualMode("grid")}
               className={`p-1.5 rounded-md transition-all cursor-pointer ${
                 visualMode === "grid"
-                  ? "bg-card text-[#0b3294] dark:text-blue-400 shadow-2xs font-semibold"
+                  ? "bg-card text-primary dark:text-blue-400 shadow-2xs font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -217,7 +217,7 @@ export function ListaPacientes({
               onClick={() => setVisualMode("table")}
               className={`p-1.5 rounded-md transition-all cursor-pointer ${
                 visualMode === "table"
-                  ? "bg-card text-[#0b3294] dark:text-blue-400 shadow-2xs font-semibold"
+                  ? "bg-card text-primary dark:text-blue-400 shadow-2xs font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -235,7 +235,7 @@ export function ListaPacientes({
                 setIsCreateOpen(true);
               }
             }}
-            className="h-10 px-4 bg-[#0b3294] text-white hover:bg-[#0b3294]/90 font-semibold rounded-lg flex items-center gap-2 cursor-pointer shadow-xs transition-all"
+            className="h-10 px-4 bg-primary text-primary-foreground hover:bg-primary-hover font-semibold rounded-lg flex items-center gap-2 cursor-pointer shadow-xs transition-all"
           >
             <Plus className="h-4 w-4" />
             <span>Cadastrar Paciente</span>
@@ -309,7 +309,7 @@ export function ListaPacientes({
                     onClick={() => handleSelect(patient)}
                     className={`cursor-pointer transition-colors ${
                       isSelected
-                        ? "bg-[#0b3294]/10 hover:bg-[#0b3294]/15"
+                        ? "bg-primary/10 hover:bg-primary/15"
                         : "hover:bg-muted/50"
                     }`}
                   >
@@ -325,14 +325,14 @@ export function ListaPacientes({
                               e.currentTarget.style.display = "none";
                             }}
                           />
-                          <FileText className="h-4 w-4 text-[#0b3294] absolute" />
+                          <FileText className="h-4 w-4 text-primary absolute" />
                         </div>
 
                         <div className="flex flex-col min-w-0">
                           <span
                             className={`font-semibold text-sm leading-snug truncate ${
                               isSelected
-                                ? "text-[#0b3294] dark:text-blue-400 font-bold"
+                                ? "text-primary dark:text-blue-400 font-bold"
                                 : "text-foreground"
                             }`}
                           >
@@ -349,7 +349,7 @@ export function ListaPacientes({
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className="font-normal bg-[#0b3294]/5 border-[#0b3294]/20 text-[#0b3294] dark:text-blue-300"
+                        className="font-normal bg-primary/5 border-primary/20 text-primary dark:text-blue-300"
                       >
                         {patient.category}
                       </Badge>
@@ -360,7 +360,7 @@ export function ListaPacientes({
                       <div className="flex items-center w-full">
                         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                           <div
-                            className="h-full bg-[#0b3294] transition-all duration-300 rounded-full"
+                            className="h-full bg-primary transition-all duration-300 rounded-full"
                             style={{ width: `${patient.progress}%` }}
                           />
                         </div>
@@ -398,7 +398,7 @@ export function ListaPacientes({
                               e.stopPropagation();
                               handleSelect(patient);
                             }}
-                            className="h-8 px-4 text-xs font-semibold bg-[#0b3294] text-white hover:bg-[#0b3294]/90 hover:cursor-pointer shadow-xs"
+                            className="h-8 px-4 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary-hover hover:cursor-pointer shadow-xs"
                           >
                             Continuar
                           </Button>
@@ -410,7 +410,7 @@ export function ListaPacientes({
                               e.stopPropagation();
                               setDetailModalPatient(patient);
                             }}
-                            className="h-8 px-4 text-xs hover:bg-[#0b3294]/10 hover:text-[#0b3294] hover:border-[#0b3294]/40 hover:cursor-pointer transition-colors"
+                            className="h-8 px-4 text-xs hover:bg-primary/10 hover:text-primary hover:border-primary/40 hover:cursor-pointer transition-colors"
                           >
                             Resultado
                           </Button>
@@ -422,7 +422,7 @@ export function ListaPacientes({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-[#0b3294] hover:bg-[#0b3294]/10 hover:cursor-pointer"
+                              className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 hover:cursor-pointer"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreVertical className="h-4 w-4" />
@@ -440,7 +440,7 @@ export function ListaPacientes({
                               onClick={() => handleSelect(patient)}
                               className="hover:cursor-pointer"
                             >
-                              <Check className="mr-2 h-4 w-4 text-[#0b3294]" />
+                              <Check className="mr-2 h-4 w-4 text-primary" />
                               Definir como paciente ativo
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -449,7 +449,7 @@ export function ListaPacientes({
                               }}
                               className="hover:cursor-pointer"
                             >
-                              <RotateCcw className="mr-2 h-4 w-4 text-[#0b3294]" />
+                              <RotateCcw className="mr-2 h-4 w-4 text-primary" />
                               Iniciar nova sessão
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -478,7 +478,7 @@ export function ListaPacientes({
                   <img
                     src={detailModalPatient.photoUrl}
                     alt={detailModalPatient.name}
-                    className="w-14 h-14 rounded-xl object-cover border-2 border-[#0b3294]/30 shadow-sm"
+                    className="w-14 h-14 rounded-xl object-cover border-2 border-primary/30 shadow-sm"
                   />
                   <div>
                     <DialogTitle className="text-lg font-bold">
@@ -494,7 +494,7 @@ export function ListaPacientes({
                     <div className="flex gap-2 mt-2">
                       <Badge
                         variant="outline"
-                        className="bg-[#0b3294]/10 text-[#0b3294] border-[#0b3294]/30"
+                        className="bg-primary/10 text-primary border-primary/30"
                       >
                         {detailModalPatient.category}
                       </Badge>
@@ -510,9 +510,9 @@ export function ListaPacientes({
 
               <div className="space-y-4 py-3 text-sm">
                 {/* QUADRO CLÍNICO */}
-                <div className="bg-[#0b3294]/5 p-3.5 rounded-xl border border-[#0b3294]/15">
-                  <div className="flex items-center gap-2 font-semibold text-[#0b3294] dark:text-blue-400 mb-1 text-xs uppercase tracking-wider">
-                    <Brain className="h-4 w-4 text-[#0b3294]" />
+                <div className="bg-primary/5 p-3.5 rounded-xl border border-primary/15">
+                  <div className="flex items-center gap-2 font-semibold text-primary dark:text-blue-400 mb-1 text-xs uppercase tracking-wider">
+                    <Brain className="h-4 w-4 text-primary" />
                     Quadro Clínico e Funcional
                   </div>
                   <p className="text-foreground/90 leading-relaxed text-xs">
@@ -524,7 +524,7 @@ export function ListaPacientes({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="p-3 rounded-xl border bg-card">
                     <div className="flex items-center gap-1.5 font-semibold text-xs text-muted-foreground mb-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-[#0b3294]" />
+                      <Sparkles className="h-3.5 w-3.5 text-primary" />
                       Estilo de Comunicação
                     </div>
                     <p className="text-xs text-foreground/90 leading-relaxed">
@@ -534,7 +534,7 @@ export function ListaPacientes({
 
                   <div className="p-3 rounded-xl border bg-card">
                     <div className="flex items-center gap-1.5 font-semibold text-xs text-muted-foreground mb-1.5">
-                      <HeartPulse className="h-3.5 w-3.5 text-[#0b3294]" />
+                      <HeartPulse className="h-3.5 w-3.5 text-primary" />
                       Sensibilidades Sensoriais
                     </div>
                     <div className="flex flex-wrap gap-1">
@@ -568,7 +568,7 @@ export function ListaPacientes({
                       Contato:
                     </span>
                     <span className="font-semibold text-foreground flex items-center gap-1">
-                      <Phone className="h-3 w-3 text-[#0b3294]" />
+                      <Phone className="h-3 w-3 text-primary" />
                       {detailModalPatient.responsiblePhone}
                     </span>
                   </div>
@@ -585,7 +585,7 @@ export function ListaPacientes({
                       Última Atividade:
                     </span>
                     <span className="font-semibold text-foreground flex items-center gap-1 font-mono">
-                      <Calendar className="h-3 w-3 text-[#0b3294]" />
+                      <Calendar className="h-3 w-3 text-primary" />
                       {detailModalPatient.lastSessionDate}
                     </span>
                   </div>
@@ -594,7 +594,7 @@ export function ListaPacientes({
                 {/* OBSERVAÇÕES */}
                 <div className="p-3 rounded-xl border bg-card">
                   <div className="flex items-center gap-1.5 font-semibold text-xs text-muted-foreground mb-1">
-                    <Info className="h-3.5 w-3.5 text-[#0b3294]" />
+                    <Info className="h-3.5 w-3.5 text-primary" />
                     Observações Clínicas
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
@@ -617,7 +617,7 @@ export function ListaPacientes({
                     handleSelect(detailModalPatient);
                     setDetailModalPatient(null);
                   }}
-                  className="bg-[#0b3294] hover:bg-[#0b3294]/90 text-white font-semibold"
+                  className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold"
                 >
                   <Check className="h-3.5 w-3.5 mr-1" />
                   Selecionar este Paciente

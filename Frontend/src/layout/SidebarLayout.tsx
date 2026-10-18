@@ -38,7 +38,7 @@ export function SidebarLayout({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-2xs font-mono font-medium px-2.5 py-1 rounded-full bg-blue-50 text-[#0b3294] border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800">
+              <span className="text-2xs font-mono font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 dark:bg-primary/20 dark:text-primary-foreground dark:border-primary/40">
                 InTEA v1.0 • Clínico
               </span>
             </div>

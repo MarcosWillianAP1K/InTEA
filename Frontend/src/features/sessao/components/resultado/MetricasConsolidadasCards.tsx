@@ -76,7 +76,7 @@ export function MetricasConsolidadasCards({
         className={`rounded-2xl border border-dashed border-border/80 bg-muted/20 p-8 text-center ${className}`}
       >
         <CardContent className="flex flex-col items-center justify-center p-0 gap-3">
-          <div className="p-3 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#0b3294] dark:text-blue-400">
+          <div className="p-3 rounded-full bg-primary/10 text-primary">
             <Activity className="h-6 w-6 animate-pulse" />
           </div>
           <div>
@@ -167,7 +167,7 @@ export function MetricasConsolidadasCards({
         <CardContent className="p-5 flex flex-col justify-between h-full gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">Tempo Total</span>
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-[#0b3294] dark:text-blue-400">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary">
               <Timer className="h-4 w-4" />
             </div>
           </div>

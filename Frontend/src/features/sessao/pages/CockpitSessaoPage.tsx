@@ -172,13 +172,13 @@ export function CockpitSessaoPage() {
               </span>
               <Badge
                 variant="outline"
-                className="text-2xs bg-blue-50 text-[#0b3294] border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
+                className="text-2xs bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary-foreground dark:border-primary/40"
               >
                 Prontuário Ativo
               </Badge>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Gamepad2 className="h-3.5 w-3.5 text-[#0b3294] dark:text-blue-400" />
+              <Gamepad2 className="h-3.5 w-3.5 text-primary" />
               <span data-testid="cockpit-jogo-titulo" className="font-medium text-foreground/80">
                 {tituloJogo}
               </span>
@@ -196,7 +196,7 @@ export function CockpitSessaoPage() {
               className={`h-4 w-4 ${
                 isPausado
                   ? "text-amber-500 animate-pulse"
-                  : "text-[#0b3294] dark:text-blue-400"
+                  : "text-primary"
               }`}
             />
             <span

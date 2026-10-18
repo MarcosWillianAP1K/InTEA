@@ -56,7 +56,7 @@ export function JogoCard({
           type="button"
           variant="outline"
           onClick={() => onModoLivre(jogo)}
-          className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border-2 border-[#0b3294] text-[#0b3294] dark:border-blue-400 dark:text-blue-400 bg-transparent px-4 py-2 h-auto text-xs font-semibold shadow-2xs transition-all hover:bg-[#0b3294]/10 dark:hover:bg-blue-400/10"
+          className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border-2 border-primary text-primary bg-transparent px-4 py-2 h-auto text-xs font-semibold shadow-2xs transition-all hover:bg-primary/10"
         >
           <Play className="h-3.5 w-3.5 fill-current" />
           Modo Livre
@@ -65,7 +65,7 @@ export function JogoCard({
         <Button
           type="button"
           onClick={() => onIniciarSessao(jogo)}
-          className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl bg-[#0b3294] text-white hover:bg-[#0b3294]/90 dark:bg-blue-600 dark:hover:bg-blue-700 px-4 py-2 h-auto text-xs font-semibold shadow-xs transition-all cursor-pointer"
+          className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover px-4 py-2 h-auto text-xs font-semibold shadow-xs transition-all cursor-pointer"
         >
           <FlaskConical className="h-3.5 w-3.5" />
           Iniciar Sessão
