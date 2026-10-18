@@ -6,6 +6,9 @@
  * ============================================================================
  */
 
+import { SessaoModel, STATUS_SESSAO } from '../../api/sessao/models/sessao.model.js';
+import { AuditoriaService } from '../../api/auditoria/services/auditoria.service.js';
+
 export type StatusReconexao =
   | 'conectado'
   | 'desconectado_transitorio'
@@ -132,7 +135,7 @@ export class SessaoReconnectionManager {
     this.estados.set(token, estado);
 
     // Agenda o timeout da janela de tolerância
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       this.temporizadores.delete(token);
 
       const tempoOfflineTotalMs = Date.now() - agora;
@@ -146,6 +149,27 @@ export class SessaoReconnectionManager {
         tempo_offline_total_ms: tempoOfflineTotalMs,
         interrompida_em: new Date().toISOString()
       };
+
+      try {
+        const sessao = await SessaoModel.buscarPorToken(token);
+        if (sessao) {
+          await SessaoModel.atualizarStatus(sessao.id, STATUS_SESSAO.INTERROMPIDA_POR_QUEDA);
+          await AuditoriaService.registrarSilencioso({
+            sessao_id: sessao.id,
+            terapeuta_id: sessao.terapeuta_id,
+            origem: 'dispositivo_jogo',
+            acao: 'interrompida_por_queda',
+            detalhes_json: {
+              session_token: token,
+              tempo_offline_total_ms: tempoOfflineTotalMs,
+              motivo: 'interrompida_por_queda',
+              interrompida_em: eventoInterrupcao.interrompida_em,
+            },
+          });
+        }
+      } catch (err) {
+        console.error('[SessaoReconnectionManager] Erro ao persistir queda de conexão:', err);
+      }
 
       onTimeout(eventoInterrupcao);
     }, this.janelaToleranciaMs);

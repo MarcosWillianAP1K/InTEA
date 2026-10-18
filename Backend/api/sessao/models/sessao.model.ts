@@ -19,6 +19,7 @@ export const STATUS_SESSAO = {
   FINALIZADA: 'finalizada',
   EXPIRADA: 'expirada',
   CANCELADA: 'cancelada',
+  INTERROMPIDA_POR_QUEDA: 'interrompida_por_queda',
 } as const;
 
 export type StatusSessao = (typeof STATUS_SESSAO)[keyof typeof STATUS_SESSAO];

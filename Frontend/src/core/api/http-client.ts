@@ -89,9 +89,10 @@ export const http: HttpClient = createHttpClient({
   },
 });
 
+const rawMockEnv =
+  import.meta.env.VITE_USE_MOCK_DATA ?? import.meta.env.VITE_USE_MOCK;
 export const USE_MOCK_DATA: boolean =
-  import.meta.env.VITE_USE_MOCK_DATA === "true" ||
-  import.meta.env.VITE_USE_MOCK_DATA === true;
+  rawMockEnv === "true" || rawMockEnv === true;
 
 /**
  * Helper tipado para chamadas seguras à API com suporte a fallback/mock em caso de erro.

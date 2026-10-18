@@ -12,7 +12,7 @@ import {
   AreaFoco,
 } from '../models/terapeuta.model.js';
 import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
-import { validarTelefone } from '../../../core/utils/validators.js';
+import { validarTelefone, validarUUID } from '../../../core/utils/validators.js';
 import { formatarTelefone } from '../../../core/utils/formatters.js';
 
 export class TerapeutaServiceError extends Error {
@@ -89,6 +89,10 @@ export class TerapeutaService {
   ): Promise<Terapeuta | null> {
     if (!id || id === 'undefined') {
       throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(id)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
     }
 
     const terapeuta = await TerapeutaModel.buscarPorId(id);
@@ -178,6 +182,10 @@ export class TerapeutaService {
       throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
     }
 
+    if (!validarUUID(id)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
+    }
+
     const existente = await TerapeutaModel.buscarPorId(id);
     if (!existente) {
       throw new TerapeutaServiceError('Terapeuta não encontrado para atualização.', 404);
@@ -260,6 +268,10 @@ export class TerapeutaService {
       throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
     }
 
+    if (!validarUUID(id)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
+    }
+
     const existente = await TerapeutaModel.buscarPorId(id);
     if (!existente) {
       throw new TerapeutaServiceError('Terapeuta não encontrado para desativação.', 404);
@@ -288,6 +300,10 @@ export class TerapeutaService {
       throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
     }
 
+    if (!validarUUID(id)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
+    }
+
     const existente = await TerapeutaModel.buscarPorId(id);
     if (!existente) {
       throw new TerapeutaServiceError('Terapeuta não encontrado para reativação.', 404);
@@ -309,6 +325,10 @@ export class TerapeutaService {
   static async deletarHard(id: string): Promise<void> {
     if (!id || id === 'undefined') {
       throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(id)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
     }
 
     const existente = await TerapeutaModel.buscarPorId(id);

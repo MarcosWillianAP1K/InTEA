@@ -8,6 +8,7 @@ import { TelemetriaAgregacaoService } from '../services/telemetria-agregacao.ser
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { validarUUID } from '../../../core/utils/validators.js';
+import { supabase } from '../../../core/supabase/supabase.client.js';
 
 export class TelemetriaController {
   /**
@@ -176,14 +177,22 @@ export class TelemetriaController {
       }
 
       const usuarioLogado = (req as AuthenticatedRequest).user;
-      const isSuperAdmin = usuarioLogado?.user_metadata?.is_super_admin === true;
-      const isDonoDaSessao = sessao.terapeuta_id === usuarioLogado?.id;
+      const isSuperAdmin =
+        usuarioLogado?.user_metadata?.is_super_admin === true ||
+        usuarioLogado?.is_super_admin === true;
+      const isDonoDaSessao = Boolean(usuarioLogado?.id && sessao.terapeuta_id === usuarioLogado.id);
 
       if (!isSuperAdmin && !isDonoDaSessao) {
-        res.status(403).json({
-          error: 'Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04).',
-        });
-        return;
+        const autorizado = await TelemetriaController.verificarVinculoInstitucionalRN04(
+          usuarioLogado?.id,
+          sessao.paciente_id
+        );
+        if (!autorizado) {
+          res.status(403).json({
+            error: 'Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04).',
+          });
+          return;
+        }
       }
 
       const telemetrias = await TelemetriaService.listarPorSessao(sessaoId, idMetrica, limite, pagina);
@@ -226,14 +235,22 @@ export class TelemetriaController {
       }
 
       const usuarioLogado = (req as AuthenticatedRequest).user;
-      const isSuperAdmin = usuarioLogado?.user_metadata?.is_super_admin === true;
-      const isDonoDaSessao = sessao.terapeuta_id === usuarioLogado?.id;
+      const isSuperAdmin =
+        usuarioLogado?.user_metadata?.is_super_admin === true ||
+        usuarioLogado?.is_super_admin === true;
+      const isDonoDaSessao = Boolean(usuarioLogado?.id && sessao.terapeuta_id === usuarioLogado.id);
 
       if (!isSuperAdmin && !isDonoDaSessao) {
-        res.status(403).json({
-          error: 'Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04).',
-        });
-        return;
+        const autorizado = await TelemetriaController.verificarVinculoInstitucionalRN04(
+          usuarioLogado?.id,
+          sessao.paciente_id
+        );
+        if (!autorizado) {
+          res.status(403).json({
+            error: 'Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04).',
+          });
+          return;
+        }
       }
 
       const consolidado = await TelemetriaAgregacaoService.compilarPorSessaoId(sessaoId);
@@ -248,6 +265,50 @@ export class TelemetriaController {
     } catch (error) {
       console.error('[TelemetriaController] Erro ao agregar telemetria da sessão:', error);
       res.status(500).json({ error: 'Erro interno ao agregar telemetria da sessão' });
+    }
+  }
+
+  /**
+   * Valida se o terapeuta pertence à mesma clinica_id e possui vínculo ativo em terapeuta_paciente (RN04)
+   */
+  private static async verificarVinculoInstitucionalRN04(
+    terapeutaId?: string,
+    pacienteId?: string | null
+  ): Promise<boolean> {
+    if (!terapeutaId || !pacienteId) return false;
+
+    try {
+      const { data: terapeuta } = await supabase
+        .from('terapeuta')
+        .select('id, clinica_id, is_super_admin, status_ativo')
+        .eq('id', terapeutaId)
+        .maybeSingle();
+
+      if (!terapeuta || terapeuta.status_ativo === false) return false;
+      if (terapeuta.is_super_admin) return true;
+
+      const { data: paciente } = await supabase
+        .from('paciente')
+        .select('id, clinica_id, status_ativo')
+        .eq('id', pacienteId)
+        .maybeSingle();
+
+      if (!paciente || paciente.status_ativo === false) return false;
+
+      if (terapeuta.clinica_id && paciente.clinica_id && terapeuta.clinica_id !== paciente.clinica_id) {
+        return false;
+      }
+
+      const { data: vinculo } = await supabase
+        .from('terapeuta_paciente')
+        .select('paciente_id')
+        .eq('terapeuta_id', terapeuta.id)
+        .eq('paciente_id', pacienteId)
+        .maybeSingle();
+
+      return Boolean(vinculo);
+    } catch {
+      return false;
     }
   }
 }

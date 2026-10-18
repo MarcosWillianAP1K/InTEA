@@ -39,13 +39,14 @@ export class AuthController {
         },
         message: 'Login realizado com sucesso.',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[AuthController.login]', error);
-      if (error?.message?.includes('inativada')) {
-        res.status(403).json({ error: error.message });
+      const errorMessage = error instanceof Error ? error.message : 'Credenciais inválidas.';
+      if (errorMessage.includes('inativada')) {
+        res.status(403).json({ error: errorMessage });
         return;
       }
-      res.status(401).json({ error: error?.message || 'Credenciais inválidas.' });
+      res.status(401).json({ error: errorMessage });
     }
   }
 
@@ -68,9 +69,10 @@ export class AuthController {
       const resultado = await AuthModel.recuperarSenha(dto.email);
 
       res.status(200).json(resultado);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[AuthController.recuperarSenha]', error);
-      res.status(500).json({ error: 'Erro interno ao processar recuperação de senha.', detalhes: error?.message });
+      const detalhes = error instanceof Error ? error.message : undefined;
+      res.status(500).json({ error: 'Erro interno ao processar recuperação de senha.', detalhes });
     }
   }
 
@@ -100,7 +102,12 @@ export class AuthController {
 
       // Normaliza áreas de foco caso venham aninhadas pelo relacionamento
       const areasFocoNormalizadas = Array.isArray(perfil.areas_foco)
-        ? perfil.areas_foco.map((item: any) => (item?.areas_foco ? item.areas_foco : item))
+        ? perfil.areas_foco.map((item: unknown) => {
+            if (item && typeof item === 'object' && 'areas_foco' in item) {
+              return (item as { areas_foco: unknown }).areas_foco;
+            }
+            return item;
+          })
         : [];
 
       // 1. Dados cadastrais completos do perfil
@@ -135,9 +142,10 @@ export class AuthController {
           metadados,
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[AuthController.me]', error);
-      res.status(500).json({ error: 'Erro interno ao recuperar perfil.', detalhes: error?.message });
+      const detalhes = error instanceof Error ? error.message : undefined;
+      res.status(500).json({ error: 'Erro interno ao recuperar perfil.', detalhes });
     }
   }
 }

@@ -46,7 +46,7 @@ describe('Backend: AuthModel (Login, Recuperação de Senha e Perfil)', () => {
 
     expect(resultado).toBeDefined();
     expect(resultado.access_token).toBe('jwt-access-token-xyz');
-    expect(resultado.perfil.status_ativo).toBe(true);
+    expect(resultado.perfil?.status_ativo).toBe(true);
     expect(mockSignIn).toHaveBeenCalledWith({
       email: dto.email,
       password: dto.password,

@@ -2,7 +2,6 @@ import { Button } from "@/shared/components/ui/button";
 import {
   Play,
   Pause,
-  Sliders,
   Flag,
   Brain,
 } from "lucide-react";

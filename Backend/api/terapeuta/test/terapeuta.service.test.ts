@@ -66,14 +66,19 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
       await expect(TerapeutaService.buscarPorId('')).rejects.toThrow(TerapeutaServiceError);
     });
 
+    it('deve lançar TerapeutaServiceError 400 se ID não for UUID válido', async () => {
+      await expect(TerapeutaService.buscarPorId('uuid-invalido')).rejects.toThrow(TerapeutaServiceError);
+      await expect(TerapeutaService.buscarPorId('uuid-invalido')).rejects.toMatchObject({ statusCode: 400 });
+    });
+
     it('deve retornar null se o terapeuta não for encontrado no banco', async () => {
       vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue(null);
-      const resultado = await TerapeutaService.buscarPorId('uuid-inexistente');
+      const resultado = await TerapeutaService.buscarPorId('00000000-0000-4000-8000-000000000000');
       expect(resultado).toBeNull();
     });
 
     it('deve permitir acesso se solicitante for da mesma clínica (RN04)', async () => {
-      const idAlvo = 'uuid-terapeuta-alvo';
+      const idAlvo = '11111111-1111-4111-a111-111111111111';
       vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
         id: idAlvo,
         nome: 'Colega de Clínica',
@@ -82,7 +87,7 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
       } as any);
 
       const usuarioLogado: UsuarioAutenticado = {
-        id: 'uuid-solicitante',
+        id: '22222222-2222-4222-a222-222222222222',
         is_super_admin: false,
         clinica_id: 'uuid-clinica-x',
       };
@@ -93,7 +98,7 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
     });
 
     it('deve lançar 403 se solicitante for de clínica diferente da do terapeuta alvo (RN04)', async () => {
-      const idAlvo = 'uuid-terapeuta-alvo';
+      const idAlvo = '11111111-1111-4111-a111-111111111111';
       vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
         id: idAlvo,
         nome: 'Colega de Outra Clínica',
@@ -102,7 +107,7 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
       } as any);
 
       const usuarioLogado: UsuarioAutenticado = {
-        id: 'uuid-solicitante',
+        id: '22222222-2222-4222-a222-222222222222',
         is_super_admin: false,
         clinica_id: 'uuid-clinica-x',
       };
@@ -113,7 +118,7 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
     });
 
     it('deve permitir acesso de super admin mesmo para clínicas diferentes', async () => {
-      const idAlvo = 'uuid-terapeuta-alvo';
+      const idAlvo = '11111111-1111-4111-a111-111111111111';
       vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
         id: idAlvo,
         nome: 'Terapeuta Qualquer',
@@ -122,7 +127,7 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
       } as any);
 
       const usuarioSuperAdmin: UsuarioAutenticado = {
-        id: 'uuid-admin',
+        id: '33333333-3333-4333-a333-333333333333',
         is_super_admin: true,
         clinica_id: 'uuid-clinica-x',
       };
@@ -132,7 +137,7 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
     });
 
     it('deve permitir acesso ao próprio terapeuta independentemente de clínica', async () => {
-      const idProprio = 'uuid-meu-id';
+      const idProprio = '44444444-4444-4444-a444-444444444444';
       vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
         id: idProprio,
         nome: 'Eu Mesmo',
@@ -195,8 +200,12 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
   });
 
   describe('desativar (RN05)', () => {
+    it('deve lançar TerapeutaServiceError 400 se ID for inválido', async () => {
+      await expect(TerapeutaService.desativar('invalido')).rejects.toMatchObject({ statusCode: 400 });
+    });
+
     it('deve desativar terapeuta ativo retornando jaInativo=false', async () => {
-      const idValido = 'uuid-terapeuta-ativo';
+      const idValido = '55555555-5555-4555-a555-555555555555';
       vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
         id: idValido,
         nome: 'Terapeuta Ativo',
@@ -216,8 +225,12 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
   });
 
   describe('atualizar', () => {
+    it('deve lançar TerapeutaServiceError 400 se ID for inválido', async () => {
+      await expect(TerapeutaService.atualizar('invalido', {})).rejects.toMatchObject({ statusCode: 400 });
+    });
+
     it('deve bloquear com 403 tentativa de alterar clinica_id por usuário não super admin', async () => {
-      const id = 'uuid-terapeuta-1';
+      const id = '66666666-6666-4666-a666-666666666666';
       vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
         id,
         nome: 'Dr. Teste',
@@ -235,7 +248,7 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
     });
 
     it('deve bloquear com 403 tentativa de alterar status_ativo por usuário não super admin', async () => {
-      const id = 'uuid-terapeuta-1';
+      const id = '66666666-6666-4666-a666-666666666666';
       vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
         id,
         nome: 'Dr. Teste',
@@ -253,7 +266,7 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
     });
 
     it('deve sanitizar o payload removendo propriedades restritas que não sofreram alteração', async () => {
-      const id = 'uuid-terapeuta-1';
+      const id = '66666666-6666-4666-a666-666666666666';
       vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
         id,
         nome: 'Dr. Teste',

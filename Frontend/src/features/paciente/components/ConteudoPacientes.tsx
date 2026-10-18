@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { ListaPacientes } from "./ListaPacientes";
 import { ConteudoCriarPaciente } from "./ConteudoCriarPaciente";
 import { usePacienteStore } from "../store/paciente.store";
@@ -10,6 +10,7 @@ export interface ConteudoPacientesProps {
   onSelectPatient?: (patient: Patient) => void;
   selectedPatientId?: string | null;
   initialMode?: "list" | "create";
+  initialVisualMode?: "table" | "grid";
   className?: string;
 }
 export type PatientsContentProps = ConteudoPacientesProps;
@@ -18,6 +19,7 @@ export function ConteudoPacientes({
   onSelectPatient,
   selectedPatientId,
   initialMode = "list",
+  initialVisualMode = "grid",
   className = "",
 }: ConteudoPacientesProps) {
   const [viewMode, setViewMode] = useState<"list" | "create">(initialMode);
@@ -52,6 +54,7 @@ export function ConteudoPacientes({
         onSelectPatient={onSelectPatient}
         onOpenCreate={() => setViewMode("create")}
         selectedPatientId={selectedPatientId}
+        initialVisualMode={initialVisualMode}
       />
     </div>
   );

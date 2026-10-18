@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSessionStore } from "../store/sessionStore";
 import { useSessionPersistence } from "../hooks/useSessionPersistence";
@@ -16,12 +16,8 @@ import { Button } from "@/shared/components/ui/button";
 import { toast } from "sonner";
 import {
   Gamepad2,
-  User,
   Clock,
   ArrowLeft,
-  Activity,
-  CheckCircle2,
-  ShieldAlert,
 } from "lucide-react";
 
 /**

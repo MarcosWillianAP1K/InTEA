@@ -1,4 +1,3 @@
-import * as React from "react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -10,8 +9,6 @@ import {
   Trophy,
   Zap,
   Activity,
-  AlertTriangle,
-  Sparkles,
 } from "lucide-react";
 
 export interface MetricasConsolidadasCardsProps {

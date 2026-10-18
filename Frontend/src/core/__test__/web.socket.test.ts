@@ -27,6 +27,7 @@ describe("Card 4.1 — Integração do Cliente WebSocket / Socket.IO (core/web.s
     off: ReturnType<typeof vi.fn>;
     emit: ReturnType<typeof vi.fn>;
     listeners: Record<string, ((...args: unknown[]) => void)[]>;
+    triggerEvent: (event: string, ...args: unknown[]) => void;
   };
 
   beforeEach(() => {

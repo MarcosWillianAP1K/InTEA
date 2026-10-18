@@ -8,7 +8,6 @@ import {
   obterMetricasDashboardMock,
   listarSessoesRecentesMock,
   listarAtividadesRecentesMock,
-  listarAlertasClinicosMock,
   marcarAlertaLidoMock,
 } from "../types/bdmock";
 import { http } from "@/core/api/http-client";

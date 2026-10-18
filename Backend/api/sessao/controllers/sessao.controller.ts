@@ -87,6 +87,12 @@ export class SessaoController {
         return;
       }
 
+      // Validação estrita de UUIDs para evitar Postgres 22P02 e HTTP 500
+      if (!validarUUID(jogo_id)) {
+        res.status(400).json({ error: 'Identificador jogo_id inválido: deve ser um UUID válido.' });
+        return;
+      }
+
       if (modo_sessao && !Object.values(MODO_SESSAO).includes(modo_sessao)) {
         res.status(400).json({ error: 'Modo de sessão inválido. Escolha entre: ' + Object.values(MODO_SESSAO).join(', ') });
         return;
@@ -100,6 +106,11 @@ export class SessaoController {
 
       if (modo_sessao === MODO_SESSAO.MODO_LIVRE && paciente_id) {
         res.status(400).json({ error: 'Partidas em modo livre não podem ter paciente vinculado (RN01)' });
+        return;
+      }
+
+      if (paciente_id && !validarUUID(paciente_id)) {
+        res.status(400).json({ error: 'Identificador paciente_id inválido: deve ser um UUID válido.' });
         return;
       }
 
@@ -646,6 +657,27 @@ export class SessaoController {
 
       if (!Object.values(STATUS_SESSAO).includes(status)) {
         res.status(400).json({ error: 'O status informado é inválido, deve conter algum desses valores: ' + Object.values(STATUS_SESSAO).join(', ') });
+        return;
+      }
+
+      // Validação de integridade e trava de máquina de estados (FSM)
+      const sessaoExistente = authReq.contextoSessao || await SessaoModel.buscarPorId(id);
+      if (!sessaoExistente) {
+        res.status(404).json({ error: 'Sessão não encontrada para atualização de status' });
+        return;
+      }
+
+      const estadosTerminais: StatusSessao[] = [
+        STATUS_SESSAO.FINALIZADA,
+        STATUS_SESSAO.CANCELADA,
+        STATUS_SESSAO.EXPIRADA,
+        STATUS_SESSAO.INTERROMPIDA_POR_QUEDA,
+      ];
+
+      if (estadosTerminais.includes(sessaoExistente.status_sessao)) {
+        res.status(400).json({
+          error: `Transição inválida de máquina de estados: a sessão já se encontra no estado terminal '${sessaoExistente.status_sessao}'.`,
+        });
         return;
       }
 

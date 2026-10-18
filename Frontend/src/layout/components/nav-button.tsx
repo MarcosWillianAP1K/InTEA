@@ -21,7 +21,7 @@ export function NewSection({
         <SidebarMenuItem>
           <SidebarMenuButton
             type="button"
-            className="!h-auto !p-4 bg-[#0b3294] text-white hover:bg-[#0b3294] hover:text-white hover:cursor-pointer"
+            className="h-auto! p-4! bg-[#0b3294] text-white hover:bg-[#0b3294] hover:text-white hover:cursor-pointer"
             onClick={() => {
               if (onCreateChat) {
                 void onCreateChat();

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { usePacienteStore, usePatientsStore, PATIENTS_DICTIONARY } from "../store/paciente.store";
+import { usePatientsStore, PATIENTS_DICTIONARY } from "../store/paciente.store";
 import type { Patient } from "../store/paciente.store";
 
 describe("Paciente Store (usePacienteStore)", () => {

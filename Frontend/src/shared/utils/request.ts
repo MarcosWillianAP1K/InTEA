@@ -136,6 +136,7 @@ export interface HttpClientConfig {
 export interface RequestOptions<TBody = unknown> {
   method?: HttpMethod;
   body?: TBody;
+  data?: TBody;
   params?: Record<string, string | number | boolean | undefined | null>;
   headers?: Record<string, string>;
   signal?: AbortSignal;
@@ -511,7 +512,8 @@ export class HttpClient {
   ): Promise<T> {
     const {
       method = "GET",
-      body,
+      body: explicitBody,
+      data: explicitData,
       params,
       headers: extraHeaders,
       signal,
@@ -521,6 +523,7 @@ export class HttpClient {
       skipAuth = false,
       skipAuthRetry = false,
     } = options;
+    const body = explicitBody !== undefined ? explicitBody : explicitData;
 
     const url = buildUrl(this.config.baseURL, path, params);
     const isFormData =

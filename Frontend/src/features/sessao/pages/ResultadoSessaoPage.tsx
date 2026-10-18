@@ -746,3 +746,5 @@ export function ResultadoSessaoPage({
     </main>
   );
 }
+
+export default ResultadoSessaoPage;

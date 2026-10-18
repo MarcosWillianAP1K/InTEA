@@ -2,7 +2,7 @@
 // InTEA: Testes Básicos de Inicialização e Serviços da Feature Sessão
 // ==============================================================================
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { sessaoRoutes } from '../routes/sessao.routes.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
 import { SessaoModel } from '../models/sessao.model.js';
@@ -121,6 +121,66 @@ describe('SessaoController.atualizarStatus', () => {
     expect(getStatus()).toBe(400);
     expect((getJson() as { error: string }).error).toContain('inválido');
   });
+
+  it('deve retornar 404 se a sessão não for encontrada para atualizar status', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(null);
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({ status: 'em_andamento' }, { id: 'sessao-inexistente' });
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.atualizarStatus(mockReq, mockRes);
+
+    expect(getStatus()).toBe(404);
+    expect((getJson() as { error: string }).error).toContain('não encontrada');
+  });
+
+  it('deve rejeitar com 400 tentativa de atualizar sessão em estado terminal finalizada', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      id: 'sessao-terminal-1',
+      status_sessao: 'finalizada',
+    } as any);
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({ status: 'em_andamento' }, { id: 'sessao-terminal-1' });
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.atualizarStatus(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('terminal');
+  });
+
+  it('deve rejeitar com 400 tentativa de atualizar sessão em estado terminal interrompida_por_queda', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      id: 'sessao-terminal-2',
+      status_sessao: 'interrompida_por_queda',
+    } as any);
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({ status: 'em_andamento' }, { id: 'sessao-terminal-2' });
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.atualizarStatus(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('terminal');
+  });
+
+  it('deve atualizar status com sucesso quando a sessão não estiver em estado terminal', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      id: 'sessao-ativa-1',
+      status_sessao: 'conectado',
+    } as any);
+    vi.spyOn(SessaoModel, 'atualizarStatus').mockResolvedValue({
+      id: 'sessao-ativa-1',
+      status_sessao: 'em_andamento',
+    } as any);
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({ status: 'em_andamento' }, { id: 'sessao-ativa-1' });
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.atualizarStatus(mockReq, mockRes);
+
+    expect(getStatus()).toBe(200);
+    expect((getJson() as { data: { status_sessao: string } }).data.status_sessao).toBe('em_andamento');
+  });
 });
 
 // =============================================================================
@@ -139,10 +199,14 @@ describe('SessaoController.iniciar', () => {
     expect((getJson() as { error: string }).error).toContain('obrigatórios');
   });
 
+  const JOGO_UUID = '11111111-1111-4111-a111-111111111111';
+  const PACIENTE_UUID = '22222222-2222-4222-a222-222222222222';
+  const TERAPEUTA_UUID = '33333333-3333-4333-a333-333333333333';
+
   it('deve rejeitar sem codigo_pareamento', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      jogo_id: 'jogo-1',
-      paciente_id: 'paciente-1',
+      jogo_id: JOGO_UUID,
+      paciente_id: PACIENTE_UUID,
     });
 
     const { SessaoController } = await import('../controllers/sessao.controller.js');
@@ -152,10 +216,38 @@ describe('SessaoController.iniciar', () => {
     expect((getJson() as { error: string }).error).toContain('codigo_pareamento');
   });
 
+  it('deve rejeitar jogo_id com formato UUID inválido (evitar 22P02 e 500)', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      jogo_id: 'jogo-invalido',
+      codigo_pareamento: '4M5S-8U7B',
+    });
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('jogo_id inválido');
+  });
+
+  it('deve rejeitar paciente_id com formato UUID inválido (evitar 22P02 e 500)', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      jogo_id: JOGO_UUID,
+      codigo_pareamento: '4M5S-8U7B',
+      modo_sessao: 'sessao_clinica',
+      paciente_id: 'paciente-invalido',
+    });
+
+    const { SessaoController } = await import('../controllers/sessao.controller.js');
+    await SessaoController.iniciar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('paciente_id inválido');
+  });
+
   it('deve rejeitar com 401 quando o terapeuta não estiver autenticado no token (CA-2)', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks(
       {
-        jogo_id: 'jogo-1',
+        jogo_id: JOGO_UUID,
         codigo_pareamento: '4M5S-8U7B',
       },
       {},
@@ -172,12 +264,12 @@ describe('SessaoController.iniciar', () => {
   it('deve rejeitar com 403 quando o terapeuta_id no body for divergente do usuário autenticado (anti-spoofing) (CA-3)', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks(
       {
-        terapeuta_id: 'uuid-do-terapeuta-divergente',
-        jogo_id: 'jogo-1',
+        terapeuta_id: '44444444-4444-4444-a444-444444444444',
+        jogo_id: JOGO_UUID,
         codigo_pareamento: '4M5S-8U7B',
       },
       {},
-      { id: 'uuid-do-terapeuta-autenticado' }
+      { id: TERAPEUTA_UUID }
     );
 
     const { SessaoController } = await import('../controllers/sessao.controller.js');
@@ -189,7 +281,7 @@ describe('SessaoController.iniciar', () => {
 
   it('deve rejeitar modo_sessao inválido', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      jogo_id: 'jogo-1',
+      jogo_id: JOGO_UUID,
       codigo_pareamento: '4M5S-8U7B',
       modo_sessao: 'modo_inexistente',
     });
@@ -203,7 +295,7 @@ describe('SessaoController.iniciar', () => {
 
   it('deve rejeitar sessão clínica sem paciente_id (RN01)', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      jogo_id: 'jogo-1',
+      jogo_id: JOGO_UUID,
       codigo_pareamento: '4M5S-8U7B',
       modo_sessao: 'sessao_clinica',
       paciente_id: null,
@@ -218,10 +310,10 @@ describe('SessaoController.iniciar', () => {
 
   it('deve rejeitar modo livre com paciente_id vinculado (RN01)', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
-      jogo_id: 'jogo-1',
+      jogo_id: JOGO_UUID,
       codigo_pareamento: '4M5S-8U7B',
       modo_sessao: 'modo_livre',
-      paciente_id: 'paciente-123',
+      paciente_id: PACIENTE_UUID,
     });
 
     const { SessaoController } = await import('../controllers/sessao.controller.js');
@@ -240,11 +332,11 @@ describe('SessaoController.iniciar', () => {
     SessaoModel.criar = async (dados: any) => {
       terapeutaIdRecebidoPeloModel = dados.terapeuta_id;
       return {
-        id: 'sessao-criada-123',
+        id: '123e4567-e89b-12d3-a456-426614174000',
         session_token: '4M5S-8U7B',
         status_sessao: 'aguardando_pareamento',
         modo_sessao: 'sessao_clinica',
-        paciente_id: 'paciente-123',
+        paciente_id: PACIENTE_UUID,
         expira_em: new Date().toISOString(),
       };
     };
@@ -252,21 +344,21 @@ describe('SessaoController.iniciar', () => {
     // Requisição SEM terapeuta_id no body
     const { mockReq, mockRes, getStatus, getJson } = criarMocks(
       {
-        jogo_id: 'jogo-1',
+        jogo_id: JOGO_UUID,
         codigo_pareamento: '4M5S-8U7B',
         modo_sessao: 'sessao_clinica',
-        paciente_id: 'paciente-123',
+        paciente_id: PACIENTE_UUID,
       },
       {},
-      { id: 'terapeuta-jwt-autenticado-xyz' }
+      { id: TERAPEUTA_UUID }
     );
 
     await SessaoController.iniciar(mockReq, mockRes);
     SessaoModel.criar = originalCriar;
 
     expect(getStatus()).toBe(201);
-    expect(terapeutaIdRecebidoPeloModel).toBe('terapeuta-jwt-autenticado-xyz');
-    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('sessao-criada-123');
+    expect(terapeutaIdRecebidoPeloModel).toBe(TERAPEUTA_UUID);
+    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('123e4567-e89b-12d3-a456-426614174000');
   });
 
   it('deve permitir iniciar sessão quando terapeuta_id no body for idêntico ao do token', async () => {
@@ -275,31 +367,31 @@ describe('SessaoController.iniciar', () => {
 
     // @ts-expect-error — mock temporário para teste unitário
     SessaoModel.criar = async () => ({
-      id: 'sessao-criada-456',
+      id: '123e4567-e89b-12d3-a456-426614174001',
       session_token: '4M5S-8U7B',
       status_sessao: 'aguardando_pareamento',
       modo_sessao: 'sessao_clinica',
-      paciente_id: 'paciente-123',
+      paciente_id: PACIENTE_UUID,
       expira_em: new Date().toISOString(),
     });
 
     const { mockReq, mockRes, getStatus, getJson } = criarMocks(
       {
-        terapeuta_id: 'terapeuta-coincidente',
-        jogo_id: 'jogo-1',
+        terapeuta_id: TERAPEUTA_UUID,
+        jogo_id: JOGO_UUID,
         codigo_pareamento: '4M5S-8U7B',
         modo_sessao: 'sessao_clinica',
-        paciente_id: 'paciente-123',
+        paciente_id: PACIENTE_UUID,
       },
       {},
-      { id: 'terapeuta-coincidente' }
+      { id: TERAPEUTA_UUID }
     );
 
     await SessaoController.iniciar(mockReq, mockRes);
     SessaoModel.criar = originalCriar;
 
     expect(getStatus()).toBe(201);
-    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('sessao-criada-456');
+    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('123e4567-e89b-12d3-a456-426614174001');
   });
 
   it('verificarVisibilidadePaciente deve permitir modo_livre sem paciente_id (RN01)', async () => {

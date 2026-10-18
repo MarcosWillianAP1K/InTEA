@@ -5,4 +5,6 @@ export * from "./components/ConteudoCriarPaciente";
 export * from "./components/DialogFormularioPaciente";
 export * from "./components/ConteudoPacientes";
 export * from "./components/ListaPacientes";
+export * from "./components/CardPacienteGrid";
+export * from "./components/CardAdicionarPaciente";
 export { default as PacientesPage } from "@/pages/PacientesPage";

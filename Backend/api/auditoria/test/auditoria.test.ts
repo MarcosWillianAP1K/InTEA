@@ -291,6 +291,62 @@ describe('AuditoriaService — Regras de Negócio e Segurança', () => {
     expect(res.autorizado).toBe(false);
     expect(res.statusHttp).toBe(403);
   });
+
+  it('validarAcessoLinhaDoTempo deve autorizar coterapeuta da mesma clínica com vínculo ativo em terapeuta_paciente (RN04)', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      id: sessaoIdValido,
+      terapeuta_id: 'outro-terapeuta-dono',
+      paciente_id: 'paciente-123',
+    } as Sessao);
+
+    vi.spyOn(supabase, 'from').mockImplementation(((table: string) => {
+      if (table === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaIdValido, clinica_id: 'clinica-a', is_super_admin: false, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: 'paciente-123', clinica_id: 'clinica-a', status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'terapeuta_paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { paciente_id: 'paciente-123' },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    }) as any);
+
+    const res = await AuditoriaService.validarAcessoLinhaDoTempo(sessaoIdValido, {
+      id: terapeutaIdValido,
+    });
+
+    expect(res.autorizado).toBe(true);
+  });
 });
 
 describe('AuditoriaController — Endpoints e Validações REST', () => {

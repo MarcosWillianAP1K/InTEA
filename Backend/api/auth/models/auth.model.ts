@@ -1,4 +1,6 @@
+import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
+import type { Terapeuta } from '../../terapeuta/models/terapeuta.model.js';
 
 // ==============================================================================
 // DTOs e Tipagens de Autenticação
@@ -14,10 +16,10 @@ export interface RecuperarSenhaDTO {
 }
 
 export interface AuthResponse {
-  user: any;
-  session: any;
+  user: User;
+  session: Session;
   access_token: string;
-  perfil: any | null;
+  perfil: Terapeuta | null;
 }
 
 // ==============================================================================
@@ -58,7 +60,7 @@ export class AuthModel {
       user: data.user,
       session: data.session,
       access_token: data.session.access_token,
-      perfil,
+      perfil: (perfil as unknown as Terapeuta) || null,
     };
   }
 
@@ -82,7 +84,7 @@ export class AuthModel {
    * @returns The therapist profile if found, or null otherwise.
    * @throws {Error} If querying the database fails.
    */
-  static async buscarPerfilPorId(userId: string): Promise<any | null> {
+  static async buscarPerfilPorId(userId: string): Promise<Terapeuta | null> {
     const { data, error } = await supabase
       .from('terapeuta')
       .select('*, areas_foco:terapeuta_area_foco(areas_foco(*))')
@@ -93,6 +95,6 @@ export class AuthModel {
       throw new Error(`Erro ao recuperar perfil: ${error.message}`);
     }
 
-    return data || null;
+    return (data as unknown as Terapeuta) || null;
   }
 }

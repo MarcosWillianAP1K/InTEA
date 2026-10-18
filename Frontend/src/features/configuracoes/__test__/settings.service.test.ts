@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { configuracoesService, settingsService } from "../services/configuracoes.service";
+import { settingsService } from "../services/configuracoes.service";
 import {
   MOCK_CONFIGURACOES_PADRAO,
   obterConfiguracoesMock,

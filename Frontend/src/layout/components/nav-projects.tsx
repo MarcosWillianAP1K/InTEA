@@ -38,7 +38,7 @@ export function NavProjects({
                 asChild
                 tooltip={item.name}
                 className={cn(
-                  "!h-auto !p-3 text-[0.825rem] rounded-xl font-medium transition-colors",
+                  "h-auto! p-3! text-[0.825rem] rounded-xl font-medium transition-colors",
                   isActive
                     ? "bg-[#0b3294] text-white hover:bg-[#0b3294] hover:text-white"
                     : "hover:bg-[#0b3294]/10 hover:text-[#0b3294] dark:hover:bg-blue-950/40 dark:hover:text-blue-300",

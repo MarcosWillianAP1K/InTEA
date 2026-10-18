@@ -16,6 +16,7 @@ import type { DispositivoConectadoPayload } from "@/core/web.socket";
 
 const initialState: SessionState = {
   status: "ocioso",
+  statusAnterior: null,
   config: null,
   pareamento: null,
   isModalAberto: false,
@@ -226,11 +227,27 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Define uma mensagem de erro no store e transiciona para o estado 'erro' quando aplicável */
+  /** Define uma mensagem de erro no store, salva o status anterior e transiciona para o estado 'erro' */
   setErro: (mensagem: string | null) => {
+    if (mensagem) {
+      const currentStatus = get().status;
+      set({
+        statusAnterior: currentStatus !== "erro" ? currentStatus : get().statusAnterior,
+        erro: mensagem,
+        status: "erro",
+      });
+    } else {
+      get().limparErro();
+    }
+  },
+
+  /** Restaura o status anterior à falha e limpa o erro, desbloqueando a armadilha de estado */
+  limparErro: () => {
+    const statusAnterior = get().statusAnterior;
     set({
-      erro: mensagem,
-      status: mensagem ? "erro" : get().status,
+      erro: null,
+      status: statusAnterior || (get().status === "erro" ? "ocioso" : get().status),
+      statusAnterior: null,
     });
   },
 

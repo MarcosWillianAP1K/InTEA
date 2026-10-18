@@ -271,6 +271,7 @@ export interface DiagnosticoTablet {
 
 export interface SessionState {
   status: StatusPareamento;
+  statusAnterior?: StatusPareamento | null;
   config: ConfiguracaoSessao | null;
   pareamento: DadosPareamento | null;
   isModalAberto: boolean;
@@ -303,6 +304,7 @@ export interface SessionActions {
   cancelarSessao: (motivo?: string) => void;
   expirarToken: () => void;
   setErro: (mensagem: string | null) => void;
+  limparErro: () => void;
   restaurarSessao: (dados: Partial<SessionState>) => void;
   reset: () => void;
 }

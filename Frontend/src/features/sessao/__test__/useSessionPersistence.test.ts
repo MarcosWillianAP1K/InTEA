@@ -80,7 +80,7 @@ describe("Card 4.4 — Testes do Hook useSessionPersistence (Luma Maiara)", () =
       useSessionStore.getState().iniciarIntervencao();
     });
 
-    const { result } = renderHook(() => useSessionPersistence());
+    renderHook(() => useSessionPersistence());
     expect(window.sessionStorage.getItem(SESSION_STORAGE_KEY)).not.toBeNull();
 
     act(() => {

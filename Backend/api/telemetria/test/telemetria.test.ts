@@ -726,6 +726,69 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
     expect(getStatus()).toBe(200);
   });
 
+  it('GET /api/telemetria/sessao/:sessaoId: deve permitir acesso a coterapeuta da mesma clínica com vínculo ativo em terapeuta_paciente (RN04)', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      terapeuta_id: 'outro-terapeuta-dono',
+      paciente_id: 'paciente-123',
+      status_sessao: 'em_andamento',
+    } as any);
+
+    vi.spyOn(TelemetriaService, 'listarPorSessao').mockResolvedValue([]);
+
+    vi.spyOn(supabase, 'from').mockImplementation(((table: string) => {
+      if (table === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: 'meu-terapeuta-uuid', clinica_id: 'clinica-a', is_super_admin: false, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: 'paciente-123', clinica_id: 'clinica-a', status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'terapeuta_paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { paciente_id: 'paciente-123' },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    }) as any);
+
+    const { mockReq, mockRes, getStatus } = criarMocks(
+      {},
+      { sessaoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      {},
+      { id: 'meu-terapeuta-uuid', user_metadata: { is_super_admin: false } }
+    );
+
+    await TelemetriaController.listarPorSessao(mockReq, mockRes);
+    expect(getStatus()).toBe(200);
+  });
+
   it('GET /api/telemetria/sessao/:sessaoId: deve retornar 200 com lista de telemetrias e paginação', async () => {
     const mockHistorico: TelemetriaEvento[] = [
       {

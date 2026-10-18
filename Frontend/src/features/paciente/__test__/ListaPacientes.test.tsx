@@ -1,0 +1,55 @@
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { ListaPacientes } from "../components/ListaPacientes";
+
+describe("Componente ListaPacientes (Alternador Tabela vs Grid de Cards)", () => {
+  it("deve renderizar inicialmente em modo Grid com CardAdicionarPaciente e CardPacienteGrid", () => {
+    render(<ListaPacientes initialVisualMode="grid" />);
+
+    expect(screen.getByTestId("grid-pacientes")).toBeDefined();
+    expect(screen.getByTestId("card-adicionar-paciente")).toBeDefined();
+    expect(screen.getByText("Novo Paciente")).toBeDefined();
+    expect(screen.getByText("Cadastrar no sistema")).toBeDefined();
+
+    // Verifica se os pacientes mock estão presentes nos cards do Grid
+    expect(screen.getByText("Lucas Gabriel Silva")).toBeDefined();
+  });
+
+  it("deve alternar para visualização em Tabela ao clicar no botão correspondente", () => {
+    render(<ListaPacientes initialVisualMode="grid" />);
+
+    const btnTable = screen.getByTestId("toggle-view-table");
+    fireEvent.click(btnTable);
+
+    // O container de grid não deve mais estar visível
+    expect(screen.queryByTestId("grid-pacientes")).toBeNull();
+
+    // Cabeçalhos da tabela devem estar presentes
+    expect(screen.getByText("Paciente")).toBeDefined();
+    expect(screen.getByText("Categoria")).toBeDefined();
+    expect(screen.getByText("Progresso")).toBeDefined();
+    expect(screen.getByText("Data de Criação")).toBeDefined();
+  });
+
+  it("deve alternar de volta para o Grid ao clicar no botão de Grid", () => {
+    render(<ListaPacientes initialVisualMode="table" />);
+
+    expect(screen.queryByTestId("grid-pacientes")).toBeNull();
+
+    const btnGrid = screen.getByTestId("toggle-view-grid");
+    fireEvent.click(btnGrid);
+
+    expect(screen.getByTestId("grid-pacientes")).toBeDefined();
+    expect(screen.getByTestId("card-adicionar-paciente")).toBeDefined();
+  });
+
+  it("deve disparar onOpenCreate ao clicar no CardAdicionarPaciente dentro do Grid", () => {
+    const handleOpenCreate = vi.fn();
+    render(<ListaPacientes initialVisualMode="grid" onOpenCreate={handleOpenCreate} />);
+
+    const cardAdd = screen.getByTestId("card-adicionar-paciente");
+    fireEvent.click(cardAdd);
+
+    expect(handleOpenCreate).toHaveBeenCalledTimes(1);
+  });
+});

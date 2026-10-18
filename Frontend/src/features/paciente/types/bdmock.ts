@@ -11,7 +11,6 @@ import type {
   Responsavel,
   DadosClinicos,
   Gatilho,
-  PacienteGatilho,
   TerapeutaPaciente,
   CriarPacienteDTO,
   AtualizarPacienteDTO,

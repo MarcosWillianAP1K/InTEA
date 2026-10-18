@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  Bell,
-  MessageCircle,
-  Palette,
-  Lock,
-  User2,
-} from "lucide-react";
+import { Palette } from "lucide-react";
 
 import {
   Breadcrumb,
@@ -37,7 +31,7 @@ const settingsNav = [
 //   { id: "Plan", label: "Plano e Quotas", icon: Lock },
 ];
 
-export default function SettingsPage() {
+export function SettingsPage() {
   const [activeTab, setActiveTab] = useState("appearance");
 
   const activeNav = settingsNav.find((item) => item.id === activeTab);
@@ -140,4 +134,5 @@ export default function SettingsPage() {
   );
 }
 
-export const ConfiguracoesPage = SettingsPage;
+export const ConfiguracoesPage = SettingsPage;
+export default SettingsPage;

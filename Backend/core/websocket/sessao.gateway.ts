@@ -6,6 +6,8 @@ import {
   EventoSessaoInterrompida
 } from './sessao.reconnection.js';
 import { SocketRateLimiter } from './socket.limiter.js';
+import { SessaoModel, STATUS_SESSAO } from '../../api/sessao/models/sessao.model.js';
+import { AuditoriaService } from '../../api/auditoria/services/auditoria.service.js';
 
 export interface EntrarSessaoPayload {
   session_token: string;
@@ -875,8 +877,9 @@ export class SessaoGateway {
 
   /**
    * Notifica a sala da sessão que a tolerância expirou e a sessão foi interrompida (Card 2.3).
+   * Persiste o status 'interrompida_por_queda' no banco de dados e registra a trilha de auditoria.
    */
-  notificarSessaoInterrompidaPorQueda(sessionToken: string, evento: EventoSessaoInterrompida): void {
+  async notificarSessaoInterrompidaPorQueda(sessionToken: string, evento: EventoSessaoInterrompida): Promise<void> {
     const tokenNormalizado = this.normalizarToken(sessionToken);
     const sala = `session_${tokenNormalizado}`;
     const presenca = this.presencas.get(tokenNormalizado);
@@ -886,6 +889,27 @@ export class SessaoGateway {
     }
     this.sessaoNamespace.to(sala).emit('sessao_interrompida', evento);
     this.sessaoNamespace.to(sala).emit('sessao:interrompida', evento);
+
+    try {
+      const sessao = await SessaoModel.buscarPorToken(tokenNormalizado);
+      if (sessao) {
+        await SessaoModel.atualizarStatus(sessao.id, STATUS_SESSAO.INTERROMPIDA_POR_QUEDA);
+        await AuditoriaService.registrarSilencioso({
+          sessao_id: sessao.id,
+          terapeuta_id: sessao.terapeuta_id,
+          origem: 'dispositivo_jogo',
+          acao: 'interrompida_por_queda',
+          detalhes_json: {
+            session_token: tokenNormalizado,
+            tempo_offline_total_ms: evento.tempo_offline_total_ms,
+            motivo: evento.motivo,
+            interrompida_em: evento.interrompida_em,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('[SessaoGateway] Falha ao persistir status de interrupção por queda:', err);
+    }
   }
 
   /**

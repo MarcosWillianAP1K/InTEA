@@ -1,11 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type Settings = {
-  theme: "Sistema" | "light" | "dark";
-  language: "pt" | "en" | "es";
-  autoDelete: "7d" | "15d" | "30d" | "Nunca";
-};
+import type { Settings } from "../types/settings.types";
 
 export type Configuracoes = Settings;
 

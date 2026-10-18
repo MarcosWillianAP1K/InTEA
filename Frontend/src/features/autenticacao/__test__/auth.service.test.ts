@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { authService } from "../services/auth.service";
 import {
   MOCK_USUARIO_TERAPEUTA,
-  MOCK_USUARIO_ADMIN,
   MOCK_AUTH_TOKENS,
-  MOCK_AUTH_TOKENS_ADMIN,
   loginMock,
   logoutMock,
   refreshMock,

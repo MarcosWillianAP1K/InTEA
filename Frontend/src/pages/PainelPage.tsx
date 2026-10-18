@@ -7,13 +7,7 @@ import {
   Activity,
   Plus,
   ArrowRight,
-  Clock,
-  Sparkles,
   ChevronRight,
-  AlertCircle,
-  PlayCircle,
-  BarChart3,
-  CheckCircle2,
 } from "lucide-react";
 import { dashboardService } from "@/features/painel/services/dashboard.service";
 import type {
@@ -21,7 +15,8 @@ import type {
   SessaoRecenteResumo,
   AlertaClinico,
 } from "@/features/painel/types/dashboard.types";
-import { useSessionStore } from "@/features/sessao";
+import type { Patient } from "@/features/paciente/types/paciente.types";
+import { useSessionStore, CardSessaoTimer } from "@/features/sessao";
 import { usePacienteStore } from "@/features/paciente/store/paciente.store";
 import { ModalPreSessao } from "@/features/sessao/components/ModalPreSessao";
 
@@ -35,7 +30,7 @@ export function PainelPage() {
   const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
   const { patients, setSelectedPatientId } = usePacienteStore();
 
-  const listaPacientes = Object.values(patients);
+  const listaPacientes: Patient[] = Object.values(patients);
   const pacienteDestaque = listaPacientes.find((p) => p.name.includes("Pedro")) || listaPacientes[0];
 
   useEffect(() => {
@@ -45,7 +40,7 @@ export function PainelPage() {
         const [m, s, a] = await Promise.all([
           dashboardService.obterMetricas(),
           dashboardService.listarSessoesRecentes(4),
-          dashboardService.listarAlertasClinicos(),
+          dashboardService.listarAlertas(),
         ]);
         setMetricas(m);
         setSessoesRecentes(s);
@@ -142,10 +137,10 @@ export function PainelPage() {
             </div>
           </div>
           <span className="text-3xl font-extrabold text-[#0b3294] dark:text-blue-400">
-            {loading ? "..." : (metricas?.sessoesMes ?? 24)}
+            {loading ? "..." : (metricas?.sessoesNoMes ?? 24)}
           </span>
           <span className="text-xs text-muted-foreground">
-            {metricas?.percentualConclusao ? `${metricas.percentualConclusao}% taxa de sucesso` : "+12% em relação à semana anterior"}
+            {metricas?.variacaoSessoesPercentual ? `${metricas.variacaoSessoesPercentual > 0 ? "+" : ""}${metricas.variacaoSessoesPercentual}% em relação ao mês anterior` : "+12% em relação à semana anterior"}
           </span>
         </div>
 
@@ -172,7 +167,7 @@ export function PainelPage() {
             </div>
           </div>
           <span className="text-3xl font-extrabold text-foreground">
-            {loading ? "..." : (metricas?.jogosDisponiveis ?? 3)}
+            {loading ? "..." : (metricas?.jogosMaisUtilizados?.length ?? 3)}
           </span>
           <span className="text-xs text-muted-foreground">
             Catálogo DDA e telemetria WebSocket
@@ -218,77 +213,18 @@ export function PainelPage() {
         </div>
 
         <div className="flex flex-col gap-3">
-          {sessoesRecentes.map((sessao) => {
-            const isEmAndamento = sessao.status === "em_andamento";
-            const isFinalizada = sessao.status === "finalizada";
-
-            return (
-              <div
-                key={sessao.id}
-                data-testid={`sessao-card-${sessao.id}`}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border border-border bg-card transition-all hover:border-slate-300 dark:hover:border-slate-700 shadow-xs"
-              >
-                {/* Atividade + Paciente */}
-                <div className="flex items-center gap-3.5">
-                  <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${
-                    isEmAndamento ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40" : "bg-blue-50 text-[#0b3294] dark:bg-blue-950/40"
-                  }`}>
-                    {isEmAndamento ? <PlayCircle className="h-5 w-5 animate-pulse" /> : <Gamepad2 className="h-5 w-5" />}
-                  </div>
-
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-bold text-foreground">
-                      {sessao.jogoNome}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Paciente: <strong className="text-foreground font-medium">{sessao.pacienteNome}</strong>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Countdown / Duração */}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>Duração: <strong className="text-foreground font-semibold">{sessao.duracaoMinutos || 15} min</strong></span>
-                  <span>•</span>
-                  <span>{new Date(sessao.iniciadaEm).toLocaleDateString("pt-BR")}</span>
-                </div>
-
-                {/* Status Badge + Ação */}
-                <div className="flex items-center gap-3 self-end sm:self-auto">
-                  <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
-                    isEmAndamento
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                      : isFinalizada
-                      ? "bg-blue-100 text-[#0b3294] dark:bg-blue-950/60 dark:text-blue-300"
-                      : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
-                  }`}>
-                    {isEmAndamento && <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-ping" />}
-                    {isFinalizada && <CheckCircle2 className="h-3.5 w-3.5" />}
-                    {sessao.status.replace("_", " ").toUpperCase()}
-                  </span>
-
-                  {isFinalizada ? (
-                    <Link
-                      to={`/sessao/${sessao.id}/resultado`}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-white px-3.5 py-1.5 text-xs font-semibold text-foreground hover:bg-slate-50 dark:bg-muted dark:hover:bg-muted/80 shadow-2xs"
-                    >
-                      <BarChart3 className="h-3.5 w-3.5 text-[#0b3294]" />
-                      Resultados
-                    </Link>
-                  ) : (
-                    <Link
-                      to={`/sessao/${sessao.id}/monitoramento`}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#0b3294] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#082570] shadow-2xs"
-                    >
-                      <Activity className="h-3.5 w-3.5" />
-                      Cockpit
-                    </Link>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {sessoesRecentes.map((sessao) => (
+            <CardSessaoTimer
+              key={sessao.id}
+              sessaoId={sessao.id}
+              pacienteNome={sessao.pacienteNome}
+              jogoTitulo={sessao.jogoNome}
+              duracaoSegundos={sessao.duracaoSegundos}
+              status={sessao.status}
+              onCockpitClick={() => navigate(`/sessao/${sessao.id}/monitoramento`)}
+              onConcluirClick={() => navigate(`/sessao/${sessao.id}/resultado`)}
+            />
+          ))}
         </div>
       </section>
 

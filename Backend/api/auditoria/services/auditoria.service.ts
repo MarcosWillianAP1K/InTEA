@@ -7,9 +7,12 @@
 import { AuditoriaModel, AuditoriaSessao, CriarAuditoriaDTO } from '../models/auditoria.model.js';
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
 import { validarUUID } from '../../../core/utils/validators.js';
+import { supabase } from '../../../core/supabase/supabase.client.js';
 
 export interface UsuarioAutenticadoInfo {
   id?: string;
+  is_super_admin?: boolean;
+  clinica_id?: string | null;
   user_metadata?: {
     is_super_admin?: boolean;
     [key: string]: unknown;
@@ -73,10 +76,17 @@ export class AuditoriaService {
       return { autorizado: false, statusHttp: 404, motivo: 'Sessão clínica não encontrada' };
     }
 
-    const isSuperAdmin = usuario?.user_metadata?.is_super_admin === true;
+    const isSuperAdmin =
+      usuario?.user_metadata?.is_super_admin === true ||
+      usuario?.is_super_admin === true;
     const isDonoDaSessao = Boolean(usuario?.id && sessao.terapeuta_id === usuario.id);
 
-    if (!isSuperAdmin && !isDonoDaSessao) {
+    if (isSuperAdmin || isDonoDaSessao) {
+      return { autorizado: true };
+    }
+
+    // Regra RN04: Permite acesso se pertencer à mesma clinica_id e possuir vínculo ativo em terapeuta_paciente
+    if (!sessao.paciente_id || !usuario?.id) {
       return {
         autorizado: false,
         statusHttp: 403,
@@ -84,7 +94,70 @@ export class AuditoriaService {
       };
     }
 
-    return { autorizado: true };
+    try {
+      const { data: terapeuta } = await supabase
+        .from('terapeuta')
+        .select('id, clinica_id, is_super_admin, status_ativo')
+        .eq('id', usuario.id)
+        .maybeSingle();
+
+      if (!terapeuta || terapeuta.status_ativo === false) {
+        return {
+          autorizado: false,
+          statusHttp: 403,
+          motivo: 'Acesso negado: terapeuta inexistente ou inativo (RN04).',
+        };
+      }
+
+      if (terapeuta.is_super_admin) {
+        return { autorizado: true };
+      }
+
+      const { data: paciente } = await supabase
+        .from('paciente')
+        .select('id, clinica_id, status_ativo')
+        .eq('id', sessao.paciente_id)
+        .maybeSingle();
+
+      if (!paciente || paciente.status_ativo === false) {
+        return {
+          autorizado: false,
+          statusHttp: 403,
+          motivo: 'Acesso negado: paciente associado não encontrado ou inativo (RN04).',
+        };
+      }
+
+      if (terapeuta.clinica_id && paciente.clinica_id && terapeuta.clinica_id !== paciente.clinica_id) {
+        return {
+          autorizado: false,
+          statusHttp: 403,
+          motivo: 'Acesso negado: o terapeuta pertence a uma instituição clínica diferente da do paciente (RN04).',
+        };
+      }
+
+      const { data: vinculo } = await supabase
+        .from('terapeuta_paciente')
+        .select('paciente_id')
+        .eq('terapeuta_id', terapeuta.id)
+        .eq('paciente_id', sessao.paciente_id)
+        .maybeSingle();
+
+      if (!vinculo) {
+        return {
+          autorizado: false,
+          statusHttp: 403,
+          motivo: 'Acesso negado: você não possui vínculo ativo com o paciente desta sessão (RN04).',
+        };
+      }
+
+      return { autorizado: true };
+    } catch {
+      return {
+        autorizado: false,
+        statusHttp: 403,
+        motivo: 'Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04).',
+      };
+    }
   }
 
   /**

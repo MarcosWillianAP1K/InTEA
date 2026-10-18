@@ -15,7 +15,11 @@ import {
   HeartPulse,
   Info,
   Plus,
+  LayoutGrid,
+  TableProperties,
 } from "lucide-react";
+import { CardPacienteGrid } from "./CardPacienteGrid";
+import { CardAdicionarPaciente } from "./CardAdicionarPaciente";
 
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
@@ -89,6 +93,7 @@ export interface ListaPacientesProps {
   onSelectPatient?: (patient: Patient) => void;
   onOpenCreate?: () => void;
   selectedPatientId?: string | null;
+  initialVisualMode?: "table" | "grid";
   className?: string;
 }
 export type PatientsListProps = ListaPacientesProps;
@@ -97,8 +102,10 @@ export function ListaPacientes({
   onSelectPatient,
   onOpenCreate,
   selectedPatientId: propSelectedId,
+  initialVisualMode = "grid",
   className = "",
 }: ListaPacientesProps) {
+  const [visualMode, setVisualMode] = useState<"table" | "grid">(initialVisualMode);
   const [detailModalPatient, setDetailModalPatient] = useState<Patient | null>(
     null,
   );
@@ -188,6 +195,36 @@ export function ListaPacientes({
             </SelectContent>
           </Select>
 
+          {/* ALTERNADOR DE MODO VISUAL: TABELA vs GRID */}
+          <div className="flex items-center rounded-lg border border-border bg-muted/40 p-1">
+            <button
+              type="button"
+              data-testid="toggle-view-grid"
+              title="Exibir em Grid de Cards"
+              onClick={() => setVisualMode("grid")}
+              className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                visualMode === "grid"
+                  ? "bg-card text-[#0b3294] dark:text-blue-400 shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              data-testid="toggle-view-table"
+              title="Exibir em Tabela"
+              onClick={() => setVisualMode("table")}
+              className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                visualMode === "table"
+                  ? "bg-card text-[#0b3294] dark:text-blue-400 shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <TableProperties className="h-4 w-4" />
+            </button>
+          </div>
+
           {/* BOTÃO CADASTRAR PACIENTE ESTILO NOVA SEÇÃO */}
           <Button
             type="button"
@@ -206,9 +243,38 @@ export function ListaPacientes({
         </div>
       </div>
 
-      {/* TABELA DE PACIENTES */}
-      <div className="w-full overflow-x-auto rounded-xl border bg-card shadow-xs">
-        <Table>
+      {/* EXIBIÇÃO: GRID DE CARDS vs TABELA */}
+      {visualMode === "grid" ? (
+        <div
+          data-testid="grid-pacientes"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        >
+          {/* PRIMEIRO CARD: ADICIONAR PACIENTE */}
+          <CardAdicionarPaciente
+            onClick={() => {
+              if (onOpenCreate) {
+                onOpenCreate();
+              } else {
+                setIsCreateOpen(true);
+              }
+            }}
+          />
+
+          {/* CARDS DOS PACIENTES FILTRADOS */}
+          {filteredPatients.map((patient) => (
+            <CardPacienteGrid
+              key={patient.id}
+              patient={patient}
+              isSelected={activeSelectedId === patient.id}
+              onSelect={() => handleSelect(patient)}
+              onVerPerfil={() => setDetailModalPatient(patient)}
+            />
+          ))}
+        </div>
+      ) : (
+        /* TABELA DE PACIENTES */
+        <div className="w-full overflow-x-auto rounded-xl border bg-card shadow-xs">
+          <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-80">Paciente</TableHead>
@@ -397,6 +463,7 @@ export function ListaPacientes({
           </TableBody>
         </Table>
       </div>
+      )}
 
       {/* MODAL DE DETALHES CLÍNICOS DO PACIENTE */}
       <Dialog

@@ -217,7 +217,8 @@ CREATE TABLE IF NOT EXISTS public.sessao (
             'em_andamento',
             'finalizada',
             'expirada',
-            'cancelada'
+            'cancelada',
+            'interrompida_por_queda'
         )
     )
 );
@@ -298,6 +299,7 @@ CREATE INDEX IF NOT EXISTS idx_auditoria_acao
     ON public.auditoria_sessao(acao);
 CREATE INDEX IF NOT EXISTS idx_auditoria_detalhes_gin 
     ON public.auditoria_sessao USING gin (detalhes_json);
+
 
 -- ==============================================================================
 -- 17. BLOQUEIO DE HARD DELETE (Desativado temporariamente em DEV/Testes)

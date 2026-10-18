@@ -167,6 +167,13 @@ export async function refreshMock(refreshToken?: string): Promise<AuthTokens> {
 }
 
 /**
+ * Retorna os tokens atualmente ativos no mock em memória.
+ */
+export function obterTokensAtuaisMock(): AuthTokens | null {
+  return tokensAtuais;
+}
+
+/**
  * Retorna os dados do usuário atualmente autenticado.
  */
 export async function obterUsuarioAtualMock(): Promise<UsuarioAutenticado> {

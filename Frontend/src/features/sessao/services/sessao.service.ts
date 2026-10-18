@@ -44,7 +44,9 @@ function obterAuthHeaders(): Record<string, string> {
 
   const token =
     typeof window !== "undefined"
-      ? window.localStorage.getItem("token") ||
+      ? window.localStorage.getItem("access_token") ||
+        window.localStorage.getItem("token") ||
+        window.sessionStorage.getItem("access_token") ||
         window.sessionStorage.getItem("token")
       : null;
 
