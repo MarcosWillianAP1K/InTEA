@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { exemploService } from "../service/auth.service";
+import { exemploService } from "../services/auth.service";
 
 describe("Frontend: ExemploService", () => {
   it("deve listar os dados de exemplo", async () => {

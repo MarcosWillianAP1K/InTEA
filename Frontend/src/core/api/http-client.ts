@@ -89,10 +89,15 @@ export const http: HttpClient = createHttpClient({
   },
 });
 
+export const USE_MOCK_DATA: boolean =
+  import.meta.env.VITE_USE_MOCK_DATA === "true" ||
+  import.meta.env.VITE_USE_MOCK_DATA === true;
+
 /**
  * Helper tipado para chamadas seguras à API com suporte a fallback/mock em caso de erro.
- * Se a requisição à API falhar por problemas de rede, indisponibilidade ou timeout,
- * o valor de fallback fornecido será retornado sem propagar exceção.
+ * Se a variável VITE_USE_MOCK_DATA estiver ativa, ou se a requisição à API falhar
+ * por problemas de rede, indisponibilidade ou timeout, o valor de fallback fornecido
+ * será retornado sem propagar exceção.
  *
  * @param requestFn Função que executa a chamada HTTP (ex: () => http.get<T>(url))
  * @param fallback Valor ou função que fornece os dados simulados
@@ -103,6 +108,13 @@ export async function withFallback<T>(
   fallback: T | (() => T | Promise<T>),
   onError?: (error: unknown) => void,
 ): Promise<T> {
+  // Quando ativado globalmente via .env (VITE_USE_MOCK_DATA=true), recorre aos dados mockados
+  if (USE_MOCK_DATA && import.meta.env.MODE !== "test") {
+    return typeof fallback === "function"
+      ? await (fallback as () => T | Promise<T>)()
+      : fallback;
+  }
+
   try {
     return await requestFn();
   } catch (error) {
@@ -127,6 +139,12 @@ export async function safeRequest<T>(
   requestFn: () => Promise<T>,
   fallback?: T | (() => T | Promise<T>),
 ): Promise<T> {
+  if (USE_MOCK_DATA && fallback !== undefined && import.meta.env.MODE !== "test") {
+    return typeof fallback === "function"
+      ? await (fallback as () => T | Promise<T>)()
+      : fallback;
+  }
+
   try {
     return await requestFn();
   } catch (error) {

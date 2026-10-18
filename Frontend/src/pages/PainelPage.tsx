@@ -1,52 +1,372 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Users,
+  Gamepad2,
+  Calendar,
+  Activity,
+  Plus,
+  ArrowRight,
+  Clock,
+  Sparkles,
+  ChevronRight,
+  AlertCircle,
+  PlayCircle,
+  BarChart3,
+  CheckCircle2,
+} from "lucide-react";
+import { dashboardService } from "@/features/painel/services/dashboard.service";
+import type {
+  DashboardMetricas,
+  SessaoRecenteResumo,
+  AlertaClinico,
+} from "@/features/painel/types/dashboard.types";
+import { useSessionStore } from "@/features/sessao";
+import { usePacienteStore } from "@/features/paciente/store/paciente.store";
+import { ModalPreSessao } from "@/features/sessao/components/ModalPreSessao";
+
 export function PainelPage() {
+  const navigate = useNavigate();
+  const [metricas, setMetricas] = useState<DashboardMetricas | null>(null);
+  const [sessoesRecentes, setSessoesRecentes] = useState<SessaoRecenteResumo[]>([]);
+  const [alertas, setAlertas] = useState<AlertaClinico[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
+  const { patients, setSelectedPatientId } = usePacienteStore();
+
+  const listaPacientes = Object.values(patients);
+  const pacienteDestaque = listaPacientes.find((p) => p.name.includes("Pedro")) || listaPacientes[0];
+
+  useEffect(() => {
+    async function carregarDados() {
+      try {
+        setLoading(true);
+        const [m, s, a] = await Promise.all([
+          dashboardService.obterMetricas(),
+          dashboardService.listarSessoesRecentes(4),
+          dashboardService.listarAlertasClinicos(),
+        ]);
+        setMetricas(m);
+        setSessoesRecentes(s);
+        setAlertas(a);
+      } catch (err) {
+        console.error("Erro ao carregar dados do dashboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void carregarDados();
+  }, []);
+
+  function handleVerPerfil(pacienteId?: string) {
+    if (pacienteId) {
+      setSelectedPatientId(pacienteId);
+      navigate("/pacientes");
+    }
+  }
+
+  function handleNovaSessao() {
+    abrirModalPreSessao({
+      id: "j-labirinto-01",
+      titulo: "Labirinto Espacial",
+    });
+  }
+
   return (
-    <div className="flex flex-1 flex-col gap-6 overflow-x-hidden">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Painel de Controle
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Visão geral das intervenções clínicas, sessões recentes e alertas dos pacientes.
-        </p>
-      </div>
+    <div className="flex flex-1 flex-col gap-8 w-full max-w-7xl mx-auto pb-12 overflow-x-hidden">
+      {/* 1. SESSÃO PACIENTE SUMÁRIO (Figma Frame: 'Sessao paciente sumario') */}
+      {pacienteDestaque && (
+        <section
+          data-testid="sessao-paciente-sumario"
+          className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white p-6 shadow-xs dark:border-blue-900/40 dark:from-blue-950/20 dark:to-background"
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="h-14 w-14 rounded-2xl bg-[#0b3294] text-white flex items-center justify-center font-bold text-xl shadow-md">
+                  {pacienteDestaque.name.slice(0, 2).toUpperCase()}
+                </div>
+                <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500 dark:border-background" />
+              </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl border border-border bg-card flex flex-col gap-2 shadow-xs">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Sessões Realizadas
-          </span>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-bold tracking-tight text-foreground">
+                    {pacienteDestaque.name}
+                  </h2>
+                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-[#0b3294] dark:bg-blue-950/60 dark:text-blue-300">
+                    {pacienteDestaque.category}
+                  </span>
+                  <span className="text-xs text-muted-foreground">• {pacienteDestaque.age} anos</span>
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <span>Status: <strong className="text-foreground font-medium">{pacienteDestaque.clinicalStatus}</strong></span>
+                  <span>•</span>
+                  <span>Última sessão: <strong className="text-foreground font-medium">{pacienteDestaque.lastSessionDate || "Hoje"}</strong></span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => handleVerPerfil(pacienteDestaque.id)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-xs font-semibold text-foreground shadow-xs transition-colors hover:bg-slate-50 dark:bg-muted dark:hover:bg-muted/80 cursor-pointer"
+              >
+                Ver Perfil
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNovaSessao}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0b3294] px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#082570] cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Iniciar Sessão
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 2. CARDS DE MÉTRICAS CONSOLIDADAS DO PAINEL */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-5 rounded-2xl border border-border bg-card flex flex-col gap-2 shadow-xs transition-shadow hover:shadow-sm">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wider">Sessões Realizadas</span>
+            <div className="h-8 w-8 rounded-lg bg-blue-50 text-[#0b3294] flex items-center justify-center dark:bg-blue-950/40 dark:text-blue-400">
+              <Calendar className="h-4 w-4" />
+            </div>
+          </div>
           <span className="text-3xl font-extrabold text-[#0b3294] dark:text-blue-400">
-            24
+            {loading ? "..." : (metricas?.sessoesMes ?? 24)}
           </span>
           <span className="text-xs text-muted-foreground">
-            +12% em relação à semana anterior
+            {metricas?.percentualConclusao ? `${metricas.percentualConclusao}% taxa de sucesso` : "+12% em relação à semana anterior"}
           </span>
         </div>
 
-        <div className="p-5 rounded-2xl border border-border bg-card flex flex-col gap-2 shadow-xs">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Pacientes Ativos
-          </span>
-          <span className="text-3xl font-extrabold text-[#0b3294] dark:text-blue-400">
-            8
+        <div className="p-5 rounded-2xl border border-border bg-card flex flex-col gap-2 shadow-xs transition-shadow hover:shadow-sm">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wider">Pacientes Ativos</span>
+            <div className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center dark:bg-emerald-950/40 dark:text-emerald-400">
+              <Users className="h-4 w-4" />
+            </div>
+          </div>
+          <span className="text-3xl font-extrabold text-foreground">
+            {loading ? "..." : (metricas?.pacientesAtivos ?? listaPacientes.length)}
           </span>
           <span className="text-xs text-muted-foreground">
-            Todos com planos de intervenção ativos
+            Todos com planos terapêuticos ativos
           </span>
         </div>
 
-        <div className="p-5 rounded-2xl border border-border bg-card flex flex-col gap-2 shadow-xs">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Jogos Disponíveis
-          </span>
-          <span className="text-3xl font-extrabold text-[#0b3294] dark:text-blue-400">
-            3
+        <div className="p-5 rounded-2xl border border-border bg-card flex flex-col gap-2 shadow-xs transition-shadow hover:shadow-sm">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wider">Jogos Integrados</span>
+            <div className="h-8 w-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center dark:bg-purple-950/40 dark:text-purple-400">
+              <Gamepad2 className="h-4 w-4" />
+            </div>
+          </div>
+          <span className="text-3xl font-extrabold text-foreground">
+            {loading ? "..." : (metricas?.jogosDisponiveis ?? 3)}
           </span>
           <span className="text-xs text-muted-foreground">
-            Com telemetria e DDA integrados
+            Catálogo DDA e telemetria WebSocket
           </span>
         </div>
-      </div>
+
+        <div className="p-5 rounded-2xl border border-border bg-card flex flex-col gap-2 shadow-xs transition-shadow hover:shadow-sm">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wider">Alertas Clínicos</span>
+            <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center dark:bg-amber-950/40 dark:text-amber-400">
+              <Activity className="h-4 w-4" />
+            </div>
+          </div>
+          <span className="text-3xl font-extrabold text-foreground">
+            {loading ? "..." : alertas.length}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {alertas.length > 0 ? "Avisos DDA aguardando revisão" : "Nenhum sinal crítico recente"}
+          </span>
+        </div>
+      </section>
+
+      {/* 3. SEÇÃO SESSÕES RECENTES (Figma Frame: 'Sessões' & 'sessão - InTEA') */}
+      <section className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-bold tracking-tight text-foreground">
+              Sessões Clínicas Recentes
+            </h3>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-muted dark:text-muted-foreground">
+              {sessoesRecentes.length}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleNovaSessao}
+            className="text-xs font-semibold text-[#0b3294] dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            Nova Intervenção
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {sessoesRecentes.map((sessao) => {
+            const isEmAndamento = sessao.status === "em_andamento";
+            const isFinalizada = sessao.status === "finalizada";
+
+            return (
+              <div
+                key={sessao.id}
+                data-testid={`sessao-card-${sessao.id}`}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border border-border bg-card transition-all hover:border-slate-300 dark:hover:border-slate-700 shadow-xs"
+              >
+                {/* Atividade + Paciente */}
+                <div className="flex items-center gap-3.5">
+                  <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${
+                    isEmAndamento ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40" : "bg-blue-50 text-[#0b3294] dark:bg-blue-950/40"
+                  }`}>
+                    {isEmAndamento ? <PlayCircle className="h-5 w-5 animate-pulse" /> : <Gamepad2 className="h-5 w-5" />}
+                  </div>
+
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-bold text-foreground">
+                      {sessao.jogoNome}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Paciente: <strong className="text-foreground font-medium">{sessao.pacienteNome}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Countdown / Duração */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Duração: <strong className="text-foreground font-semibold">{sessao.duracaoMinutos || 15} min</strong></span>
+                  <span>•</span>
+                  <span>{new Date(sessao.iniciadaEm).toLocaleDateString("pt-BR")}</span>
+                </div>
+
+                {/* Status Badge + Ação */}
+                <div className="flex items-center gap-3 self-end sm:self-auto">
+                  <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
+                    isEmAndamento
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                      : isFinalizada
+                      ? "bg-blue-100 text-[#0b3294] dark:bg-blue-950/60 dark:text-blue-300"
+                      : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                  }`}>
+                    {isEmAndamento && <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-ping" />}
+                    {isFinalizada && <CheckCircle2 className="h-3.5 w-3.5" />}
+                    {sessao.status.replace("_", " ").toUpperCase()}
+                  </span>
+
+                  {isFinalizada ? (
+                    <Link
+                      to={`/sessao/${sessao.id}/resultado`}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-white px-3.5 py-1.5 text-xs font-semibold text-foreground hover:bg-slate-50 dark:bg-muted dark:hover:bg-muted/80 shadow-2xs"
+                    >
+                      <BarChart3 className="h-3.5 w-3.5 text-[#0b3294]" />
+                      Resultados
+                    </Link>
+                  ) : (
+                    <Link
+                      to={`/sessao/${sessao.id}/monitoramento`}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#0b3294] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#082570] shadow-2xs"
+                    >
+                      <Activity className="h-3.5 w-3.5" />
+                      Cockpit
+                    </Link>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 4. SEÇÃO MEUS PACIENTES (Tabela resumida fiel ao Figma 'Tabela de pacientes') */}
+      <section className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-bold tracking-tight text-foreground">
+              Meus Pacientes
+            </h3>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-muted dark:text-muted-foreground">
+              {listaPacientes.length}
+            </span>
+          </div>
+
+          <Link
+            to="/pacientes"
+            className="text-xs font-semibold text-[#0b3294] dark:text-blue-400 hover:underline flex items-center gap-1"
+          >
+            Ver todos os pacientes
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50/75 border-b border-border text-muted-foreground font-semibold dark:bg-muted/50">
+                <tr>
+                  <th className="px-6 py-3.5">Nome do Paciente</th>
+                  <th className="px-6 py-3.5">Diagnóstico / Plano</th>
+                  <th className="px-6 py-3.5">Última Sessão</th>
+                  <th className="px-6 py-3.5">Status Clínico</th>
+                  <th className="px-6 py-3.5 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {listaPacientes.slice(0, 5).map((p) => (
+                  <tr key={p.id} className="transition-colors hover:bg-slate-50/50 dark:hover:bg-muted/30">
+                    <td className="px-6 py-4 font-semibold text-foreground flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-blue-100 text-[#0b3294] flex items-center justify-center font-bold text-xs dark:bg-blue-950 dark:text-blue-300">
+                        {p.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <span>{p.name}</span>
+                    </td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+                        {p.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {p.lastSessionDate || "Sem registros recentes"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-2xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        {p.clinicalStatus}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleVerPerfil(p.id)}
+                        className="rounded-lg border border-border bg-white px-3 py-1 text-2xs font-semibold text-foreground hover:bg-slate-50 dark:bg-muted dark:hover:bg-muted/80 shadow-2xs cursor-pointer"
+                      >
+                        Ver Perfil
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* MODAL GLOBAL DE PRÉ-SESSÃO E PAREAMENTO */}
+      <ModalPreSessao />
     </div>
   );
 }

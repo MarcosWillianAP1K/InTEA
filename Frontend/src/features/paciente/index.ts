@@ -5,4 +5,4 @@ export * from "./components/ConteudoCriarPaciente";
 export * from "./components/DialogFormularioPaciente";
 export * from "./components/ConteudoPacientes";
 export * from "./components/ListaPacientes";
-export { default as PatientsPage } from "./pages/patientsPage";
+export { default as PacientesPage } from "@/pages/PacientesPage";

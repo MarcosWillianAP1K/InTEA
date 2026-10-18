@@ -5,7 +5,7 @@ import { jogosService, JOGOS_MOCK } from "@/features/jogos/services/jogosService
 import { JogoCard } from "@/features/jogos/components/JogoCard";
 import { JogosFiltros } from "@/features/jogos/components/JogosFiltros";
 import { useSessionStore } from "@/features/sessao";
-import { ModalPreSessao } from "@/overlays/ModalPreSessao";
+import { ModalPreSessao } from "@/features/sessao/components/ModalPreSessao";
 
 export function BibliotecaJogosPage() {
   const [jogos, setJogos] = useState<Jogo[]>([]);

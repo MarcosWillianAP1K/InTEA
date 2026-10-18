@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { NavHeader } from "../components/nav-header";
-import { NavProjects } from "../components/nav-projects";
-import { NavUser } from "../components/nav-user";
+import { NavHeader } from "@/layout/components/nav-header";
+import { NavProjects } from "@/layout/components/nav-projects";
+import { NavUser } from "@/layout/components/nav-user";
 import { SidebarProvider } from "@/shared/components/ui/sidebar";
 import { LayoutDashboard, Gamepad2, Users, History } from "lucide-react";
 
