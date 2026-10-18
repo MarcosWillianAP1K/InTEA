@@ -1,3 +1,10 @@
 export * from "./types";
 export * from "./services";
-export { default as dashboardService } from "./services/dashboard.service";
+export * from "./components/app-sidebar";
+export * from "./components/nav-header";
+export * from "./components/nav-main";
+export * from "./components/nav-projects";
+export * from "./components/nav-user";
+export * from "./components/nav-button";
+export { default as DashboardPage } from "./pages/dashboardPage";
+export { default as dashboardService, painelService } from "./services/dashboard.service";

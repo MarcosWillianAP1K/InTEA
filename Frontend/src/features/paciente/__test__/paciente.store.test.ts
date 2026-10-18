@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { usePatientsStore, PATIENTS_DICTIONARY } from "../store/patients.store";
-import type { Patient } from "../store/patients.store";
+import { usePacienteStore, usePatientsStore, PATIENTS_DICTIONARY } from "../store/paciente.store";
+import type { Patient } from "../store/paciente.store";
 
-describe("Patients Store (usePatientsStore)", () => {
+describe("Paciente Store (usePacienteStore)", () => {
   beforeEach(() => {
     usePatientsStore.setState({
       patients: { ...PATIENTS_DICTIONARY },

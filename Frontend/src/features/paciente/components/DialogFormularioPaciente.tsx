@@ -19,13 +19,16 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
-import { usePatientsStore } from "../store/patients.store";
-import type { Patient } from "../store/patients.store";
+import { usePacienteStore } from "../store/paciente.store";
+import type { Patient } from "../types/paciente.types";
+import { DEFAULT_TRIGGERS, AVATAR_PLACEHOLDERS } from "../types/bdmock";
 
-interface PatientFormDialogProps {
+
+export interface DialogFormularioPacienteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+export type PatientFormDialogProps = DialogFormularioPacienteProps;
 
 
 function formatCpfCnpj(value: string) {
@@ -89,29 +92,8 @@ async function fetchAddressByCep(cepValue: string) {
   }
 }
 
-const DEFAULT_TRIGGERS = [
-  "Som Alto",
-  "Brilho Intenso",
-  "Interações Sociais",
-  "Texturas Pastosas",
-  "Mudança de Rotina",
-  "Aglomerações",
-  "Toque Leve",
-  "Odores Fortes",
-];
-
-const AVATAR_PLACEHOLDERS = [
-  "https://images.unsplash.com/photo-1543332164-6e82f355badc?auto=format&fit=crop&q=80&w=400",
-  "https://images.unsplash.com/photo-1595454223600-91fbdd77ae09?auto=format&fit=crop&q=80&w=400",
-  "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&q=80&w=400",
-  "https://images.unsplash.com/photo-1517677129300-07b130802f46?auto=format&fit=crop&q=80&w=400",
-  "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&q=80&w=400",
-  "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=400",
-  "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=400",
-];
-
-export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps) {
-  const { addPatient } = usePatientsStore();
+export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormularioPacienteProps) {
+  const { addPatient } = usePacienteStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const laudoInputRef = useRef<HTMLInputElement>(null);
 
@@ -867,4 +849,5 @@ export function PatientFormDialog({ open, onOpenChange }: PatientFormDialogProps
   );
 }
 
-export default PatientFormDialog;
+export const PatientFormDialog = DialogFormularioPaciente;
+export default DialogFormularioPaciente;

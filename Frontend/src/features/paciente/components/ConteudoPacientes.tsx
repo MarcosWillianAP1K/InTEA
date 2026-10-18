@@ -1,36 +1,34 @@
 "use client";
 
 import React, { useState } from "react";
-import { PatientsList } from "./patientsList";
-import { PatientCreateContent } from "./patientCreateContent";
-import { usePatientsStore } from "../store/patients.store";
-import type { Patient } from "../store/patients.store";
-import { CheckCircle2, Users } from "lucide-react";
-import { Badge } from "@/shared/components/ui/badge";
+import { ListaPacientes } from "./ListaPacientes";
+import { ConteudoCriarPaciente } from "./ConteudoCriarPaciente";
+import { usePacienteStore } from "../store/paciente.store";
+import type { Patient } from "../types/paciente.types";
 
-interface PatientsContentProps {
+export interface ConteudoPacientesProps {
   onSelectPatient?: (patient: Patient) => void;
   selectedPatientId?: string | null;
   initialMode?: "list" | "create";
   className?: string;
 }
+export type PatientsContentProps = ConteudoPacientesProps;
 
-export function PatientsContent({
+export function ConteudoPacientes({
   onSelectPatient,
   selectedPatientId,
   initialMode = "list",
   className = "",
-}: PatientsContentProps) {
+}: ConteudoPacientesProps) {
   const [viewMode, setViewMode] = useState<"list" | "create">(initialMode);
-  const { getSelectedPatient, setSelectedPatientId, patients } = usePatientsStore();
-  const totalPatients = Object.keys(patients).length;
-  const activePatient = getSelectedPatient();
+  const { setSelectedPatientId } = usePacienteStore();
+
 
   // MODO: CADASTRO DE PACIENTE (PÁGINA DEDICADA)
   if (viewMode === "create") {
     return (
       <div className={`flex flex-1 flex-col w-full mx-auto ${className}`}>
-        <PatientCreateContent
+        <ConteudoCriarPaciente
           onBack={() => setViewMode("list")}
           onSuccess={(newPatient) => {
             setSelectedPatientId(newPatient.id);
@@ -50,7 +48,7 @@ export function PatientsContent({
      
 
       {/* LISTA / TABELA DE PACIENTES */}
-      <PatientsList
+      <ListaPacientes
         onSelectPatient={onSelectPatient}
         onOpenCreate={() => setViewMode("create")}
         selectedPatientId={selectedPatientId}
@@ -59,4 +57,5 @@ export function PatientsContent({
   );
 }
 
-export default PatientsContent;
+export const PatientsContent = ConteudoPacientes;
+export default ConteudoPacientes;

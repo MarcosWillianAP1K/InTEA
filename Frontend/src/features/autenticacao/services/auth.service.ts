@@ -177,4 +177,5 @@ export const exemploService = {
   },
 };
 
+export const autenticacaoService = authService;
 export default authService;

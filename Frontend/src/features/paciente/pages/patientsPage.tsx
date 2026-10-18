@@ -1,12 +1,4 @@
-import DashboardLayout from "@/layout/dashboardLayout";
-import { PatientsContent } from "../components/patientsContent";
+import { PacientesPage } from "@/pages/PacientesPage";
 
-export default function PatientsPage() {
-  return (
-    <DashboardLayout>
-      <div className="flex flex-1 flex-col gap-6 w-full mx-auto py-2 overflow-x-hidden">
-        <PatientsContent />
-      </div>
-    </DashboardLayout>
-  );
-}
+export const PatientsPage = PacientesPage;
+export default PacientesPage;

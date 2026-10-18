@@ -81,7 +81,7 @@ Frontend/src/
 │   ├── auth/                   # Autenticação e sessão
 │   ├── dashboard/              # Telas e componentes de dashboard
 │   ├── jogos/                  # Módulo de biblioteca de jogos terapêuticos
-│   ├── patients/               # Módulo de pacientes (lista, criação, perfil)
+│   ├── paciente/               # Módulo de pacientes (lista, criação, prontuário)
 │   └── settings/               # Preferências e configurações do terapeuta
 ├── layout/                     # Estrutura de layout da aplicação (sidebar, header)
 ├── routes/                     # Centralização de roteamento
@@ -128,7 +128,7 @@ Frontend/src/
 
 ## Features Desenvolvidas (Sprint 7)
 
-### Pacientes (`features/patients/`)
+### Pacientes (`features/paciente/`)
 
 Módulo clínico completo para gestão do prontuário:
 

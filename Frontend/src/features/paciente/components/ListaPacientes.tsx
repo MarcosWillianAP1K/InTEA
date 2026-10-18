@@ -49,9 +49,9 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 
-import { usePatientsStore, PATIENTS_DICTIONARY } from "../store/patients.store";
-import type { Patient, PatientStatus } from "../store/patients.store";
-import { PatientFormDialog } from "./patientFormDialog";
+import { usePacienteStore, PATIENTS_DICTIONARY } from "../store/paciente.store";
+import type { Patient, PatientStatus } from "../store/paciente.store";
+import { DialogFormularioPaciente } from "./DialogFormularioPaciente";
 
 export { PATIENTS_DICTIONARY };
 export type { Patient, PatientStatus };
@@ -85,19 +85,20 @@ const STATUS_CONFIG: Record<
   },
 };
 
-interface PatientsListProps {
+export interface ListaPacientesProps {
   onSelectPatient?: (patient: Patient) => void;
   onOpenCreate?: () => void;
   selectedPatientId?: string | null;
   className?: string;
 }
+export type PatientsListProps = ListaPacientesProps;
 
-export function PatientsList({
+export function ListaPacientes({
   onSelectPatient,
   onOpenCreate,
   selectedPatientId: propSelectedId,
   className = "",
-}: PatientsListProps) {
+}: ListaPacientesProps) {
   const [detailModalPatient, setDetailModalPatient] = useState<Patient | null>(
     null,
   );
@@ -116,7 +117,7 @@ export function PatientsList({
     setSortOrder,
     getFilteredPatients,
     getCategories,
-  } = usePatientsStore();
+  } = usePacienteStore();
 
   const activeSelectedId =
     propSelectedId !== undefined ? propSelectedId : storeSelectedId;
@@ -561,9 +562,10 @@ export function PatientsList({
       </Dialog>
 
       {/* MODAL DE CADASTRO DE NOVO PACIENTE */}
-      <PatientFormDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      <DialogFormularioPaciente open={isCreateOpen} onOpenChange={setIsCreateOpen} />
     </div>
   );
 }
 
-export default PatientsList;
+export const PatientsList = ListaPacientes;
+export default ListaPacientes;

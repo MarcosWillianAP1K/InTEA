@@ -345,74 +345,87 @@ O projeto utiliza **Swagger UI** (`swagger-ui-express` + `swagger-jsdoc`) para d
 | Lucide React | ^0.575.x | Biblioteca oficial de ícones |
 | Vitest | ^5.x | Testes unitários de componentes e hooks |
 
-### 4.2 Estrutura de Diretórios (Padrão Oficial)
+### 4.2 Estrutura de Diretórios (Padrão Oficial Feature-Driven)
 
 ``` Pastes
 Frontend/src/
-├── routes/                     # Central de Roteamento SPA
-│   └── index.tsx               # Mapeamento declarativo de rotas com React Router DOM v7
+├── core/                       # Infraestrutura e clientes centrais da aplicação
+│   ├── api/
+│   │   ├── http-client.ts      # Cliente HTTP oficial resiliente (HttpClient) com interceptores JWT e retries
+│   │   └── endpoints.ts        # Constantes tipadas de rotas RESTful (/api/paciente, /api/terapeuta, etc.)
+│   └── web.socket.ts           # Cliente e hooks reativos de Socket.IO para telemetria em tempo real
+├── routes/                     # Central de Roteamento SPA (React Router DOM v7)
+│   └── index.tsx               # Mapeamento declarativo de rotas com layouts aninhados
 ├── layout/                     # Casca estrutural e cascas visuais da aplicação
 │   ├── dashboardLayout.tsx     # Layout com SidebarProvider, AppSidebar, Header dinâmico e trigger
 │   └── LayoutExample.tsx       # BaseLayout reutilizável com scroll protegido
 ├── features/                   # Módulos verticais por domínio de negócio
-│   ├── dashboard/              # Painel inicial, métricas gerais e navegação
-│   │   ├── components/         # app-sidebar.tsx, nav-header.tsx, nav-main.tsx, nav-button.tsx, nav-user.tsx
-│   │   └── pages/              # dashboardPage.tsx
-│   ├── patients/               # Gestão clínica e cadastral de pacientes
-│   │   ├── components/         # patientsList.tsx, patientsContent.tsx, patientFormDialog.tsx, patientCreateContent.tsx
-│   │   ├── pages/              # patientsPage.tsx
-│   │   └── store/              # patients.store.ts (Zustand com tipagem Patient e PatientStatus)
+│   ├── auth/                   # Autenticação e sessão do terapeuta
+│   │   ├── hooks/              # useAuth.ts
+│   │   ├── services/           # auth.service.ts
+│   │   └── types/              # auth.types.ts e bdmock.ts
+│   ├── terapeuta/              # Gestão do perfil do terapeuta e equipe multidisciplinar
+│   │   ├── services/           # terapeuta.service.ts
+│   │   └── types/              # terapeuta.types.ts e bdmock.ts
+│   ├── paciente/               # Gestão clínica e cadastral de pacientes (alias/compat com patients)
+│   │   ├── components/         # Formulários e listagens
+│   │   ├── pages/              # PacientesPage.tsx
+│   │   ├── services/           # paciente.service.ts
+│   │   ├── store/              # patients.store.ts
+│   │   └── types/              # paciente.types.ts e bdmock.ts
 │   ├── jogos/                  # Catálogo e Biblioteca de Jogos Terapêuticos
 │   │   ├── components/         # JogoCard.tsx, JogosFiltros.tsx
 │   │   ├── pages/              # BibliotecaJogosPage.tsx
-│   │   ├── services/           # jogosService.ts
-│   │   └── types.ts            # Interfaces de Jogos, Metadados e Manifestos
-│   ├── settings/               # Configurações do usuário e preferências da aplicação
-│   │   ├── pages/              # settingsPage.tsx
-│   │   ├── sections/           # appearanceSetting.tsx
-│   │   └── store/              # settingsStore.ts (Zustand com persistência em localStorage)
-│   └── auth/                   # Autenticação e sessão do terapeuta
-│       ├── hooks/              # useAuth.ts
-│       ├── service/            # auth.service.ts
-│       └── store/              # auth.store.ts
+│   │   ├── services/           # jogos.service.ts (com fallback jogosService.ts)
+│   │   └── types/              # jogos.types.ts e bdmock.ts
+│   ├── sessao/                 # Orquestração e cockpit de intervenção clínica
+│   │   ├── components/         # Telemetria, anotações, controles clínicos
+│   │   ├── hooks/              # useLiveTelemetry.ts, useSessionPersistence.ts
+│   │   ├── pages/              # CockpitSessaoPage.tsx, ResultadoSessaoPage.tsx
+│   │   ├── services/           # sessao.service.ts (com fallback sessaoService.ts)
+│   │   ├── store/              # sessionStore.ts
+│   │   └── types/              # sessao.types.ts e bdmock.ts
+│   ├── anotacao/               # Anotações clínicas e prontuário
+│   │   ├── services/           # anotacao.service.ts
+│   │   └── types/              # anotacao.types.ts e bdmock.ts
+│   ├── dashboard/              # Painel inicial, métricas gerais e navegação
+│   │   ├── components/         # app-sidebar.tsx, nav-header.tsx, nav-main.tsx, nav-user.tsx
+│   │   ├── pages/              # dashboardPage.tsx
+│   │   ├── services/           # dashboard.service.ts
+│   │   └── types/              # dashboard.types.ts e bdmock.ts
+│   └── settings/               # Configurações do usuário e preferências da aplicação
+│       ├── pages/              # settingsPage.tsx
+│       ├── sections/           # appearanceSetting.tsx
+│       ├── store/              # settingsStore.ts
+│       └── types/              # settings.types.ts e bdmock.ts
 ├── shared/                     # Código e utilitários compartilhados entre features
 │   ├── components/
-│   │   └── ui/                 # 17 componentes primitivos (avatar, badge, breadcrumb, button, dialog, etc.)
-│   ├── hooks/                  # Hooks globais compartilhados (ex: use-mobile.ts)
-│   ├── lib/                    # Utilitários puros (ex: utils.ts com cn() usando clsx e twMerge)
+│   │   └── ui/                 # Componentes primitivos (avatar, badge, button, dialog, etc.)
+│   ├── hooks/                  # Hooks globais compartilhados (use-mobile.ts, etc.)
+│   ├── lib/                    # Utilitários puros (utils.ts com cn() usando clsx e twMerge)
 │   ├── providers/              # Provedores de contexto (ThemeProvider, etc.)
-│   ├── types/                  # Tipagens globais da API e Autenticação
+│   ├── types/                  # Tipagens globais da API (api.types.ts) e bdmock.ts global
 │   └── utils/
-│       └── request.ts          # Cliente HTTP resiliente (HttpClient) com CSRF, retry, timeout e refresh JWT
+│       └── request.ts          # Infraestrutura do cliente HTTP resiliente (HttpClient)
 ├── assets/                     # SVGs, ícones e ilustrações da identidade visual do InTEA
 ├── styles/                     # Folha de estilos raiz (index.css com Tailwind v4 e tw-animate-css)
 ├── App.tsx                     # Ponto de montagem com ThemeProvider e Routes
 └── main.tsx                    # Ponto de entrada do React 19
 ```
 
-### 4.3 Cliente HTTP Resiliente (`shared/utils/request.ts`)
+### 4.3 Cliente HTTP Resiliente (`core/api/http-client.ts`)
 
-Todas as chamadas à API REST devem utilizar a infraestrutura corporativa do `HttpClient`, que encapsula resiliência e segurança:
+Todas as chamadas à API REST devem utilizar a instância centralizada do `HttpClient` em `core/api/http-client.ts` (construída sobre a base resiliente de `shared/utils/request.ts`):
 
 1. **Instanciação Padronizada:**
 
-   ```typescript
-   import { createHttpClient } from "@/shared/utils/request";
+```typescript
+import { http } from "@/core/api/http-client";
+import { ENDPOINTS } from "@/core/api/endpoints";
 
-   export const http = createHttpClient({
-     baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api",
-     requestTimeoutMs: 15_000,
-     auth: {
-       getAccessToken: () => localStorage.getItem("access_token") ?? undefined,
-       refreshAccessToken: async () => {
-         // Lógica de renovação com o endpoint /api/auth/refresh
-       },
-       onAuthFailure: () => {
-         window.location.href = "/login";
-       },
-     },
-   });
-   ```
+// Exemplo de consumo no service da feature
+const response = await http.get(ENDPOINTS.PACIENTE.LISTAR);
+```
 
 2. **Garantias de Resiliência:**
    - **Timeout Automático:** Aborta chamadas pendentes após 15 segundos (5 minutos para upload).

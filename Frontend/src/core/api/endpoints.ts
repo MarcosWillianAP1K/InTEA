@@ -1,0 +1,100 @@
+/**
+ * ============================================================================
+ * ENDPOINTS DA API REST DO InTEA
+ * Especificação canônica dos caminhos da API para os módulos clínicos e de jogos.
+ * Referência: docs/api-pacientes-jogos.md & docs/architecture.md
+ * ============================================================================
+ */
+
+export const ENDPOINTS = {
+  AUTH: {
+    LOGIN: "/auth/login",
+    REFRESH: "/auth/refresh",
+    LOGOUT: "/auth/logout",
+    ME: "/auth/me",
+  },
+  TERAPEUTA: {
+    BASE: "/terapeuta",
+    BY_ID: (id: string) => `/terapeuta/${id}`,
+    HARD_DELETE: (id: string) => `/terapeuta/${id}/hard`,
+    REATIVAR: (id: string) => `/terapeuta/${id}/reativar`,
+  },
+  PACIENTE: {
+    BASE: "/paciente",
+    BY_ID: (id: string) => `/paciente/${id}`,
+    HARD_DELETE: (id: string) => `/paciente/${id}/hard`,
+    REATIVAR: (id: string) => `/paciente/${id}/reativar`,
+    TERAPEUTAS: (id: string) => `/paciente/${id}/terapeutas`,
+    TERAPEUTA_BY_ID: (id: string, terapeutaId: string) =>
+      `/paciente/${id}/terapeutas/${terapeutaId}`,
+  },
+  JOGOS: {
+    BASE: "/jogos",
+    BY_ID: (id: string) => `/jogos/${id}`,
+    MANIFESTO: (id: string) => `/jogos/${id}/manifesto`,
+  },
+  SESSAO: {
+    INICIAR: "/sessao/iniciar",
+    BY_ID: (id: string) => `/sessao/${id}`,
+    FINALIZAR: (id: string) => `/sessao/${id}/finalizar`,
+    CANCELAR: (id: string) => `/sessao/${id}/cancelar`,
+    STATUS: (id: string) => `/sessao/${id}/status`,
+    RESULTADO: (id: string) => `/sessao/${id}/resultado`,
+    EXPORTAR: (id: string) => `/sessao/${id}/exportar`,
+    STATUS_BY_TOKEN: (token: string) => `/sessao/${token}/status`,
+    BY_TOKEN: (token: string) => `/sessao/token/${token}`,
+  },
+  ANOTACAO: {
+    BASE: "/anotacao",
+    BY_ID: (id: string) => `/anotacao/${id}`,
+    HARD_DELETE: (id: string) => `/anotacao/${id}/hard`,
+    REATIVAR: (id: string) => `/anotacao/${id}/reativar`,
+    POR_PACIENTE: (pacienteId: string) => `/anotacao/paciente/${pacienteId}`,
+  },
+  DASHBOARD: {
+    METRICAS: "/dashboard/metricas",
+    SESSOES_RECENTES: "/dashboard/sessoes-recentes",
+    ATIVIDADES: "/dashboard/atividades",
+    ALERTAS: "/dashboard/alertas",
+    ALERTA_LIDO: (id: string) => `/dashboard/alertas/${id}/lido`,
+  },
+  SETTINGS: {
+    BASE: "/settings",
+    USUARIO: (id: string) => `/settings/${id}`,
+  },
+  TEMPLATES: {
+    AUTH_LOGIN: "/auth/login",
+    AUTH_REFRESH: "/auth/refresh",
+    AUTH_LOGOUT: "/auth/logout",
+    AUTH_ME: "/auth/me",
+    TERAPEUTA_BASE: "/terapeuta",
+    TERAPEUTA_BY_ID: "/terapeuta/:id",
+    TERAPEUTA_HARD: "/terapeuta/:id/hard",
+    TERAPEUTA_REATIVAR: "/terapeuta/:id/reativar",
+    PACIENTE_BASE: "/paciente",
+    PACIENTE_BY_ID: "/paciente/:id",
+    PACIENTE_HARD: "/paciente/:id/hard",
+    PACIENTE_REATIVAR: "/paciente/:id/reativar",
+    PACIENTE_TERAPEUTAS: "/paciente/:id/terapeutas",
+    PACIENTE_TERAPEUTA_ID: "/paciente/:id/terapeutas/:terapeutaId",
+    JOGOS_BASE: "/jogos",
+    JOGOS_BY_ID: "/jogos/:id",
+    JOGOS_MANIFESTO: "/jogos/:id/manifesto",
+    SESSAO_INICIAR: "/sessao/iniciar",
+    SESSAO_BY_ID: "/sessao/:id",
+    SESSAO_FINALIZAR: "/sessao/:id/finalizar",
+    SESSAO_CANCELAR: "/sessao/:id/cancelar",
+    SESSAO_STATUS: "/sessao/:id/status",
+    SESSAO_RESULTADO: "/sessao/:id/resultado",
+    SESSAO_EXPORTAR: "/sessao/:id/exportar",
+    SESSAO_TOKEN_STATUS: "/sessao/:token/status",
+    SESSAO_BY_TOKEN: "/sessao/token/:token",
+    ANOTACAO_BASE: "/anotacao",
+    ANOTACAO_BY_ID: "/anotacao/:id",
+    ANOTACAO_HARD: "/anotacao/:id/hard",
+    ANOTACAO_REATIVAR: "/anotacao/:id/reativar",
+    ANOTACAO_POR_PACIENTE: "/anotacao/paciente/:pacienteId",
+  },
+} as const;
+
+export type Endpoints = typeof ENDPOINTS;

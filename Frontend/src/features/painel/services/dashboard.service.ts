@@ -141,4 +141,5 @@ export const dashboardService = {
   },
 };
 
+export const painelService = dashboardService;
 export default dashboardService;
