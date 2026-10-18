@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
+import { Bell } from "lucide-react";
 import { AppSidebar } from "./components/app-sidebar";
+import { NavUser } from "./components/nav-user";
 import {
   SidebarProvider,
   SidebarInset,
   SidebarTrigger,
 } from "@/shared/components/ui/sidebar";
+import { useAuthStore } from "@/features/autenticacao/store/authStore";
 
 export interface SidebarLayoutProps {
   children?: ReactNode;
@@ -14,35 +17,53 @@ export interface SidebarLayoutProps {
 
 export function SidebarLayout({
   children,
-  terapeutaNome = "Dr. Hermeson Alves",
+  terapeutaNome,
 }: SidebarLayoutProps) {
-  const hour = new Date().getHours();
-  const saudacao =
-    hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const user = useAuthStore((s) => s.user);
+  const nomeExibicao = user?.nome || terapeutaNome || "Dr. Hermeson Alves";
 
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="min-h-svh max-h-svh overflow-x-hidden flex flex-row">
         <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
-          <header className="flex h-16 shrink-0 items-center justify-between border-b bg-sidebar/80 px-4 sm:px-6 backdrop-blur">
-            <div className="flex items-center gap-3">
-              <SidebarTrigger className="-ml-1" />
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold tracking-tight text-foreground">
-                  {saudacao}, {terapeutaNome}
-                </span>
-                <span className="text-xs text-muted-foreground hidden sm:inline">
-                  Painel de Orquestração Clínica
-                </span>
-              </div>
+          <header className="flex flex-row justify-between items-center px-6 py-3.5 w-full bg-background border-b border-border transition-colors shrink-0">
+            {/* Lado Esquerdo: SidebarTrigger + Divisor + Saudação */}
+            <div className="flex items-center gap-3 min-w-0">
+              <SidebarTrigger className="-ml-1 shrink-0" />
+              <div
+                className="h-5 w-px bg-border shrink-0"
+                aria-hidden="true"
+              />
+              <h1 className="text-[20px] md:text-[24px] font-bold text-primary leading-tight tracking-tight truncate">
+                Olá, {nomeExibicao}
+              </h1>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xs font-mono font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 dark:bg-primary/20 dark:text-primary-foreground dark:border-primary/40">
-                InTEA v1.0 • Clínico
-              </span>
+
+            {/* Lado Direito: Notificações + Perfil do Terapeuta */}
+            <div className="flex flex-row items-center gap-[16px] md:gap-[24px] shrink-0">
+              <button
+                type="button"
+                aria-label="Notificações"
+                className="relative flex items-center justify-center p-2.5 rounded-full hover:bg-surface-alt text-foreground transition-colors cursor-pointer"
+              >
+                <Bell className="w-5 h-5" />
+                <span
+                  aria-hidden="true"
+                  className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#BA1A1A]"
+                />
+              </button>
+
+              <NavUser
+                user={
+                  terapeutaNome && !user
+                    ? { name: terapeutaNome }
+                    : undefined
+                }
+              />
             </div>
           </header>
+
           <main className="relative flex flex-1 min-h-0 flex-col overflow-y-auto overflow-x-hidden p-4 sm:p-6">
             {children ?? <Outlet />}
           </main>

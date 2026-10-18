@@ -55,14 +55,20 @@ export function SettingsPage() {
 
   return (
     <SidebarProvider
-      className="flex h-full min-h-0 items-stretch"
+      className="flex h-full min-h-0 items-stretch bg-background"
       style={{ minHeight: 0 }}
     >
-      <Sidebar collapsible="none" className="hidden md:flex">
+      <Sidebar
+        collapsible="none"
+        className="hidden md:flex w-52 shrink-0 border-r border-border bg-sidebar/60 p-2"
+      >
         <SidebarContent>
           <SidebarGroup>
+            <div className="px-2 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Preferências
+            </div>
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-1">
                 {settingsNav.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -70,7 +76,7 @@ export function SettingsPage() {
                       <SidebarMenuButton
                         isActive={item.id === activeTab}
                         onClick={() => setActiveTab(item.id)}
-                        className="cursor-pointer"
+                        className="cursor-pointer rounded-lg"
                       >
                         <Icon size={18} />
                         <span>{item.label}</span>
@@ -84,7 +90,7 @@ export function SettingsPage() {
         </SidebarContent>
       </Sidebar>
 
-      <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
         {/* Mobile top navigation */}
         <div className="md:hidden border-b">
           <nav className="flex gap-2 overflow-x-auto p-2 px-4">

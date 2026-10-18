@@ -1,10 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Gamepad2, LayoutDashboard, Settings, Users } from "lucide-react";
+import { Gamepad2, LayoutDashboard, Users } from "lucide-react";
 
 import { NavProjects } from "./nav-projects";
-import { NavUser } from "./nav-user";
 import { NavHeader } from "./nav-header";
 import {
   Sidebar,
@@ -25,35 +24,23 @@ export interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   isCreatingSession?: boolean;
 }
 
-const data = {
-  user: {
-    name: "Dr. Hermeson Alves",
-    email: "hermeson.alves@intea.clinica",
-    avatar: "/avatars/shadcn.jpg",
+const SIDEBAR_NAV_ITEMS = [
+  {
+    name: "Dashboard",
+    url: "/painel",
+    icon: LayoutDashboard,
   },
-  projects: [
-    {
-      name: "Dashboard",
-      url: "/painel",
-      icon: LayoutDashboard,
-    },
-    {
-      name: "Jogos Terapêuticos",
-      url: "/jogos",
-      icon: Gamepad2,
-    },
-    {
-      name: "Meus Pacientes",
-      url: "/pacientes",
-      icon: Users,
-    },
-    {
-      name: "Configurações",
-      url: "/configuracoes",
-      icon: Settings,
-    },
-  ],
-};
+  {
+    name: "Jogos Terapêuticos",
+    url: "/jogos",
+    icon: Gamepad2,
+  },
+  {
+    name: "Meus Pacientes",
+    url: "/pacientes",
+    icon: Users,
+  },
+];
 
 export function AppSidebar({
   activeSessionId,
@@ -72,19 +59,18 @@ export function AppSidebar({
   void onDeleteSession;
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" className="bg-sidebar border-r border-sidebar-border" {...props}>
       <SidebarHeader>
         <NavHeader />
       </SidebarHeader>
       <SidebarContent>
-        <NavProjects projects={data.projects} />
+        <NavProjects projects={SIDEBAR_NAV_ITEMS} />
       </SidebarContent>
       <SidebarFooter>
         <NewSection
           onCreateChat={onCreateNewChat}
           isCreating={isCreatingSession}
         />
-        <NavUser user={data.user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

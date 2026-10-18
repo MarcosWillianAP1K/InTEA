@@ -1,3 +1,4 @@
+export * from "./LoginPage";
 export * from "./PainelPage";
 export * from "./PacientesPage";
 export * from "./BibliotecaJogosPage";

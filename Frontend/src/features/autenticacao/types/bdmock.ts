@@ -66,11 +66,55 @@ export const MOCK_USUARIO_ADMIN: UsuarioAutenticado = {
   created_at: MOCK_TERAPEUTA_ADMIN.created_at,
 };
 
+export const MOCK_USUARIO_HERMESON: UsuarioAutenticado = {
+  id: "c4444444-4444-4444-8444-444444444444",
+  nome: "Dr. Hermeson Alves",
+  email: "hermeson.alves@intea.clinica",
+  clinica_id: MOCK_CLINICA.id,
+  clinica_nome: MOCK_CLINICA.nome,
+  is_super_admin: false,
+  status_ativo: true,
+  role: "terapeuta",
+  crefito: "CREFITO-14/87654-TO",
+  registro_profissional: "CREFITO-14/87654-TO",
+  especialidade: "Psicomotricidade e Reabilitação Motora",
+  avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=hermeson",
+  created_at: "2026-01-15T09:00:00.000Z",
+};
+
+export const MOCK_USUARIO_LUMA: UsuarioAutenticado = {
+  id: "b3333333-3333-4333-8333-333333333333",
+  nome: "Dra. Luma Maiara",
+  email: "luma.maiara@intea.com.br",
+  clinica_id: MOCK_CLINICA.id,
+  clinica_nome: MOCK_CLINICA.nome,
+  is_super_admin: false,
+  status_ativo: true,
+  role: "terapeuta",
+  crefito: "CRP-21/04567",
+  registro_profissional: "CRP-21/04567",
+  especialidade: "Psicologia Cognitivo-Comportamental e ABA",
+  avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=luma",
+  created_at: "2026-01-12T14:00:00.000Z",
+};
+
 export const MOCK_CREDENCIAIS_VALIDAS = [
+  {
+    email: "hermeson.alves@intea.clinica",
+    senha: "Senha@123",
+    usuario: MOCK_USUARIO_HERMESON,
+    tokens: MOCK_AUTH_TOKENS,
+  },
   {
     email: "marcos.terapeuta@intea.com.br",
     senha: "Senha@123",
     usuario: MOCK_USUARIO_TERAPEUTA,
+    tokens: MOCK_AUTH_TOKENS,
+  },
+  {
+    email: "luma.maiara@intea.com.br",
+    senha: "Senha@123",
+    usuario: MOCK_USUARIO_LUMA,
     tokens: MOCK_AUTH_TOKENS,
   },
   {
@@ -85,6 +129,16 @@ export const MOCK_CREDENCIAIS_VALIDAS = [
 let usuarioLogadoAtual: UsuarioAutenticado | null = { ...MOCK_USUARIO_TERAPEUTA };
 let tokensAtuais: AuthTokens | null = { ...MOCK_AUTH_TOKENS };
 
+function derivarNomeAmigavel(email: string): string {
+  const localPart = email.split("@")[0] || "Terapeuta";
+  const partes = localPart
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((parte) => parte.charAt(0).toUpperCase() + parte.slice(1).toLowerCase());
+  const nomeFormatado = partes.join(" ");
+  return nomeFormatado ? `Dr(a). ${nomeFormatado}` : MOCK_USUARIO_TERAPEUTA.nome;
+}
+
 // ============================================================================
 // HELPERS MOCK EM MEMÓRIA
 // ============================================================================
@@ -96,8 +150,8 @@ export async function loginMock(payload: LoginPayload): Promise<LoginResponse> {
   const emailNorm = payload.email.trim().toLowerCase();
   const senha = payload.password;
 
-  // Credencial admin
-  if (emailNorm === "admin@intea.com.br" && senha === "Admin@123") {
+  // 1. Credencial SuperAdmin
+  if (emailNorm === "admin@intea.com.br" && (senha === "Admin@123" || senha.length >= 6)) {
     usuarioLogadoAtual = { ...MOCK_USUARIO_ADMIN };
     tokensAtuais = { ...MOCK_AUTH_TOKENS_ADMIN };
     return {
@@ -111,14 +165,69 @@ export async function loginMock(payload: LoginPayload): Promise<LoginResponse> {
     };
   }
 
-  // Credencial terapeuta padrão ou qualquer email válido em modo mock de desenvolvimento
+  // 2. Credencial Dr. Hermeson Alves
   if (
-    (emailNorm === "marcos.terapeuta@intea.com.br" && senha === "Senha@123") ||
-    (emailNorm.length > 3 && senha.length >= 6)
+    (emailNorm === "hermeson.alves@intea.clinica" ||
+      emailNorm === "hermeson.alves@intea.com.br") &&
+    senha.length >= 6
   ) {
+    usuarioLogadoAtual = { ...MOCK_USUARIO_HERMESON, email: emailNorm };
+    tokensAtuais = { ...MOCK_AUTH_TOKENS };
+    return {
+      data: {
+        user: usuarioLogadoAtual,
+        tokens: { ...MOCK_AUTH_TOKENS },
+      },
+      tokens: { ...MOCK_AUTH_TOKENS },
+      user: usuarioLogadoAtual,
+      message: "Autenticação realizada com sucesso.",
+    };
+  }
+
+  // 3. Credencial Dra. Luma Maiara
+  if (
+    (emailNorm === "luma.maiara@intea.com.br" ||
+      emailNorm === "luma.maiara@intea.clinica") &&
+    senha.length >= 6
+  ) {
+    usuarioLogadoAtual = { ...MOCK_USUARIO_LUMA, email: emailNorm };
+    tokensAtuais = { ...MOCK_AUTH_TOKENS };
+    return {
+      data: {
+        user: usuarioLogadoAtual,
+        tokens: { ...MOCK_AUTH_TOKENS },
+      },
+      tokens: { ...MOCK_AUTH_TOKENS },
+      user: usuarioLogadoAtual,
+      message: "Autenticação realizada com sucesso.",
+    };
+  }
+
+  // 4. Credencial Dr. Marcos Terapeuta
+  if (
+    (emailNorm === "marcos.terapeuta@intea.com.br" ||
+      emailNorm === "marcos.terapeuta@intea.clinica") &&
+    senha.length >= 6
+  ) {
+    usuarioLogadoAtual = { ...MOCK_USUARIO_TERAPEUTA, email: emailNorm };
+    tokensAtuais = { ...MOCK_AUTH_TOKENS };
+    return {
+      data: {
+        user: usuarioLogadoAtual,
+        tokens: { ...MOCK_AUTH_TOKENS },
+      },
+      tokens: { ...MOCK_AUTH_TOKENS },
+      user: usuarioLogadoAtual,
+      message: "Autenticação realizada com sucesso.",
+    };
+  }
+
+  // 5. Qualquer outro e-mail válido em modo mock de desenvolvimento
+  if (emailNorm.length > 3 && senha.length >= 6) {
     usuarioLogadoAtual = {
       ...MOCK_USUARIO_TERAPEUTA,
-      email: emailNorm || MOCK_USUARIO_TERAPEUTA.email,
+      nome: derivarNomeAmigavel(emailNorm),
+      email: emailNorm,
     };
     tokensAtuais = { ...MOCK_AUTH_TOKENS };
     return {
@@ -200,6 +309,34 @@ export async function obterPerfilTerapeutaAuthMock(
       clinica_id: MOCK_USUARIO_ADMIN.clinica_id,
       clinica_nome: MOCK_USUARIO_ADMIN.clinica_nome ?? MOCK_CLINICA.nome,
       is_super_admin: true,
+      status_ativo: true,
+    };
+  }
+
+  if (id === MOCK_USUARIO_HERMESON.id) {
+    return {
+      id: MOCK_USUARIO_HERMESON.id,
+      nome: MOCK_USUARIO_HERMESON.nome,
+      email: MOCK_USUARIO_HERMESON.email,
+      crefito: MOCK_USUARIO_HERMESON.crefito ?? null,
+      especialidade: MOCK_USUARIO_HERMESON.especialidade ?? null,
+      clinica_id: MOCK_USUARIO_HERMESON.clinica_id,
+      clinica_nome: MOCK_USUARIO_HERMESON.clinica_nome ?? MOCK_CLINICA.nome,
+      is_super_admin: false,
+      status_ativo: true,
+    };
+  }
+
+  if (id === MOCK_USUARIO_LUMA.id) {
+    return {
+      id: MOCK_USUARIO_LUMA.id,
+      nome: MOCK_USUARIO_LUMA.nome,
+      email: MOCK_USUARIO_LUMA.email,
+      crefito: MOCK_USUARIO_LUMA.crefito ?? null,
+      especialidade: MOCK_USUARIO_LUMA.especialidade ?? null,
+      clinica_id: MOCK_USUARIO_LUMA.clinica_id,
+      clinica_nome: MOCK_USUARIO_LUMA.clinica_nome ?? MOCK_CLINICA.nome,
+      is_super_admin: false,
       status_ativo: true,
     };
   }
