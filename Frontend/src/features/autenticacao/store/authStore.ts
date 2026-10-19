@@ -48,8 +48,16 @@ export const useAuthStore = create<AuthStoreState>()(
         set({ loading: true, error: null });
         try {
           const resposta = await authService.login(payload);
-          const usuario = resposta.data?.user || resposta.user || null;
+          let usuario = resposta.data?.user || resposta.user || null;
           const tokens = resposta.data?.tokens || resposta.tokens || null;
+
+          if (!usuario && tokens?.access_token) {
+            try {
+              usuario = await authService.obterUsuarioAtual();
+            } catch {
+              // Mantém usuário null se falhar ao obter perfil
+            }
+          }
 
           set({
             user: usuario,

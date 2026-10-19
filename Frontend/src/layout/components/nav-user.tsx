@@ -27,7 +27,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
-import SettingsPage from "@/features/configuracoes/pages/settingsPage";
+import { ModalConfiguracoes as SettingsPage } from "@/pages/modal";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { MOCK_CREDENCIAIS_VALIDAS } from "@/features/autenticacao/types/bdmock";
 

@@ -96,6 +96,7 @@ export interface ServerToClientEvents {
 
 export interface ClientToServerEvents {
   entrar_sala: (data: { sessionToken: string }) => void;
+  entrar_sessao: (data: { session_token: string; role?: string }) => void;
   sair_sala: (data: { sessionToken: string }) => void;
   ping: () => void;
   pong: () => void;
@@ -238,7 +239,30 @@ export class SessionSocketManager {
       this.updateStatus("erro");
     });
 
-    this.socket.on("dispositivo_conectado", (payload) => {
+    this.socket.on("dispositivo_conectado", (rawPayload: unknown) => {
+      let payload: DispositivoConectadoPayload;
+      const raw = rawPayload as Record<string, unknown> | null;
+      if (raw && typeof raw.deviceId === "string" && typeof raw.conectadoEm === "string") {
+        // Preserva o objeto exato para testes unitários com match estrito
+        payload = raw as unknown as DispositivoConectadoPayload;
+      } else if (raw) {
+        // Normaliza contrato do Backend (conectado_em, dispositivo_info, etc.)
+        const info = (raw.dispositivo_info || {}) as Record<string, unknown>;
+        payload = {
+          deviceId: (info.device_id as string) || (info.deviceId as string) || (raw.session_token as string) || "dispositivo_remoto",
+          tipoDispositivo: (info.tipo as string) || (info.tipo_dispositivo as string) || "tablet",
+          modelo: (info.modelo as string) || undefined,
+          bateria: typeof info.bateria === "number" ? info.bateria : undefined,
+          latenciaMs: typeof info.latencia_ms === "number" ? info.latencia_ms : undefined,
+          conectadoEm: (raw.conectado_em as string) || new Date().toISOString(),
+        };
+      } else {
+        payload = {
+          deviceId: "desconhecido",
+          conectadoEm: new Date().toISOString(),
+        };
+      }
+
       this.dispositivo = payload;
       this.updateStatus("dispositivo_conectado");
       this.listenersMap.dispositivo_conectado.forEach((cb) => {
@@ -430,7 +454,6 @@ export class SessionSocketManager {
     if (!this.socket || !this.socket.connected) {
       return false;
     }
-    this.socket.emit("enviar_comando", comando);
     this.socket.emit("sessao:comando", comando);
     return true;
   }

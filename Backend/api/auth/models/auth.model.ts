@@ -97,4 +97,50 @@ export class AuthModel {
 
     return (data as unknown as Terapeuta) || null;
   }
+
+  /**
+   * Refreshes an active session using a valid refresh token.
+   *
+   * @param refreshToken - The refresh token issued during authentication.
+   * @returns Updated session data containing access_token, refresh_token, token_type, and expires_in.
+   * @throws {Error} If session refresh fails.
+   */
+  static async refreshSession(refreshToken: string): Promise<{
+    access_token: string;
+    refresh_token: string | null;
+    token_type: string;
+    expires_in: number;
+  }> {
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+
+    if (error || !data?.session) {
+      throw new Error(`Falha ao renovar sessão: ${error?.message || 'Token inválido ou expirado.'}`);
+    }
+
+    return {
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token ?? null,
+      token_type: 'Bearer',
+      expires_in: data.session.expires_in,
+    };
+  }
+
+  /**
+   * Logs out the user from Supabase auth.
+   *
+   * @returns Confirmation of successful logout.
+   */
+  static async logout(): Promise<{ success: boolean; message: string }> {
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Falha silenciosa caso o signOut falhe
+    }
+    return {
+      success: true,
+      message: 'Logout realizado com sucesso.',
+    };
+  }
 }

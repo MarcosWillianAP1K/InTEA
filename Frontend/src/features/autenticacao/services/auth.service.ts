@@ -65,11 +65,44 @@ export const authService = {
           ENDPOINTS.AUTH.LOGIN,
           payload,
         );
-        const tokens = resposta.data?.tokens || resposta.tokens;
+        type RawData = {
+          tokens?: AuthTokens;
+          user?: UsuarioAutenticado;
+          access_token?: string;
+          refresh_token?: string | null;
+          token_type?: string;
+          expires_in?: number;
+        };
+        const dataObj = resposta.data as unknown as RawData | undefined;
+        let tokens: AuthTokens | undefined = dataObj?.tokens || resposta.tokens;
+
+        if (!tokens && dataObj?.access_token) {
+          tokens = {
+            access_token: dataObj.access_token,
+            refresh_token: dataObj.refresh_token ?? null,
+            token_type: dataObj.token_type || "Bearer",
+            expires_in: dataObj.expires_in || 3600,
+          };
+        }
+
+        const user: UsuarioAutenticado | undefined = dataObj?.user || resposta.user;
+
         if (tokens) {
           salvarTokens(tokens);
         }
-        return resposta;
+
+        if (dataObj?.user && dataObj?.tokens) {
+          return resposta;
+        }
+
+        return {
+          ...resposta,
+          data: {
+            ...resposta.data,
+            user: user as UsuarioAutenticado,
+            tokens: tokens as AuthTokens,
+          },
+        };
       },
       async () => {
         const respostaMock = await loginMock(payload);
@@ -134,11 +167,63 @@ export const authService = {
   obterUsuarioAtual: async (): Promise<UsuarioAutenticado> => {
     return await withFallback(
       async () => {
-        const resposta = await http.get<
-          { data: UsuarioAutenticado } | UsuarioAutenticado
-        >(ENDPOINTS.AUTH.ME);
+        interface RawPerfil {
+          id: string;
+          nome: string;
+          email: string;
+          telefone?: string | null;
+          registro_profissional?: string | null;
+          especialidade?: string | null;
+          crefito?: string | null;
+          tempo_experiencia_anos?: number;
+          clinica_id?: string | null;
+          clinica_nome?: string;
+          areas_foco?: unknown[];
+        }
+        interface RawMetadados {
+          is_admin?: boolean;
+          autenticado?: boolean;
+          status_ativo?: boolean;
+          created_at?: string | null;
+        }
+        interface BackendResponse {
+          data: {
+            perfil?: RawPerfil;
+            metadados?: RawMetadados;
+          } | UsuarioAutenticado;
+        }
+
+        const resposta = await http.get<BackendResponse | UsuarioAutenticado>(
+          ENDPOINTS.AUTH.ME,
+        );
+
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const dataObj = resposta.data as {
+            perfil?: RawPerfil;
+            metadados?: RawMetadados;
+          } & Partial<UsuarioAutenticado>;
+
+          if (dataObj.perfil) {
+            const perfil = dataObj.perfil;
+            const metadados = dataObj.metadados;
+            const isAdmin = Boolean(metadados?.is_admin);
+            const usuario: UsuarioAutenticado = {
+              id: perfil.id,
+              nome: perfil.nome,
+              email: perfil.email,
+              clinica_id: perfil.clinica_id ?? null,
+              clinica_nome: perfil.clinica_nome,
+              is_super_admin: isAdmin,
+              status_ativo: metadados?.status_ativo ?? true,
+              role: isAdmin ? "super_admin" : "terapeuta",
+              crefito: perfil.crefito ?? perfil.registro_profissional ?? null,
+              registro_profissional: perfil.registro_profissional ?? perfil.crefito ?? null,
+              especialidade: perfil.especialidade ?? null,
+              created_at: metadados?.created_at ?? undefined,
+            };
+            return usuario;
+          }
+          return resposta.data as UsuarioAutenticado;
         }
         return resposta as UsuarioAutenticado;
       },

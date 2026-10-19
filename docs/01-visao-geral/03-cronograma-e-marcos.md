@@ -64,9 +64,9 @@ flowchart TD
 2. **Back-end 2 — João Marcos (`@JM3L0`):**
    * *Escopo Técnico:* Comunicação WebSocket/Socket.IO (`Backend/core/websocket/`), gateways de eventos em tempo real, streaming de telemetria, controles de resiliência e reconexão (janela de 60s), rate limiting contra flooding de sockets e serviços de exportação estruturada (**RF20**).
 3. **Front-end 1 — Hermeson Alves (`@Hermeson69`):**
-   * *Escopo Técnico:* Páginas Mestre da aplicação SPA (`Frontend/src/features/*/pages/`), casca e layouts visuais (Cockpit, Tela de Resultados, Gestão de Pacientes), gerenciamento de rotas e transições, cabeçalhos clínicos e orquestração dos fluxos de tela.
+   * *Escopo Técnico:* Páginas Mestre centralizadas da aplicação SPA (`Frontend/src/pages/`), casca e layouts visuais (`SidebarLayout`, `FocusLayout`, Cockpit, Tela de Resultados, Gestão de Pacientes), gerenciamento de rotas e transições, cabeçalhos clínicos e orquestração dos fluxos de tela.
 4. **Front-end 2 — Luma Maiara (`@lumamaiara`):**
-   * *Escopo Técnico:* Componentes visuais atômicos e especializados (`Frontend/src/features/*/components/`), cards de telemetria e métricas consolidadas, gráficos temporais SVG e sparklines, diagnóstico de hardware (bateria/latência), modais de formulário e testes unitários de UI.
+   * *Escopo Técnico:* Modais e Overlays centralizados (`Frontend/src/pages/modal/`), componentes visuais atômicos e especializados (`Frontend/src/features/*/components/`), cards de telemetria e métricas consolidadas, gráficos temporais SVG e sparklines, diagnóstico de hardware (bateria/latência) e testes unitários de UI.
 5. **Documentação / Qualidade — Raildom Silva (`@Raildom`):**
    * *Escopo Técnico:* Redação técnica acadêmica em LaTeX e Markdown, especificação OpenAPI/Swagger (`docs/api-pacientes-jogos.md`), casos de teste manuais formais (`docs/roteiro-testes.md`), matriz de rastreabilidade e governança operacional do GitHub Projects (Kanban, issues, labels e milestones).
 

@@ -12,6 +12,8 @@ import { http, withFallback, ENDPOINTS } from "@/core/api";
 import type {
   Jogo,
   ManifestoJogo,
+  MetricaSuportada,
+  TipoMetrica,
   JogoFiltroDTO,
   FiltrosJogos,
   JogoRespostaApi,
@@ -39,6 +41,71 @@ function serializarFiltros(
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
+/**
+ * Normaliza campos vindos do PostgreSQL (nome, descricao, metricas_suportadas)
+ * sem alterar objetos que já possuem titulo, descricaoClinica e manifesto preenchidos.
+ */
+function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
+  if (!jogo) return jogo;
+
+  // Se já possui os campos canônicos preenchidos (formato mock/frontend), preserva o objeto original intacto
+  if (jogo.titulo && jogo.descricaoClinica && jogo.manifesto) {
+    return jogo;
+  }
+
+  const raw = jogo as unknown as {
+    id: string;
+    nome?: string;
+    titulo?: string;
+    descricao?: string;
+    descricaoClinica?: string;
+    publico_alvo?: string;
+    objetivoTerapeutico?: string;
+    manifesto?: ManifestoJogo;
+    metricas_suportadas?: Array<{ id_metrica: string; tipo_metrica: string; descricao?: string; nome?: string }>;
+    versao?: string;
+    status_jogo?: string;
+    status_ativo?: boolean;
+    bannerUrl?: string;
+    created_at?: string;
+    updated_at?: string;
+  };
+
+  const titulo = raw.titulo || raw.nome || "Jogo Terapêutico";
+  const versao = raw.versao || "1.0.0";
+  const descricaoClinica = raw.descricaoClinica || raw.descricao || "";
+  const objetivoTerapeutico = raw.objetivoTerapeutico || raw.publico_alvo || "Estimulação Cognitiva e Sensorial";
+
+  const metricasSuportadas: MetricaSuportada[] = (raw.metricas_suportadas || []).map((m) => ({
+    id_metrica: m.id_metrica,
+    nome: m.nome || m.id_metrica,
+    tipo: m.tipo_metrica as TipoMetrica,
+    tipo_metrica: m.tipo_metrica,
+    descricao: m.descricao || m.nome || m.id_metrica,
+  }));
+
+  const manifesto: ManifestoJogo = raw.manifesto || {
+    id_jogo: raw.id,
+    nome: titulo,
+    versao,
+    descricaoClinica,
+    objetivoTerapeutico,
+    metricasSuportadas,
+  };
+
+  return {
+    ...jogo,
+    id: raw.id,
+    titulo,
+    versao,
+    descricaoClinica,
+    objetivoTerapeutico,
+    bannerUrl: raw.bannerUrl || "",
+    status_jogo: raw.status_ativo === false ? "desativado" : (raw.status_jogo || "ativo"),
+    manifesto,
+  };
+}
+
 export const jogosService = {
   /**
    * Lista todos os jogos terapêuticos disponíveis aplicando filtros de busca e objetivo.
@@ -51,10 +118,8 @@ export const jogosService = {
           JogosListaRespostaApi | Jogo[]
         >(ENDPOINTS.JOGOS.BASE, { params });
 
-        if (Array.isArray(resposta)) {
-          return resposta;
-        }
-        return resposta.data ?? [];
+        const lista = Array.isArray(resposta) ? resposta : (resposta.data ?? []);
+        return lista.map(normalizarJogoSeNecessario);
       },
       () => listarJogosMock(filtros),
     );
@@ -72,9 +137,9 @@ export const jogosService = {
           ENDPOINTS.JOGOS.BY_ID(id),
         );
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          return normalizarJogoSeNecessario(resposta.data);
         }
-        return (resposta as Jogo) ?? null;
+        return resposta ? normalizarJogoSeNecessario(resposta as Jogo) : null;
       },
       () => buscarJogoMockPorId(id),
     );

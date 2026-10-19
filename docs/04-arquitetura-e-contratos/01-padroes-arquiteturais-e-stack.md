@@ -81,72 +81,59 @@ A equipe segue rigorosamente a tabela de convenções estabelecida no projeto:
 
 ---
 
-## 4. Estrutura Modular do Frontend por Features (Feature-Driven Clean Architecture)
+## 4. Estrutura Modular do Frontend (`src/pages/`, `src/pages/modal/` e `src/features/`)
 
-O frontend React adota uma arquitetura orientada a features verticais independentes e desacopladas, com isolamento estrito de domínios clínicos e suporte nativo a dados mockados via `bdmock.ts`:
+O frontend React adota o padrão **Pages & Modals Centralizados + Features Modulares**, onde todas as páginas de rota residem em `Frontend/src/pages/`, todos os modais/overlays residem em `Frontend/src/pages/modal/` e os módulos de domínio clínico (componentes internos, services, stores, hooks e types) residem em `Frontend/src/features/`:
 
-```
+```text
 Frontend/src/
-├── core/                       # Infraestrutura central da aplicação
+├── core/                                 # Infraestrutura central da aplicação
 │   ├── api/
-│   │   ├── http-client.ts      # Cliente HTTP resiliente oficial (HttpClient) com interceptores JWT e retries
-│   │   └── endpoints.ts        # Constantes tipadas de rotas RESTful (/api/paciente, /api/terapeuta, etc.)
-│   └── web.socket.ts           # Cliente e hooks reativos de Socket.IO para telemetria em tempo real
-├── routes/                     # Central de rotas SPA (React Router DOM v7)
-├── layout/                     # Casca mestre com SidebarProvider responsiva e headers contextuais
-├── features/                   # Módulos verticais por domínio clínico
-│   ├── auth/                   # Autenticação, recuperação de sessão e permissões
-│   │   ├── hooks/              # useAuth
-│   │   ├── services/           # auth.service.ts
-│   │   ├── store/              # authStore
-│   │   └── types/              # auth.types.ts e bdmock.ts
-│   ├── terapeuta/              # Gestão do perfil do terapeuta e equipe multidisciplinar
-│   │   ├── services/           # terapeuta.service.ts
-│   │   └── types/              # terapeuta.types.ts e bdmock.ts
-│   ├── paciente/               # Gestão cadastral e prontuários (alias/retrocompatibilidade com patients)
-│   │   ├── components/         # Form e listagem de pacientes
-│   │   ├── pages/              # PacientesPage
-│   │   ├── services/           # paciente.service.ts
-│   │   ├── store/              # patients.store.ts
-│   │   └── types/              # paciente.types.ts e bdmock.ts
-│   ├── jogos/                  # Biblioteca e leitura de manifestos de jogos terapêuticos
-│   │   ├── components/         # JogoCard, JogosFiltros
-│   │   ├── pages/              # BibliotecaJogosPage
-│   │   ├── services/           # jogos.service.ts (com fallback jogosService.ts)
-│   │   └── types/              # jogos.types.ts e bdmock.ts
-│   ├── sessao/                 # Orquestração de sessões e cockpit de intervenção clínica
-│   │   ├── components/         # Telemetria, anotações, controles clínicos
-│   │   ├── hooks/              # useLiveTelemetry, useSessionPersistence, useClinicalTimer
-│   │   ├── pages/              # CockpitSessaoPage, ResultadoSessaoPage
-│   │   ├── services/           # sessao.service.ts (com fallback sessaoService.ts)
-│   │   ├── store/              # sessionStore.ts
-│   │   └── types/              # sessao.types.ts e bdmock.ts
-│   ├── anotacao/               # Anotações clínicas e histórico de prontuário
-│   │   ├── services/           # anotacao.service.ts
-│   │   └── types/              # anotacao.types.ts e bdmock.ts
-│   ├── dashboard/              # Painel consolidado do terapeuta e métricas rápidas
-│   │   ├── components/         # Cards e navegação do painel
-│   │   ├── pages/              # dashboardPage.tsx
-│   │   ├── services/           # dashboard.service.ts
-│   │   └── types/              # dashboard.types.ts e bdmock.ts
-│   └── settings/               # Preferências visuais e dados profissionais
-│       ├── pages/              # settingsPage.tsx
-│       ├── store/              # settingsStore.ts
-│       └── types/              # settings.types.ts e bdmock.ts
-└── shared/                     # Código e utilitários compartilhados
-    ├── components/ui/          # Primitivos visuais shadcn / Radix UI
-    ├── hooks/                  # Apenas hooks utilitários de browser (use-mobile.ts, useDebounce)
-    ├── lib/                    # Utilitários puros (utils.ts com cn())
-    ├── providers/              # ThemeProvider e contextos globais
-    ├── types/                  # Tipagens de API (api.types.ts) e bdmock.ts com fixtures globais
-    └── utils/                  # request.ts (motor base do HttpClient)
+│   │   ├── http-client.ts                # Cliente HTTP resiliente oficial (HttpClient) com interceptores JWT e retries
+│   │   └── endpoints.ts                  # Constantes tipadas de rotas RESTful (/api/paciente, /api/terapeuta, etc.)
+│   └── web.socket.ts                     # Singleton SessionSocketManager (Socket.IO Client) e hooks reativos
+├── routes/                               # Central de rotas SPA (React Router DOM v7) com ProtectedRoute
+├── layout/                               # Cascas estruturais: SidebarLayout.tsx e FocusLayout.tsx (RNF07)
+├── pages/                                # ★ CENTRAL DE TODAS AS PÁGINAS MESTRE DA APLICAÇÃO
+│   ├── index.ts                          # Barrel export das páginas e de ./modal
+│   ├── LoginPage.tsx                     # Tela de autenticação, cadastro de terapeuta e recuperação de senha
+│   ├── PainelPage.tsx                    # Dashboard clínico, métricas rápidas e alertas de IA
+│   ├── PacientesPage.tsx                 # Gestão cadastral e listagem de prontuários em grade/tabela
+│   ├── BibliotecaJogosPage.tsx           # Catálogo de jogos terapêuticos, filtros e Modo Livre
+│   ├── CockpitSessaoPage.tsx             # Monitoramento em tempo real (telemetria, cronômetro, comandos DDA)
+│   ├── ResultadoSessaoPage.tsx           # Pós-sessão: métricas consolidadas, gráficos, síntese IA, anotação e PDF
+│   ├── ConfiguracoesPage.tsx             # Rota de preferências e configurações do terapeuta
+│   └── modal/                            # ★ CENTRAL DE TODOS OS MODAIS / OVERLAYS / DIALOGS DE NEGÓCIO
+│       ├── index.ts                      # Barrel export dos modais centralizados
+│       ├── ModalPreSessao.tsx            # Calibração pré-sessão (DDA, gatilhos, emissão de PIN/Token e pareamento)
+│       ├── ModalFinalizarSessao.tsx      # Confirmação de encerramento da sessão ativa no Cockpit
+│       ├── DialogFormularioPaciente.tsx  # Cadastro e edição de paciente em múltiplas etapas
+│       ├── DialogDetalhesPaciente.tsx    # Visualização rápida de prontuário, gatilhos, reforçadores e responsáveis
+│       └── ModalConfiguracoes.tsx        # Modal de preferências de aparência, tema e privacidade
+├── features/                             # Módulos verticais por domínio clínico
+│   ├── autenticacao/                     # auth.service.ts, authStore.ts, useAuth.ts, auth.types.ts e bdmock.ts
+│   ├── terapeuta/                        # terapeuta.service.ts, terapeuta.types.ts e bdmock.ts
+│   ├── paciente/                         # CardPacienteGrid, ListaPacientes, paciente.service.ts, paciente.store.ts
+│   ├── jogos/                            # JogoCard, JogosFiltros, jogos.service.ts, jogos.types.ts e bdmock.ts
+│   ├── sessao/                           # TelemetriaCards, TelemetriaChart, ControlesClinicos, sessao.service.ts,
+│   │                                     # sessionStore.ts, useLiveTelemetry, useSessionPersistence, useClinicalTimer
+│   ├── anotacao/                         # anotacao.service.ts, anotacao.types.ts e bdmock.ts
+│   ├── painel/                           # dashboard.service.ts, dashboard.types.ts e bdmock.ts
+│   └── configuracoes/                    # appearanceSetting.tsx, settings.service.ts, settingsStore.ts
+└── shared/                               # Código e utilitários compartilhados
+    ├── components/ui/                    # 17 componentes primitivos shadcn / Radix UI
+    ├── hooks/                            # Hooks utilitários de browser (use-mobile.ts)
+    ├── lib/                              # utils.ts (cn()) e mock-adapter.ts (withFallback / shouldUseMock)
+    ├── providers/                        # ThemeProvider e contextos globais
+    ├── types/                            # Tipagens de API (api.types.ts) e bdmock.ts com fixtures globais
+    └── utils/                            # request.ts (motor base do HttpClient)
 ```
 
-### Regras de Domínio e Dados Mockados (`bdmock.ts`):
-1. **Dados Mockados por Domínio:** Toda feature possui seu próprio `types/bdmock.ts` contendo fixtures realistas (IDs UUID válidos, datas ISO 8601, estruturas em conformidade com o backend).
-2. **Isolamento de Testes e Telas:** Enquanto a integração ao vivo com a API REST não estiver ativa, os serviços e stores consomem preferencialmente os dados de `bdmock.ts`, permitindo que testes unitários e telas funcionem 100% desconectados.
+### Regras de Domínio e Dados Mockados (`bdmock.ts` / `withFallback`):
+1. **Alternância Controlada (`VITE_USE_MOCK_DATA`):** Quando `VITE_USE_MOCK_DATA=false`, todos os services consomem diretamente a API REST do Backend. Quando `VITE_USE_MOCK_DATA=true` (ex.: suítes de testes unitários), `withFallback()` retorna as fixtures determinísticas de `types/bdmock.ts`.
+2. **Dados Mockados por Domínio:** Toda feature possui seu próprio `types/bdmock.ts` contendo fixtures realistas (IDs UUID válidos, datas ISO 8601, estruturas em conformidade com o backend).
 3. **Mocks Compartilhados:** A pasta `shared/types/bdmock.ts` centraliza entidades comuns a múltiplas telas (como clínicas de demonstração e terapeutas simulados).
-4. **Ausência de Arquivos Vazios:** Não são permitidos arquivos 0-byte ou stubs incompletos.
+4. **Ausência de Arquivos Vazios:** Não são permitidos arquivos 0-byte ou declarações vazias.
 
 
 ---

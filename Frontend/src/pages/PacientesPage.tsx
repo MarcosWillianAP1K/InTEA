@@ -1,11 +1,66 @@
-import { ConteudoPacientes } from "@/features/paciente/components/ConteudoPacientes";
+"use client";
 
-export function PacientesPage() {
+import { useState, useEffect } from "react";
+import { ListaPacientes } from "@/features/paciente/components/ListaPacientes";
+import { ConteudoCriarPaciente } from "@/features/paciente/components/ConteudoCriarPaciente";
+import { usePacienteStore } from "@/features/paciente/store/paciente.store";
+import type { Patient } from "@/features/paciente/types/paciente.types";
+
+export interface ConteudoPacientesProps {
+  onSelectPatient?: (patient: Patient) => void;
+  selectedPatientId?: string | null;
+  initialMode?: "list" | "create";
+  initialVisualMode?: "table" | "grid";
+  className?: string;
+}
+export type PatientsContentProps = ConteudoPacientesProps;
+
+export function ConteudoPacientes({
+  onSelectPatient,
+  selectedPatientId,
+  initialMode = "list",
+  initialVisualMode = "grid",
+  className = "",
+}: ConteudoPacientesProps) {
+  const [viewMode, setViewMode] = useState<"list" | "create">(initialMode);
+  const { setSelectedPatientId, fetchPatients } = usePacienteStore();
+
+  useEffect(() => {
+    void fetchPatients();
+  }, [fetchPatients]);
+
+  // MODO: CADASTRO DE PACIENTE (PÁGINA DEDICADA)
+  if (viewMode === "create") {
+    return (
+      <div className={`flex flex-1 flex-col w-full mx-auto ${className}`}>
+        <ConteudoCriarPaciente
+          onBack={() => setViewMode("list")}
+          onSuccess={(newPatient) => {
+            setSelectedPatientId(newPatient.id);
+            if (onSelectPatient) {
+              onSelectPatient(newPatient);
+            }
+            setViewMode("list");
+          }}
+        />
+      </div>
+    );
+  }
+
+  // MODO: LISTA / SELEÇÃO DE PACIENTES
   return (
-    <div className="flex flex-1 flex-col gap-6 w-full mx-auto py-2 overflow-x-hidden">
-      <ConteudoPacientes />
+    <div className={`flex flex-1 flex-col gap-6 w-full mx-auto py-2 ${className}`}>
+      {/* LISTA / TABELA DE PACIENTES */}
+      <ListaPacientes
+        onSelectPatient={onSelectPatient}
+        onOpenCreate={() => setViewMode("create")}
+        selectedPatientId={selectedPatientId}
+        initialVisualMode={initialVisualMode}
+      />
     </div>
   );
 }
 
+export const PacientesPage = ConteudoPacientes;
+export const PatientsContent = ConteudoPacientes;
 export default PacientesPage;

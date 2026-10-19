@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import type { Patient, PatientStatus } from "../types/paciente.types";
+import { pacienteToPatient } from "../types/paciente.types";
+import { pacienteService } from "../services/paciente.service";
 import { PATIENTS_DICTIONARY } from "../types/bdmock";
 
 // Reexportação dos tipos canônicos e dicionário de mocks para compatibilidade
@@ -20,6 +22,7 @@ interface PatientsState {
 
   // Actions
   addPatient: (patient: Patient) => void;
+  fetchPatients: () => Promise<void>;
   setSelectedPatientId: (id: string | null) => void;
   setSearchTerm: (term: string) => void;
   setCategoryFilter: (category: string) => void;
@@ -40,6 +43,27 @@ export const usePatientsStore = create<PatientsState>((set, get) => ({
   categoryFilter: "all",
   statusFilter: "all",
   sortOrder: "recent",
+
+  fetchPatients: async () => {
+    try {
+      const lista = await pacienteService.listar();
+      if (Array.isArray(lista) && lista.length > 0) {
+        const novosPacientes: Record<string, Patient> = {};
+        for (const p of lista) {
+          novosPacientes[p.id] = pacienteToPatient(p);
+        }
+        set((state) => ({
+          patients: {
+            ...state.patients,
+            ...novosPacientes,
+          },
+          selectedPatientId: state.selectedPatientId || lista[0]?.id || null,
+        }));
+      }
+    } catch {
+      // Falha silenciosa para resiliência offline e isolamento de testes
+    }
+  },
 
   addPatient: (patient: Patient) => {
     set((state) => ({

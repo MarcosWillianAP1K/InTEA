@@ -1,5 +1,6 @@
 export {
+  ModalConfiguracoes,
   SettingsPage,
   ConfiguracoesPage,
   default,
-} from "@/features/configuracoes/pages/settingsPage";
+} from "./modal/ModalConfiguracoes";

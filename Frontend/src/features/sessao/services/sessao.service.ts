@@ -68,10 +68,21 @@ export const sessaoService = {
           ENDPOINTS.SESSAO.INICIAR,
           dto,
         );
+        let dados: Sessao;
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          dados = resposta.data;
+        } else {
+          dados = resposta as Sessao;
         }
-        return resposta as Sessao;
+        const dadosRaw = dados as unknown as { id?: string; session_id?: string };
+        const idNormalizado = dadosRaw.id || dadosRaw.session_id;
+        if (idNormalizado && !dados.id) {
+          dados = {
+            ...dados,
+            id: idNormalizado,
+          };
+        }
+        return dados;
       },
       () => iniciarSessaoMock(dto),
     );

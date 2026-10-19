@@ -18,7 +18,7 @@ import type {
 import type { Patient } from "@/features/paciente/types/paciente.types";
 import { useSessionStore, CardSessaoTimer } from "@/features/sessao";
 import { usePacienteStore } from "@/features/paciente/store/paciente.store";
-import { ModalPreSessao } from "@/features/sessao/components/ModalPreSessao";
+import { ModalPreSessao } from "@/pages/modal";
 
 export function PainelPage() {
   const navigate = useNavigate();

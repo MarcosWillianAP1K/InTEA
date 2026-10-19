@@ -22,7 +22,7 @@ export function JogoCard({
           {jogo.bannerUrl ? (
             <img
               src={jogo.bannerUrl}
-              alt={jogo.titulo}
+              alt={jogo.titulo || (jogo as unknown as { nome?: string }).nome || "Jogo"}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -35,7 +35,7 @@ export function JogoCard({
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-bold text-foreground tracking-tight">
-              {jogo.titulo}
+              {jogo.titulo || (jogo as unknown as { nome?: string }).nome}
             </h3>
             <Badge
               variant="secondary"
@@ -45,7 +45,7 @@ export function JogoCard({
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground line-clamp-1">
-            {jogo.descricaoClinica}
+            {jogo.descricaoClinica || (jogo as unknown as { descricao?: string }).descricao}
           </p>
         </div>
       </div>

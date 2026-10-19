@@ -8,12 +8,6 @@ import {
   Eye,
   Check,
   FileText,
-  Calendar,
-  Phone,
-  Brain,
-  Sparkles,
-  HeartPulse,
-  Info,
   Plus,
   LayoutGrid,
   TableProperties,
@@ -45,17 +39,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui/dialog";
 
 import { usePacienteStore, PATIENTS_DICTIONARY } from "../store/paciente.store";
 import type { Patient, PatientStatus } from "../store/paciente.store";
-import { DialogFormularioPaciente } from "./DialogFormularioPaciente";
+import {
+  DialogFormularioPaciente,
+  DialogDetalhesPaciente,
+} from "@/pages/modal";
 
 export { PATIENTS_DICTIONARY };
 export type { Patient, PatientStatus };
@@ -466,167 +456,15 @@ export function ListaPacientes({
       )}
 
       {/* MODAL DE DETALHES CLÍNICOS DO PACIENTE */}
-      <Dialog
+      <DialogDetalhesPaciente
+        patient={detailModalPatient}
         open={!!detailModalPatient}
         onOpenChange={(open) => !open && setDetailModalPatient(null)}
-      >
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-          {detailModalPatient && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center gap-4">
-                  <img
-                    src={detailModalPatient.photoUrl}
-                    alt={detailModalPatient.name}
-                    className="w-14 h-14 rounded-xl object-cover border-2 border-primary/30 shadow-sm"
-                  />
-                  <div>
-                    <DialogTitle className="text-lg font-bold">
-                      {detailModalPatient.name}
-                    </DialogTitle>
-                    <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                      {detailModalPatient.age} anos • Nasc:{" "}
-                      {detailModalPatient.birthDate} •{" "}
-                      {detailModalPatient.gender === "M"
-                        ? "Masculino"
-                        : "Feminino"}
-                    </DialogDescription>
-                    <div className="flex gap-2 mt-2">
-                      <Badge
-                        variant="outline"
-                        className="bg-primary/10 text-primary border-primary/30"
-                      >
-                        {detailModalPatient.category}
-                      </Badge>
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_CONFIG[detailModalPatient.status]?.badgeClass}`}
-                      >
-                        {STATUS_CONFIG[detailModalPatient.status]?.label}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </DialogHeader>
-
-              <div className="space-y-4 py-3 text-sm">
-                {/* QUADRO CLÍNICO */}
-                <div className="bg-primary/5 p-3.5 rounded-xl border border-primary/15">
-                  <div className="flex items-center gap-2 font-semibold text-primary dark:text-blue-400 mb-1 text-xs uppercase tracking-wider">
-                    <Brain className="h-4 w-4 text-primary" />
-                    Quadro Clínico e Funcional
-                  </div>
-                  <p className="text-foreground/90 leading-relaxed text-xs">
-                    {detailModalPatient.clinicalStatus}
-                  </p>
-                </div>
-
-                {/* COMUNICAÇÃO E SENSIBILIDADES */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl border bg-card">
-                    <div className="flex items-center gap-1.5 font-semibold text-xs text-muted-foreground mb-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      Estilo de Comunicação
-                    </div>
-                    <p className="text-xs text-foreground/90 leading-relaxed">
-                      {detailModalPatient.communicationStyle}
-                    </p>
-                  </div>
-
-                  <div className="p-3 rounded-xl border bg-card">
-                    <div className="flex items-center gap-1.5 font-semibold text-xs text-muted-foreground mb-1.5">
-                      <HeartPulse className="h-3.5 w-3.5 text-primary" />
-                      Sensibilidades Sensoriais
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {detailModalPatient.sensorySensitivities.map(
-                        (sens, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className="text-[10px] font-normal"
-                          >
-                            {sens}
-                          </Badge>
-                        ),
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* RESPONSÁVEIS E TERAPEUTA */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-muted/30 p-3 rounded-xl border">
-                  <div>
-                    <span className="text-muted-foreground block">
-                      Responsável Legal:
-                    </span>
-                    <span className="font-semibold text-foreground">
-                      {detailModalPatient.responsibleName}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block">
-                      Contato:
-                    </span>
-                    <span className="font-semibold text-foreground flex items-center gap-1">
-                      <Phone className="h-3 w-3 text-primary" />
-                      {detailModalPatient.responsiblePhone}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block">
-                      Terapeuta Responsável:
-                    </span>
-                    <span className="font-semibold text-foreground">
-                      {detailModalPatient.therapist}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block">
-                      Última Atividade:
-                    </span>
-                    <span className="font-semibold text-foreground flex items-center gap-1 font-mono">
-                      <Calendar className="h-3 w-3 text-primary" />
-                      {detailModalPatient.lastSessionDate}
-                    </span>
-                  </div>
-                </div>
-
-                {/* OBSERVAÇÕES */}
-                <div className="p-3 rounded-xl border bg-card">
-                  <div className="flex items-center gap-1.5 font-semibold text-xs text-muted-foreground mb-1">
-                    <Info className="h-3.5 w-3.5 text-primary" />
-                    Observações Clínicas
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {detailModalPatient.notes}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDetailModalPatient(null)}
-                >
-                  Fechar
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    handleSelect(detailModalPatient);
-                    setDetailModalPatient(null);
-                  }}
-                  className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold"
-                >
-                  <Check className="h-3.5 w-3.5 mr-1" />
-                  Selecionar este Paciente
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+        onSelectPatient={(patient) => {
+          handleSelect(patient);
+          setDetailModalPatient(null);
+        }}
+      />
 
       {/* MODAL DE CADASTRO DE NOVO PACIENTE */}
       <DialogFormularioPaciente open={isCreateOpen} onOpenChange={setIsCreateOpen} />

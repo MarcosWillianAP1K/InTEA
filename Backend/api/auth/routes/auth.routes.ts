@@ -127,3 +127,5 @@ authRoutes.post('/recuperar-senha', AuthController.recuperarSenha);
  *         description: Erro interno do servidor
  */
 authRoutes.get('/me', authMiddleware, AuthController.me);
+authRoutes.post('/refresh', AuthController.refresh);
+authRoutes.post('/logout', AuthController.logout);

@@ -38,10 +38,14 @@ services:
   frontend:
     build:
       target: development
+    env_file:
+      - path: ./Frontend/.env
+        required: false
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
+      VITE_BACKEND_PROXY_TARGET: http://backend:3000
     volumes:
       - ./Frontend:/app
       - /app/node_modules

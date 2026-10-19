@@ -1,7 +1,7 @@
-# InTEA — Regras de Arquitetura e Organização
+# InTEA — Regras de Arquitetura e Organização Completa do Ecossistema
 
-> **Documento de referência obrigatório para todos os integrantes da equipe e agentes de IA que contribuírem com este projeto.**
-> Toda nova funcionalidade, migração ou refatoração deve seguir rigorosamente as convenções descritas aqui.
+> **Documento de referência obrigatório para todos os integrantes da equipe e agentes de IA que contribuírem com este projeto.**  
+> Toda nova funcionalidade, migração ou refatoração deve seguir rigorosamente as convenções, fluxos e camadas descritas aqui.
 
 ---
 
@@ -10,44 +10,62 @@
 1. [Visão Geral da Arquitetura](#1-visão-geral-da-arquitetura)
 2. [Banco de Dados (Database)](#2-banco-de-dados-database)
 3. [Back-end (Backend)](#3-back-end-backend)
-4. [Front-end (Frontend)](#4-front-end-frontend)
+4. [Front-end (Frontend) — Arquitetura Completa](#4-front-end-frontend--arquitetura-completa)
+   - [4.1 Stack Tecnológica](#41-stack-tecnológica)
+   - [4.2 Estrutura de Diretórios (`src/pages/`, `src/pages/modal/` e `src/features/`)](#42-estrutura-de-diretórios-srcpages-srcpagesmodal-e-srcfeatures)
+   - [4.3 Ciclo de Inicialização, Roteamento e Layouts](#43-ciclo-de-inicialização-roteamento-e-layouts)
+   - [4.4 Camada de Services, Cliente HTTP e Chave Mock/API Real](#44-camada-de-services-cliente-http-e-chave-mockapi-real)
+   - [4.5 Gerenciamento de Estado Global com Zustand (`store/`)](#45-gerenciamento-de-estado-global-com-zustand-store)
+   - [4.6 Hooks Nativos e Custom Hooks (`hooks/`)](#46-hooks-nativos-e-custom-hooks-hooks)
+   - [4.7 Comunicação em Tempo Real via WebSocket (`core/web.socket.ts`)](#47-comunicação-em-tempo-real-via-websocket-corewebsocketts)
+   - [4.8 Como Tudo se Conecta nas Telas (`Pages` vs `Modals` vs `Components`)](#48-como-tudo-se-conecta-nas-telas-pages-vs-modals-vs-components)
 5. [Convenções de Nomenclatura](#5-convenções-de-nomenclatura)
 6. [Regras de Git e Branches](#6-regras-de-git-e-branches)
-7. [CI/CD e Testes Automatizados](#7-cicd-e-testes-automatizados)
+7. [Docker, CI/CD e Testes Automatizados](#7-docker-cicd-e-testes-automatizados)
 8. [Segurança e Variáveis de Ambiente](#8-segurança-e-variáveis-de-ambiente)
 
 ---
 
 ## 1. Visão Geral da Arquitetura
 
-O InTEA é uma aplicação **monorepo** com três camadas independentes:
+O InTEA é uma aplicação **monorepo** estruturada em três camadas independentes que orquestram o ecossistema de Games Terapêuticos e o Motor de Inteligência Contextual (DDA):
 
-``` Pastes
+```text
 InTEA/
-├── Backend/        # API RESTful — Node.js + Express + TypeScript
-├── Frontend/       # SPA — React 19 + Vite + TypeScript + Tailwind v4
-├── Database/       # Schema e Migrações SQL — PostgreSQL via Supabase
-├── docs/           # Documentação técnica e sprints
-└── docker-compose.yml
+├── Backend/                  # API RESTful + Gateway WebSocket — Node.js + Express + Socket.IO + TypeScript
+├── Frontend/                 # SPA Clínica — React 19 + Vite + TypeScript + Tailwind v4 + Zustand
+├── Database/                 # Schema Mestre (database.sql), Migrações SQL e Seeds — PostgreSQL via Supabase
+├── docs/                     # Documentação técnica modular, OpenAPI, roteiros de teste e Sprints
+├── AGENTS.md                 # Diretrizes operacionais, Invariantes Clínicos (RN01..RN05) e Quality Gate
+├── docker-compose.yml        # Orquestração de contêineres (Produção / Nginx + Node.js)
+└── docker-compose.override.yml # Sobrescrita de desenvolvimento com Hot-Reload (Vite + tsx watch)
 ```
 
 ```mermaid
 flowchart LR
-    FE["Frontend\n(React + Vite)"]
-    BE["Backend\n(Express + TypeScript)"]
-    SB["Supabase\n(PostgreSQL + Auth + Storage)"]
+    Game["Game Terapêutico\n(Tablet / VR Externo)"]
+    FE["Frontend SPA\n(React 19 + Vite + Zustand)"]
+    BE["Backend API & Gateway\n(Express + Socket.IO)"]
+    SB["Supabase\n(PostgreSQL 3FN + Auth + Storage)"]
 
-    FE -- "HTTP REST /api" --> BE
-    FE -- "Supabase SDK (Auth, Storage)" --> SB
-    BE -- "Supabase JS Client" --> SB
+    Game -- "WebSocket (/sessao)\nPareamento & Telemetria" --> BE
+    FE -- "HTTP REST (/api/*)" --> BE
+    FE -- "WebSocket (/sessao)\nMonitoramento & Comandos DDA" --> BE
+    FE -- "Supabase SDK (Storage)" --> SB
+    BE -- "Supabase Service Role Client" --> SB
 ```
 
 ### Regras Fundamentais
 
-- **Sem monólito:** cada camada tem responsabilidade única e deve ser deployável de forma independente.
-- **TypeScript estrito em toda a stack.** Tipos `any` são proibidos.
-- **Nenhum segredo** (chaves de API, senhas, connection strings) jamais deve ser commitado. Utilize sempre `.env` e `.env.example`.
-- **Supabase é o banco de dados, o serviço de autenticação e o storage de arquivos.** Não implemente autenticação manual.
+- **Sem monólito:** cada camada possui responsabilidade única e pode ser implantada de forma independente.
+- **TypeScript estrito em toda a stack:** o uso do tipo `any` é terminantemente proibido (`tsc --noEmit` deve passar com zero erros).
+- **Segredos protegidos:** chaves privadas e credenciais jamais devem ser commitadas. Utilize sempre `.env` e `.env.example`.
+- **Invariantes Clínicos Invioláveis (RN01 a RN05):**
+  - **RN01 (Modo Livre sem Persistência):** partidas em modo livre possuem `paciente_id = NULL`, não gravam telemetria em prontuário e não geram relatório clínico.
+  - **RN02 (Tipagem Estrita de Métricas):** toda métrica deve ter `tipo_metrica` explícito no manifesto; métricas sem tipo ou incompatíveis são rejeitadas com `422 Unprocessable Entity`.
+  - **RN03 (Contexto DDA Pré-Sessão):** o contexto de estresse inicial e gatilhos a evitar é injetado antes do primeiro evento de telemetria.
+  - **RN04 (Visibilidade por Vínculo Institucional):** acesso a prontuários exige vínculo ativo em `terapeuta_paciente` e mesma clínica (`clinica_id`), retornando `403 Forbidden` em acessos indevidos.
+  - **RN05 (Inalterabilidade do Histórico Clínico):** proibido `hard delete` em registros clínicos (`paciente`, `anotacao_clinica`, `relatorio_sessao`). Permitido exclusivamente `soft delete` (`status_ativo = false` ou `soft_delete = true`).
 
 ---
 
@@ -55,475 +73,348 @@ flowchart LR
 
 ### 2.1 Estrutura de Diretórios
 
-``` Pastes
+```text
 Database/
-├── database.sql          # ← Schema mestre (Single Source of Truth para fresh deploy)
+├── database.sql          # ← Schema mestre consolidado (Single Source of Truth para fresh deploy)
 ├── migrations/           # ← Migrações DDL sequenciais e idempotentes
-│   ├── 001_*.sql         # ← Migração 001: Pacientes, UUID
-│   ├── 002_*.sql         # ← Migração 002: Terapeutas, Áreas de Foco
-│   ├── 003_*.sql         # ← Migração 003: Esquema inicial de telemetria e sessões
-│   └── NNN_descricao.sql # ← Próximas migrações sequenciais
+│   ├── 001_*.sql         # ← Migração 001: Pacientes, responsáveis, dados clínicos e gatilhos
+│   ├── 002_*.sql         # ← Migração 002: Terapeutas e áreas de foco
+│   ├── 003_*.sql         # ← Migração 003: Jogos, sessões, telemetria e relatórios
+│   └── NNN_descricao.sql # ← Migrações subsequentes (3 dígitos obrigatórios)
 └── seeds/                # ← Scripts DML de inserção/população de dados iniciais
-    ├── 01_seed_jogos.sql # ← Sementes de jogos terapêuticos
+    ├── 01_seed_jogos.sql # ← Catálogo inicial de jogos terapêuticos e manifestos
     └── NN_seed_*.sql     # ← Novas sementes de dados
 ```
 
-### 2.2 Regras de Schema
+### 2.2 Regras de Schema e Normalização (3FN)
 
 | Regra | Detalhe |
 | :--- | :--- |
-| **PKs sempre UUID** | `id UUID PRIMARY KEY DEFAULT gen_random_uuid()` (ou FK compartilhada `sessao_id UUID PRIMARY KEY REFERENCES sessao(id)` em tabelas com relação 1:1 estrita e conformidade 3FN, como `relatorio_sessao`). Nunca usar `BIGSERIAL` ou `INT`. |
-| **FKs sempre UUID** | Toda chave estrangeira deve referenciar um `UUID`. |
+| **PKs sempre UUID** | `id UUID PRIMARY KEY DEFAULT gen_random_uuid()` (ou PK/FK compartilhada `sessao_id UUID PRIMARY KEY REFERENCES sessao(id)` em tabelas 1:1 estritas em 3FN, como `relatorio_sessao`). Nunca usar `BIGSERIAL` ou `INT`. |
+| **FKs sempre UUID** | Toda chave estrangeira deve referenciar um `UUID`. Proibido criar FKs transitivas redundantes (ex.: proibido `paciente_id` em `telemetria_evento` ou `relatorio_sessao`, pois já é resolvido via `sessao_id -> paciente_id`). |
 | **Timestamps padrão** | Toda tabela deve ter `created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL` e `updated_at` quando aplicável. |
-| **Soft Delete** | Tabelas clínicas (`anotacao_clinica`, `relatorio_sessao`) usam `soft_delete BOOLEAN DEFAULT FALSE`. Hard DELETE é bloqueado por trigger (`impedir_hard_delete_clinico`). |
-| **RLS obrigatório** | `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` deve ser aplicado a **todas** as tabelas. Nunca deixar tabela sem política. |
-| **Sem dados sensíveis sem restrição** | Colunas como `cpf` devem ter `UNIQUE` + índice (`idx_paciente_cpf`). |
-| **Sem colunas BLOB** | Arquivos (PDF, DOCX) **nunca** são armazenados no banco. Use o **Supabase Storage** com bucket privado e signed URLs. |
+| **Soft Delete (RN05)** | Entidades de prontuário humano (`paciente`, `anotacao_clinica`, `relatorio_sessao`) usam `status_ativo = false` ou `soft_delete = true`. Hard DELETE é bloqueado por trigger (`impedir_hard_delete_clinico`). Tabelas de streaming (`telemetria_evento`) são *append-only* e não possuem `soft_delete`. |
+| **RLS obrigatório** | `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` deve ser aplicado a **todas** as tabelas. |
+| **Sem colunas BLOB** | Arquivos (PDF, DOCX) **nunca** são armazenados no banco; utiliza-se o **Supabase Storage** com bucket privado e Signed URLs temporárias. |
 
-### 2.3 Regras de Migração
+### 2.3 Regras de Migração e Seeds
 
-1. **Diretório Unificado:** Todas as migrações devem residir exclusivamente em `Database/migrations/`. Diretórios fragmentados paralelos (como `Database/supabase/migrations/`) são proibidos para evitar divergência de schema.
-2. **Versionamento Sequencial:** O nome do arquivo segue rigorosamente o padrão com 3 dígitos sequenciais: `NNN_descricao_snake_case.sql` (ex: `001_add_dados_pacientes...sql`, `002_add_dados_terapeuta.sql`, `003_initial_schema.sql`).
-3. **Imutabilidade de Migrações:** Nunca editar uma migration já executada ou commitada na branch principal. Modificações ou ajustes de schema devem ser sempre implementados através de uma nova migração subsequente.
-4. **Idempotência Obrigatória:** Toda migração deve ser reexecutável com segurança: utilize sempre `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `DROP ... IF EXISTS`, `ON CONFLICT DO NOTHING` e blocos de validação condicional `DO $$ ... END $$` antes de conversões de tipo ou restrições.
-5. **Sincronia com o Schema Mestre:** O arquivo `Database/database.sql` deve ser mantido atualizado de forma sincronizada com cada migração executada (constituindo a base limpa para novas instalações do zero).
-6. **Documentação e Passos Explicativos:** Toda migração deve conter cabeçalho descritivo com contexto clínico/técnico e blocos de código categorizados em passos (`PASSO 0`, `PASSO 1`, `PASSO 2`...).
+1. **Diretório Unificado:** todas as migrações residem em `Database/migrations/` com prefixo de 3 dígitos (`001_*.sql`, `002_*.sql`).
+2. **Imutabilidade e Idempotência:** nunca edite uma migration já executada na branch principal. Toda migration deve usar `IF NOT EXISTS`, `DROP ... IF EXISTS` e blocos `DO $$ ... END $$`.
+3. **Sincronia com `database.sql`:** o arquivo `Database/database.sql` deve ser mantido sincronizado a cada nova migration.
+4. **Seeds (`Database/seeds/`):** contêm exclusivamente comandos DML (`INSERT ... ON CONFLICT DO NOTHING`), sem comandos DDL.
 
-### 2.4 Regras de Seeds (Inserção de Dados)
-
-1. **Diretório e Escopo Exclusivo:** Scripts em `Database/seeds/` têm como objetivo estrito a carga e população de dados (DML), tais como catálogos fixos, configurações iniciais e sementes de demonstração para testes e homologação.
-2. **Separação de Responsabilidades:** Arquivos de seed **nunca** devem conter instruções DDL (`CREATE TABLE`, `ALTER TABLE`, etc.). Alterações estruturais pertencem unicamente às migrações (`Database/migrations/`).
-3. **Padrão de Nomenclatura:** Os arquivos seguem numeração sequencial de dois dígitos e prefixo semântico: `NN_seed_descricao.sql` (ex: `01_seed_jogos.sql`).
-4. **Idempotência Absoluta:** O script de seed deve garantir que sua execução repetida não gere duplicatas nem lance violações de integridade (`UNIQUE`). Utilize sempre verificações `WHERE NOT EXISTS (SELECT 1 FROM ...)` ou cláusulas `ON CONFLICT (...) DO NOTHING`.
-5. **Independência de Ambiente:** Seeds de demonstração devem ser compatíveis com deploys limpos de desenvolvimento e suportar testes de integração e ponta a ponta sem depender de IDs sequenciais fixos.
-
-### 2.5 Tabelas Existentes
+### 2.4 Tabelas do Ecossistema
 
 | Tabela | Responsabilidade |
 | :--- | :--- |
-| `clinica` | Clínica/instituição de saúde |
-| `terapeuta` | Perfil do terapeuta (espelha `auth.users`) |
-| `areas_foco` | Catálogo de áreas de especialização do terapeuta |
-| `terapeuta_area_foco` | Vínculo N:N terapeuta ↔ área |
-| `paciente` | Dados sociodemográficos do paciente |
-| `responsavel` | Responsável legal do paciente |
-| `paciente_responsavel` | Vínculo N:N paciente ↔ responsável (`principal` ou `extra`) |
-| `dados_clinicos` | Dados clínicos 1:1 com paciente |
-| `gatilhos` | Catálogo de gatilhos sensoriais |
-| `paciente_gatilho` | Vínculo N:N paciente ↔ gatilho (com severidade) |
-| `laudo_clinico` | Metadados de laudos no Supabase Storage |
-| `terapeuta_paciente` | Vínculo N:N terapeuta ↔ paciente |
-| `jogo` | Catálogo de jogos terapêuticos |
-| `sessao` | Sessão de jogo (clínica ou modo livre) |
-| `anotacao_clinica` | Anotações de prontuário (soft delete, RN05) |
-| `relatorio_sessao` | Relatório consolidado de sessão (1:1 com `sessao` via `sessao_id` PK/FK, 3FN, sem redundância de `paciente_id`/`terapeuta_id`, soft delete RN05, exclusivo para sessões clínicas — RN01) |
-
-### 2.6 Funções e Helpers de RLS
-
-- `public.check_is_super_admin()` → Verifica se o usuário autenticado é super admin.
-- `public.terapeuta_tem_acesso_paciente(p_paciente_id UUID)` → Verifica vínculo ativo em `terapeuta_paciente`.
-
-> [!CAUTION]
-> Nunca remova ou altere a assinatura dessas funções sem atualizar **todas** as políticas que as referenciam.
+| `clinica` | Instituição de saúde (isolamento multi-tenant — **RN04**) |
+| `terapeuta` | Perfil profissional do terapeuta (espelha `auth.users`) |
+| `areas_foco` / `terapeuta_area_foco` | Catálogo e vínculo N:N de especialidades do terapeuta |
+| `paciente` | Dados sociodemográficos do paciente (`status_ativo` — **RN05**) |
+| `responsavel` / `paciente_responsavel` | Responsáveis legais e vínculo N:N (`principal` ou `extra`) |
+| `dados_clinicos` | Perfil sensorial, reforçadores e anamnese 1:1 com paciente |
+| `gatilhos` / `paciente_gatilho` | Catálogo de gatilhos sensoriais e severidade por paciente |
+| `laudo_clinico` | Metadados de laudos armazenados no Supabase Storage |
+| `terapeuta_paciente` | Vínculo institucional N:N terapeuta ↔ paciente (**RN04**) |
+| `jogo` | Catálogo de jogos terapêuticos e manifesto JSON (**RN02**) |
+| `sessao` | Sessão de intervenção (`sessao_clinica` ou `modo_livre` — **RN01**, **RN03**) |
+| `telemetria_evento` | Série temporal *append-only* de eventos de telemetria da sessão |
+| `anotacao_clinica` | Anotações estruturadas e observações de prontuário (**RN05**) |
+| `relatorio_sessao` | Relatório analítico pós-sessão (1:1 com `sessao` via `sessao_id` PK/FK em 3FN) |
+| `auditoria_clinica` | Trilha imutável de auditoria de operações sensíveis (LGPD) |
 
 ---
 
 ## 3. Back-end (Backend)
 
-### 3.1 Stack
+### 3.1 Stack Tecnológica
 
 | Tecnologia | Versão | Uso |
 | :--- | :--- | :--- |
-| Node.js | LTS | Runtime |
-| TypeScript | ^7.x | Linguagem (strict mode) |
-| Express | ^4.x | Framework HTTP |
-| Supabase JS | ^2.x | Cliente do banco/auth |
-| Socket.IO | ^4.x | WebSocket (sessões em tempo real) |
-| Vitest | ^5.x | Testes unitários |
+| Node.js | 20 LTS | Runtime |
+| TypeScript | ^5.x / ^7.x | Linguagem em modo estrito (`strict: true`, zero `any`) |
+| Express | ^4.x | Servidor HTTP RESTful |
+| Socket.IO | ^4.x | Gateway WebSocket bidirecional em tempo real |
+| Supabase JS | ^2.x | Cliente de banco de dados e autenticação (`SERVICE_ROLE_KEY`) |
+| Vitest | ^4.x / ^5.x | Suíte de testes unitários e de integração (32 suítes / 579 testes) |
 
 ### 3.2 Estrutura de Diretórios
 
-``` Pastes
+```text
 Backend/
 ├── src/
-│   └── server.ts             # Ponto de entrada: Express, CORS, Swagger UI e registro do apiRouter
+│   └── server.ts                        # Ponto de entrada: Express, HTTP Server, Socket.IO, CORS, Swagger UI
 ├── api/
-│   ├── index.ts              # apiRouter central — registra rotas das features (/paciente, /terapeuta, etc.)
-│   └── {feature}/            # Ex: paciente/, terapeuta/, jogo/
-│       ├── controllers/
-│       │   └── {feature}.controller.ts
-│       ├── models/
-│       │   └── {feature}.model.ts
-│       ├── routes/
-│       │   └── {feature}.routes.ts  # Endpoints REST e anotações Swagger @swagger
-│       ├── dtos/             # Data Transfer Objects
-│       │   └── {feature}.dto.ts
-│       └── test/
-│           └── {feature}.test.ts
-├── core/
-│   ├── middlewares/
-│   │   └── auth.middleware.ts  # Validação de token Bearer JWT via Supabase Auth
-│   └── supabase/
-│       └── supabase.client.ts  # Instância singleton do Supabase com SERVICE_ROLE_KEY
-└── package.json
+│   ├── index.ts                         # apiRouter central (/auth, /paciente, /terapeuta, /jogos, /sessao, /anotacao)
+│   ├── auth/                            # Login, refresh token, logout, recuperação de senha e /me
+│   ├── paciente/                        # CRUD clínico, prontuário, soft delete, reativação e equipe multidisciplinar
+│   ├── terapeuta/                       # Perfil profissional, áreas de foco e vínculos institucionais
+│   ├── jogos/                           # Catálogo, validação de manifesto (Contrato 1) e telemetria estrita (RN02)
+│   ├── sessao/                          # Pareamento PIN/Token, início DDA, máquina de estados, resultado e exportação LGPD
+│   ├── anotacao/                        # Registro e listagem de anotações clínicas estruturadas
+│   └── auditoria/                       # Trilha imutável de auditoria clínica
+└── core/
+    ├── middlewares/
+    │   ├── auth.middleware.ts           # Validação do Bearer JWT e injeção de req.user
+    │   └── me.middleware.ts             # Enriquecimento de contexto institucional do terapeuta
+    ├── supabase/
+    │   └── supabase.client.ts           # Instância singleton do Supabase (SERVICE_ROLE_KEY + ANON_KEY)
+    └── websocket/
+        ├── sessao.gateway.ts            # Gateway Socket.IO (/sessao e /): salas, telemetria, comandos DDA e presença
+        ├── sessao.reconnection.ts       # Controle de resiliência e janela de reconexão de 60 segundos
+        └── socket.limiter.ts            # Rate limiting contra flooding de pacotes WebSocket
 ```
 
-### 3.3 Padrão de Arquitetura: MVC
+### 3.3 Padrão de Arquitetura: Clean MVC + Gateway WebSocket
 
-O Back-end segue estritamente o padrão **MVC (Model-View-Controller)**. No contexto de API REST, a "View" é a resposta JSON.
-
-``` Paste
-HTTP Request
-    ↓
-routes/{feature}.routes.ts      # Define verbos HTTP e mapeia para o Controller
-    ↓
-controllers/{feature}.controller.ts  # Extrai dados da req, chama o Model, devolve res
-    ↓
-models/{feature}.model.ts       # Contém toda a lógica de acesso ao banco (Supabase)
-    ↓
-core/supabase/supabase.client.ts # Singleton do cliente Supabase
+```mermaid
+flowchart TD
+    Req["HTTP Request (Authorization: Bearer JWT)"] --> Route["routes/{feature}.routes.ts"]
+    Route --> MW["authMiddleware / meMiddleware"]
+    MW --> Controller["controllers/{feature}.controller.ts\n(Thin Controller: valida entrada, extrai req.user.id)"]
+    Controller --> Service["services/{feature}.service.ts\n(Fat Service: regras RN01..RN05, cálculos, auditoria)"]
+    Service --> Model["models/{feature}.model.ts\n(Queries Supabase, Soft Delete)"]
+    Model --> DB[(Supabase PostgreSQL)]
 ```
 
-#### Responsabilidades por camada
+#### Responsabilidades por Camada
 
-| Camada | Faz | Não Faz |
+| Camada | O que faz | O que NÃO faz |
 | :--- | :--- | :--- |
-| **Route** | Define verbos HTTP (`GET`, `POST`, etc.) e registra middlewares | Contém lógica de negócio |
-| **Controller** | Extrai e valida dados da `req`, chama o Model, formata o `res` | Acessa banco diretamente |
-| **Model** | Executa queries no Supabase, trata erros de banco | Acessa `req` ou `res` |
-| **DTO** | Define a interface TypeScript de entrada (body, params, query) | Contém lógica |
-
-### 3.4 Regras de Controller
-
-```typescript
-//  CORRETO
-export class PacienteController {
-  static async criar(req: Request, res: Response): Promise<void> {
-    try {
-      const dto: CriarPacienteDTO = req.body;
-      // Validação básica aqui (campos obrigatórios)
-      const paciente = await PacienteModel.criar(dto);
-      res.status(201).json({ data: paciente });
-    } catch (error) {
-      res.status(500).json({ error: 'Erro ao criar paciente' });
-    }
-  }
-}
-```
-
-- Todo método de controller deve ser `static async`.
-- Sempre envolver em `try/catch`.
-- Retornar sempre `{ data: ... }` para sucesso e `{ error: '...' }` para erro.
-- Status HTTP corretos: `200` listagem/busca, `201` criação, `400` validação, `401` sem auth, `403` sem permissão, `404` não encontrado, `500` erro interno.
-
-### 3.5 Regras de Model
-
-```typescript
-//  CORRETO
-export class PacienteModel {
-  static async criar(dto: CriarPacienteDTO) {
-    const { data, error } = await supabase
-      .from('paciente')
-      .insert(dto)
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return data;
-  }
-
-  static async desativar(id: string) {
-    // Soft Delete: NUNCA usa .delete() em entidade clínica
-    const { data, error } = await supabase
-      .from('paciente')
-      .update({ status_ativo: false, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return data;
-  }
-}
-```
-
-- Toda query ao Supabase verifica `error` e lança exceção em caso de falha.
-- **Soft Delete:** Tabelas clínicas nunca usam `.delete()`. Use `.update({ status_ativo: false })` ou `.update({ soft_delete: true })`.
-- Métodos de listagem sempre filtram `status_ativo: true` por padrão.
-
-### 3.6 Regras de DTO
-
-```typescript
-// dtos/paciente.dto.ts
-export interface CriarPacienteDTO {
-  nome: string;
-  data_nascimento: string;     // ISO 8601: "YYYY-MM-DD"
-  clinica_id: string;          // UUID
-  cpf?: string;
-  telefone?: string;
-  // ...
-}
-
-export interface AtualizarPacienteDTO {
-  nome?: string;
-  telefone?: string;
-  // Nunca inclua id, created_at, clinica_id em update DTO
-}
-```
-
-- DTOs de criação (`Criar...DTO`) têm campos obrigatórios sem `?`.
-- DTOs de atualização (`Atualizar...DTO`) têm todos os campos como opcionais (`?`), pois PATCH parcial é padrão.
-- DTOs nunca incluem `id`, `created_at`, `updated_at` — esses são gerados pelo banco.
-- Para datas: sempre `string` no formato ISO 8601 (`YYYY-MM-DD` ou `YYYY-MM-DDTHH:mm:ssZ`).
-
-### 3.7 Registrar uma Nova Feature
-
-1. Criar pasta `api/{feature}/` com as subcamadas (`controllers`, `models`, `routes`, `test`).
-2. Exportar as rotas em `api/{feature}/routes/{feature}.routes.ts` com anotações `@swagger`.
-3. **Importar e registrar** em `api/index.ts` usando o nome do recurso no **singular**:
-
-   ```typescript
-   apiRouter.use('/auth', authRoutes);
-   apiRouter.use('/paciente', pacienteRoutes);
-   apiRouter.use('/terapeuta', terapeutaRoutes);
-   ```
-
-### 3.8 Testes Automatizados
-
-- Framework: **Vitest**.
-- Todo Model deve ter seu arquivo de teste em `api/{feature}/test/{feature}.test.ts`.
-- Testes unitários validam lógica de CRUD, soft delete, hard delete e auth de forma isolada.
-- Executar com: `npm test` no diretório `Backend/`.
-
-### 3.9 Documentação Interativa com Swagger UI / OpenAPI
-
-O projeto utiliza **Swagger UI** (`swagger-ui-express` + `swagger-jsdoc`) para documentação viva e testes de endpoints.
-
-- **URL de Acesso:** `http://localhost:3000/api/docs`
-- **Regras de Documentação:**
-  - A documentação de cada rota vive **exclusivamente** em cima do método no arquivo `{feature}.routes.ts` usando blocos `/** @swagger ... */`.
-  - **Não poluir o `server.ts`** com definições manuais de schemas. O `server.ts` deve apenas carregar os arquivos via glob (`./dist/api/**/*.routes.js` e `./api/**/*.routes.ts`).
-  - As requisições usam **exemplos JSON diretos** (`example: { ... }`) facilitando o teste via botão *"Try it out"*.
-  - A seção de Schemas no rodapé do Swagger UI é ocultada via `defaultModelsExpandDepth: -1`.
-- **Botão Authorize (JWT):**
-  - O Swagger possui o botão **`Authorize`** habilitado no topo direito via `securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }`.
-  - Basta fazer login em `POST /api/terapeuta/login`, copiar o `access_token` retornado e colar no botão Authorize para testar rotas protegidas.
-
-### 3.10 Autenticação JWT e Middleware de Segurança
-
-- O sistema utiliza **Tokens JWT** emitidos pelo Supabase Auth.
-- Para proteger uma rota privada, utiliza-se o middleware `authMiddleware`:
-
-  ```typescript
-  import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
-
-  // Rota protegida por autenticação JWT:
-  authRoutes.get('/me', authMiddleware, AuthController.me);
-  ```
-
-- O middleware:
-  1. Extrai o token do cabeçalho `Authorization: Bearer <token>`.
-  2. Valida o token com `supabase.auth.getUser(token)`.
-  3. Injeta os dados do usuário autenticado em `req.user`.
-  4. Retorna `401 Unauthorized` caso o token seja inválido, ausente ou expirado.
+| **Route (`routes/`)** | Define verbos HTTP, aplica middlewares e documenta `@swagger`. | Não contém regras de negócio. |
+| **Controller (`controllers/`)** | Extrai `req.params`, `req.query`, `req.body` e `req.user.id` (nunca confia em `terapeuta_id` vindo do body — **RF21**); devolve status HTTP semântico. | Não executa queries diretas no banco nem cálculos pesados. |
+| **Service (`services/`)** | Executa regras de domínio (**RN01 a RN05**), validações cruzadas de clínica (**RN04**), agregações estatísticas e síntese analítica. | Não manipula objetos HTTP (`req`/`res`). |
+| **Model (`models/`)** | Executa consultas ao Supabase, garante `status_ativo = true` nas listagens e aplica Soft Delete (**RN05**). | Não conhece regras de transporte HTTP. |
+| **WebSocket Gateway (`core/websocket/`)** | Gerencia salas por `session_token`, retransmite telemetria em baixa latência, encaminha comandos clínicos (`pausar`, `retomar`, `ajustar_dda`, `encerrar`) e controla reconexão (60s). | Não bloqueia o event loop com relatórios síncronos a cada pacote. |
 
 ---
 
-## 4. Front-end (Frontend)
+## 4. Front-end (Frontend) — Arquitetura Completa
 
-### 4.1 Stack
+Esta seção explica em profundidade os fundamentos e a mecânica real do Frontend para que qualquer desenvolvedor da equipe (mesmo quem atuou exclusivamente no Backend/BD) compreenda exatamente como as telas, modais, services, hooks e stores funcionam.
 
-| Tecnologia | Versão | Uso |
+### 4.1 Stack Tecnológica
+
+| Tecnologia | Versão | Finalidade |
 | :--- | :--- | :--- |
-| React | ^19.x | UI Framework |
-| TypeScript | ~5.9.x | Linguagem (strict mode) |
-| Vite | ^7.x | Build tool e dev server |
-| Tailwind CSS | ^4.x | Estilização utilitária com `@theme inline` |
-| React Router DOM | ^7.x | Roteamento declarativo SPA |
-| Zustand | ^5.x | Gerenciamento de estado global com middleware `persist` |
-| Radix UI + shadcn | ^1.x | Componentes primitivos acessíveis |
-| Lucide React | ^0.575.x | Biblioteca oficial de ícones |
-| Vitest | ^5.x | Testes unitários de componentes e hooks |
+| React | ^19.x | Biblioteca SPA baseada em componentes declarativos e hooks |
+| TypeScript | ~5.9.x | Tipagem estrita (`strict: true`, zero `any`) |
+| Vite | ^7.x | Bundler, injeção de variáveis `VITE_*` e servidor de desenvolvimento com proxy |
+| Tailwind CSS | ^4.x | Estilização utilitária responsiva com `@theme inline` |
+| React Router DOM | ^7.x | Roteamento declarativo SPA (`BrowserRouter`, `Routes`, `Outlet`) |
+| Zustand | ^5.x | Gerenciamento de estado global em memória com persistência (`persist`) |
+| Socket.IO Client | ^4.x | Comunicação bidirecional em tempo real no Cockpit da Sessão |
+| Radix UI + shadcn | ^1.x | Primitivos visuais acessíveis (`Dialog`, `Select`, `Table`, `Sidebar`, etc.) |
+| Vitest + Testing Library | ^4.x | Suíte de testes automatizados (34 suítes / 285 testes) |
 
-### 4.2 Estrutura de Diretórios (Padrão Oficial Feature-Driven)
+---
 
-``` Pastes
+### 4.2 Estrutura de Diretórios (`src/pages/`, `src/pages/modal/` e `src/features/`)
+
+A camada visual do Frontend adota o padrão **Pages & Modals Centralizados + Features Modulares**:
+- **Todas as Páginas Mestre** vivem centralizadas em **`Frontend/src/pages/`**.
+- **Todos os Modais, Dialogs e Overlays de negócio** vivem centralizados em **`Frontend/src/pages/modal/`**.
+- **Componentes internos, Services, Hooks, Stores e Types** vivem organizados por domínio dentro de **`Frontend/src/features/{dominio}/`**.
+
+```text
 Frontend/src/
-├── core/                       # Infraestrutura e clientes centrais da aplicação
+├── main.tsx                              # Ponto de entrada: monta <App /> na <div id="root">
+├── App.tsx                               # Configura ThemeProvider, BrowserRouter, AppRoutes e Toaster
+├── routes/
+│   └── index.tsx                         # Definição de rotas públicas/privadas, ProtectedRoute e Layouts
+├── layout/
+│   ├── SidebarLayout.tsx                 # Casca administrativa com menu lateral (Painel, Pacientes, Jogos)
+│   ├── FocusLayout.tsx                   # Casca imersiva em tela cheia sem distrações (Cockpit e Resultado — RNF07)
+│   └── components/                       # app-sidebar.tsx, nav-header.tsx, nav-main.tsx, nav-user.tsx
+├── pages/                                # ★ CENTRAL DE TODAS AS PÁGINAS MESTRE DA APLICAÇÃO
+│   ├── index.ts                          # Barrel export de todas as páginas e de ./modal
+│   ├── LoginPage.tsx                     # Tela de autenticação, cadastro de terapeuta e recuperação de senha
+│   ├── PainelPage.tsx                    # Dashboard clínico, indicadores, alertas de IA e início rápido
+│   ├── PacientesPage.tsx                 # Gestão de prontuários, KPIs, busca e listagem em grade/tabela
+│   ├── BibliotecaJogosPage.tsx           # Catálogo de jogos terapêuticos, filtros por objetivo e Modo Livre
+│   ├── CockpitSessaoPage.tsx             # Monitoramento em tempo real (telemetria, cronômetro, comandos DDA)
+│   ├── ResultadoSessaoPage.tsx           # Pós-sessão: métricas consolidadas, gráficos, síntese IA, anotação e PDF
+│   ├── ConfiguracoesPage.tsx             # Rota de preferências e configurações do terapeuta
+│   └── modal/                            # ★ CENTRAL DE TODOS OS MODAIS / OVERLAYS / DIALOGS DE NEGÓCIO
+│       ├── index.ts                      # Barrel export dos modais centralizados
+│       ├── ModalPreSessao.tsx            # Calibração pré-sessão (DDA, gatilhos, emissão de PIN/Token e pareamento)
+│       ├── ModalFinalizarSessao.tsx      # Confirmação de encerramento da sessão ativa no Cockpit
+│       ├── DialogFormularioPaciente.tsx  # Cadastro e edição de paciente em múltiplas etapas (sociodemográfico/clínico)
+│       ├── DialogDetalhesPaciente.tsx    # Visualização rápida de prontuário, gatilhos, reforçadores e responsáveis
+│       └── ModalConfiguracoes.tsx        # Modal de preferências de aparência, tema e privacidade
+├── core/                                 # Infraestrutura de comunicação com o Backend
 │   ├── api/
-│   │   ├── http-client.ts      # Cliente HTTP oficial resiliente (HttpClient) com interceptores JWT e retries
-│   │   └── endpoints.ts        # Constantes tipadas de rotas RESTful (/api/paciente, /api/terapeuta, etc.)
-│   └── web.socket.ts           # Cliente e hooks reativos de Socket.IO para telemetria em tempo real
-├── routes/                     # Central de Roteamento SPA (React Router DOM v7)
-│   └── index.tsx               # Mapeamento declarativo de rotas com layouts aninhados
-├── layout/                     # Casca estrutural e cascas visuais da aplicação
-│   ├── dashboardLayout.tsx     # Layout com SidebarProvider, AppSidebar, Header dinâmico e trigger
-│   └── LayoutExample.tsx       # BaseLayout reutilizável com scroll protegido
-├── features/                   # Módulos verticais por domínio de negócio
-│   ├── auth/                   # Autenticação e sessão do terapeuta
-│   │   ├── hooks/              # useAuth.ts
-│   │   ├── services/           # auth.service.ts
-│   │   └── types/              # auth.types.ts e bdmock.ts
-│   ├── terapeuta/              # Gestão do perfil do terapeuta e equipe multidisciplinar
-│   │   ├── services/           # terapeuta.service.ts
-│   │   └── types/              # terapeuta.types.ts e bdmock.ts
-│   ├── paciente/               # Gestão clínica e cadastral de pacientes (alias/compat com patients)
-│   │   ├── components/         # Formulários e listagens
-│   │   ├── pages/              # PacientesPage.tsx
-│   │   ├── services/           # paciente.service.ts
-│   │   ├── store/              # patients.store.ts
-│   │   └── types/              # paciente.types.ts e bdmock.ts
-│   ├── jogos/                  # Catálogo e Biblioteca de Jogos Terapêuticos
-│   │   ├── components/         # JogoCard.tsx, JogosFiltros.tsx
-│   │   ├── pages/              # BibliotecaJogosPage.tsx
-│   │   ├── services/           # jogos.service.ts (com fallback jogosService.ts)
-│   │   └── types/              # jogos.types.ts e bdmock.ts
-│   ├── sessao/                 # Orquestração e cockpit de intervenção clínica
-│   │   ├── components/         # Telemetria, anotações, controles clínicos
-│   │   ├── hooks/              # useLiveTelemetry.ts, useSessionPersistence.ts
-│   │   ├── pages/              # CockpitSessaoPage.tsx, ResultadoSessaoPage.tsx
-│   │   ├── services/           # sessao.service.ts (com fallback sessaoService.ts)
-│   │   ├── store/              # sessionStore.ts
-│   │   └── types/              # sessao.types.ts e bdmock.ts
-│   ├── anotacao/               # Anotações clínicas e prontuário
-│   │   ├── services/           # anotacao.service.ts
-│   │   └── types/              # anotacao.types.ts e bdmock.ts
-│   ├── dashboard/              # Painel inicial, métricas gerais e navegação
-│   │   ├── components/         # app-sidebar.tsx, nav-header.tsx, nav-main.tsx, nav-user.tsx
-│   │   ├── pages/              # dashboardPage.tsx
-│   │   ├── services/           # dashboard.service.ts
-│   │   └── types/              # dashboard.types.ts e bdmock.ts
-│   └── settings/               # Configurações do usuário e preferências da aplicação
-│       ├── pages/              # settingsPage.tsx
-│       ├── sections/           # appearanceSetting.tsx
-│       ├── store/              # settingsStore.ts
-│       └── types/              # settings.types.ts e bdmock.ts
-├── shared/                     # Código e utilitários compartilhados entre features
-│   ├── components/
-│   │   └── ui/                 # Componentes primitivos (avatar, badge, button, dialog, etc.)
-│   ├── hooks/                  # Hooks globais compartilhados (use-mobile.ts, etc.)
-│   ├── lib/                    # Utilitários puros (utils.ts com cn() usando clsx e twMerge)
-│   ├── providers/              # Provedores de contexto (ThemeProvider, etc.)
-│   ├── types/                  # Tipagens globais da API (api.types.ts) e bdmock.ts global
-│   └── utils/
-│       └── request.ts          # Infraestrutura do cliente HTTP resiliente (HttpClient)
-├── assets/                     # SVGs, ícones e ilustrações da identidade visual do InTEA
-├── styles/                     # Folha de estilos raiz (index.css com Tailwind v4 e tw-animate-css)
-├── App.tsx                     # Ponto de montagem com ThemeProvider e Routes
-└── main.tsx                    # Ponto de entrada do React 19
+│   │   ├── endpoints.ts                  # Mapa tipado de todas as URLs da API REST (/auth, /paciente, /sessao, etc.)
+│   │   └── http-client.ts                # Instância do HttpClient com injeção automática de JWT e fila de refresh 401
+│   └── web.socket.ts                     # Singleton SessionSocketManager (Socket.IO Client) e hooks reativos
+├── features/                             # Módulos de domínio (Components internos, Services, Stores, Hooks, Types)
+│   ├── autenticacao/                     # auth.service.ts, authStore.ts, useAuth.ts, auth.types.ts, bdmock.ts
+│   ├── terapeuta/                        # terapeuta.service.ts, terapeuta.types.ts, bdmock.ts
+│   ├── paciente/                         # CardPacienteGrid, ListaPacientes, paciente.service.ts, paciente.store.ts
+│   ├── jogos/                            # JogoCard, JogosFiltros, jogos.service.ts, jogos.types.ts, bdmock.ts
+│   ├── sessao/                           # TelemetriaCards, TelemetriaChart, ControlesClinicos, sessao.service.ts,
+│   │                                     # sessionStore.ts, useLiveTelemetry, useSessionPersistence, useClinicalTimer
+│   ├── anotacao/                         # anotacao.service.ts, anotacao.types.ts, bdmock.ts
+│   ├── painel/                           # dashboard.service.ts, dashboard.types.ts, bdmock.ts
+│   └── configuracoes/                    # appearanceSetting.tsx, settings.service.ts, settingsStore.ts
+└── shared/                               # Recursos transversais reutilizáveis
+    ├── components/ui/                    # 17 componentes primitivos Radix UI / shadcn (button, dialog, card, etc.)
+    ├── hooks/                            # use-mobile.ts
+    ├── lib/                              # utils.ts (função cn()), mock-adapter.ts (withFallback / shouldUseMock)
+    ├── providers/                        # theme-provider.tsx
+    ├── types/                            # api.types.ts e bdmock.ts global
+    └── utils/                            # request.ts (motor base do HttpClient com timeout, retry e fila 401)
 ```
 
-### 4.3 Cliente HTTP Resiliente (`core/api/http-client.ts`)
+---
 
-Todas as chamadas à API REST devem utilizar a instância centralizada do `HttpClient` em `core/api/http-client.ts` (construída sobre a base resiliente de `shared/utils/request.ts`):
+### 4.3 Ciclo de Inicialização, Roteamento e Layouts
 
-1. **Instanciação Padronizada:**
+Quando o navegador carrega a aplicação, a execução segue exatamente este fluxo:
 
+1. **`Frontend/index.html` $\rightarrow$ `Frontend/src/main.tsx`:** localiza a `<div id="root">` e monta `<App />`.
+2. **`Frontend/src/App.tsx`:** envolve a aplicação em três camadas globais:
+   - `<ThemeProvider>`: aplica o tema visual (`light`, `dark` ou `system`).
+   - `<BrowserRouter>`: habilita navegação SPA sem recarregar a página inteira.
+   - `<AppRoutes />` + `<Toaster />`: renderiza a página correspondente à URL atual e exibe notificações flutuantes (*toasts*).
+3. **`Frontend/src/routes/index.tsx`:** atua como o **`apiRouter` + `authMiddleware` do Frontend**:
+   - **`ProtectedRoute`:** lê `const isAuthenticated = useAuthStore((s) => s.isAuthenticated)`. Se for `false`, redireciona imediatamente para `/login`. Se for `true`, renderiza a rota solicitada via `<Outlet />`.
+   - **Divisão em 2 Layouts Clínicos:**
+     - **`SidebarLayout` (`/painel`, `/pacientes`, `/jogos`):** exibe a barra lateral de navegação (`AppSidebar`) e o cabeçalho superior.
+     - **`FocusLayout` (`/sessao/:id/monitoramento` e `/sessao/:id/resultado`):** tela cheia imersiva sem menu lateral para eliminar distrações cognitivas durante o atendimento (**RNF07**).
+
+---
+
+### 4.4 Camada de Services, Cliente HTTP e Chave Mock/API Real
+
+No Backend, um `Model` consulta o PostgreSQL. Como o Frontend roda no navegador do usuário e não acessa o banco diretamente, **a fonte de dados do Frontend é a API REST do Backend**.
+Um **Service** no Frontend (`features/*/services/*.service.ts`) é um objeto que agrupa todas as chamadas HTTP daquele domínio.
+
+#### Mecânica de uma Requisição HTTP no Frontend:
+
+```mermaid
+flowchart LR
+    Page["Página / Modal\n(src/pages/)"] --> Service["Service do Domínio\n(ex: sessao.service.ts)"]
+    Service --> Adapter["withFallback()\n(shared/lib/mock-adapter.ts)"]
+    Adapter -- "VITE_USE_MOCK_DATA=false" --> Http["http.get / http.post\n(core/api/http-client.ts)"]
+    Adapter -- "VITE_USE_MOCK_DATA=true" --> Mock["Dados Locais\n(types/bdmock.ts)"]
+    Http --> RequestEngine["request.ts\n(Injeta Bearer JWT, Timeout 15s, Refresh 401)"]
+    RequestEngine --> Backend["Backend API REST\n(/api/*)"]
+```
+
+1. **Dicionário de Rotas (`core/api/endpoints.ts`):** centraliza todos os caminhos REST (`ENDPOINTS.SESSAO.INICIAR`, `ENDPOINTS.PACIENTE.POR_ID(id)`), evitando strings soltas nas telas.
+2. **Cliente HTTP (`core/api/http-client.ts` + `shared/utils/request.ts`):**
+   - **Injeção Automática de JWT:** antes de enviar qualquer requisição, lê `localStorage.getItem("access_token")` e injeta o header `Authorization: Bearer <token>`.
+   - **Fila Inteligente de Renovação (`401 Unauthorized`):** se o token expirar durante o uso, o interceptor chama `POST /api/auth/refresh` automaticamente com o `refresh_token`, salva o novo `access_token` e repete a requisição original de forma transparente. Se o refresh falhar, limpa a sessão (`onAuthFailure`) e redireciona para `/login`.
+   - **Normalização na Fronteira:** quando o contrato do Backend retorna campos em `snake_case` (como `session_id` em `POST /api/sessao/iniciar` ou `nome`/`descricao` em `GET /api/jogos`), o próprio Service do Frontend normaliza os dados para a interface TypeScript consumida pelas telas, mantendo o Backend enxuto e sem chaves duplicadas.
+3. **Alternância Mock vs. API Real (`shared/lib/mock-adapter.ts`):**
+   - A função `withFallback(apiCall, mockFallback)` verifica a variável `VITE_USE_MOCK_DATA`:
+     - Se `VITE_USE_MOCK_DATA === "true"`, retorna imediatamente os dados simulados de `bdmock.ts` (usado nos testes unitários offline).
+     - Se `VITE_USE_MOCK_DATA === "false"`, executa a chamada real `apiCall()` contra o Backend.
+
+---
+
+### 4.5 Gerenciamento de Estado Global com Zustand (`store/`)
+
+#### Qual problema o Zustand resolve?
+No React, variáveis criadas com `useState` dentro de uma página são **locais e efêmeras**: quando o terapeuta navega de `/jogos` (onde abriu o `ModalPreSessao`) para `/sessao/:id/monitoramento` (`CockpitSessaoPage`), o componente anterior é desmontado da memória.
+O **Zustand** cria **Stores globais em memória RAM no navegador** (fora da árvore de componentes) que permanecem vivas durante toda a navegação e podem opcionalmente sincronizar com o `localStorage` via middleware `persist`.
+
+#### As 4 Stores Globais do InTEA:
+
+| Store | Arquivo | O que armazena | Persistência |
+| :--- | :--- | :--- | :--- |
+| **`useAuthStore`** | `features/autenticacao/store/authStore.ts` | `user` (terapeuta logado), `tokens` (`access_token`, `refresh_token`), `isAuthenticated` e actions `login()`, `logout()`. | `localStorage` (`intea:auth-store`) |
+| **`useSessionStore`** | `features/sessao/store/sessionStore.ts` | Máquina de estados da sessão (`status`: `ocioso` $\rightarrow$ `configurando` $\rightarrow$ `aguardando_dispositivo` $\rightarrow$ `em_andamento` $\rightarrow$ `pausado` $\rightarrow$ `finalizado`), `config` DDA, `pareamento` (`sessionToken`, `pinCode`), `dispositivo`, `nivelDdaAtual` e `eventosTelemetria`. | Memória + hidratação via `useSessionPersistence` (`sessionStorage`) |
+| **`usePacienteStore`** | `features/paciente/store/paciente.store.ts` | Dicionário e lista de pacientes da clínica (`patients`), `isLoading`, `fetchPatients()` (integração com `pacienteService.listar()`), `savePatient()` e `toggleStatus()`. | Memória + sincronização REST |
+| **`useSettingStore`** | `features/configuracoes/store/settingsStore.ts` | Preferências visuais do terapeuta (`theme`, `language`, `autoDelete`). | `localStorage` (`app:preferences`) |
+
+#### Regra de Performance (Seletores Estritos):
+Ao consumir uma store Zustand em uma página ou componente, selecione apenas a fatia necessária do estado:
 ```typescript
-import { http } from "@/core/api/http-client";
-import { ENDPOINTS } from "@/core/api/endpoints";
-
-// Exemplo de consumo no service da feature
-const response = await http.get(ENDPOINTS.PACIENTE.LISTAR);
+// CORRETO: o componente só re-renderiza quando nivelDdaAtual mudar
+const nivelDdaAtual = useSessionStore((s) => s.nivelDdaAtual);
 ```
 
-2. **Garantias de Resiliência:**
-   - **Timeout Automático:** Aborta chamadas pendentes após 15 segundos (5 minutos para upload).
-   - **Retries Exponenciais:** Re-execução automática apenas de métodos idempotentes (`GET` e `HEAD`) em falhas de rede transitórias.
-   - **Fila de 401 (Token Refresh):** Quando múltiplos requests concorrentes recebem `401 Unauthorized`, apenas uma chamada de renovação de token é disparada; as demais requisições aguardam na fila e são re-executadas com o novo token sem deslogar o usuário.
-   - **Proteção CSRF:** Suporte nativo a tokens CSRF via header customizado (`X-CSRF-Token`).
+---
 
-### 4.4 Padrão de Layout e Sidebar (`layout/dashboardLayout.tsx`)
+### 4.6 Hooks Nativos e Custom Hooks (`hooks/`)
 
-O InTEA adota uma casca estrutural baseada no componente `Sidebar` do Radix UI / Shadcn:
+Um **Custom Hook** (`useNome`) é uma função reutilizável que encapsula lógica reativa do React (`useState`, `useEffect`, `useCallback`, `useRef`), tirando a complexidade de timers, WebSockets e cache de dentro dos arquivos visuais `.tsx`.
 
-- **`SidebarProvider`:** Controla a abertura, colapso para ícones e responsividade móvel (`use-mobile.ts`).
-- **`AppSidebar`:** Centraliza a navegação primária (`Dashboard`, `Jogos`, `Meus Pacientes`, `Histórico`), o logo oficial do InTEA (`nav-header.tsx`), botão de ação rápida (`nav-button.tsx`) e o perfil do usuário logado (`nav-user.tsx`).
-- **`Header Dinâmico`:** Contém o trigger de expansão da sidebar e a saudação contextual do terapeuta.
-- **`BaseLayout`:** Contêiner com rolagem protegida (`overflow-x-hidden`) onde as páginas filhas são renderizadas.
+| Custom Hook | Arquivo | Mecânica e Responsabilidade |
+| :--- | :--- | :--- |
+| **`useSessionPersistence`** | `features/sessao/hooks/useSessionPersistence.ts` | **Proteção contra F5 no Cockpit:** salva um snapshot da sessão ativa no `sessionStorage` (`intea_active_session_v1`), restaura o estado caso o terapeuta recarregue a página acidentalmente e registra o alerta nativo `beforeunload`. |
+| **`useLiveTelemetry`** | `features/sessao/hooks/useLiveTelemetry.ts` | **Streaming de Telemetria:** escuta eventos em tempo real do WebSocket (ou gera simulação em modo demonstração) e calcula estatísticas instantâneas (`totalEventos`, `taxaAcertoPercentual`, `tempoReacaoMedioMs`, `ultimoEvento`). |
+| **`useClinicalTimer`** | `features/sessao/hooks/useClinicalTimer.ts` | **Cronômetro Clínico:** controla a contagem de segundos da intervenção (`tempoFormatado`), respeitando automaticamente os estados de pausa e retomada da sessão. |
+| **`useSessionSync`** | `features/sessao/hooks/useSessionSync.ts` | **Sincronização de Presença:** conecta os eventos do Socket.IO (`dispositivo_conectado`, `dispositivo_desconectado`) às transições de estado da `useSessionStore`. |
+| **`useAuth`** | `features/autenticacao/hooks/useAuth.ts` | **Atalho de Autenticação:** expõe os dados do terapeuta autenticado e métodos de sessão para componentes de layout e páginas. |
 
-### 4.5 Padrão de Estado com Zustand (`store/`)
+---
 
-- **Estado Global:** Gerenciado exclusivamente via Zustand.
-- **Persistência Local:** Configurações de tema, idioma e preferências do usuário utilizam o middleware `persist` com armazenamento em `localStorage`.
-- **Tipagem Estrita:** Toda store define rigorosamente o tipo de seu estado e os métodos de mutação sem o uso de `any`.
+### 4.7 Comunicação em Tempo Real via WebSocket (`core/web.socket.ts`)
 
-```typescript
-// Exemplo: features/settings/store/settingsStore.ts
-export const useSettingStore = create<SettingState>()(
-  persist(
-    (set) => ({
-      settings: { theme: "Sistema", language: "pt", autoDelete: "Nunca" },
-      updateSetting: (key, value) =>
-        set((state) => ({
-          settings: { ...state.settings, [key]: value },
-        })),
-    }),
-    { name: "app:preferences" }
-  )
-);
+O arquivo `Frontend/src/core/web.socket.ts` implementa a classe Singleton **`SessionSocketManager`**:
+- Garante que exista **apenas uma conexão Socket.IO ativa** no navegador.
+- Conecta com autenticação JWT (`auth: { token }`) e entra na sala da sessão emitindo `entrar_sala` com `{ sessionToken }`.
+- Escuta os eventos vindos do `sessao.gateway.ts` do Backend (`dispositivo_conectado`, `dispositivo_desconectado`, `telemetria_amostra`, `sessao_atualizada`), normalizando o payload `snake_case` do servidor para a interface TypeScript `camelCase` do Frontend.
+- Emite comandos clínicos em tempo real (`sessao:comando` com `pausar`, `retomar`, `ajustar_dda`, `encerrar` e `finalizar_sessao`).
+
+---
+
+### 4.8 Como Tudo se Conecta nas Telas (`Pages` vs `Modals` vs `Components`)
+
+A interface visual é dividida em três responsabilidades claras para evitar acoplamento e conflitos de merge:
+
+1. **Páginas Mestre (`src/pages/*.tsx`):**
+   - Orquestram a rota inteira: leem parâmetros da URL (`useParams`), acionam Custom Hooks, leem as Stores do Zustand, chamam os Services e distribuem os dados prontos via *props* para os componentes filhos e modais.
+2. **Modais e Overlays (`src/pages/modal/*.tsx`):**
+   - Orquestram fluxos transacionais sobrepostos (configuração pré-sessão e pareamento em `ModalPreSessao.tsx`, encerramento em `ModalFinalizarSessao.tsx`, cadastro multi-etapas em `DialogFormularioPaciente.tsx`, prontuário rápido em `DialogDetalhesPaciente.tsx` e preferências em `ModalConfiguracoes.tsx`).
+3. **Componentes Especializados (`src/features/*/components/*.tsx`):**
+   - Blocos visuais focados em uma única parte da tela (`TelemetriaCards.tsx`, `TelemetriaChart.tsx`, `ControlesClinicos.tsx`, `JogoCard.tsx`, `ListaPacientes.tsx`). Recebem dados via *props* e notificam interações via *callbacks* (`onPausar`, `onAjustarDda`).
+
+```mermaid
+sequenceDiagram
+    actor T as Terapeuta (Navegador)
+    participant Page as BibliotecaJogosPage.tsx (src/pages/)
+    participant Modal as ModalPreSessao.tsx (src/pages/modal/)
+    participant Svc as sessao.service.ts (features/sessao/services/)
+    participant Store as useSessionStore (Zustand)
+    participant Cockpit as CockpitSessaoPage.tsx (src/pages/)
+    participant WS as SessionSocketManager (core/web.socket.ts)
+    participant BE as Backend (Express + Socket.IO)
+
+    T->>Page: 1. Clica em "Iniciar Sessão" no card do jogo
+    Page->>Store: 2. abrirModalConfiguracao(jogoId, jogoTitulo)
+    Store-->>Modal: 3. isModalAberto = true -> Abre ModalPreSessao
+    T->>Modal: 4. Seleciona paciente, nível DDA, gatilhos e clica em "Gerar Código"
+    Modal->>Svc: 5. sessaoService.iniciarSessao(dto)
+    Svc->>BE: 6. POST /api/sessao/iniciar -> 201 Created (session_id, session_token)
+    Modal->>Store: 7. iniciarPareamento({ sessionToken, pinCode, expiraEm })
+    Modal->>WS: 8. conectar() + entrarSala(sessionToken)
+    BE-->>WS: 9. Evento WebSocket "dispositivo_conectado" (Tablet pareou!)
+    WS-->>Store: 10. confirmarConexaoDispositivo() -> status = "em_andamento"
+    T->>Modal: 11. Clica em "Confirmar e Iniciar Intervenção"
+    Modal->>Cockpit: 12. navigate("/sessao/:token/monitoramento")
+    Cockpit->>WS: 13. Recebe telemetria ao vivo e envia comandos DDA em tempo real
 ```
-
-### 4.6 Roteamento Centralizado (`routes/index.tsx`)
-
-O roteamento da aplicação é desacoplado do `App.tsx`:
-
-```tsx
-export function Routes() {
-  return (
-    <RouterRoutes>
-      <Route path="/" element={<DashboardPage />} />
-      <Route path="/patients" element={<PatientsPage />} />
-      <Route path="/games" element={<BibliotecaJogosPage />} />
-    </RouterRoutes>
-  );
-}
-```
-
-### 4.7 Catálogo de Componentes Primitivos (`shared/components/ui/`)
-
-O repositório possui 17 componentes de interface primitivos, acessíveis e customizados:
-`avatar`, `badge`, `breadcrumb`, `button`, `card`, `collapsible`, `dialog`, `dropdown-menu`, `input`, `label`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `table` e `tooltip`.
-Todo novo componente visual específico de uma tela deve compor esses blocos primitivos antes de criar estilos manuais.
 
 ---
 
 ## 5. Convenções de Nomenclatura
 
-### Geral
-
-| Tipo | Convenção | Exemplo |
-| :--- | :--- | :--- |
-| Arquivos TypeScript/TSX | `kebab-case` | `paciente.model.ts`, `PacienteCard.tsx` |
-| Interfaces e Types | `PascalCase` | `CriarPacienteDTO`, `Paciente` |
-| **Funções e Métodos de Classe** | **`camelCase` ("nomeNome")** | `deletarHard()`, `buscarPorId()`, `desativar()`, `reativar()` |
-| Variáveis e instâncias | `camelCase` | `novoPaciente`, `isPacienteAtivo` |
-| Constantes globais | `UPPER_SNAKE_CASE` | `MAX_UPLOAD_SIZE`, `PORT` |
-| Componentes React | `PascalCase` | `PacienteCard`, `FormularioCadastro` |
-| Tabelas SQL | `snake_case` | `paciente`, `terapeuta_paciente` |
-| Colunas SQL / DTO payload | `snake_case` | `data_nascimento`, `status_ativo`, `clinica_id` |
-| Endpoints REST (recursos) | `kebab-case` singular | `/api/paciente`, `/api/terapeuta`, `/api/jogo` |
-| Sub-rotas de ação específica | Ação no final da URL | `DELETE /api/paciente/:id/hard`, `PATCH /api/paciente/:id/reativar` |
-
-### Regra Estrita de `camelCase` no Código TypeScript
-
-- **Métodos em Controllers, Models e Services**: devem usar **obrigatoriamente `camelCase`** (`"nomeNome"`).
-  - **Correto:** `deletarHard()`, `buscarPorId()`, `desativar()`, `calcularMetricas()`
-  - **Proibido:** `deletar_hard()`, `delete_hard()`, `buscar_por_id()`
-- **Sub-rotas de ação**: quando um endpoint realiza uma ação secundária ou de exceção sobre um recurso (como reativação ou hard delete para testes), a ação vai no **final da URL após o `:id`**:
-  - `DELETE /api/paciente/:id/hard`
-  - `PATCH /api/paciente/:id/reativar`
-  - `/api/paciente/hard/:id` (evitar inversão do padrão)
-
-### Padrão de Arquivo por Camada (Backend)
-
-| Camada | Padrão | Exemplo |
-| :--- | :--- | :--- |
-| Route | `{feature}.routes.ts` | `paciente.routes.ts` |
-| Controller | `{feature}.controller.ts` | `paciente.controller.ts` |
-| Model | `{feature}.model.ts` | `paciente.model.ts` |
-| DTO | `{feature}.dto.ts` | `paciente.dto.ts` |
-| Teste | `{feature}.test.ts` | `paciente.test.ts` |
+| Elemento | Convenção Obrigatória | Exemplo Correto | Exemplo Proibido |
+| :--- | :--- | :--- | :--- |
+| **Métodos em Controllers, Models e Services** | **`camelCase`** | `deletarHard()`, `buscarPorId()`, `iniciarSessao()` | `deletar_hard()`, `buscar_por_id()` |
+| **Componentes, Páginas e Modais React** | **`PascalCase`** | `CockpitSessaoPage.tsx`, `ModalPreSessao.tsx` | `cockpit_sessao.tsx` |
+| **Arquivos de Service, Model, Route, DTO** | **`kebab-case` / `.layer.ts`** | `paciente.model.ts`, `sessao.service.ts` | `PacienteModel.ts`, `sessao_service.ts` |
+| **Interfaces e Types TypeScript** | **`PascalCase`** | `CriarPacienteDTO`, `Sessao` | `criarPacienteDTO`, `sessao_type` |
+| **Variáveis e Funções** | **`camelCase`** | `nivelDdaAtual`, `isModalAberto` | `nivel_dda_atual` |
+| **Constantes Globais** | **`UPPER_SNAKE_CASE`** | `ENDPOINTS`, `STORAGE_KEY` | `endpoints` |
+| **Tabelas e Colunas SQL / Payloads REST** | **`snake_case`** | `terapeuta_paciente`, `data_nascimento`, `session_id` | `TerapeutaPaciente`, `dataNascimento` |
+| **Endpoints REST (Recursos Base)** | **Singular** | `/api/paciente`, `/api/terapeuta`, `/api/sessao`, `/api/jogos` | `/api/pacientes`, `/api/sessoes` |
+| **Sub-rotas de Ação REST** | **Ação semântica no final** | `PATCH /api/sessao/:id/finalizar`, `PATCH /api/paciente/:id/reativar` | `/api/sessao/finalizar/:id` |
 
 ---
 
@@ -533,107 +424,81 @@ Todo novo componente visual específico de uma tela deve compor esses blocos pri
 
 | Branch | Finalidade |
 | :--- | :--- |
-| `main` | Produção. Código **testado e aprovado**. Só recebe via Pull Request. |
-| `develop` | Integração. Base para novas features. |
-| `{nome}-dev` | Branch pessoal de desenvolvimento. Ex: `marcos-dev`. |
+| `main` | Produção. Código homologado, testado e aprovado via Pull Request. |
+| `develop` | Branch de integração contínua das entregas da sprint. |
+| `{nome}-dev` | Branch individual de desenvolvimento (ex.: `marcos-dev`). |
 
 ### Convenção de Commit (Conventional Commits)
 
-``` Tipo
-<tipo>(<escopo>): <descrição curta em português>
+```text
+<tipo>(<escopo>): <descrição curta e clara em português>
 ```
 
-| Tipo | Quando usar |
-| :--- | :--- |
-| `feat` | Nova funcionalidade |
-| `fix` | Correção de bug |
-| `refactor` | Refatoração sem mudança de comportamento |
-| `docs` | Documentação |
-| `test` | Adição ou correção de testes |
-| `chore` | Configuração, build, dependências |
-| `db` | Mudanças de schema/migration |
-
-**Exemplos:**
-
-``` Padrão de commit
-feat(pacientes): adiciona endpoint POST /api/pacientes
-fix(auth): corrige refresh de token expirado
-db(migration): cria tabela responsavel e paciente_responsavel
-test(pacientes): adiciona testes unitários do PacienteModel
-```
-
-### Regras de Pull Request
-
-- Todo PR para `main` exige aprovação de ao menos 1 revisor.
-- PRs devem passar no CI/CD (build + testes) antes do merge.
-- Título do PR segue o mesmo padrão de commit.
-- O PR deve referenciar o card/task do GitHub Projects.
+- **Tipos permitidos:** `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `db`.
+- **Regras de Pull Request:** aprovação mínima de 1 revisor, 100% dos testes e `typecheck` passando no Backend e no Frontend, e referência à task correspondente do GitHub Projects.
 
 ---
 
-## 7. CI/CD e Testes Automatizados
+## 7. Docker, CI/CD e Testes Automatizados
 
-O pipeline de CI/CD roda no **GitHub Actions** apenas para a branch `main`.
+### 7.1 Arquitetura Docker (Produção vs. Desenvolvimento)
 
-### Etapas do Pipeline
+- **Produção (`docker-compose.yml` + `Frontend/Dockerfile` estágio `production`):**
+  - Compila o bundle estático do React via `npm run build` injetando os `ARG VITE_*` em tempo de build.
+  - Serve a aplicação via **Nginx (`Frontend/nginx.conf`)** na porta `80`, atuando também como **Proxy Reverso** para:
+    - `location /api/` $\rightarrow$ `http://backend:3000/api/`
+    - `location /socket.io/` $\rightarrow$ `http://backend:3000/socket.io/` (com cabeçalhos `Upgrade` e `Connection "upgrade"` para WebSockets).
+- **Desenvolvimento (`docker-compose.override.yml` + `Frontend/vite.config.ts`):**
+  - Executa o Backend com `tsx watch` na porta `3000` e o Frontend com Vite Dev Server na porta `5173`.
+  - O `Frontend/vite.config.ts` possui `server.proxy` configurado para redirecionar `/api` e `/socket.io` ao Backend caso URLs relativas sejam utilizadas.
 
-1. **Checkout** do código.
-2. **Instalação de dependências** (`npm ci`) para Backend e Frontend.
-3. **Typecheck** (`tsc --noEmit`) para ambos.
-4. **Testes** (`vitest run`) para ambos.
-5. **Build de produção** para Backend (`tsc`) e Frontend (`vite build`).
-6. **Build Docker** via `docker compose build`.
+### 7.2 Comandos de Qualidade e Testes (Vitest)
 
-### Comandos por camada
-
-| Ação | Backend | Frontend |
+| Ação | Backend (`Backend/`) | Frontend (`Frontend/`) |
 | :--- | :--- | :--- |
-| Instalar | `npm ci` | `npm ci` |
-| Typecheck | `npm run typecheck` | `npm run typecheck` |
-| Testes | `npm test` | `npm test` |
-| Build | `npm run build` | `npm run build` |
-| Dev | `npm run dev` | `npm run dev` |
+| Instalar dependências | `npm ci` | `npm ci` |
+| Verificação de Tipos | `npm run typecheck` (`0 erros`) | `npm run typecheck` (`0 erros`) |
+| Suíte de Testes (Vitest) | `npm test` (**32 suítes / 579 testes**) | `npm test` (**34 suítes / 285 testes**) |
+| Build de Produção | `npm run build` | `npm run build` |
+| Servidor de Desenvolvimento | `npm run dev` | `npm run dev` |
 
 > [!IMPORTANT]
-> **Nunca faça commit de código que falhe no typecheck ou nos testes.** Valide localmente antes de abrir PR.
+> **Regra de Ouro:** Nunca submeta ou aprove código sem validar `npm run typecheck` e `npm test` com 100% de aprovação tanto em `Backend/` quanto em `Frontend/`.
 
 ---
 
 ## 8. Segurança e Variáveis de Ambiente
 
-### Back-end (`Backend/.env`)
+### 8.1 Back-end (`Backend/.env`)
 
 ```env
 PORT=3000
+NODE_ENV=development
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...  # Somente para operações admin
+SUPABASE_SERVICE_ROLE_KEY=eyJ...  # Exclusiva do Backend — NUNCA expor ao Frontend
 CORS_ORIGIN=http://localhost:5173
 ```
 
-### Front-end (`Frontend/.env`)
+### 8.2 Front-end (`Frontend/.env`)
 
 ```env
 VITE_API_URL=http://localhost:3000/api
+VITE_WS_URL=http://localhost:3000
+VITE_USE_MOCK_DATA=false
 VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-### Regras de Segurança e Arquitetura Híbrida
+### 8.3 Isolamento de Chaves e Proteção de Dados Clínicos (LGPD)
 
-| Camada | Chave Utilizada | Papel e Segurança |
+| Camada | Chave Utilizada | Responsabilidade de Segurança |
 | :--- | :--- | :--- |
-| **Back-end (Node.js)** | `SUPABASE_SERVICE_ROLE_KEY` | **Exclusiva do Backend.** O servidor é a autoridade de negócio; valida os dados via DTOs, aplica Soft Delete (RN05) e checa permissões via `authMiddleware` antes de persistir com poderes de servidor. Nunca expor ao Frontend. |
-| **Front-end (React)** | `VITE_SUPABASE_ANON_KEY` | Chave pública embutida no bundle do navegador. Usada exclusivamente para login direto no Supabase Auth e upload/download de laudos no Supabase Storage (onde as políticas de RLS garantem a proteção do bucket). |
+| **Back-end (Node.js)** | `SUPABASE_SERVICE_ROLE_KEY` | Autoridade central de negócio: valida o token JWT no `authMiddleware`, verifica vínculo institucional (`terapeuta_paciente` e `clinica_id` — **RN04**), aplica Soft Delete (**RN05**) e registra trilha de auditoria antes de persistir no Supabase. |
+| **Front-end (React)** | `VITE_SUPABASE_ANON_KEY` | Chave pública de cliente. Nunca armazena segredos de infraestrutura. Em caso de expiração de sessão (`401`), limpa `access_token`, `refresh_token` e o cache `intea:auth-store` do `localStorage`. |
 
-> [!IMPORTANT]
-> **Por que o Backend usa a SERVICE_ROLE_KEY?**
-> O Back-end é um ambiente seguro e privado. Se o Backend utilizasse a chave anônima (`anon_key`), o Supabase o enxergaria como um visitante anônimo não logado (`auth.uid() = NULL`) e o RLS bloquearia inserções no banco. A segurança do Backend é feita por seus próprios middlewares (`authMiddleware`) e validações de DTOs antes de persistir no banco.
+### 8.4 Supabase Storage (Laudos Clínicos)
 
-### Supabase Storage (Laudos)
-
-- Bucket `'laudos'` é **privado** (`public = false`).
-- Acesso ao arquivo é feito exclusivamente via **Signed URL temporária** (60 segundos).
-- O cliente **nunca** armazena a URL permanentemente — solicita uma nova a cada download.
-- Tipos MIME permitidos: `application/pdf`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`.
-- Tamanho máximo: **15 MB** por arquivo.
+- O bucket `'laudos'` é estritamente **privado** (`public = false`).
+- O acesso aos arquivos é realizado via **Signed URLs temporárias** com expiração de 60 segundos.
+- Tipos MIME aceitos: `application/pdf`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document` (limite máximo de **15 MB** por arquivo).
