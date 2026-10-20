@@ -32,7 +32,7 @@ export function CardAdicionarPaciente({
       data-testid="card-adicionar-paciente"
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      className={`group flex flex-col justify-center items-center gap-3 px-6 py-12 rounded-2xl bg-surface-highlight/70 dark:bg-surface-highlight/20 border-2 border-dashed border-border-neutral hover:border-primary hover:bg-border-subtle/50 transition-all cursor-pointer min-h-[300px] select-none shadow-2xs hover:shadow-md ${className}`}
+      className={`group flex flex-col justify-center items-center gap-3 px-6 py-12 rounded-2xl bg-surface-highlight/70 dark:bg-surface-highlight/20 border-2 border-dashed border-border-neutral hover:border-primary hover:bg-border-subtle/50 transition-all cursor-pointer min-h-75 select-none shadow-2xs hover:shadow-md ${className}`}
     >
       {/* ÍCONE DE NOVO PACIENTE (Figma: 'Background+Shadow' com Vector) */}
       <div className="flex items-center justify-center rounded-full bg-white dark:bg-card p-4 shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all">
