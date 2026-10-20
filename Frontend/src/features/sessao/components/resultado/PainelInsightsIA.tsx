@@ -50,7 +50,7 @@ export function PainelInsightsIA({
     return (
       <Card
         data-testid="painel-insights-ia-skeleton"
-        className={`rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col gap-4 h-[380px] ${className}`}
+        className={`rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col gap-4 h-95 ${className}`}
       >
         <div className="flex items-center justify-between">
           <div className="space-y-2">

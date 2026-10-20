@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { USE_MOCK_DATA } from "@/core/api/http-client";
 import type { Patient, PatientStatus } from "../types/paciente.types";
 import { pacienteToPatient } from "../types/paciente.types";
 import { pacienteService } from "../services/paciente.service";
@@ -8,6 +9,7 @@ import { PATIENTS_DICTIONARY } from "../types/bdmock";
 export type { Patient, PatientStatus };
 export { PATIENTS_DICTIONARY };
 
+const isMockOrTest = USE_MOCK_DATA || import.meta.env.MODE === "test";
 
 // ==========================================
 // STORE DO ZUSTAND PARA PACIENTES
@@ -37,8 +39,8 @@ interface PatientsState {
 }
 
 export const usePatientsStore = create<PatientsState>((set, get) => ({
-  patients: PATIENTS_DICTIONARY,
-  selectedPatientId: "pac-001",
+  patients: isMockOrTest ? PATIENTS_DICTIONARY : {},
+  selectedPatientId: isMockOrTest ? "pac-001" : null,
   searchTerm: "",
   categoryFilter: "all",
   statusFilter: "all",
@@ -47,18 +49,29 @@ export const usePatientsStore = create<PatientsState>((set, get) => ({
   fetchPatients: async () => {
     try {
       const lista = await pacienteService.listar();
-      if (Array.isArray(lista) && lista.length > 0) {
+      if (Array.isArray(lista)) {
         const novosPacientes: Record<string, Patient> = {};
         for (const p of lista) {
           novosPacientes[p.id] = pacienteToPatient(p);
         }
-        set((state) => ({
-          patients: {
-            ...state.patients,
-            ...novosPacientes,
-          },
-          selectedPatientId: state.selectedPatientId || lista[0]?.id || null,
-        }));
+
+        if (!isMockOrTest) {
+          set((state) => ({
+            patients: novosPacientes,
+            selectedPatientId:
+              state.selectedPatientId && novosPacientes[state.selectedPatientId]
+                ? state.selectedPatientId
+                : lista[0]?.id || null,
+          }));
+        } else if (lista.length > 0) {
+          set((state) => ({
+            patients: {
+              ...state.patients,
+              ...novosPacientes,
+            },
+            selectedPatientId: state.selectedPatientId || lista[0]?.id || null,
+          }));
+        }
       }
     } catch {
       // Falha silenciosa para resiliência offline e isolamento de testes

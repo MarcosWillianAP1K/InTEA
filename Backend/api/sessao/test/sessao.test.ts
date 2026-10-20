@@ -47,10 +47,12 @@ describe('Feature Sessão - Estrutura e Serviços Base', () => {
     expect(typeof SessaoModel.buscarPorToken).toBe('function');
     expect(typeof SessaoModel.atualizarStatus).toBe('function');
     expect(typeof SessaoModel.finalizarSessao).toBe('function');
+    expect(typeof SessaoModel.listar).toBe('function');
   });
 
   it('deve expor métodos cancelar e parear no SessaoController', async () => {
     const { SessaoController } = await import('../controllers/sessao.controller.js');
+    expect(typeof SessaoController.listar).toBe('function');
     expect(typeof SessaoController.cancelar).toBe('function');
     expect(typeof SessaoController.parear).toBe('function');
   });
@@ -887,6 +889,7 @@ describe('SessaoTokenService — Geração e Validação de Token', () => {
 
     const relatorio = SessaoTokenService.gerarRelatorioIA(sessaoEmAndamento);
     expect(relatorio).toBeNull();
+
   });
 
   it('gerarRelatorioIA deve retornar null para modo livre ou sem paciente_id (RN01)', () => {
@@ -900,6 +903,102 @@ describe('SessaoTokenService — Geração e Validação de Token', () => {
 
     const relatorio = SessaoTokenService.gerarRelatorioIA(sessaoLivre);
     expect(relatorio).toBeNull();
+
+  });
+
+  describe('SessaoController.listar', () => {
+    it('deve listar sessões aplicando filtro de terapeuta_id para usuário comum', async () => {
+      const originalListar = SessaoModel.listar;
+      let filtrosRecebidos: any = null;
+      SessaoModel.listar = async (f: any) => {
+        filtrosRecebidos = f;
+        return { data: [{ id: 's-1', status_sessao: 'finalizada' }] as any, meta: { total: 1, page: 1, limit: 10, totalPages: 1 } };
+      };
+
+      const { SessaoController } = await import('../controllers/sessao.controller.js');
+      const { mockReq, mockRes, getStatus, getJson } = criarMocks();
+      (mockReq as any).query = { status: 'concluida' };
+      (mockReq as any).user = { id: 'terapeuta-123', is_super_admin: false };
+
+      await SessaoController.listar(mockReq, mockRes);
+      SessaoModel.listar = originalListar;
+
+      expect(getStatus()).toBe(200);
+      expect(filtrosRecebidos.terapeutaId).toBe('terapeuta-123');
+      expect(filtrosRecebidos.status).toBe('concluida');
+      expect((getJson() as any).data.length).toBe(1);
+    });
+
+    it('deve permitir listar todas as sessões quando super admin enviar all=true', async () => {
+      const originalListar = SessaoModel.listar;
+      let filtrosRecebidos: any = null;
+      SessaoModel.listar = async (f: any) => {
+        filtrosRecebidos = f;
+        return { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 0 } };
+      };
+
+      const { SessaoController } = await import('../controllers/sessao.controller.js');
+      const { mockReq, mockRes, getStatus } = criarMocks();
+      (mockReq as any).query = { all: 'true' };
+      (mockReq as any).user = { id: 'admin-123', is_super_admin: true };
+
+      await SessaoController.listar(mockReq, mockRes);
+      SessaoModel.listar = originalListar;
+
+      expect(getStatus()).toBe(200);
+      expect(filtrosRecebidos.terapeutaId).toBeUndefined();
+    });
+
+    it('deve extrair e sanitizar parâmetros de paginação (page e limit)', async () => {
+      const originalListar = SessaoModel.listar;
+      let filtrosRecebidos: any = null;
+      SessaoModel.listar = async (f: any) => {
+        filtrosRecebidos = f;
+        return {
+          data: [{ id: 's-pag-1' }] as any,
+          meta: { total: 45, page: f.page || 1, limit: f.limit || 10, totalPages: 5 },
+        };
+      };
+
+      const { SessaoController } = await import('../controllers/sessao.controller.js');
+      const { mockReq, mockRes, getStatus, getJson } = criarMocks();
+      (mockReq as any).query = { page: '2', limit: '15' };
+      (mockReq as any).user = { id: 'terapeuta-123' };
+
+      await SessaoController.listar(mockReq, mockRes);
+      SessaoModel.listar = originalListar;
+
+      expect(getStatus()).toBe(200);
+      expect(filtrosRecebidos.page).toBe(2);
+      expect(filtrosRecebidos.limit).toBe(15);
+      const json = getJson() as any;
+      expect(json.meta.total).toBe(45);
+      expect(json.meta.page).toBe(2);
+      expect(json.meta.limit).toBe(15);
+      expect(json.meta.totalPages).toBe(5);
+    });
+
+    it('deve normalizar valores inválidos de paginação para limites seguros', async () => {
+      const originalListar = SessaoModel.listar;
+      let filtrosRecebidos: any = null;
+      SessaoModel.listar = async (f: any) => {
+        filtrosRecebidos = f;
+        return { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 0 } };
+      };
+
+      const { SessaoController } = await import('../controllers/sessao.controller.js');
+      const { mockReq, mockRes, getStatus } = criarMocks();
+      (mockReq as any).query = { page: '-5', limit: '500' };
+      (mockReq as any).user = { id: 'terapeuta-123' };
+
+      await SessaoController.listar(mockReq, mockRes);
+      SessaoModel.listar = originalListar;
+
+      expect(getStatus()).toBe(200);
+      expect(filtrosRecebidos.page).toBeUndefined(); // Menor que 1 é ignorado e cai no default do Model
+      expect(filtrosRecebidos.limit).toBe(100); // Limit máximo é 100
+    });
+
   });
 });
 

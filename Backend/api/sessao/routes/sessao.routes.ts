@@ -49,6 +49,105 @@ export const sessaoRoutes = Router();
  *             example:
  *               error: "Erro interno ao gerar código de pareamento"
  */
+/**
+ * @swagger
+ * /api/sessao:
+ *   get:
+ *     summary: Lista sessões clínicas e em modo livre com filtros e paginação
+ *     description: Lista sessões terapêuticas aplicando filtros clínicos e controle estrito de visibilidade (RN04). Terapeutas comuns visualizam apenas sessões em que atuaram. Super administradores com all=true visualizam todo o ecossistema.
+ *     tags: [Sessão]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Número da página para paginação
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Quantidade máxima de registros por página
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filtro de status clínico (concluida, finalizada, pendente, cancelada, falha)
+ *       - in: query
+ *         name: data
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filtro por data exata (YYYY-MM-DD)
+ *       - in: query
+ *         name: dataInicio
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data inicial do intervalo (YYYY-MM-DD)
+ *       - in: query
+ *         name: dataFim
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data final do intervalo (YYYY-MM-DD)
+ *       - in: query
+ *         name: pacienteId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtro por paciente específico
+ *       - in: query
+ *         name: jogoId
+ *         schema:
+ *           type: string
+ *         description: Filtro por jogo específico
+ *       - in: query
+ *         name: modo
+ *         schema:
+ *           type: string
+ *           enum: [sessao_clinica, modo_livre]
+ *         description: Modo da sessão
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: boolean
+ *         description: Permite a super administradores listar todas as sessões globais
+ *     responses:
+ *       200:
+ *         description: Lista paginada de sessões retornada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *       401:
+ *         description: Não autenticado
+ *       500:
+ *         description: Erro interno ao listar sessões
+ */
+sessaoRoutes.get('/', authMiddleware, SessaoController.listar);
 sessaoRoutes.get('/codigo-pareamento', authMiddleware, SessaoController.gerarCodigoPareamento);
 
 /**

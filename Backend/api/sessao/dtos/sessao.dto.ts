@@ -43,3 +43,26 @@ export interface PareamentoRespostaDTO {
   dispositivo_info?: DispositivoInfoDTO | null;
   pareado_em: string;
 }
+
+export interface FiltrosSessaoDTO {
+  terapeutaId?: string;
+  pacienteId?: string;
+  jogoId?: string;
+  status?: string;
+  modo?: string;
+  data?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface RespostaListagemSessao<T = unknown> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}

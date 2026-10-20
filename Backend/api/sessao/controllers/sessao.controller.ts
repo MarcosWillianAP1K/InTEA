@@ -4,8 +4,9 @@
 
 import { Request, Response } from 'express';
 import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, StatusSessao, Sessao } from '../models/sessao.model.js';
-import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/sessao.dto.js';
+import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO, FiltrosSessaoDTO } from '../dtos/sessao.dto.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
+import { SessaoListarService } from '../services/sessao-listar.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { SessaoResultadoService } from '../services/sessao-resultado.service.js';
 import { SessaoExportarService } from '../services/sessao-exportar.service.js';
@@ -49,6 +50,49 @@ export class SessaoController {
    * @param res - Express response returning the newly initialized session.
    * @returns Resolves when the HTTP response has been sent.
    */
+  /**
+   * Handles GET /api/sessao to list sessions with optional filters and pagination.
+   * Restricts to the authenticated therapist's sessions, unless is_super_admin requests with all=true.
+   *
+   * @param req - Express request with query params (status, data, dataInicio, dataFim, pacienteId, jogoId, modo, page, limit, all).
+   * @param res - Express response returning sessions array and pagination metadata.
+   */
+  static async listar(req: Request, res: Response): Promise<void> {
+    try {
+      const query = (req.query || {}) as Record<string, unknown>;
+      const verTodasSessoes = query.all === 'true';
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+
+      const pageParsed = query.page !== undefined ? Number(query.page) : undefined;
+      const limitParsed = query.limit !== undefined ? Number(query.limit) : undefined;
+
+      const filtros: FiltrosSessaoDTO = {
+        status: typeof query.status === 'string' ? query.status : undefined,
+        data: typeof query.data === 'string' ? query.data : undefined,
+        dataInicio: typeof query.dataInicio === 'string' ? query.dataInicio : undefined,
+        dataFim: typeof query.dataFim === 'string' ? query.dataFim : undefined,
+        pacienteId: typeof query.pacienteId === 'string' ? query.pacienteId : undefined,
+        jogoId: typeof query.jogoId === 'string' ? query.jogoId : undefined,
+        modo: typeof query.modo === 'string' ? query.modo : undefined,
+        page: Number.isFinite(pageParsed) && (pageParsed as number) > 0 ? Math.floor(pageParsed as number) : undefined,
+        limit: Number.isFinite(limitParsed) && (limitParsed as number) > 0 ? Math.min(100, Math.floor(limitParsed as number)) : undefined,
+      };
+
+      const resultado = await SessaoListarService.listar(filtros, usuarioLogado, verTodasSessoes);
+
+      res.status(200).json({
+        data: resultado.data,
+        meta: resultado.meta,
+      });
+    } catch (error: unknown) {
+      console.error('[SessaoController.listar]', error);
+      res.status(500).json({
+        error: 'Erro interno ao listar sessões.',
+        detalhes: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   static async iniciar(req: Request, res: Response): Promise<void> {
     try {
       // 1. Extração segura da identidade do terapeuta a partir do token JWT verificado (RF21, CA-1)

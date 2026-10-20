@@ -34,6 +34,7 @@ export const ENDPOINTS = {
     MANIFESTO: (id: string) => `/jogos/${id}/manifesto`,
   },
   SESSAO: {
+    BASE: "/sessao",
     INICIAR: "/sessao/iniciar",
     BY_ID: (id: string) => `/sessao/${id}`,
     FINALIZAR: (id: string) => `/sessao/${id}/finalizar`,

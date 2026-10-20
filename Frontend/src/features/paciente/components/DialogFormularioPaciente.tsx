@@ -10,6 +10,7 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   Dialog,
@@ -19,8 +20,13 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
+import { USE_MOCK_DATA } from "@/core/api/http-client";
 import { usePacienteStore } from "@/features/paciente/store/paciente.store";
-import type { Patient } from "@/features/paciente/types/paciente.types";
+import { pacienteService } from "@/features/paciente/services/paciente.service";
+import {
+  pacienteToPatient,
+  type Patient,
+} from "@/features/paciente/types/paciente.types";
 import { DEFAULT_TRIGGERS, AVATAR_PLACEHOLDERS } from "@/features/paciente/types/bdmock";
 
 
@@ -232,7 +238,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
   };
 
   // Submeter formulário
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim()) {
@@ -240,42 +246,94 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
       return;
     }
 
-    let calculatedAge = 7;
-    if (birthDate.includes("/")) {
-      const parts = birthDate.split("/");
-      const year = parseInt(parts[2] || parts[0], 10);
-      if (!isNaN(year)) {
-        calculatedAge = Math.max(1, new Date().getFullYear() - year);
+    const isMockOrTest = USE_MOCK_DATA || import.meta.env.MODE === "test";
+
+    if (!isMockOrTest) {
+      try {
+        let isoBirthDate = "2019-01-01";
+        if (birthDate.includes("/")) {
+          const parts = birthDate.split("/");
+          if (parts.length === 3 && parts[2].length === 4) {
+            isoBirthDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+          }
+        }
+
+        const criado = await pacienteService.criar({
+          nome: name.trim(),
+          data_nascimento: isoBirthDate,
+          cpf: cpf.trim(),
+          telefone: phone.trim() || null,
+          cep: cep.trim() || null,
+          cidade: city.trim() || null,
+          estado: state.trim() || null,
+          endereco: address.trim() || null,
+          bairro: neighborhood.trim() || null,
+          numero: number.trim() || null,
+          responsavel: respName.trim()
+            ? {
+                nome: respName.trim(),
+                telefone: respPhone.trim(),
+                cpf: respCpf.trim() || null,
+              }
+            : null,
+          dados_clinicos: {
+            diagnostico_base: "Em Avaliação",
+            gatilhos_sensoriais: selectedTriggers,
+            observacoes_gerais: uploadedFileName
+              ? `Laudo anexado: ${uploadedFileName}`
+              : "Paciente recém-cadastrado em processo de acolhimento e anamnese",
+          },
+        });
+
+        addPatient(pacienteToPatient(criado));
+        toast.success("Paciente cadastrado com sucesso!");
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Erro ao cadastrar paciente na API.";
+        toast.error(msg);
+        return;
       }
+    } else {
+      let calculatedAge = 7;
+      if (birthDate.includes("/")) {
+        const parts = birthDate.split("/");
+        const year = parseInt(parts[2] || parts[0], 10);
+        if (!isNaN(year)) {
+          calculatedAge = Math.max(1, new Date().getFullYear() - year);
+        }
+      }
+
+      const randomPhoto =
+        AVATAR_PLACEHOLDERS[Math.floor(Math.random() * AVATAR_PLACEHOLDERS.length)];
+
+      const newPatient: Patient = {
+        id: `pac-${Date.now().toString().slice(-4)}`,
+        name: name.trim(),
+        age: calculatedAge,
+        gender: "M",
+        birthDate: birthDate || "01/01/2019",
+        photoUrl: photoPreview || randomPhoto,
+        category: "Em Avaliação",
+        clinicalStatus: selectedTriggers.length > 0
+          ? `Gatilhos relatados: ${selectedTriggers.join(", ")}`
+          : "Paciente recém-cadastrado em processo de acolhimento e anamnese",
+        progress: 0,
+        performanceScore: undefined,
+        lastSessionDate: "Cadastrado Hoje",
+        status: "IN_PROGRESS",
+        responsibleName: respName ? `${respName} (Responsável)` : "Responsável não informado",
+        responsiblePhone: respPhone || "(Não informado)",
+        therapist: "Dr. Hermeson Dantas",
+        communicationStyle: "Em avaliação clínica",
+        sensorySensitivities: selectedTriggers.length > 0 ? selectedTriggers : ["Nenhum gatilho severo relatado"],
+        notes: uploadedFileName ? `Laudo anexado: ${uploadedFileName}` : "Sem observações adicionais",
+      };
+
+      addPatient(newPatient);
     }
 
-    const randomPhoto =
-      AVATAR_PLACEHOLDERS[Math.floor(Math.random() * AVATAR_PLACEHOLDERS.length)];
-
-    const newPatient: Patient = {
-      id: `pac-${Date.now().toString().slice(-4)}`,
-      name: name.trim(),
-      age: calculatedAge,
-      gender: "M",
-      birthDate: birthDate || "01/01/2019",
-      photoUrl: photoPreview || randomPhoto,
-      category: "Em Avaliação",
-      clinicalStatus: selectedTriggers.length > 0
-        ? `Gatilhos relatados: ${selectedTriggers.join(", ")}`
-        : "Paciente recém-cadastrado em processo de acolhimento e anamnese",
-      progress: 0,
-      performanceScore: undefined,
-      lastSessionDate: "Cadastrado Hoje",
-      status: "IN_PROGRESS",
-      responsibleName: respName ? `${respName} (Responsável)` : "Responsável não informado",
-      responsiblePhone: respPhone || "(Não informado)",
-      therapist: "Dr. Hermeson Dantas",
-      communicationStyle: "Em avaliação clínica",
-      sensorySensitivities: selectedTriggers.length > 0 ? selectedTriggers : ["Nenhum gatilho severo relatado"],
-      notes: uploadedFileName ? `Laudo anexado: ${uploadedFileName}` : "Sem observações adicionais",
-    };
-
-    addPatient(newPatient);
     onOpenChange(false);
 
     // Reset formulário
@@ -524,7 +582,7 @@ export function DialogFormularioPaciente({ open, onOpenChange }: DialogFormulari
                   <Input
                     placeholder="Estado"
                     value={respSameAddress ? state : respState}
-                    onChange={(e) => setRespState(e.target.value)}
+                    onChange={(e) => setRespExtraState(e.target.value)}
                     disabled={respSameAddress}
                     className="h-10 bg-muted/30 focus-visible:border-primary"
                   />

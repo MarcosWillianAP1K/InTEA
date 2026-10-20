@@ -15,6 +15,8 @@ import type {
   MetricasConsolidadas,
   RelatorioIAResultado,
   AnotacaoClinicaResultado,
+  FiltroSessaoDTO,
+  RespostaListagemSessao,
 } from "./sessao.types";
 
 export const MOCK_RELATORIO_IA: RelatorioIAResultado = {
@@ -481,5 +483,67 @@ export async function exportarRelatorioSessaoMock(
     paciente: resultado.paciente?.nome || "Modo Livre",
     relatorio_gerado_em: new Date().toISOString(),
     resultado,
+  };
+}
+
+/**
+ * Lista sessões simuladas em memória aplicando filtros clínicos e paginação.
+ */
+export async function listarSessoesMock(
+  filtros?: FiltroSessaoDTO,
+): Promise<RespostaListagemSessao<Sessao>> {
+  let resultado = [...sessoesMockState];
+
+  if (filtros?.pacienteId) {
+    resultado = resultado.filter((s) => s.paciente_id === filtros.pacienteId);
+  }
+
+  if (filtros?.status) {
+    const s = filtros.status.toLowerCase().trim();
+    if (s === "concluida" || s === "concluidas" || s === "finalizada" || s === "completo") {
+      resultado = resultado.filter((item) => item.status_sessao === "finalizada");
+    } else if (s === "cancelada" || s === "canceladas") {
+      resultado = resultado.filter((item) => item.status_sessao === "cancelada");
+    } else if (s === "falha") {
+      resultado = resultado.filter((item) =>
+        ["cancelada", "expirada", "interrompida_por_queda"].includes(item.status_sessao)
+      );
+    } else if (s === "pendente" || s === "pendentes" || s === "incompleto") {
+      resultado = resultado.filter((item) =>
+        ["aguardando_pareamento", "conectado", "em_andamento"].includes(item.status_sessao)
+      );
+    }
+  }
+
+  if (filtros?.data) {
+    resultado = resultado.filter((item) =>
+      item.data_hora_inicio?.startsWith(filtros.data!)
+    );
+  }
+
+  // Ordenação decrescente por data_hora_inicio
+  resultado.sort((a, b) => {
+    const da = a.data_hora_inicio ? new Date(a.data_hora_inicio).getTime() : 0;
+    const db = b.data_hora_inicio ? new Date(b.data_hora_inicio).getTime() : 0;
+    return db - da;
+  });
+
+  const rawPage = Number(filtros?.page);
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
+  const rawLimit = Number(filtros?.limit);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(100, Math.floor(rawLimit)) : 10;
+  const total = resultado.length;
+  const totalPages = Math.ceil(total / limit) || 0;
+  const offset = (page - 1) * limit;
+  const data = resultado.slice(offset, offset + limit);
+
+  return {
+    data,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages,
+    },
   };
 }

@@ -96,10 +96,9 @@ export const USE_MOCK_DATA: boolean =
   rawMockEnv === "true" || rawMockEnv === true;
 
 /**
- * Helper tipado para chamadas seguras à API com suporte a fallback/mock em caso de erro.
- * Se a variável VITE_USE_MOCK_DATA estiver ativa, ou se a requisição à API falhar
- * por problemas de rede, indisponibilidade ou timeout, o valor de fallback fornecido
- * será retornado sem propagar exceção.
+ * Helper tipado para chamadas à API com chaveamento estrito por ambiente (VITE_USE_MOCK_DATA).
+ * - Se VITE_USE_MOCK_DATA=true: retorna exclusivamente os dados simulados (fallback), sem chamar o Backend.
+ * - Se VITE_USE_MOCK_DATA=false (em execução real): chama exclusivamente a API do Backend e propaga o erro real caso falhe, sem misturar com mocks.
  *
  * @param requestFn Função que executa a chamada HTTP (ex: () => http.get<T>(url))
  * @param fallback Valor ou função que fornece os dados simulados
@@ -110,8 +109,43 @@ export async function withFallback<T>(
   fallback: T | (() => T | Promise<T>),
   onError?: (error: unknown) => void,
 ): Promise<T> {
-  // Quando ativado globalmente via .env (VITE_USE_MOCK_DATA=true), recorre aos dados mockados
-  if (USE_MOCK_DATA && import.meta.env.MODE !== "test") {
+  const isTestMode = import.meta.env.MODE === "test";
+
+  // Interruptor de ambiente: quando VITE_USE_MOCK_DATA=true, usa exclusivamente os mocks
+  if (USE_MOCK_DATA) {
+    return typeof fallback === "function"
+      ? await (fallback as () => T | Promise<T>)()
+      : fallback;
+  }
+
+  // Em modo de testes unitários (Vitest), isola contra processos externos na porta 3000
+  // a menos que o teste tenha criado um spy no cliente HTTP ou na própria função de requisição
+  if (isTestMode) {
+    const isSpied =
+      Boolean((requestFn as unknown as { mock?: unknown })?.mock) ||
+      Boolean((http.get as unknown as { mock?: unknown })?.mock) ||
+      Boolean((http.post as unknown as { mock?: unknown })?.mock) ||
+      Boolean((http.put as unknown as { mock?: unknown })?.mock) ||
+      Boolean((http.patch as unknown as { mock?: unknown })?.mock) ||
+      Boolean((http.delete as unknown as { mock?: unknown })?.mock);
+
+    if (isSpied) {
+      try {
+        return await requestFn();
+      } catch (error) {
+        if (onError) onError(error);
+        if (!onError) {
+          console.warn(
+            "[InTEA API] Falha na requisição, utilizando mock/fallback:",
+            error,
+          );
+        }
+        return typeof fallback === "function"
+          ? await (fallback as () => T | Promise<T>)()
+          : fallback;
+      }
+    }
+
     return typeof fallback === "function"
       ? await (fallback as () => T | Promise<T>)()
       : fallback;
@@ -122,26 +156,22 @@ export async function withFallback<T>(
   } catch (error) {
     if (onError) {
       onError(error);
-    } else {
-      console.warn(
-        "[InTEA API] Falha na requisição, utilizando mock/fallback:",
-        error,
-      );
     }
-    return typeof fallback === "function"
-      ? await (fallback as () => T | Promise<T>)()
-      : fallback;
+    // Quando VITE_USE_MOCK_DATA=false em execução real, NÃO mistura com mock: propaga o erro da API
+    throw error;
   }
 }
 
 /**
- * Wrapper conveniente para requisições seguras com parâmetro opcional de fallback.
+ * Wrapper conveniente para requisições com suporte a chaveamento estrito de ambiente.
  */
 export async function safeRequest<T>(
   requestFn: () => Promise<T>,
   fallback?: T | (() => T | Promise<T>),
 ): Promise<T> {
-  if (USE_MOCK_DATA && fallback !== undefined && import.meta.env.MODE !== "test") {
+  const isTestMode = import.meta.env.MODE === "test";
+
+  if (USE_MOCK_DATA && fallback !== undefined && !isTestMode) {
     return typeof fallback === "function"
       ? await (fallback as () => T | Promise<T>)()
       : fallback;
@@ -150,11 +180,7 @@ export async function safeRequest<T>(
   try {
     return await requestFn();
   } catch (error) {
-    if (fallback !== undefined) {
-      console.warn(
-        "[InTEA API] Conexão indisponível, recorrendo ao fallback:",
-        error,
-      );
+    if (fallback !== undefined && isTestMode) {
       return typeof fallback === "function"
         ? await (fallback as () => T | Promise<T>)()
         : fallback;

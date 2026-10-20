@@ -46,6 +46,7 @@ function serializarFiltros(
   if (filtros.incluirInativos !== undefined) {
     params.incluirInativos = String(filtros.incluirInativos);
   }
+  if (filtros.all !== undefined) params.all = String(filtros.all);
   if (filtros.page !== undefined) params.page = String(filtros.page);
   if (filtros.limit !== undefined) params.limit = String(filtros.limit);
 

@@ -20,6 +20,8 @@ import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import { useSessionSync } from "@/features/sessao/hooks/useSessionSync";
 import { usePacienteStore } from "@/features/paciente/store/paciente.store";
 import { sessaoService } from "@/features/sessao/services/sessaoService";
+import { jogosService } from "@/features/jogos/services/jogosService";
+import { USE_MOCK_DATA } from "@/core/api/http-client";
 import { toast } from "sonner";
 import {
   Brain,
@@ -33,6 +35,7 @@ import {
   Copy,
   Check,
   User,
+  Gamepad2,
 } from "lucide-react";
 
 function NavigateExec({ to }: { to: string }) {
@@ -71,6 +74,7 @@ export function ModalPreSessao() {
 
   const fecharModal = useSessionStore((state) => state.fecharModal);
   const selecionarPaciente = useSessionStore((state) => state.selecionarPaciente);
+  const selecionarJogo = useSessionStore((state) => state.selecionarJogo);
   const configurarParametros = useSessionStore((state) => state.configurarParametros);
   const iniciarPareamento = useSessionStore((state) => state.iniciarPareamento);
   const confirmarConexaoDispositivo = useSessionStore((state) => state.confirmarConexaoDispositivo);
@@ -80,6 +84,7 @@ export function ModalPreSessao() {
   const { patients, selectedPatientId: storeSelectedId, fetchPatients } = usePacienteStore();
   const listaPacientes = Object.values(patients);
 
+  const [jogosDisponiveis, setJogosDisponiveis] = useState<Array<{ id: string; titulo: string }>>([]);
   const [copiado, setCopiado] = useState(false);
   const [destinoNavegacao, setDestinoNavegacao] = useState<string | null>(null);
 
@@ -89,6 +94,27 @@ export function ModalPreSessao() {
       void fetchPatients();
     }
   }, [isModalAberto, fetchPatients]);
+
+  // Carrega catálogo de jogos para permitir troca ou seleção inicial
+  useEffect(() => {
+    if (isModalAberto) {
+      let isMounted = true;
+      void jogosService.listar().then((res) => {
+        if (!isMounted) return;
+        const formatados = (res || []).map((j) => ({
+          id: String(j.id),
+          titulo: j.titulo || j.nome || "Jogo",
+        }));
+        setJogosDisponiveis(formatados);
+        if ((!config?.jogoId || config.jogoId === "") && formatados.length > 0) {
+          selecionarJogo(formatados[0]);
+        }
+      }).catch(() => {});
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [isModalAberto, config?.jogoId, selecionarJogo]);
 
   // Inicializa paciente padrão a partir da store de pacientes caso não esteja definido
   useEffect(() => {
@@ -139,7 +165,8 @@ export function ModalPreSessao() {
           });
         }
       } catch {
-        if (isMounted) {
+        const isMockOrTest = USE_MOCK_DATA || import.meta.env.MODE === "test";
+        if (isMounted && isMockOrTest) {
           const pinMock = `${Math.floor(100 + Math.random() * 900)} - ${Math.floor(100 + Math.random() * 900)}`;
           iniciarPareamento({
             sessionToken: pinMock,
@@ -249,7 +276,7 @@ export function ModalPreSessao() {
       <Dialog open={isModalAberto} onOpenChange={(open) => !open && fecharModal()}>
       <DialogContent
         data-testid="modal-pre-sessao"
-        className="sm:max-w-[580px] p-0 gap-0 overflow-hidden rounded-2xl bg-card text-card-foreground border border-border shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="sm:max-w-145 p-0 gap-0 overflow-hidden rounded-2xl bg-card text-card-foreground border border-border shadow-2xl max-h-[90vh] overflow-y-auto"
       >
         {/* Cabeçalho */}
         <div className="p-7 pb-5">
@@ -263,6 +290,51 @@ export function ModalPreSessao() {
           </DialogHeader>
 
           <div className="flex flex-col gap-5 mt-6">
+            {/* SEÇÃO 0: Seleção de Jogo Terapêutico */}
+            {jogosDisponiveis.length > 0 && (
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Gamepad2 className="h-4 w-4 stroke-[2.2]" />
+                    <h3 className="text-sm font-bold tracking-tight text-foreground">
+                      Jogo da Intervenção
+                    </h3>
+                  </div>
+                  {config.jogoTitulo && (
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {config.jogoTitulo}
+                    </span>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-border bg-muted/40 p-4">
+                  <Select
+                    value={config.jogoId || ""}
+                    onValueChange={(id) => {
+                      const j = jogosDisponiveis.find((item) => item.id === id);
+                      if (j) {
+                        selecionarJogo({ id: j.id, titulo: j.titulo });
+                      }
+                    }}
+                  >
+                    <SelectTrigger
+                      data-testid="select-jogo-pre-sessao"
+                      className="w-full h-10 bg-card border-border"
+                    >
+                      <SelectValue placeholder="Selecione o jogo..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {jogosDisponiveis.map((j) => (
+                        <SelectItem key={j.id} value={j.id}>
+                          {j.titulo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             {/* SEÇÃO 1: Seleção Dinâmica de Paciente (RN01) */}
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
@@ -318,85 +390,59 @@ export function ModalPreSessao() {
               <div className="rounded-2xl border border-border bg-muted/40 p-5 flex flex-col gap-4">
                 {/* Nível de Estresse Inicial */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-foreground">
-                      Nível de Estresse Inicial
-                    </span>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-foreground">Nível de Estresse Inicial</span>
                     <span
                       data-testid="valor-estresse"
-                      className="text-lg font-bold text-primary"
+                      className="font-bold text-primary px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20"
                     >
                       {nivelEstresse}
                     </span>
                   </div>
-
-                  {/* Slider de Estresse */}
-                  <div className="flex flex-col gap-1">
-                    <input
-                      type="range"
-                      min={1}
-                      max={5}
-                      step={1}
-                      value={nivelEstresse}
-                      onChange={(e) =>
-                        handleNivelEstresseChange(Number(e.target.value))
-                      }
-                      className="w-full h-2 bg-muted-foreground/20 rounded-lg appearance-none cursor-pointer accent-primary hover:bg-muted-foreground/30 transition-colors"
-                    />
-                    <div className="flex justify-between text-2xs text-muted-foreground font-medium">
-                      <span>Baixo</span>
-                      <span>Alto</span>
-                    </div>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((lvl) => (
+                      <button
+                        key={lvl}
+                        type="button"
+                        onClick={() => handleNivelEstresseChange(lvl)}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                          nivelEstresse === lvl
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                            : "bg-card text-muted-foreground border-border hover:bg-accent"
+                        }`}
+                      >
+                        {lvl}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Gatilhos a Evitar */}
-                <div className="flex flex-col gap-2.5">
-                  <span className="text-xs font-semibold text-foreground">
-                    Gatilhos a Evitar
-                  </span>
-                  <div className="flex flex-wrap gap-2.5">
-                    {/* Botão Som Alto */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleGatilho("Som Alto")}
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all border ${
-                        gatilhosAtivos.includes("Som Alto")
-                          ? "bg-primary text-primary-foreground border-transparent shadow-xs hover:bg-primary-hover"
-                          : "bg-card text-foreground border-border hover:border-muted-foreground/40 hover:bg-muted"
-                      }`}
-                    >
-                      <VolumeX className="h-3.5 w-3.5" />
-                      Som Alto
-                    </button>
-
-                    {/* Botão Luz Intensa */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleGatilho("Luz Intensa")}
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all border ${
-                        gatilhosAtivos.includes("Luz Intensa")
-                          ? "bg-primary text-primary-foreground border-transparent shadow-xs hover:bg-primary-hover"
-                          : "bg-card text-foreground border-border hover:border-muted-foreground/40 hover:bg-muted"
-                      }`}
-                    >
-                      <Sun className="h-3.5 w-3.5" />
-                      Luz Intensa
-                    </button>
-
-                    {/* Botão Pressão de Tempo */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleGatilho("Pressão de Tempo")}
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all border ${
-                        gatilhosAtivos.includes("Pressão de Tempo")
-                          ? "bg-primary text-primary-foreground border-transparent shadow-xs hover:bg-primary-hover"
-                          : "bg-card text-foreground border-border hover:border-muted-foreground/40 hover:bg-muted"
-                      }`}
-                    >
-                      <TimerOff className="h-3.5 w-3.5" />
-                      Pressão de Tempo
-                    </button>
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold text-foreground">Gatilhos a Evitar</span>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { nome: "Som Alto", icone: VolumeX },
+                      { nome: "Luz Intensa", icone: Sun },
+                      { nome: "Pressão de Tempo", icone: TimerOff },
+                    ].map(({ nome, icone: Icone }) => {
+                      const ativo = gatilhosAtivos.includes(nome);
+                      return (
+                        <button
+                          key={nome}
+                          type="button"
+                          onClick={() => handleToggleGatilho(nome)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                            ativo
+                              ? "bg-destructive/10 text-destructive border-destructive/20 font-semibold"
+                              : "bg-card text-muted-foreground border-border hover:bg-accent"
+                          }`}
+                        >
+                          <Icone className="h-3.5 w-3.5" />
+                          {nome}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -411,92 +457,98 @@ export function ModalPreSessao() {
                 </h3>
               </div>
 
-              <div className="rounded-2xl border border-border bg-muted/30 p-6 flex flex-col items-center justify-center gap-2.5 text-center">
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Código de Pareamento
-                </span>
-
-                <div className="flex items-center justify-center gap-3">
-                  <span
-                    data-testid="pin-display"
-                    className="font-mono text-3xl sm:text-4xl font-extrabold tracking-wider text-foreground"
-                  >
-                    {pinExibido}
+              <div className="rounded-2xl border border-border bg-muted/40 p-5 flex flex-col items-center gap-4 text-center">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Código de Pareamento
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleCopiarPIN}
-                    className="p-2 rounded-xl text-muted-foreground bg-card border border-border hover:border-primary hover:text-foreground hover:bg-muted transition-all shadow-2xs"
-                    title="Copiar Código"
-                  >
-                    {copiado ? (
-                      <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <span
+                      data-testid="pin-display"
+                      className="font-mono text-3xl font-extrabold tracking-widest text-primary bg-card px-5 py-2.5 rounded-xl border border-border shadow-inner"
+                    >
+                      {pinExibido}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCopiarPIN}
+                      className="h-12 w-12 rounded-xl shrink-0 border-border bg-card hover:bg-accent cursor-pointer"
+                      title="Copiar Código"
+                    >
+                      {copiado ? (
+                        <Check className="h-5 w-5 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Status Reativo */}
-                <div
-                  data-testid="status-pareamento"
-                  className="flex items-center justify-center gap-1.5 mt-1"
-                >
-                  {isPareado ? (
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      <span>Dispositivo Conectado com Sucesso!</span>
-                    </div>
+                <div className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-medium transition-all bg-card border-border">
+                  {status === "aguardando_pareamento" || status === "configurando" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-muted-foreground">
+                        Aguardando tablet conectar...
+                      </span>
+                    </>
+                  ) : isPareado ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                        Dispositivo Conectado com Sucesso!
+                      </span>
+                    </>
                   ) : (
-                    <div className="flex flex-col items-center gap-1.5">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                        <span>Aguardando conexão...</span>
-                      </div>
-                      <button
-                        type="button"
-                        data-testid="btn-simular-pareamento"
-                        onClick={handleSimularConexao}
-                        className="text-2xs text-primary hover:underline cursor-pointer font-medium mt-0.5"
-                      >
-                        Simular conexão do tablet
-                      </button>
-                    </div>
+                    <span className="text-muted-foreground">Pronto para parear</span>
                   )}
                 </div>
 
-                {erro && (
-                  <p className="text-2xs text-destructive font-medium mt-1">
-                    {erro}
-                  </p>
+                {/* Botão de Simulação de Pareamento */}
+                {!isPareado && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    data-testid="btn-simular-pareamento"
+                    onClick={handleSimularConexao}
+                    className="text-[11px] text-muted-foreground hover:text-foreground h-7 px-2 underline-offset-4 hover:underline"
+                  >
+                    Simular conexão de tablet clínico (Dev / Teste)
+                  </Button>
                 )}
               </div>
             </div>
+
+            {/* Alerta de Erro */}
+            {erro && (
+              <div className="p-3 text-xs rounded-xl bg-destructive/10 border border-destructive/20 text-destructive font-medium">
+                {erro}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Rodapé / Ações */}
-        <DialogFooter className="bg-muted/40 border-t border-border px-7 py-4 flex flex-row items-center justify-between gap-3 sm:justify-between w-full">
+        {/* Rodapé de Ações */}
+        <DialogFooter className="bg-muted/40 p-5 px-7 border-t border-border flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={handleCancelar}
-            className="bg-card border-border text-foreground hover:bg-muted text-xs font-semibold px-6 py-2.5 h-auto rounded-xl shadow-2xs transition-all"
+            className="w-full sm:w-auto text-xs font-semibold rounded-xl hover:bg-accent cursor-pointer"
           >
             Cancelar
           </Button>
 
           <Button
             type="button"
-            onClick={handleIniciarJogo}
             disabled={!podeIniciar}
-            className={`flex items-center gap-2 text-xs font-semibold px-6 py-2.5 h-auto rounded-xl transition-all ${
-              podeIniciar
-                ? "bg-primary hover:bg-primary-hover text-primary-foreground shadow-md hover:shadow-lg cursor-pointer"
-                : "bg-muted text-muted-foreground cursor-not-allowed opacity-80 border border-border"
-            }`}
+            onClick={handleIniciarJogo}
+            className="w-full sm:w-auto text-xs font-bold gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 cursor-pointer disabled:cursor-not-allowed"
           >
-            <Play className="h-3.5 w-3.5 fill-current" />
+            <Play className="h-4 w-4 fill-current" />
             Confirmar e Iniciar Intervenção
           </Button>
         </DialogFooter>

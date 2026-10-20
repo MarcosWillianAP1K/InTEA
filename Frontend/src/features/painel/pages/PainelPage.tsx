@@ -10,6 +10,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { dashboardService } from "@/features/painel/services/dashboard.service";
+import { USE_MOCK_DATA } from "@/core/api/http-client";
 import type {
   DashboardMetricas,
   SessaoRecenteResumo,
@@ -18,7 +19,7 @@ import type {
 import type { Patient } from "@/features/paciente/types/paciente.types";
 import { useSessionStore, CardSessaoTimer } from "@/features/sessao";
 import { usePacienteStore } from "@/features/paciente/store/paciente.store";
-import { ModalPreSessao } from "@/features/sessao/components/ModalPreSessao";
+
 
 export function PainelPage() {
   const navigate = useNavigate();
@@ -28,12 +29,13 @@ export function PainelPage() {
   const [loading, setLoading] = useState(true);
 
   const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
-  const { patients, setSelectedPatientId } = usePacienteStore();
+  const { patients, setSelectedPatientId, fetchPatients } = usePacienteStore();
 
   const listaPacientes: Patient[] = Object.values(patients);
   const pacienteDestaque = listaPacientes.find((p) => p.name.includes("Pedro")) || listaPacientes[0];
 
   useEffect(() => {
+    void fetchPatients();
     async function carregarDados() {
       try {
         setLoading(true);
@@ -53,20 +55,17 @@ export function PainelPage() {
     }
 
     void carregarDados();
-  }, []);
+  }, [fetchPatients]);
 
   function handleVerPerfil(pacienteId?: string) {
     if (pacienteId) {
       setSelectedPatientId(pacienteId);
-      navigate("/pacientes");
+      navigate(`/pacientes/${pacienteId}`);
     }
   }
 
   function handleNovaSessao() {
-    abrirModalPreSessao({
-      id: "j-labirinto-01",
-      titulo: "Labirinto Espacial",
-    });
+    abrirModalPreSessao();
   }
 
   return (
@@ -137,10 +136,10 @@ export function PainelPage() {
             </div>
           </div>
           <span className="text-3xl font-extrabold text-primary">
-            {loading ? "..." : (metricas?.sessoesNoMes ?? 24)}
+            {loading ? "..." : (metricas?.sessoesNoMes ?? (USE_MOCK_DATA ? 24 : 0))}
           </span>
           <span className="text-xs text-muted-foreground">
-            {metricas?.variacaoSessoesPercentual ? `${metricas.variacaoSessoesPercentual > 0 ? "+" : ""}${metricas.variacaoSessoesPercentual}% em relação ao mês anterior` : "+12% em relação à semana anterior"}
+            {metricas?.variacaoSessoesPercentual ? `${metricas.variacaoSessoesPercentual > 0 ? "+" : ""}${metricas.variacaoSessoesPercentual}% em relação ao mês anterior` : (USE_MOCK_DATA ? "+12% em relação à semana anterior" : "Métricas da API em tempo real")}
           </span>
         </div>
 
@@ -167,7 +166,7 @@ export function PainelPage() {
             </div>
           </div>
           <span className="text-3xl font-extrabold text-foreground">
-            {loading ? "..." : (metricas?.jogosMaisUtilizados?.length ?? 3)}
+            {loading ? "..." : (metricas?.jogosMaisUtilizados?.length ?? (USE_MOCK_DATA ? 3 : 0))}
           </span>
           <span className="text-xs text-muted-foreground">
             Catálogo DDA e telemetria WebSocket
@@ -300,9 +299,6 @@ export function PainelPage() {
           </div>
         </div>
       </section>
-
-      {/* MODAL GLOBAL DE PRÉ-SESSÃO E PAREAMENTO */}
-      <ModalPreSessao />
     </div>
   );
 }

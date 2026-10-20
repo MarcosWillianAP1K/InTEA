@@ -32,14 +32,14 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   ...initialState,
 
   /** Abre o modal de pré-sessão e inicializa a configuração padrão para o jogo selecionado */
-  abrirModalPreSessao: (jogo: { id: string; titulo: string }) => {
+  abrirModalPreSessao: (jogo?: { id: string; titulo: string }) => {
     set({
       isModalAberto: true,
       status: "configurando",
       erro: null,
       config: {
-        jogoId: jogo.id,
-        jogoTitulo: jogo.titulo,
+        jogoId: jogo?.id || "",
+        jogoTitulo: jogo?.titulo || "Selecione um jogo",
         pacienteId: "",
         pacienteNome: "",
         gatilhosEvitar: ["Som Alto", "Luz Intensa"],
@@ -47,6 +47,20 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         duracaoPlanejadaMinutos: 30,
       },
       pareamento: null,
+    });
+  },
+
+  /** Associa ou troca o jogo na configuração ativa da sessão */
+  selecionarJogo: (jogo: { id: string; titulo: string }) => {
+    const currentConfig = get().config;
+    if (!currentConfig) return;
+
+    set({
+      config: {
+        ...currentConfig,
+        jogoId: jogo.id,
+        jogoTitulo: jogo.titulo,
+      },
     });
   },
 

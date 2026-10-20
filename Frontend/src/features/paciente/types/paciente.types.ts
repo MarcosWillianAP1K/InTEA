@@ -164,6 +164,7 @@ export interface FiltroPacienteDTO {
   idadeMin?: number;
   idadeMax?: number;
   incluirInativos?: boolean;
+  all?: boolean;
   page?: number;
   limit?: number;
 }

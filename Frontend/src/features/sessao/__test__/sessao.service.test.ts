@@ -152,6 +152,33 @@ describe("Domínio Sessão — sessaoService (Clean Architecture)", () => {
       );
       expect(resultado?.metricas_consolidadas?.taxa_conclusao).toBe(92);
     });
+
+    it("deve listar sessões via ENDPOINTS.SESSAO.BASE com parâmetros de paginação e filtros", async () => {
+      const mockResposta = {
+        data: [MOCK_SESSAO_ATIVA],
+        meta: { total: 1, page: 2, limit: 10, totalPages: 1 },
+      };
+      const getSpy = vi
+        .spyOn(http, "get")
+        .mockResolvedValue(mockResposta);
+
+      const resultado = await sessaoService.listar({
+        page: 2,
+        limit: 10,
+        status: "concluida",
+      });
+
+      expect(getSpy).toHaveBeenCalledWith(ENDPOINTS.SESSAO.BASE, {
+        params: {
+          page: "2",
+          limit: "10",
+          status: "concluida",
+        },
+      });
+      expect(resultado.data.length).toBe(1);
+      expect(resultado.meta.page).toBe(2);
+      expect(resultado.meta.total).toBe(1);
+    });
   });
 
   describe("Modo Mock / Fallback Resiliente (Conexão Indisponível)", () => {
@@ -247,6 +274,15 @@ describe("Domínio Sessão — sessaoService (Clean Architecture)", () => {
       expect(resultado).not.toBeNull();
       expect(resultado?.session_token).toBe("849-291");
       expect(resultado?.metricas_consolidadas?.intervencoes_dda).toBe(3);
+    });
+
+    it("deve listar sessões no bdmock aplicando paginação", async () => {
+      const resultado = await sessaoService.listar({ page: 1, limit: 2 });
+
+      expect(resultado.data.length).toBeLessThanOrEqual(2);
+      expect(resultado.meta.page).toBe(1);
+      expect(resultado.meta.limit).toBe(2);
+      expect(resultado.meta.total).toBeGreaterThanOrEqual(2);
     });
   });
 });

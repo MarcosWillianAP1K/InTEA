@@ -284,7 +284,8 @@ export interface SessionState {
 }
 
 export interface SessionActions {
-  abrirModalPreSessao: (jogo: { id: string; titulo: string }) => void;
+  abrirModalPreSessao: (jogo?: { id: string; titulo: string }) => void;
+  selecionarJogo: (jogo: { id: string; titulo: string }) => void;
   fecharModal: () => void;
   selecionarPaciente: (paciente: { id: string; nome: string }) => void;
   configurarParametros: (parametros: Partial<ConfiguracaoSessao>) => void;
@@ -357,4 +358,27 @@ export interface DadosIaRelatorio {
   metricas_agregadas?: MetricaAgregadaIA[];
   recomendacoes_adaptativas?: string[];
   alerta_sensorial?: boolean;
+}
+
+export interface FiltroSessaoDTO {
+  all?: boolean;
+  status?: string;
+  data?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  pacienteId?: string;
+  jogoId?: string;
+  modo?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface RespostaListagemSessao<T = Sessao> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }

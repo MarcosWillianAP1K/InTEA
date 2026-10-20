@@ -48,7 +48,7 @@ export function ModalFinalizarSessao({
     <Dialog open={aberto} onOpenChange={(open) => !open && !isSubmitting && onCancelar()}>
       <DialogContent
         data-testid="modal-finalizar-sessao"
-        className="sm:max-w-[500px] p-0 gap-0 overflow-hidden rounded-2xl bg-card text-card-foreground border border-border shadow-2xl"
+        className="sm:max-w-125 p-0 gap-0 overflow-hidden rounded-2xl bg-card text-card-foreground border border-border shadow-2xl"
       >
         <div className="p-6 pb-4">
           <DialogHeader className="gap-1.5 text-left">

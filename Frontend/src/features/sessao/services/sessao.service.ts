@@ -20,6 +20,8 @@ import type {
   SalvarAnotacaoPayload,
   SalvarAnotacaoResposta,
   AnotacaoClinicaResultado,
+  FiltroSessaoDTO,
+  RespostaListagemSessao,
 } from "../types/sessao.types";
 import {
   iniciarSessaoMock,
@@ -31,6 +33,7 @@ import {
   cancelarSessaoMock,
   obterResultadoSessaoMock,
   exportarRelatorioSessaoMock,
+  listarSessoesMock,
 } from "../types/bdmock";
 
 const API_BASE_URL =
@@ -472,6 +475,34 @@ export const sessaoService = {
         },
       };
     }
+  },
+
+  /**
+   * Lista sessões com suporte a filtros de status, data, paciente, jogo e paginação.
+   */
+  listar: async (filtros?: FiltroSessaoDTO): Promise<RespostaListagemSessao<Sessao>> => {
+    return await withFallback(
+      async () => {
+        const params: Record<string, string> = {};
+        if (filtros?.all !== undefined) params.all = String(filtros.all);
+        if (filtros?.status) params.status = filtros.status;
+        if (filtros?.data) params.data = filtros.data;
+        if (filtros?.dataInicio) params.dataInicio = filtros.dataInicio;
+        if (filtros?.dataFim) params.dataFim = filtros.dataFim;
+        if (filtros?.pacienteId) params.pacienteId = filtros.pacienteId;
+        if (filtros?.jogoId) params.jogoId = filtros.jogoId;
+        if (filtros?.modo) params.modo = filtros.modo;
+        if (filtros?.page !== undefined) params.page = String(filtros.page);
+        if (filtros?.limit !== undefined) params.limit = String(filtros.limit);
+
+        const resposta = await http.get<RespostaListagemSessao<Sessao>>(
+          ENDPOINTS.SESSAO.BASE,
+          { params }
+        );
+        return resposta;
+      },
+      () => listarSessoesMock(filtros)
+    );
   },
 };
 

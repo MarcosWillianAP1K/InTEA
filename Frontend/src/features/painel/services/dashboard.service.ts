@@ -8,6 +8,7 @@
  */
 
 import { http, withFallback, ENDPOINTS } from "@/core/api";
+import { USE_MOCK_DATA } from "@/core/api/http-client";
 import type {
   DashboardMetricas,
   SessaoRecenteResumo,
@@ -33,6 +34,40 @@ export const dashboardService = {
   obterMetricas: async (): Promise<DashboardMetricas> => {
     return await withFallback(
       async () => {
+        if (!USE_MOCK_DATA && import.meta.env.MODE !== "test") {
+          const [resPacientes, resJogos] = await Promise.all([
+            http.get<{ data?: Array<{ id: string }> } | Array<{ id: string }>>(
+              ENDPOINTS.PACIENTE.BASE,
+            ),
+            http.get<
+              | { data?: Array<{ id: string; nome?: string; titulo?: string }> }
+              | Array<{ id: string; nome?: string; titulo?: string }>
+            >(ENDPOINTS.JOGOS.BASE),
+          ]);
+
+          const listaPacientes = Array.isArray(resPacientes)
+            ? resPacientes
+            : resPacientes.data ?? [];
+          const listaJogos = Array.isArray(resJogos)
+            ? resJogos
+            : resJogos.data ?? [];
+
+          return {
+            pacientesAtivos: listaPacientes.length,
+            sessoesNoMes: 0,
+            tempoMedioEngajamentoMinutos: 0,
+            taxaRegulacaoDDA: 0,
+            tempoTotalTerapiaMinutos: 0,
+            variacaoSessoesPercentual: 0,
+            variacaoPacientesPercentual: 0,
+            jogosMaisUtilizados: listaJogos.map((j) => ({
+              jogoId: j.id,
+              nome: j.titulo || j.nome || "Jogo Terapêutico",
+              totalSessoes: 0,
+            })),
+          };
+        }
+
         const resposta = await http.get<
           DashboardMetricasRespostaApi | DashboardMetricas
         >(ENDPOINTS.DASHBOARD.METRICAS);
@@ -56,6 +91,10 @@ export const dashboardService = {
   ): Promise<SessaoRecenteResumo[]> => {
     return await withFallback(
       async () => {
+        if (!USE_MOCK_DATA && import.meta.env.MODE !== "test") {
+          return [];
+        }
+
         const resposta = await http.get<
           SessoesRecentesRespostaApi | SessaoRecenteResumo[]
         >(ENDPOINTS.DASHBOARD.SESSOES_RECENTES, {
@@ -81,6 +120,10 @@ export const dashboardService = {
   ): Promise<AtividadeRecente[]> => {
     return await withFallback(
       async () => {
+        if (!USE_MOCK_DATA && import.meta.env.MODE !== "test") {
+          return [];
+        }
+
         const resposta = await http.get<
           AtividadesRecentesRespostaApi | AtividadeRecente[]
         >(ENDPOINTS.DASHBOARD.ATIVIDADES, {
@@ -106,6 +149,10 @@ export const dashboardService = {
   ): Promise<AlertaClinico[]> => {
     return await withFallback(
       async () => {
+        if (!USE_MOCK_DATA && import.meta.env.MODE !== "test") {
+          return [];
+        }
+
         const resposta = await http.get<
           AlertasClinicosRespostaApi | AlertaClinico[]
         >(ENDPOINTS.DASHBOARD.ALERTAS, {

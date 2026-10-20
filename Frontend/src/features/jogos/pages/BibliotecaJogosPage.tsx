@@ -2,10 +2,11 @@ import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import type { Jogo, FiltrosJogos } from "../types";
 import { jogosService, JOGOS_MOCK } from "../services/jogosService";
+import { USE_MOCK_DATA } from "@/core/api/http-client";
 import { JogoCard } from "../components/JogoCard";
 import { JogosFiltros } from "../components/JogosFiltros";
 import { useSessionStore } from "@/features/sessao";
-import { ModalPreSessao } from "@/features/sessao/components/ModalPreSessao";
+
 
 export function BibliotecaJogosPage() {
   const [jogos, setJogos] = useState<Jogo[]>([]);
@@ -18,9 +19,13 @@ export function BibliotecaJogosPage() {
   const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
 
   const objetivosDisponiveis = useMemo(() => {
-    const list = JOGOS_MOCK.map((j) => j.objetivoTerapeutico);
+    const isMockOrTest = USE_MOCK_DATA || import.meta.env.MODE === "test";
+    const fonte = isMockOrTest ? JOGOS_MOCK : jogos;
+    const list = fonte
+      .map((j) => j.objetivoTerapeutico)
+      .filter((obj): obj is string => Boolean(obj));
     return Array.from(new Set(list));
-  }, []);
+  }, [jogos]);
 
   useEffect(() => {
     async function carregarJogos() {
@@ -90,9 +95,6 @@ export function BibliotecaJogosPage() {
           ))}
         </div>
       )}
-
-      {/* Modal de Pré-Sessão e Pareamento Remoto */}
-      <ModalPreSessao />
     </div>
   );
 }

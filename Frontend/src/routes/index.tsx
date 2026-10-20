@@ -1,10 +1,15 @@
 import { Navigate, Outlet, Route, Routes as RouterRoutes } from "react-router-dom";
 import { SidebarLayout, FocusLayout } from "@/layout";
 import { LoginPage } from "@/features/autenticacao";
+import { CadastroPage } from "@/features/autenticacao/pages/CadastroPage";
 import { PainelPage } from "@/features/painel";
 import { PacientesPage } from "@/features/paciente";
+import { TodosPacientesPage } from "@/features/paciente/pages/TodosPacientesPage";
+import { PerfilPacientePage } from "@/features/paciente/pages/PerfilPacientePage";
 import { BibliotecaJogosPage } from "@/features/jogos";
 import { CockpitSessaoPage, ResultadoSessaoPage } from "@/features/sessao";
+import { HistoricoSessoesPage } from "@/features/sessao/pages/HistoricoSessoesPage";
+import { SettingsPage } from "@/features/configuracoes/pages/settingsPage";
 import { useAuthStore } from "@/features/autenticacao";
 
 /**
@@ -24,9 +29,10 @@ export function ProtectedRoute() {
 export function Routes() {
   return (
     <RouterRoutes>
-      {/* Porta de Entrada Principal: Login e Redirecionamento da Raiz */}
+      {/* Porta de Entrada Principal: Login, Cadastro e Redirecionamento da Raiz */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/cadastro" element={<CadastroPage />} />
 
       {/* Rotas Protegidas (Requer Autenticação Ativa) */}
       <Route element={<ProtectedRoute />}>
@@ -35,11 +41,13 @@ export function Routes() {
           <Route path="/painel" element={<PainelPage />} />
           <Route path="/pacientes" element={<PacientesPage />} />
           <Route path="/patients" element={<PacientesPage />} />
+          <Route path="/pacientes/todos" element={<TodosPacientesPage />} />
+          <Route path="/pacientes/:id" element={<PerfilPacientePage />} />
           <Route path="/jogos" element={<BibliotecaJogosPage />} />
           <Route path="/games" element={<BibliotecaJogosPage />} />
-          {/* Configurações operam exclusivamente via Overlay/Modal */}
-          <Route path="/configuracoes" element={<Navigate to="/painel" replace />} />
-          <Route path="/settings" element={<Navigate to="/painel" replace />} />
+          <Route path="/historico" element={<HistoricoSessoesPage />} />
+          <Route path="/configuracoes" element={<SettingsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
         {/* Rotas de Intervenção Clínica e Resultados (com FocusLayout - 100% Foco) */}

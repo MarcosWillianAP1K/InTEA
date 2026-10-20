@@ -19,10 +19,21 @@ const app = express();
 const port = process.env.PORT || 3000;
 const httpServer = http.createServer(app);
 
+// Quando credentials: true está ativo, a especificação CORS do navegador proíbe
+// retornar literal "Access-Control-Allow-Origin: *". Usar `true` reflete a Origin
+// da requisição (ex: http://localhost:5173) de forma compatível com credentials.
+const rawCorsOrigin = process.env.CORS_ORIGIN;
+const corsOrigin: boolean | string | string[] =
+  !rawCorsOrigin || rawCorsOrigin === "*"
+    ? true
+    : rawCorsOrigin.includes(",")
+      ? rawCorsOrigin.split(",").map((o) => o.trim())
+      : rawCorsOrigin;
+
 // Inicialização do WebSocket (Socket.IO) integrado ao servidor HTTP
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: corsOrigin,
     credentials: true,
   },
 });
@@ -81,7 +92,7 @@ const swaggerSpec = swaggerJsdoc({
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: corsOrigin,
     credentials: true,
   })
 );
@@ -110,6 +121,5 @@ httpServer.listen(port, () => {
   console.log(`[Backend] Servidor rodando na porta ${port}`);
   console.log(`[Backend] Swagger: http://localhost:${port}/api/docs`);
   console.log(`[Backend] WebSocket namespace: /sessao`);
-  console.log(`[Backend] CORS_ORIGIN: ${process.env.CORS_ORIGIN}`);
+  console.log(`[Backend] CORS_ORIGIN: ${rawCorsOrigin || "* (reflected)"}`);
 });
-

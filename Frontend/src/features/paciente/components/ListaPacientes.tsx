@@ -80,6 +80,7 @@ const STATUS_CONFIG: Record<
 export interface ListaPacientesProps {
   onSelectPatient?: (patient: Patient) => void;
   onOpenCreate?: () => void;
+  onVerPerfil?: (patient: Patient) => void;
   selectedPatientId?: string | null;
   initialVisualMode?: "table" | "grid";
   className?: string;
@@ -89,6 +90,7 @@ export type PatientsListProps = ListaPacientesProps;
 export function ListaPacientes({
   onSelectPatient,
   onOpenCreate,
+  onVerPerfil,
   selectedPatientId: propSelectedId,
   initialVisualMode = "grid",
   className = "",
@@ -98,6 +100,10 @@ export function ListaPacientes({
     null,
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const handleAbrirPerfil = (patient: Patient) => {
+    if (onVerPerfil) onVerPerfil(patient);
+    else setDetailModalPatient(patient);
+  };
 
   const {
     selectedPatientId: storeSelectedId,
@@ -255,7 +261,7 @@ export function ListaPacientes({
               patient={patient}
               isSelected={activeSelectedId === patient.id}
               onSelect={() => handleSelect(patient)}
-              onVerPerfil={() => setDetailModalPatient(patient)}
+              onVerPerfil={() => handleAbrirPerfil(patient)}
             />
           ))}
         </div>
@@ -418,7 +424,7 @@ export function ListaPacientes({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => setDetailModalPatient(patient)}
+                              onClick={() => handleAbrirPerfil(patient)}
                               className="hover:cursor-pointer"
                             >
                               <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
