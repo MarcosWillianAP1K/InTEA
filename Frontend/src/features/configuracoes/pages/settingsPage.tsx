@@ -67,7 +67,6 @@ export function SettingsPage() {
   );
   const [email, setEmail] = useState(user?.email || "");
   const [telefone, setTelefone] = useState(user?.telefone || "");
-  const [notificacoesEmail] = useState(false); // Mantido desativado por padrão conforme regras
   const [salvando, setSalvando] = useState(false);
 
   // Estados dos Cards com dados reais da clínica / terapeuta
@@ -126,7 +125,7 @@ export function SettingsPage() {
           const anoAtual = agora.getFullYear();
 
           const realizadasMes = sessoes.filter((s) => {
-            const dataStr = s.iniciada_em || s.created_at;
+            const dataStr = s.data_hora_inicio || s.created_at;
             if (!dataStr) return false;
             const d = new Date(dataStr);
             return d.getFullYear() === anoAtual && d.getMonth() === mesAtual;
@@ -138,7 +137,7 @@ export function SettingsPage() {
         // 3. Jogos terapêuticos ativos no sistema
         if (jogosRes.status === "fulfilled") {
           const jogos = jogosRes.value || [];
-          const ativos = jogos.filter((j) => j.status_ativo !== false).length;
+          const ativos = jogos.filter((j) => j.status_jogo !== "desativado").length;
           setTotalJogosAtivos(ativos);
         }
       } catch {

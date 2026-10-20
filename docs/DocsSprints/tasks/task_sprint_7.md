@@ -20,8 +20,8 @@
 * **Referência Documentação:** Seção 5, Figura 19, Figura 21
 * **Descrição:** Adicionar os campos necessários do formulário de cadastro (CPF, telefone, endereço completo, responsável principal, responsável extra opcional, gatilhos sensoriais e laudo) nas tabelas `paciente` e `dados_clinicos`, com script de migração SQL.
 * **Critérios de Aceite:**
-  * [ ] Script de migração executa sem erros mantendo a integridade dos dados existentes.
-  * [ ] Campos obrigatórios e opcionais refletidos corretamente nas constraints da tabela.
+  * [x] Script de migração executa sem erros mantendo a integridade dos dados existentes.
+  * [x] Campos obrigatórios e opcionais refletidos corretamente nas constraints da tabela.
 
 ---
 
@@ -32,9 +32,9 @@
 * **Referência Documentação:** RF06, RN05 (Inalterabilidade do Histórico)
 * **Descrição:** Criar os endpoints RESTful para manipulação de pacientes, garantindo que exclusões sejam apenas lógicas (`status_ativo = false`), sem apagar registros físicos do banco de dados.
 * **Critérios de Aceite:**
-  * [ ] Rotas `POST /pacientes`, `GET /pacientes`, `GET /pacientes/:id`, `PUT /pacientes/:id` e `DELETE /pacientes/:id` funcionando.
-  * [ ] A exclusão inativa o paciente sem deletar o registro.
-  * [ ] Pacientes inativos não aparecem na listagem padrão.
+  * [x] Rotas `POST /pacientes`, `GET /pacientes`, `GET /pacientes/:id`, `PUT /pacientes/:id` e `DELETE /pacientes/:id` funcionando.
+  * [x] A exclusão inativa o paciente sem deletar o registro.
+  * [x] Pacientes inativos não aparecem na listagem padrão.
 
 ---
 
@@ -45,9 +45,9 @@
 * **Referência Documentação:** RF06
 * **Descrição:** Validar os dados de entrada nas requisições de criação e edição de pacientes, rejeitando payloads com dados incorretos ou faltantes.
 * **Critérios de Aceite:**
-  * [ ] Validação de CPF, formato de CEP e datas válidas.
-  * [ ] Campos obrigatórios bloqueados na ausência e suporte a responsável extra opcional.
-  * [ ] Mensagens de erro claras em formato JSON com status 400 ou 422.
+  * [x] Validação de CPF, formato de CEP e datas válidas.
+  * [x] Campos obrigatórios bloqueados na ausência e suporte a responsável extra opcional.
+  * [x] Mensagens de erro claras em formato JSON com status 400 ou 422.
 
 ---
 
@@ -58,8 +58,8 @@
 * **Referência Documentação:** RF18, RF21, Figura 21
 * **Descrição:** Vincular automaticamente o paciente criado ao terapeuta autenticado que realizou a operação, registrando o vínculo na tabela associativa `terapeuta_paciente`.
 * **Critérios de Aceite:**
-  * [ ] Terapeuta autenticado é associado ao paciente no momento da criação.
-  * [ ] Registro persistido na tabela `terapeuta_paciente` em transação segura.
+  * [x] Terapeuta autenticado é associado ao paciente no momento da criação.
+  * [x] Registro persistido na tabela `terapeuta_paciente` em transação segura.
 
 ---
 
@@ -70,8 +70,8 @@
 * **Referência Documentação:** RF18, Figura 21
 * **Descrição:** Disponibilizar rotas para adicionar ou remover outros terapeutas da mesma clínica no acompanhamento de um paciente compartilhado.
 * **Critérios de Aceite:**
-  * [ ] Endpoints `POST` e `DELETE` em `/pacientes/:id/terapeutas` funcionando.
-  * [ ] Bloqueio de vínculos com terapeutas de clínicas diferentes.
+  * [x] Endpoints `POST` e `DELETE` em `/pacientes/:id/terapeutas` funcionando.
+  * [x] Bloqueio de vínculos com terapeutas de clínicas diferentes.
 
 ---
 
@@ -82,8 +82,8 @@
 * **Referência Documentação:** RF19
 * **Descrição:** Implementar parâmetros de busca rápida e filtros combinados na rota `GET /pacientes` com suporte a paginação.
 * **Critérios de Aceite:**
-  * [ ] Filtro por nome (busca parcial), faixa etária e estado clínico.
-  * [ ] Retorno com controle de paginação consistente.
+  * [x] Filtro por nome (busca parcial), faixa etária e estado clínico.
+  * [x] Retorno com controle de paginação consistente.
 
 ---
 
@@ -94,8 +94,8 @@
 * **Referência Documentação:** RN04, RNF06 (LGPD)
 * **Descrição:** Middleware de autorização para bloquear acesso ao prontuário do paciente caso o terapeuta logado não possua vínculo com ele.
 * **Critérios de Aceite:**
-  * [ ] Retorna status 403 (ou 404) caso o terapeuta não tenha vínculo com o paciente.
-  * [ ] SuperAdmin mantém acesso para auditoria institucional.
+  * [x] Retorna status 403 (ou 404) caso o terapeuta não tenha vínculo com o paciente.
+  * [x] SuperAdmin mantém acesso para auditoria institucional.
 
 ---
 
@@ -106,8 +106,8 @@
 * **Referência Documentação:** RF09, Figura 10
 * **Descrição:** Criar rotas para listar os jogos terapêuticos disponíveis no sistema e consultar detalhes de um jogo específico.
 * **Critérios de Aceite:**
-  * [ ] Rota `GET /jogos` lista os jogos com nome, versão, descrição e status de instalação.
-  * [ ] Rota `GET /jogos/:id` retorna os detalhes e o `manifesto_json`.
+  * [x] Rota `GET /jogos` lista os jogos com nome, versão, descrição e status de instalação.
+  * [x] Rota `GET /jogos/:id` retorna os detalhes e o `manifesto_json`.
 
 ---
 
@@ -118,8 +118,8 @@
 * **Referência Documentação:** RNF02, Seção 7.4.2
 * **Descrição:** Validar a estrutura do `manifesto_json` do jogo para garantir conformidade com o contrato técnico do InTEA (`metricas_suportadas`, campos e tipos).
 * **Critérios de Aceite:**
-  * [ ] Validação dos campos obrigatórios do manifesto.
-  * [ ] Rejeição de manifestos mal formatados com retorno de erro detalhado.
+  * [x] Validação dos campos obrigatórios do manifesto.
+  * [x] Rejeição de manifestos mal formatados com retorno de erro detalhado.
 
 ---
 
@@ -130,9 +130,9 @@
 * **Referência Documentação:** RN02, RNF04
 * **Descrição:** Toda métrica deve ter estritamente um tipo válido declarado no manifesto. Métricas sem tipo não serão usadas nem tratadas como categóricas, sendo sumariamente rejeitadas para evitar erros em dados de saúde humana.
 * **Critérios de Aceite:**
-  * [ ] Sem conversão/fallback automático para categórica.
-  * [ ] Métricas sem tipo são rejeitadas na validação do manifesto.
-  * [ ] Telemetrias de métricas sem tipo não são gravadas no prontuário.
+  * [x] Sem conversão/fallback automático para categórica.
+  * [x] Métricas sem tipo são rejeitadas na validação do manifesto.
+  * [x] Telemetrias de métricas sem tipo não são gravadas no prontuário.
 
 ---
 
@@ -143,8 +143,8 @@
 * **Referência Documentação:** RF09, Tabela `jogo`
 * **Descrição:** Popular o banco de dados com 3 jogos terapêuticos de demonstração (*Aventura das Cores*, *Formas Calmas* e *Som dos Animais*), contendo manifestos válidos e status de instalação.
 * **Critérios de Aceite:**
-  * [ ] Script de seed cadastra os 3 jogos sem duplicar registros.
-  * [ ] Manifestos configurados com métricas clínicas válidas.
+  * [x] Script de seed cadastra os 3 jogos sem duplicar registros.
+  * [x] Manifestos configurados com métricas clínicas válidas.
 
 ---
 
@@ -155,8 +155,8 @@
 * **Referência Documentação:** RF19, Figura 10
 * **Descrição:** Permitir filtrar jogos por objetivo terapêutico na rota `GET /jogos`, com suporte a paginação de resultados.
 * **Critérios de Aceite:**
-  * [ ] Filtro por objetivo funcional.
-  * [ ] Resposta paginada para listas extensas.
+  * [x] Filtro por objetivo funcional.
+  * [x] Resposta paginada para listas extensas.
 
 ---
 
@@ -167,8 +167,8 @@
 * **Referência Documentação:** Pipeline CI/CD
 * **Descrição:** Criar testes unitários e de integração com Vitest cobrindo CRUD de pacientes, validação de DTOs, regras de vínculo e catálogo de jogos.
 * **Critérios de Aceite:**
-  * [ ] Testes passando com sucesso no comando `npm test`.
-  * [ ] Cenários de sucesso e de erro (ex: 403 sem vínculo) cobertos.
+  * [x] Testes passando com sucesso no comando `npm test`.
+  * [x] Cenários de sucesso e de erro (ex: 403 sem vínculo) cobertos.
 
 ---
 
@@ -183,8 +183,8 @@
 * **Referência Documentação:** Figura 24
 * **Descrição:** Organizar a pasta `features/pacientes/` contendo as divisões de componentes, hooks, páginas, serviços de API e gerenciamento de estado (store).
 * **Critérios de Aceite:**
-  * [ ] Pastas organizadas e sem dependências circulares.
-  * [ ] Exportações centralizadas via `index.ts`.
+  * [x] Pastas organizadas e sem dependências circulares.
+  * [x] Exportações centralizadas via `index.ts`.
 
 ---
 
@@ -195,8 +195,8 @@
 * **Referência Documentação:** Figura 9 (Tela de Listagem dos Pacientes)
 * **Descrição:** Criar a interface de seleção de pacientes com visualização em cards contendo foto, nome, idade, resumo do estado clínico e o card de ação "Novo Paciente".
 * **Critérios de Aceite:**
-  * [ ] Grid responsivo com Tailwind CSS.
-  * [ ] Clique no card seleciona o paciente; card "Novo Paciente" leva ao cadastro.
+  * [x] Grid responsivo com Tailwind CSS.
+  * [x] Clique no card seleciona o paciente; card "Novo Paciente" leva ao cadastro.
 
 ---
 
@@ -207,8 +207,8 @@
 * **Referência Documentação:** Figura 14 (Tela da Lista de Pacientes)
 * **Descrição:** Construir a visualização em tabela detalhada para gestão clínica, com barra de busca rápida, filtros e atalho para novo cadastro.
 * **Critérios de Aceite:**
-  * [ ] Tabela com ordenação e paginação.
-  * [ ] Campo de busca com filtro em tempo real.
+  * [x] Tabela com ordenação e paginação.
+  * [x] Campo de busca com filtro em tempo real.
 
 
 ---
@@ -220,8 +220,8 @@
 * **Referência Documentação:** Figura 15 (Tela de Cadastro de Paciente)
 * **Descrição:** Desenvolver o formulário de cadastro estruturado em 4 blocos: Identificação do Paciente, Responsável Principal, Responsável Extra (opcional) e Dados Clínicos/Gatilhos.
 * **Critérios de Aceite:**
-  * [ ] Máscaras para CPF, telefone e CEP.
-  * [ ] Validações visuais inline com mensagens de erro.
+  * [x] Máscaras para CPF, telefone e CEP.
+  * [x] Validações visuais inline com mensagens de erro.
 
 ---
 
@@ -232,8 +232,8 @@
 * **Referência Documentação:** Figura 16 (Tela de Perfil do Paciente)
 * **Descrição:** Tela consolidada de visualização do prontuário, reunindo dados pessoais, contatos dos responsáveis, laudos e tags visuais dos gatilhos sensoriais.
 * **Critérios de Aceite:**
-  * [ ] Visualização limpa dos dados e tags destacadas para gatilhos.
-  * [ ] Atalhos para editar dados e iniciar nova sessão.
+  * [x] Visualização limpa dos dados e tags destacadas para gatilhos.
+  * [x] Atalhos para editar dados e iniciar nova sessão.
 
 ---
 
@@ -244,8 +244,8 @@
 * **Referência Documentação:** RN04
 * **Descrição:** Conectar as telas de pacientes com os endpoints do back-end, incluindo tratamento de permissão (403), recurso não encontrado (404) e avisos visuais.
 * **Critérios de Aceite:**
-  * [ ] Consumo correto das rotas da API.
-  * [ ] Mensagens de feedback amigáveis na interface.
+  * [x] Consumo correto das rotas da API.
+  * [x] Mensagens de feedback amigáveis na interface.
 
 ---
 
@@ -256,8 +256,8 @@
 * **Referência Documentação:** Figura 24
 * **Descrição:** Construir a base de componentes reutilizáveis em `shared/components/`: botão, input, card, badge de status, modal, tabela e campo de busca.
 * **Critérios de Aceite:**
-  * [ ] Componentes tipados em TypeScript e compatíveis com Tailwind CSS.
-  * [ ] Suporte consistente aos modos claro e escuro.
+  * [x] Componentes tipados em TypeScript e compatíveis com Tailwind CSS.
+  * [x] Suporte consistente aos modos claro e escuro.
 
 ---
 
@@ -268,8 +268,8 @@
 * **Referência Documentação:** Seção de Arquitetura de Comunicação
 * **Descrição:** Configurar o cliente HTTP central (`endpoints.ts`) com injeção automática de token JWT e redirecionamento para login em caso de sessão expirada.
 * **Critérios de Aceite:**
-  * [ ] Token de autorização enviado automaticamente nas requisições.
-  * [ ] Tratamento global para erros 401 e de conexão.
+  * [x] Token de autorização enviado automaticamente nas requisições.
+  * [x] Tratamento global para erros 401 e de conexão.
 
 ---
 
@@ -280,8 +280,8 @@
 * **Referência Documentação:** Figura 10 (Tela dos Jogos Disponíveis)
 * **Descrição:** Criar a grade visual do catálogo de jogos, exibindo cartões com título, versão, descrição clínica e indicador de status de instalação.
 * **Critérios de Aceite:**
-  * [ ] Grade responsiva com cards bem estruturados.
-  * [ ] Badges visuais indicando status (`Instalado`, `Em execução`, etc.).
+  * [x] Grade responsiva com cards bem estruturados.
+  * [x] Badges visuais indicando status (`Instalado`, `Em execução`, etc.).
 
 ---
 
@@ -292,8 +292,8 @@
 * **Referência Documentação:** Figura 10, RF11 (Modo Livre)
 * **Descrição:** Adicionar barra de filtro por objetivo clínico e os botões de ação "Iniciar Sessão" (fluxo clínico com paciente) e "Modo Livre" (jogo desvinculado de prontuário).
 * **Critérios de Aceite:**
-  * [ ] Filtro por objetivo atualiza os cards na tela.
-  * [ ] Botões disparam os fluxos corretos na interface.
+  * [x] Filtro por objetivo atualiza os cards na tela.
+  * [x] Botões disparam os fluxos corretos na interface.
 
 ---
 
@@ -304,8 +304,8 @@
 * **Referência Documentação:** Contrato manifestoGame.json, RNF02
 * **Descrição:** Integrar a biblioteca de jogos com o endpoint `GET /jogos` da API, tratando estados de loading, erro e exibição de dados com manifesto.
 * **Critérios de Aceite:**
-  * [ ] Consumo funcional do endpoint de jogos com fallback para mocks se offline.
-  * [ ] Dados do manifesto e métricas refletidos corretamente na interface.
+  * [x] Consumo funcional do endpoint de jogos com fallback para mocks se offline.
+  * [x] Dados do manifesto e métricas refletidos corretamente na interface.
 
 ---
 
@@ -316,8 +316,8 @@
 * **Referência Documentação:** Pipeline CI/CD, Sprint 6
 * **Descrição:** Criar testes automatizados unitários e de componentes com Vitest para as features de Pacientes e Jogos, garantindo execução limpa no GitHub Actions.
 * **Critérios de Aceite:**
-  * [ ] Testes de componentes executando com sucesso no `npm test`.
-  * [ ] Pipeline de CI validando tipagem e build sem falhas.
+  * [x] Testes de componentes executando com sucesso no `npm test`.
+  * [x] Pipeline de CI validando tipagem e build sem falhas.
 
 ---
 
@@ -332,8 +332,8 @@
 * **Referência Documentação:** Seção 7.7 (Sprint 7)
 * **Descrição:** Escrever o texto oficial da Sprint 7 para o relatório acadêmico/técnico do InTEA em LaTeX, documentando objetivos, decisões técnicas, entregas e retrospectiva.
 * **Critérios de Aceite:**
-  * [ ] Texto redigido nas normas do documento do projeto.
-  * [ ] Rastreabilidade clara com os requisitos da sprint.
+  * [x] Texto redigido nas normas do documento do projeto.
+  * [x] Rastreabilidade clara com os requisitos da sprint.
 
 ---
 
@@ -344,8 +344,8 @@
 * **Referência Documentação:** Repositório / Contratos
 * **Descrição:** Documentar detalhadamente todas as rotas de pacientes e jogos, com exemplos de request body, query params, status de resposta e mensagens de erro.
 * **Critérios de Aceite:**
-  * [ ] Exemplos práticos para todas as rotas criadas.
-  * [ ] Códigos de resposta (200, 201, 400, 403, 404, 422) especificados.
+  * [x] Exemplos práticos para todas as rotas criadas.
+  * [x] Códigos de resposta (200, 201, 400, 403, 404, 422) especificados.
 
 ---
 
@@ -356,8 +356,8 @@
 * **Referência Documentação:** Seção 5, Figura 1, Figura 3, Figura 4
 * **Descrição:** Atualizar os diagramas oficiais do projeto para contemplar os novos atributos de paciente, dados clínicos e os fluxos de cadastro e consulta com guard.
 * **Critérios de Aceite:**
-  * [ ] Diagramas atualizados e inseridos no relatório.
-  * [ ] Numeração e referências cruzadas alinhadas com o documento.
+  * [x] Diagramas atualizados e inseridos no relatório.
+  * [x] Numeração e referências cruzadas alinhadas com o documento.
 
 ---
 
@@ -368,8 +368,8 @@
 * **Referência Documentação:** Seção 7.4.2 (Design de Contratos JSON)
 * **Descrição:** Especificar e documentar o JSON Schema oficial do `manifestoGame.json`, detalhando versionamento e formatos de métricas permitidos.
 * **Critérios de Aceite:**
-  * [ ] Schema formal documentado no repositório.
-  * [ ] Exemplos práticos de manifestos incluídos.
+  * [x] Schema formal documentado no repositório.
+  * [x] Exemplos práticos de manifestos incluídos.
 
 ---
 
@@ -380,8 +380,8 @@
 * **Referência Documentação:** Seção 7.7 do Relatório LaTeX
 * **Descrição:** Coletar e catalogar prints em alta resolução das telas implementadas (seleção, lista, cadastro, perfil e catálogo de jogos), tabelas do banco e chamadas de API via Postman/Insomnia com legendas numeradas.
 * **Critérios de Aceite:**
-  * [ ] Prints organizados na pasta `docs/figuras/` ou correspondente.
-  * [ ] Legendas e referências numeradas em conformidade com o relatório.
+  * [x] Prints organizados na pasta `docs/figuras/` ou correspondente.
+  * [x] Legendas e referências numeradas em conformidade com o relatório.
 
 ---
 
@@ -392,8 +392,8 @@
 * **Referência Documentação:** Seção de Testes do Relatório
 * **Descrição:** Criar planilha com roteiro de testes manuais para validação dos fluxos de pacientes e catálogo de jogos, mapeando requisitos e resultados esperados.
 * **Critérios de Aceite:**
-  * [ ] Casos de teste estruturados com passos e validações.
-  * [ ] Mapeamento entre cada caso de teste e seu respectivo requisito.
+  * [x] Casos de teste estruturados com passos e validações.
+  * [x] Mapeamento entre cada caso de teste e seu respectivo requisito.
 
 ---
 
@@ -404,8 +404,8 @@
 * **Referência Documentação:** Gestão de Projeto
 * **Descrição:** Manter o quadro do GitHub Projects atualizado com status em tempo real das tarefas, registrar atas das reuniões diárias e retrospectiva da sprint.
 * **Critérios de Aceite:**
-  * [ ] Quadro de tarefas 100% sincronizado com as entregas da equipe.
-  * [ ] Atas e notas arquivadas no repositório.
+  * [x] Quadro de tarefas 100% sincronizado com as entregas da equipe.
+  * [x] Atas e notas arquivadas no repositório.
 
 ---
 
@@ -416,8 +416,8 @@
 * **Referência Documentação:** Relatório Oficial
 * **Descrição:** Realizar varredura ortográfica e gramatical, verificar numeração de seções e figuras, alinhar citações bibliográficas e compilar o PDF final sem warnings no LaTeX.
 * **Critérios de Aceite:**
-  * [ ] Documento PDF compila sem erros ou advertências graves.
-  * [ ] Conformidade com a estrutura estabelecida pelo orientador.
+  * [x] Documento PDF compila sem erros ou advertências graves.
+  * [x] Conformidade com a estrutura estabelecida pelo orientador.
 
 ---
 
@@ -432,8 +432,8 @@
 * **Referência Documentação:** Orientação Terapeuta
 * **Descrição:** Substituir na interface e tooltips o termo clínico "Co-Terapeuta" por nomenclaturas mais neutras e acolhedoras, como "Facilitador Terapêutico" ou "Apoiador", evitando rotulação excessiva.
 * **Critérios de Aceite:**
-  * [ ] Rótulos e textos da interface atualizados sem termos estigmatizantes.
-  * [ ] Permissões de sistema mantidas normalmente por baixo dos panos.
+  * [x] Rótulos e textos da interface atualizados sem termos estigmatizantes.
+  * [x] Permissões de sistema mantidas normalmente por baixo dos panos.
 
 ---
 
@@ -457,8 +457,8 @@
 * **Referência Documentação:** RNF06, RN04
 * **Descrição:** Garantir blindagem rígida de segurança com Row Level Security (RLS) no banco de dados para proteger dados inseridos pelo terapeuta (laudos, diagnósticos e gatilhos sensoriais).
 * **Critérios de Aceite:**
-  * [ ] Acesso aos dados clínicos bloqueado para perfis não autorizados e familiares.
-  * [ ] Políticas de RLS ativas e testadas no banco de dados.
+  * [x] Acesso aos dados clínicos bloqueado para perfis não autorizados e familiares.
+  * [x] Políticas de RLS ativas e testadas no banco de dados.
 
 ---
 

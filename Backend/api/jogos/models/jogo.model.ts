@@ -55,7 +55,7 @@ export interface JogoResumo {
 
 export interface FiltrosJogo {
   objetivo?: string;
-  status?: StatusJogo;
+  status?: StatusJogo | 'todos' | 'all';
   page?: number;
   limit?: number;
 }

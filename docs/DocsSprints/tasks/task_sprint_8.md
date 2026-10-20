@@ -20,9 +20,9 @@
 * **Referência Documentação:** Figura 4 (DER), RF10, RF12
 * **Descrição:** Criar tabela `sessao` no PostgreSQL/Supabase com chaves estrangeiras (`paciente_id`, `terapeuta_id`, `jogo_id`), coluna `session_token` única com índice B-Tree, status do pareamento (`aguardando_pareamento`, `conectado`, `finalizada`, `expirada`), timestamps de início/fim e metadados JSON (`contexto_dda_json`).
 * **Critérios de Aceite:**
-  * [ ] Migration SQL cria tabela `sessao` com todas as constraints, chaves estrangeiras e índices.
-  * [ ] Model `SessaoModel` implementado com tipagem TypeScript estrita e métodos de CRUD básico.
-  * [ ] Campo `session_token` indexado para busca rápida com garantia de unicidade.
+  * [x] Migration SQL cria tabela `sessao` com todas as constraints, chaves estrangeiras e índices.
+  * [x] Model `SessaoModel` implementado com tipagem TypeScript estrita e métodos de CRUD básico.
+  * [x] Campo `session_token` indexado para busca rápida com garantia de unicidade.
 
 ---
 
@@ -33,9 +33,9 @@
 * **Referência Documentação:** RF10, RNF03 (Segurança)
 * **Descrição:** Implementar serviço utilitário para geração de códigos de pareamento efêmeros de 6 a 8 caracteres alfanuméricos em caixa alta, excluindo caracteres visualmente ambíguos (ex: `0`, `O`, `1`, `I`), com TTL de 15 minutos e suporte a expiração programada.
 * **Critérios de Aceite:**
-  * [ ] Tokens gerados sem caracteres ambíguos facilitando digitação em telas de toque.
-  * [ ] Entropia criptográfica adequada via `crypto.randomBytes`.
-  * [ ] Validador verifica se o token está no formato correto e dentro do prazo de validade.
+  * [x] Tokens gerados sem caracteres ambíguos facilitando digitação em telas de toque.
+  * [x] Entropia criptográfica adequada via `crypto.randomBytes`.
+  * [x] Validador verifica se o token está no formato correto e dentro do prazo de validade.
 
 ---
 
@@ -46,9 +46,9 @@
 * **Referência Documentação:** RF10, RF12, RN04, Figura 3
 * **Descrição:** Desenvolver rota `POST /api/sessao/iniciar` protegida por JWT que valida se o terapeuta possui vínculo ativo com o paciente (RN04), instancia a sessão com status `aguardando_pareamento` e retorna o identificador da sessão e o `session_token`.
 * **Critérios de Aceite:**
-  * [ ] Rota bloqueia requisições sem JWT ou de terapeutas sem vínculo com o paciente (retorno 401/403).
-  * [ ] Sessão persistida no banco com status `aguardando_pareamento` e timestamps.
-  * [ ] Retorno com `session_id`, `session_token`, dados do paciente e tempo de expiração.
+  * [x] Rota bloqueia requisições sem JWT ou de terapeutas sem vínculo com o paciente (retorno 401/403).
+  * [x] Sessão persistida no banco com status `aguardando_pareamento` e timestamps.
+  * [x] Retorno com `session_id`, `session_token`, dados do paciente e tempo de expiração.
 
 ---
 
@@ -59,8 +59,8 @@
 * **Referência Documentação:** RF10, RNF03
 * **Descrição:** Criar rotina e regras de negócio para invalidar automaticamente tokens após timeout de 15 minutos ou quando o terapeuta cancelar voluntariamente a sessão pendente, prevenindo conexões indevidas de jogos remotos.
 * **Critérios de Aceite:**
-  * [ ] Tentativas de pareamento com token expirado retornam HTTP 410 Gone ou 400 Bad Request com mensagem clara.
-  * [ ] Rota `DELETE /api/sessao/:id/cancelar` permite cancelamento antecipado pelo terapeuta.
+  * [x] Tentativas de pareamento com token expirado retornam HTTP 410 Gone ou 400 Bad Request com mensagem clara.
+  * [x] Rota `DELETE /api/sessao/:id/cancelar` permite cancelamento antecipado pelo terapeuta.
 
 ---
 
@@ -71,9 +71,9 @@
 * **Referência Documentação:** RF10, Figura 3 (Passos 8-10)
 * **Descrição:** Implementar rota pública/controlada `POST /api/sessao/parear` consumida pelo jogo externo no tablet/computador do paciente. Recebe o `session_token`, valida a existência da sessão, atualiza o status para `conectado` e retorna os parâmetros essenciais para o jogo.
 * **Critérios de Aceite:**
-  * [ ] Endpoint valida o token e associa o dispositivo à sessão.
-  * [ ] Transição atômica de status de `aguardando_pareamento` para `conectado`.
-  * [ ] Retorno com configurações do jogo, ID da sessão e canal de comunicação WebSocket.
+  * [x] Endpoint valida o token e associa o dispositivo à sessão.
+  * [x] Transição atômica de status de `aguardando_pareamento` para `conectado`.
+  * [x] Retorno com configurações do jogo, ID da sessão e canal de comunicação WebSocket.
 
 ---
 
@@ -84,9 +84,9 @@
 * **Referência Documentação:** RF10, Figura 3, Figura 5
 * **Descrição:** Configurar gateway WebSocket (Socket.IO) com salas dinâmicas baseadas no `session_token`. Notifica instantaneamente a aplicação web do terapeuta quando o dispositivo do paciente concluir o handshake.
 * **Critérios de Aceite:**
-  * [ ] Socket.IO configurado com autenticação e salas por sessão (`sessao:{token}`).
-  * [ ] Evento `dispositivo_conectado` emitido imediatamente para o painel web após pareamento.
-  * [ ] Logs estruturados de conexão e desconexão de clientes.
+  * [x] Socket.IO configurado com autenticação e salas por sessão (`sessao:{token}`).
+  * [x] Evento `dispositivo_conectado` emitido imediatamente para o painel web após pareamento.
+  * [x] Logs estruturados de conexão e desconexão de clientes.
 
 ---
 
@@ -97,9 +97,9 @@
 * **Referência Documentação:** RF10, RNF04 (Confiabilidade)
 * **Descrição:** Implementar mecanismo de heartbeat (ping/pong) periódico para detectar interrupções de rede no dispositivo remoto e alertar a interface web sobre perda de conexão ou reconexão do paciente.
 * **Critérios de Aceite:**
-  * [ ] Queda de conexão detectada em no máximo 10 segundos de inatividade do ping.
-  * [ ] Evento `dispositivo_desconectado` transmitido para a interface do terapeuta.
-  * [ ] Suporte a reconexão automática sem perda da sessão em andamento.
+  * [x] Queda de conexão detectada em no máximo 10 segundos de inatividade do ping.
+  * [x] Evento `dispositivo_desconectado` transmitido para a interface do terapeuta.
+  * [x] Suporte a reconexão automática sem perda da sessão em andamento.
 
 ---
 
@@ -110,8 +110,8 @@
 * **Referência Documentação:** Seção 7.8, `roteiro-testes.md`
 * **Descrição:** Desenvolver suíte de testes de integração com Vitest cobrindo todo o fluxo de pareamento (geração, handshake, expiração e cancelamento), e rodar a bateria completa de regressão para assegurar integridade dos 228 testes prévios.
 * **Critérios de Aceite:**
-  * [ ] Testes de integração de sessão e pareamento cobrindo cenários positivos e negativos.
-  * [ ] Testes de não-regressão de pacientes, vínculos e jogos executando 100% verdes.
+  * [x] Testes de integração de sessão e pareamento cobrindo cenários positivos e negativos.
+  * [x] Testes de não-regressão de pacientes, vínculos e jogos executando 100% verdes.
 
 ---
 
@@ -122,9 +122,9 @@
 * **Referência Documentação:** Figura 11, Figura 10, RF10
 * **Descrição:** Desenvolver modal no frontend acionado ao clicar em "Iniciar Sessão" na biblioteca de jogos. Permite escolher o paciente vinculado, visualizar instruções e disparar a requisição de início de sessão.
 * **Critérios de Aceite:**
-  * [ ] Modal composável utilizando componentes primitivos `Dialog`, `Select` e `Button`.
-  * [ ] Listagem de pacientes ativos vinculados ao terapeuta para seleção.
-  * [ ] Validação impede prosseguir sem selecionar um paciente.
+  * [x] Modal composável utilizando componentes primitivos `Dialog`, `Select` e `Button`.
+  * [x] Listagem de pacientes ativos vinculados ao terapeuta para seleção.
+  * [x] Validação impede prosseguir sem selecionar um paciente.
 
 ---
 
@@ -135,9 +135,9 @@
 * **Referência Documentação:** Figura 11, RF10
 * **Descrição:** Desenvolver componente visual com destaque tipográfico para o PIN de pareamento (letras/números em blocos individuais), botão com feedback de cópia ("Copiar Código") e renderização de QR Code para leitura rápida pela câmera do tablet.
 * **Critérios de Aceite:**
-  * [ ] PIN renderizado de forma clara, legível e responsiva.
-  * [ ] Botão de cópia para a área de transferência com notificação toast (Sonner).
-  * [ ] Suporte visual a QR Code para escaneamento direto.
+  * [x] PIN renderizado de forma clara, legível e responsiva.
+  * [x] Botão de cópia para a área de transferência com notificação toast (Sonner).
+  * [x] Suporte visual a QR Code para escaneamento direto.
 
 ---
 
@@ -148,8 +148,8 @@
 * **Referência Documentação:** RF10, Figura 11
 * **Descrição:** Criar elemento visual reativo de status dentro do modal: badge animado indicando "Aguardando conexão do dispositivo...", transição para "Dispositivo Conectado com Sucesso" (verde com ícone de confirmação) e liberação do botão "Iniciar Intervenção".
 * **Critérios de Aceite:**
-  * [ ] Estado visual muda instantaneamente na recepção do evento WebSocket sem recarregar a página.
-  * [ ] Animações suaves de transição de estado com Tailwind CSS.
+  * [x] Estado visual muda instantaneamente na recepção do evento WebSocket sem recarregar a página.
+  * [x] Animações suaves de transição de estado com Tailwind CSS.
 
 ---
 
@@ -160,9 +160,9 @@
 * **Referência Documentação:** RF10
 * **Descrição:** Implementar cronômetro regressivo de validade do token (15 minutos) e botão "Cancelar Sessão", permitindo ao terapeuta fechar o modal ou regenerar um novo código caso o tempo expire.
 * **Critérios de Aceite:**
-  * [ ] Contador regressivo exibido em tela de forma discreta.
-  * [ ] Mensagem de expiração com opção "Gerar Novo Código" ao zerar o tempo.
-  * [ ] Botão de cancelamento envia requisição de cancelamento e reseta a store.
+  * [x] Contador regressivo exibido em tela de forma discreta.
+  * [x] Mensagem de expiração com opção "Gerar Novo Código" ao zerar o tempo.
+  * [x] Botão de cancelamento envia requisição de cancelamento e reseta a store.
 
 ---
 
@@ -173,8 +173,8 @@
 * **Referência Documentação:** `core/web.socket.ts`, RF10
 * **Descrição:** Configurar cliente Socket.IO em `core/web.socket.ts` com conexão gerenciada por canal, reconexão com backoff exponencial e listeners tipados para eventos de pareamento.
 * **Critérios de Aceite:**
-  * [ ] Conexão Socket.IO reutilizável em toda a aplicação.
-  * [ ] Handlers tipados para os eventos `dispositivo_conectado`, `dispositivo_desconectado` e `erro_sessao`.
+  * [x] Conexão Socket.IO reutilizável em toda a aplicação.
+  * [x] Handlers tipados para os eventos `dispositivo_conectado`, `dispositivo_desconectado` e `erro_sessao`.
 
 ---
 
@@ -185,8 +185,8 @@
 * **Referência Documentação:** Arquitetura Zustand
 * **Descrição:** Criar store Zustand (`features/sessao/store/sessionStore.ts`) para gerenciar o estado global da sessão atual (jogo selecionado, paciente selecionado, token gerado, status do pareamento e conexão de socket).
 * **Critérios de Aceite:**
-  * [ ] Store tipada sem `any` com actions de início, sucesso de pareamento, desconexão e reset.
-  * [ ] Estado compartilhado perfeitamente entre o modal e a navegação.
+  * [x] Store tipada sem `any` com actions de início, sucesso de pareamento, desconexão e reset.
+  * [x] Estado compartilhado perfeitamente entre o modal e a navegação.
 
 ---
 
@@ -197,8 +197,8 @@
 * **Referência Documentação:** Figura 10, RF09
 * **Descrição:** Conectar o botão "Iniciar Sessão" dos cards da página `BibliotecaJogosPage.tsx` para disparar a abertura do fluxo de pré-sessão e pareamento com o jogo pré-selecionado.
 * **Critérios de Aceite:**
-  * [ ] Clique no botão abre o modal com o ID e título do jogo devidamente preenchidos.
-  * [ ] Fluxo não interfere na execução independente do "Modo Livre" (RF11).
+  * [x] Clique no botão abre o modal com o ID e título do jogo devidamente preenchidos.
+  * [x] Fluxo não interfere na execução independente do "Modo Livre" (RF11).
 
 ---
 
@@ -209,8 +209,8 @@
 * **Referência Documentação:** Pipeline CI
 * **Descrição:** Escrever testes unitários e de renderização para o modal de pré-sessão, componente de exibição do PIN e transições de estado na store do Zustand via Vitest e Testing Library.
 * **Critérios de Aceite:**
-  * [ ] Testes de renderização dos componentes de pareamento aprovados.
-  * [ ] Validação de transições de estado reativas da store.
+  * [x] Testes de renderização dos componentes de pareamento aprovados.
+  * [x] Validação de transições de estado reativas da store.
 
 ---
 
@@ -221,8 +221,8 @@
 * **Referência Documentação:** Seção 7.8 do Projeto InTEA
 * **Descrição:** Redigir o capítulo oficial da Sprint 8 no relatório acadêmico LaTeX: objetivos alcançados, desenho do protocolo de pareamento remoto, diagrama de sequência da sessão e análise das decisões técnicas.
 * **Critérios de Aceite:**
-  * [ ] Texto compilável em LaTeX sem advertências de formatação.
-  * [ ] Inclusão do diagrama de sequência atualizado e referências às figuras do projeto.
+  * [x] Texto compilável em LaTeX sem advertências de formatação.
+  * [x] Inclusão do diagrama de sequência atualizado e referências às figuras do projeto.
 
 ---
 
@@ -233,8 +233,8 @@
 * **Referência Documentação:** Swagger UI, `docs/api-pacientes-jogos.md`
 * **Descrição:** Documentar formalmente os endpoints `/api/sessao/iniciar` e `/api/sessao/parear` com JSDoc e Swagger, incluindo esquemas de request, response de sucesso e respostas de erro (400, 401, 403, 404, 410).
 * **Critérios de Aceite:**
-  * [ ] Rotas visíveis e testáveis interativamente no Swagger UI (`/api/docs`).
-  * [ ] Schemas e exemplos de payload aderentes ao padrão OpenAPI 3.0.
+  * [x] Rotas visíveis e testáveis interativamente no Swagger UI (`/api/docs`).
+  * [x] Schemas e exemplos de payload aderentes ao padrão OpenAPI 3.0.
 
 ---
 
@@ -245,8 +245,8 @@
 * **Referência Documentação:** `docs/roteiro-testes.md`
 * **Descrição:** Adicionar ao roteiro formal de testes manuais os casos de teste específicos da Sprint 8 (CT-S01 a CT-S06), especificando precondições, passos no Postman/Interface e resultados esperados.
 * **Critérios de Aceite:**
-  * [ ] Casos de teste estruturados cobrindo conexão normal, PIN incorreto, token expirado e queda de conexão.
-  * [ ] Rastreabilidade clara com os requisitos RF10 e RNF04.
+  * [x] Casos de teste estruturados cobrindo conexão normal, PIN incorreto, token expirado e queda de conexão.
+  * [x] Rastreabilidade clara com os requisitos RF10 e RNF04.
 
 ---
 
@@ -257,7 +257,7 @@
 * **Referência Documentação:** Relatório Oficial
 * **Descrição:** Capturar prints da interface web exibindo o token de pareamento, simulação de conexão do jogo remoto e tráfego de mensagens no WebSocket para compor as figuras do relatório técnico.
 * **Critérios de Aceite:**
-  * [ ] Imagens em alta resolução coletadas com legendas técnicas e numeradas.
+  * [x] Imagens em alta resolução coletadas com legendas técnicas e numeradas.
 
 ---
 
@@ -273,7 +273,7 @@
 ### Back: Mecanismo de Refresh Token com Rotação Automática (Tipo: Feature)
 
 * **Tipo:** Feature
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Backend/core/auth/auth.service.ts`, `Backend/core/auth/auth.controller.ts`, `Backend/core/auth/auth.routes.ts`, `Backend/core/auth/token.service.ts`
 * **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RF03, RNF03
@@ -289,7 +289,7 @@
 ### Back: Gestão e Encerramento de Sessões Concorrentes (Tipo: Feature)
 
 * **Tipo:** Feature
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Não atribuído (Backlog)
 * **Fronteira de Arquivos:** `Database/migrations/010_sessoes_ativas.sql`, `Backend/core/auth/sessoes-ativas.service.ts`, `Backend/core/auth/auth.controller.ts`
 * **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RF02
@@ -305,7 +305,7 @@
 ### Back: Fluxo de Recuperação de Senha com Link Mágico Expirável (Tipo: Feature)
 
 * **Tipo:** Feature
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Backend/core/auth/recuperacao.service.ts`, `Backend/core/auth/auth.controller.ts`, `Backend/core/mail/mailer.service.ts`
 * **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RF01, RNF03
@@ -321,7 +321,7 @@
 ### Back: Rate Limiting Contra Força Bruta em Autenticação e Pareamento (Tipo: Validação)
 
 * **Tipo:** Validação
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Backend/core/middlewares/rate-limit.middleware.ts`, `Backend/core/auth/auth.routes.ts`, `Backend/api/sessao/routes/sessao.routes.ts`
 * **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RNF03 (Segurança)
@@ -337,7 +337,7 @@
 ### BD/Back: Anonimização e Criptografia em Repouso de Dados Sensíveis LGPD (Tipo: Validação)
 
 * **Tipo:** Validação
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Backend/core/security/crypto.service.ts`, `Backend/api/pacientes/services/paciente.service.ts`, `Database/migrations/011_criptografia_prontuario.sql`
 * **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RNF06 (LGPD), RN04
@@ -353,7 +353,7 @@
 ### Back: Middleware de Headers de Segurança HTTP e Proteção CSRF/CORS (Tipo: Validação)
 
 * **Tipo:** Validação
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Backend/core/middlewares/security-headers.middleware.ts`, `Backend/index.ts`
 * **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RNF03
@@ -369,7 +369,7 @@
 ### BD/Back: Trilha de Auditoria de Acessos ao Prontuário Médico (Tipo: Feature)
 
 * **Tipo:** Feature
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Não atribuído (Backlog)
 * **Fronteira de Arquivos:** `Database/migrations/012_auditoria_prontuario.sql`, `Backend/api/pacientes/middlewares/auditoria-prontuario.middleware.ts`, `Backend/api/auditoria/auditoria-prontuario.service.ts`
 * **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RF08, RNF06
@@ -385,7 +385,7 @@
 ### Back: Endpoints Administrativos para Gestão Global de Clínicas e Terapeutas (Tipo: Feature)
 
 * **Tipo:** Feature
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Backend/api/admin/controllers/admin.controller.ts`, `Backend/api/admin/services/admin.service.ts`, `Backend/api/admin/routes/admin.routes.ts`
 * **Ordem de Execução / Dependência:** Independente (Backlog Arquitetural).
 * **Requisitos:** RF07, RF08
@@ -401,7 +401,7 @@
 ### Front: Interface do Painel Administrativo de Auditoria (Tipo: Feature)
 
 * **Tipo:** Feature
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Não atribuído (Backlog)
 * **Fronteira de Arquivos:** `Frontend/src/features/admin/pages/AuditoriaAdminPage.tsx`, `Frontend/src/features/admin/components/TabelaAuditoria.tsx`, `Frontend/src/routes/admin.routes.tsx`
 * **Ordem de Execução / Dependência:** FAZ DEPOIS DE (Endpoints Administrativos do Back-end).
 * **Requisitos:** RF07, RF08

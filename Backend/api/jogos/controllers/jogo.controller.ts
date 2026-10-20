@@ -27,7 +27,7 @@ export class JogoController {
 
       const filtros: FiltrosJogo = {
         objetivo: objetivoQuery && objetivoQuery !== 'todos' && objetivoQuery !== 'all' ? objetivoQuery : undefined,
-        status: statusQuery as StatusJogo | undefined,
+        status: statusQuery as StatusJogo | 'todos' | 'all' | undefined,
         page: req.query.page ? Number(req.query.page) : undefined,
         limit: req.query.limit ? Number(req.query.limit) : undefined,
       };

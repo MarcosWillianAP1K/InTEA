@@ -13,6 +13,7 @@ import type {
   Sessao,
   IniciarSessaoDTO,
   FinalizarSessaoDTO,
+  StatusSessao,
   StatusSessaoDTO,
   ResultadoSessao,
   RelatorioIAResultado,

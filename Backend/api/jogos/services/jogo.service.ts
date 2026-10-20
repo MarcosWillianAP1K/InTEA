@@ -74,7 +74,7 @@ export class JogoService {
    * @returns Paginated games list.
    */
   static async listar(filtros: FiltrosJogo): Promise<ResultadoPaginado<JogoResumo>> {
-    if (filtros.status && !STATUS_JOGO_PERMITIDOS.includes(filtros.status)) {
+    if (filtros.status && filtros.status !== 'todos' && filtros.status !== 'all' && !STATUS_JOGO_PERMITIDOS.includes(filtros.status as StatusJogo)) {
       throw new JogoServiceError(
         "Status inválido para filtro. Valores permitidos: 'ativo', 'desativado', 'manutencao', 'em_breve'.",
         400
