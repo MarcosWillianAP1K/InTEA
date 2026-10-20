@@ -12,13 +12,13 @@
 3. [Back-end (Backend)](#3-back-end-backend)
 4. [Front-end (Frontend) — Arquitetura Completa](#4-front-end-frontend--arquitetura-completa)
    - [4.1 Stack Tecnológica](#41-stack-tecnológica)
-   - [4.2 Estrutura de Diretórios (`src/pages/`, `src/pages/modal/` e `src/features/`)](#42-estrutura-de-diretórios-srcpages-srcpagesmodal-e-srcfeatures)
+   - [4.2 Estrutura de Diretórios (Arquitetura Orientada a Features — `src/features/`)](#42-estrutura-de-diretórios-arquitetura-orientada-a-features--srcfeatures)
    - [4.3 Ciclo de Inicialização, Roteamento e Layouts](#43-ciclo-de-inicialização-roteamento-e-layouts)
    - [4.4 Camada de Services, Cliente HTTP e Chave Mock/API Real](#44-camada-de-services-cliente-http-e-chave-mockapi-real)
    - [4.5 Gerenciamento de Estado Global com Zustand (`store/`)](#45-gerenciamento-de-estado-global-com-zustand-store)
    - [4.6 Hooks Nativos e Custom Hooks (`hooks/`)](#46-hooks-nativos-e-custom-hooks-hooks)
    - [4.7 Comunicação em Tempo Real via WebSocket (`core/web.socket.ts`)](#47-comunicação-em-tempo-real-via-websocket-corewebsocketts)
-   - [4.8 Como Tudo se Conecta nas Telas (`Pages` vs `Modals` vs `Components`)](#48-como-tudo-se-conecta-nas-telas-pages-vs-modals-vs-components)
+   - [4.8 Como Tudo se Conecta nas Telas (`Pages` vs `Components`)](#48-como-tudo-se-conecta-nas-telas-pages-vs-components)
 5. [Convenções de Nomenclatura](#5-convenções-de-nomenclatura)
 6. [Regras de Git e Branches](#6-regras-de-git-e-branches)
 7. [Docker, CI/CD e Testes Automatizados](#7-docker-cicd-e-testes-automatizados)
@@ -210,12 +210,9 @@ Esta seção explica em profundidade os fundamentos e a mecânica real do Fronte
 
 ---
 
-### 4.2 Estrutura de Diretórios (`src/pages/`, `src/pages/modal/` e `src/features/`)
+### 4.2 Estrutura de Diretórios (Arquitetura Orientada a Features — `src/features/`)
 
-A camada visual do Frontend adota o padrão **Pages & Modals Centralizados + Features Modulares**:
-- **Todas as Páginas Mestre** vivem centralizadas em **`Frontend/src/pages/`**.
-- **Todos os Modais, Dialogs e Overlays de negócio** vivem centralizados em **`Frontend/src/pages/modal/`**.
-- **Componentes internos, Services, Hooks, Stores e Types** vivem organizados por domínio dentro de **`Frontend/src/features/{dominio}/`**.
+O Frontend adota o padrão **Feature-Driven Clean Architecture**, onde cada domínio clínico (`autenticacao`, `terapeuta`, `paciente`, `jogos`, `sessao`, `anotacao`, `painel`, `configuracoes`) é um módulo vertical autossuficiente que agrupa suas próprias `pages/`, `components/`, `services/`, `store/`, `hooks/` e `types/`:
 
 ```text
 Frontend/src/
@@ -227,37 +224,52 @@ Frontend/src/
 │   ├── SidebarLayout.tsx                 # Casca administrativa com menu lateral (Painel, Pacientes, Jogos)
 │   ├── FocusLayout.tsx                   # Casca imersiva em tela cheia sem distrações (Cockpit e Resultado — RNF07)
 │   └── components/                       # app-sidebar.tsx, nav-header.tsx, nav-main.tsx, nav-user.tsx
-├── pages/                                # ★ CENTRAL DE TODAS AS PÁGINAS MESTRE DA APLICAÇÃO
-│   ├── index.ts                          # Barrel export de todas as páginas e de ./modal
-│   ├── LoginPage.tsx                     # Tela de autenticação, cadastro de terapeuta e recuperação de senha
-│   ├── PainelPage.tsx                    # Dashboard clínico, indicadores, alertas de IA e início rápido
-│   ├── PacientesPage.tsx                 # Gestão de prontuários, KPIs, busca e listagem em grade/tabela
-│   ├── BibliotecaJogosPage.tsx           # Catálogo de jogos terapêuticos, filtros por objetivo e Modo Livre
-│   ├── CockpitSessaoPage.tsx             # Monitoramento em tempo real (telemetria, cronômetro, comandos DDA)
-│   ├── ResultadoSessaoPage.tsx           # Pós-sessão: métricas consolidadas, gráficos, síntese IA, anotação e PDF
-│   ├── ConfiguracoesPage.tsx             # Rota de preferências e configurações do terapeuta
-│   └── modal/                            # ★ CENTRAL DE TODOS OS MODAIS / OVERLAYS / DIALOGS DE NEGÓCIO
-│       ├── index.ts                      # Barrel export dos modais centralizados
-│       ├── ModalPreSessao.tsx            # Calibração pré-sessão (DDA, gatilhos, emissão de PIN/Token e pareamento)
-│       ├── ModalFinalizarSessao.tsx      # Confirmação de encerramento da sessão ativa no Cockpit
-│       ├── DialogFormularioPaciente.tsx  # Cadastro e edição de paciente em múltiplas etapas (sociodemográfico/clínico)
-│       ├── DialogDetalhesPaciente.tsx    # Visualização rápida de prontuário, gatilhos, reforçadores e responsáveis
-│       └── ModalConfiguracoes.tsx        # Modal de preferências de aparência, tema e privacidade
 ├── core/                                 # Infraestrutura de comunicação com o Backend
 │   ├── api/
 │   │   ├── endpoints.ts                  # Mapa tipado de todas as URLs da API REST (/auth, /paciente, /sessao, etc.)
 │   │   └── http-client.ts                # Instância do HttpClient com injeção automática de JWT e fila de refresh 401
 │   └── web.socket.ts                     # Singleton SessionSocketManager (Socket.IO Client) e hooks reativos
-├── features/                             # Módulos de domínio (Components internos, Services, Stores, Hooks, Types)
-│   ├── autenticacao/                     # auth.service.ts, authStore.ts, useAuth.ts, auth.types.ts, bdmock.ts
-│   ├── terapeuta/                        # terapeuta.service.ts, terapeuta.types.ts, bdmock.ts
-│   ├── paciente/                         # CardPacienteGrid, ListaPacientes, paciente.service.ts, paciente.store.ts
-│   ├── jogos/                            # JogoCard, JogosFiltros, jogos.service.ts, jogos.types.ts, bdmock.ts
-│   ├── sessao/                           # TelemetriaCards, TelemetriaChart, ControlesClinicos, sessao.service.ts,
-│   │                                     # sessionStore.ts, useLiveTelemetry, useSessionPersistence, useClinicalTimer
-│   ├── anotacao/                         # anotacao.service.ts, anotacao.types.ts, bdmock.ts
-│   ├── painel/                           # dashboard.service.ts, dashboard.types.ts, bdmock.ts
-│   └── configuracoes/                    # appearanceSetting.tsx, settings.service.ts, settingsStore.ts
+├── features/                             # ★ MÓDULOS VERTICAIS POR DOMÍNIO DE NEGÓCIO
+│   ├── autenticacao/                     # Autenticação, registro e sessão do terapeuta
+│   │   ├── pages/                        # LoginPage.tsx
+│   │   ├── hooks/                        # useAuth.ts
+│   │   ├── services/                     # auth.service.ts
+│   │   ├── store/                        # authStore.ts
+│   │   └── types/                        # auth.types.ts e bdmock.ts
+│   ├── terapeuta/                        # Gestão do perfil profissional e equipe multidisciplinar
+│   │   ├── services/                     # terapeuta.service.ts
+│   │   └── types/                        # terapeuta.types.ts e bdmock.ts
+│   ├── paciente/                         # Gestão cadastral e prontuários clínicos
+│   │   ├── pages/                        # PacientesPage.tsx
+│   │   ├── components/                   # ListaPacientes.tsx, CardPacienteGrid.tsx, DialogFormularioPaciente.tsx, DialogDetalhesPaciente.tsx
+│   │   ├── services/                     # paciente.service.ts
+│   │   ├── store/                        # paciente.store.ts
+│   │   └── types/                        # paciente.types.ts e bdmock.ts
+│   ├── jogos/                            # Catálogo e biblioteca de jogos terapêuticos
+│   │   ├── pages/                        # BibliotecaJogosPage.tsx
+│   │   ├── components/                   # JogoCard.tsx, JogosFiltros.tsx
+│   │   ├── services/                     # jogos.service.ts
+│   │   └── types/                        # jogos.types.ts e bdmock.ts
+│   ├── sessao/                           # Orquestração de sessão, pareamento remoto, cockpit e resultados
+│   │   ├── pages/                        # CockpitSessaoPage.tsx, ResultadoSessaoPage.tsx
+│   │   ├── components/                   # ModalPreSessao.tsx, ModalFinalizarSessao.tsx, ControlesClinicos.tsx, telemetria/, resultado/
+│   │   ├── hooks/                        # useLiveTelemetry.ts, useSessionPersistence.ts, useClinicalTimer.ts, useSessionSync.ts
+│   │   ├── services/                     # sessao.service.ts
+│   │   ├── store/                        # sessionStore.ts
+│   │   └── types/                        # sessao.types.ts e bdmock.ts
+│   ├── anotacao/                         # Registro e histórico de anotações clínicas
+│   │   ├── services/                     # anotacao.service.ts
+│   │   └── types/                        # anotacao.types.ts e bdmock.ts
+│   ├── painel/                           # Dashboard clínico, indicadores e alertas de IA
+│   │   ├── pages/                        # PainelPage.tsx
+│   │   ├── services/                     # dashboard.service.ts
+│   │   └── types/                        # dashboard.types.ts e bdmock.ts
+│   └── configuracoes/                    # Preferências visuais, tema e privacidade do terapeuta
+│       ├── pages/                        # settingsPage.tsx
+│       ├── sections/                     # appearanceSetting.tsx
+│       ├── services/                     # settings.service.ts
+│       ├── store/                        # settingsStore.ts
+│       └── types/                        # settings.types.ts e bdmock.ts
 └── shared/                               # Recursos transversais reutilizáveis
     ├── components/ui/                    # 17 componentes primitivos Radix UI / shadcn (button, dialog, card, etc.)
     ├── hooks/                            # use-mobile.ts
@@ -295,7 +307,7 @@ Um **Service** no Frontend (`features/*/services/*.service.ts`) é um objeto que
 
 ```mermaid
 flowchart LR
-    Page["Página / Modal\n(src/pages/)"] --> Service["Service do Domínio\n(ex: sessao.service.ts)"]
+    Page["Página / Componente\n(features/*/pages/)"] --> Service["Service do Domínio\n(ex: sessao.service.ts)"]
     Service --> Adapter["withFallback()\n(shared/lib/mock-adapter.ts)"]
     Adapter -- "VITE_USE_MOCK_DATA=false" --> Http["http.get / http.post\n(core/api/http-client.ts)"]
     Adapter -- "VITE_USE_MOCK_DATA=true" --> Mock["Dados Locais\n(types/bdmock.ts)"]
@@ -363,25 +375,23 @@ O arquivo `Frontend/src/core/web.socket.ts` implementa a classe Singleton **`Ses
 
 ---
 
-### 4.8 Como Tudo se Conecta nas Telas (`Pages` vs `Modals` vs `Components`)
+### 4.8 Como Tudo se Conecta nas Telas (`Pages` vs `Components`)
 
-A interface visual é dividida em três responsabilidades claras para evitar acoplamento e conflitos de merge:
+Dentro de cada feature (`src/features/{dominio}/`), a interface visual é dividida em duas camadas com responsabilidades claras para evitar acoplamento e conflitos de merge:
 
-1. **Páginas Mestre (`src/pages/*.tsx`):**
-   - Orquestram a rota inteira: leem parâmetros da URL (`useParams`), acionam Custom Hooks, leem as Stores do Zustand, chamam os Services e distribuem os dados prontos via *props* para os componentes filhos e modais.
-2. **Modais e Overlays (`src/pages/modal/*.tsx`):**
-   - Orquestram fluxos transacionais sobrepostos (configuração pré-sessão e pareamento em `ModalPreSessao.tsx`, encerramento em `ModalFinalizarSessao.tsx`, cadastro multi-etapas em `DialogFormularioPaciente.tsx`, prontuário rápido em `DialogDetalhesPaciente.tsx` e preferências em `ModalConfiguracoes.tsx`).
-3. **Componentes Especializados (`src/features/*/components/*.tsx`):**
-   - Blocos visuais focados em uma única parte da tela (`TelemetriaCards.tsx`, `TelemetriaChart.tsx`, `ControlesClinicos.tsx`, `JogoCard.tsx`, `ListaPacientes.tsx`). Recebem dados via *props* e notificam interações via *callbacks* (`onPausar`, `onAjustarDda`).
+1. **Páginas Mestre (`src/features/*/pages/*.tsx`):**
+   - Orquestram a rota inteira: leem parâmetros da URL (`useParams`), acionam Custom Hooks, leem as Stores do Zustand, chamam os Services e distribuem os dados prontos via *props* para os componentes filhos.
+2. **Componentes e Modais da Feature (`src/features/*/components/*.tsx`):**
+   - Blocos visuais e modais especializados de cada domínio (`ModalPreSessao.tsx`, `ModalFinalizarSessao.tsx`, `DialogFormularioPaciente.tsx`, `DialogDetalhesPaciente.tsx`, `TelemetriaCards.tsx`, `TelemetriaChart.tsx`, `ControlesClinicos.tsx`, `JogoCard.tsx`, `ListaPacientes.tsx`). Recebem dados via *props* ou interagem com o contexto da feature e notificam eventos via *callbacks* (`onPausar`, `onAjustarDda`).
 
 ```mermaid
 sequenceDiagram
     actor T as Terapeuta (Navegador)
-    participant Page as BibliotecaJogosPage.tsx (src/pages/)
-    participant Modal as ModalPreSessao.tsx (src/pages/modal/)
+    participant Page as BibliotecaJogosPage.tsx (features/jogos/pages/)
+    participant Modal as ModalPreSessao.tsx (features/sessao/components/)
     participant Svc as sessao.service.ts (features/sessao/services/)
     participant Store as useSessionStore (Zustand)
-    participant Cockpit as CockpitSessaoPage.tsx (src/pages/)
+    participant Cockpit as CockpitSessaoPage.tsx (features/sessao/pages/)
     participant WS as SessionSocketManager (core/web.socket.ts)
     participant BE as Backend (Express + Socket.IO)
 

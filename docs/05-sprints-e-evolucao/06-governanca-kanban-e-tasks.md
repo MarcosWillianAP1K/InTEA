@@ -68,8 +68,8 @@ Cada sprint formal possui exatamente **20 cards principais** (4 por integrante) 
 
 1. **Back-end 1 — Marcos Willian (`@MarcosWillianAP1K`):** Modelagem relacional, `database.sql`, Models, Services, Controllers centrais, controle de permissões (**RN04**), soft delete (**RN05**) e testes REST no Vitest.
 2. **Back-end 2 — João Marcos (`@JM3L0`):** WebSocket/Socket.IO, gateways em tempo real, streaming de telemetria, resiliência (reconexão 60s), rate limiting e exportação estruturada (**RF20**).
-3. **Front-end 1 — Hermeson Alves (`@Hermeson69`):** Páginas Mestre centralizadas (`Frontend/src/pages/`), casca e layouts visuais (`SidebarLayout`, `FocusLayout`, Cockpit, Tela de Resultados, Pacientes), roteamento e orquestração de transições.
-4. **Front-end 2 — Luma Maiara (`@lumamaiara`):** Modais e Overlays centralizados (`Frontend/src/pages/modal/`), componentes atômicos e especializados (`Frontend/src/features/*/components/`), cards de telemetria, gráficos SVG e testes de UI.
+3. **Front-end 1 — Hermeson Alves (`@Hermeson69`):** Páginas Mestre (`Frontend/src/features/*/pages/`), casca e layouts visuais (`SidebarLayout`, `FocusLayout`, Cockpit, Tela de Resultados, Pacientes), roteamento e orquestração de transições.
+4. **Front-end 2 — Luma Maiara (`@lumamaiara`):** Componentes atômicos, modais e componentes especializados (`Frontend/src/features/*/components/`), cards de telemetria, gráficos SVG e testes de UI.
 5. **Documentação / Qualidade — Raildom Silva (`@Raildom`):** Redação técnica, especificação OpenAPI/Swagger, roteiro de testes manuais formais e governança operacional do GitHub Projects.
 
 ---

@@ -5,4 +5,4 @@ export {
   default,
   type ConteudoPacientesProps,
   type PatientsContentProps,
-} from "@/pages/PacientesPage";
+} from "../pages/PacientesPage";

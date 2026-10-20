@@ -42,10 +42,8 @@ import {
 
 import { usePacienteStore, PATIENTS_DICTIONARY } from "../store/paciente.store";
 import type { Patient, PatientStatus } from "../store/paciente.store";
-import {
-  DialogFormularioPaciente,
-  DialogDetalhesPaciente,
-} from "@/pages/modal";
+import { DialogFormularioPaciente } from "./DialogFormularioPaciente";
+import { DialogDetalhesPaciente } from "./DialogDetalhesPaciente";
 
 export { PATIENTS_DICTIONARY };
 export type { Patient, PatientStatus };

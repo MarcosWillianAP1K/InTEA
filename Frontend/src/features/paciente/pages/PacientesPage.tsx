@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ListaPacientes } from "@/features/paciente/components/ListaPacientes";
-import { ConteudoCriarPaciente } from "@/features/paciente/components/ConteudoCriarPaciente";
-import { usePacienteStore } from "@/features/paciente/store/paciente.store";
-import type { Patient } from "@/features/paciente/types/paciente.types";
+import { ListaPacientes } from "../components/ListaPacientes";
+import { ConteudoCriarPaciente } from "../components/ConteudoCriarPaciente";
+import { usePacienteStore } from "../store/paciente.store";
+import type { Patient } from "../types/paciente.types";
 
 export interface ConteudoPacientesProps {
   onSelectPatient?: (patient: Patient) => void;

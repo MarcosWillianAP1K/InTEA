@@ -1,4 +1,1 @@
-import { PainelPage } from "@/pages/PainelPage";
-
-export const DashboardPage = PainelPage;
-export default PainelPage;
+export { PainelPage, PainelPage as DashboardPage, default } from "./PainelPage";

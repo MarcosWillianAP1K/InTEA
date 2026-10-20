@@ -1,6 +1,6 @@
 # InTEA — Frontend SPA Clínica
 
-Interface web do ecossistema InTEA desenvolvida com **React 19**, **Vite**, **TypeScript**, **Tailwind CSS v4**, **Zustand** e **Socket.IO Client**, estruturada com **Páginas Mestre (`src/pages/`) e Modais (`src/pages/modal/`) centralizados** e **Features modulares de domínio (`src/features/`)**.
+Interface web do ecossistema InTEA desenvolvida com **React 19**, **Vite**, **TypeScript**, **Tailwind CSS v4**, **Zustand** e **Socket.IO Client**, estruturada em arquitetura modular orientada a features (**Feature-Driven Architecture** em `src/features/`).
 
 ---
 
@@ -80,37 +80,52 @@ Frontend/src/
 │   ├── SidebarLayout.tsx                 # Layout administrativo com AppSidebar (/painel, /pacientes, /jogos)
 │   ├── FocusLayout.tsx                   # Layout imersivo em tela cheia para sessões clínicas (RNF07)
 │   └── components/                       # app-sidebar.tsx, nav-header.tsx, nav-main.tsx, nav-user.tsx
-├── pages/                                # ★ CENTRAL DE TODAS AS PÁGINAS MESTRE DA APLICAÇÃO
-│   ├── index.ts                          # Barrel export das páginas e de ./modal
-│   ├── LoginPage.tsx                     # Autenticação, registro de terapeuta e recuperação de senha
-│   ├── PainelPage.tsx                    # Dashboard clínico, KPIs, alertas de IA e sessões recentes
-│   ├── PacientesPage.tsx                 # Gestão cadastral e listagem de prontuários em grade e tabela
-│   ├── BibliotecaJogosPage.tsx           # Catálogo de jogos terapêuticos, filtros por objetivo e Modo Livre
-│   ├── CockpitSessaoPage.tsx             # Monitoramento ao vivo (telemetria, cronômetro, comandos DDA)
-│   ├── ResultadoSessaoPage.tsx           # Pós-sessão: métricas consolidadas, gráficos, síntese IA, anotação e PDF
-│   ├── ConfiguracoesPage.tsx             # Rota de configurações e preferências
-│   └── modal/                            # ★ CENTRAL DE TODOS OS MODAIS / OVERLAYS / DIALOGS DE NEGÓCIO
-│       ├── index.ts                      # Barrel export dos modais
-│       ├── ModalPreSessao.tsx            # Calibração pré-sessão (DDA, gatilhos, emissão de PIN/Token e pareamento)
-│       ├── ModalFinalizarSessao.tsx      # Confirmação de encerramento da sessão ativa no Cockpit
-│       ├── DialogFormularioPaciente.tsx  # Cadastro e edição de paciente em múltiplas etapas
-│       ├── DialogDetalhesPaciente.tsx    # Visualização rápida de prontuário, gatilhos e responsáveis
-│       └── ModalConfiguracoes.tsx        # Modal de preferências de aparência, tema e privacidade
 ├── core/                                 # Infraestrutura de comunicação HTTP e WebSocket
 │   ├── api/
 │   │   ├── endpoints.ts                  # Constantes tipadas de todas as rotas REST (/auth, /paciente, /sessao, etc.)
 │   │   └── http-client.ts                # Cliente HTTP com injeção automática de Bearer JWT e refresh de 401
 │   └── web.socket.ts                     # Singleton SessionSocketManager (Socket.IO Client) e hooks reativos
-├── features/                             # Módulos de negócio por domínio
-│   ├── autenticacao/                     # auth.service.ts, authStore.ts, useAuth.ts, auth.types.ts, bdmock.ts
-│   ├── terapeuta/                        # terapeuta.service.ts, terapeuta.types.ts, bdmock.ts
-│   ├── paciente/                         # CardPacienteGrid, ListaPacientes, paciente.service.ts, paciente.store.ts
-│   ├── jogos/                            # JogoCard, JogosFiltros, jogos.service.ts, jogos.types.ts, bdmock.ts
-│   ├── sessao/                           # TelemetriaCards, TelemetriaChart, ControlesClinicos, sessao.service.ts,
-│   │                                     # sessionStore.ts, useLiveTelemetry, useSessionPersistence, useClinicalTimer
-│   ├── anotacao/                         # anotacao.service.ts, anotacao.types.ts, bdmock.ts
-│   ├── painel/                           # dashboard.service.ts, dashboard.types.ts, bdmock.ts
-│   └── configuracoes/                    # appearanceSetting.tsx, settings.service.ts, settingsStore.ts
+├── features/                             # ★ MÓDULOS VERTICAIS POR DOMÍNIO DE NEGÓCIO
+│   ├── autenticacao/                     # Autenticação, registro e sessão do terapeuta
+│   │   ├── pages/                        # LoginPage.tsx
+│   │   ├── hooks/                        # useAuth.ts
+│   │   ├── services/                     # auth.service.ts
+│   │   ├── store/                        # authStore.ts
+│   │   └── types/                        # auth.types.ts e bdmock.ts
+│   ├── terapeuta/                        # Gestão do perfil do terapeuta e equipe multidisciplinar
+│   │   ├── services/                     # terapeuta.service.ts
+│   │   └── types/                        # terapeuta.types.ts e bdmock.ts
+│   ├── paciente/                         # Gestão cadastral e prontuários clínicos
+│   │   ├── pages/                        # PacientesPage.tsx
+│   │   ├── components/                   # ListaPacientes.tsx, CardPacienteGrid.tsx, DialogFormularioPaciente.tsx, DialogDetalhesPaciente.tsx
+│   │   ├── services/                     # paciente.service.ts
+│   │   ├── store/                        # paciente.store.ts
+│   │   └── types/                        # paciente.types.ts e bdmock.ts
+│   ├── jogos/                            # Catálogo e biblioteca de jogos terapêuticos
+│   │   ├── pages/                        # BibliotecaJogosPage.tsx
+│   │   ├── components/                   # JogoCard.tsx, JogosFiltros.tsx
+│   │   ├── services/                     # jogos.service.ts
+│   │   └── types/                        # jogos.types.ts e bdmock.ts
+│   ├── sessao/                           # Orquestração de sessão, pareamento remoto, cockpit e resultados
+│   │   ├── pages/                        # CockpitSessaoPage.tsx, ResultadoSessaoPage.tsx
+│   │   ├── components/                   # ModalPreSessao.tsx, ModalFinalizarSessao.tsx, ControlesClinicos.tsx, telemetria/, resultado/
+│   │   ├── hooks/                        # useLiveTelemetry.ts, useSessionPersistence.ts, useClinicalTimer.ts, useSessionSync.ts
+│   │   ├── services/                     # sessao.service.ts
+│   │   ├── store/                        # sessionStore.ts
+│   │   └── types/                        # sessao.types.ts e bdmock.ts
+│   ├── anotacao/                         # Registro e histórico de anotações clínicas
+│   │   ├── services/                     # anotacao.service.ts
+│   │   └── types/                        # anotacao.types.ts e bdmock.ts
+│   ├── painel/                           # Dashboard clínico, KPIs, alertas de IA e início rápido
+│   │   ├── pages/                        # PainelPage.tsx
+│   │   ├── services/                     # dashboard.service.ts
+│   │   └── types/                        # dashboard.types.ts e bdmock.ts
+│   └── configuracoes/                    # Preferências visuais, tema e privacidade
+│       ├── pages/                        # settingsPage.tsx
+│       ├── sections/                     # appearanceSetting.tsx
+│       ├── services/                     # settings.service.ts
+│       ├── store/                        # settingsStore.ts
+│       └── types/                        # settings.types.ts e bdmock.ts
 └── shared/                               # Recursos compartilhados entre todas as features
     ├── components/ui/                    # 17 componentes primitivos Radix UI / shadcn
     ├── hooks/                            # use-mobile.ts
@@ -124,8 +139,8 @@ Frontend/src/
 
 ## Como Funcionam as Camadas Internas
 
-1. **Páginas Mestre (`src/pages/`) e Modais (`src/pages/modal/`):**
-   - Orquestram a leitura de parâmetros de rota (`useParams`), acionamento de Custom Hooks, consumo das Stores do Zustand e chamadas aos Services, repassando dados via *props* para os componentes visuais de cada feature.
+1. **Páginas Mestre (`features/*/pages/`) e Componentes (`features/*/components/`):**
+   - As páginas orquestram a leitura de parâmetros de rota (`useParams`), acionamento de Custom Hooks, consumo das Stores do Zustand e chamadas aos Services, repassando dados via *props* para os componentes e modais de cada feature.
 2. **Services (`features/*/services/`):**
    - Objetos com métodos assíncronos em `camelCase` que utilizam `http` (`core/api/http-client.ts`) e `ENDPOINTS` (`core/api/endpoints.ts`).
    - Normalizam na fronteira do cliente eventuais diferenças de formato da API (`snake_case` $\rightarrow$ `camelCase`) sem exigir chaves duplicadas no Backend.

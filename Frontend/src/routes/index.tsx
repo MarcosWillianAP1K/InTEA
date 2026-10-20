@@ -1,13 +1,10 @@
 import { Navigate, Outlet, Route, Routes as RouterRoutes } from "react-router-dom";
 import { SidebarLayout, FocusLayout } from "@/layout";
-import {
-  LoginPage,
-  PainelPage,
-  PacientesPage,
-  BibliotecaJogosPage,
-  CockpitSessaoPage,
-  ResultadoSessaoPage,
-} from "@/pages";
+import { LoginPage } from "@/features/autenticacao";
+import { PainelPage } from "@/features/painel";
+import { PacientesPage } from "@/features/paciente";
+import { BibliotecaJogosPage } from "@/features/jogos";
+import { CockpitSessaoPage, ResultadoSessaoPage } from "@/features/sessao";
 import { useAuthStore } from "@/features/autenticacao";
 
 /**
