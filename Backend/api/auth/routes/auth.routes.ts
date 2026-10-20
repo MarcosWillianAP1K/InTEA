@@ -126,6 +126,7 @@ authRoutes.post('/recuperar-senha', AuthController.recuperarSenha);
  *       500:
  *         description: Erro interno do servidor
  */
+authRoutes.patch('/alterar-senha', authMiddleware, AuthController.alterarSenha);
 authRoutes.get('/me', authMiddleware, AuthController.me);
 authRoutes.post('/refresh', AuthController.refresh);
 authRoutes.post('/logout', AuthController.logout);

@@ -149,7 +149,7 @@ export function LoginPage() {
               autoComplete="email"
               placeholder="E-mail profissional"
               aria-label="E-mail profissional"
-              value={email}
+              // value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (erroValidacao) setErroValidacao(null);
@@ -173,7 +173,7 @@ export function LoginPage() {
                 autoComplete="current-password"
                 placeholder="Senha"
                 aria-label="Senha"
-                value={senha}
+                // value={senha}
                 onChange={(e) => {
                   setSenha(e.target.value);
                   if (erroValidacao) setErroValidacao(null);

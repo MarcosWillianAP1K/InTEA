@@ -12,6 +12,7 @@ export const ENDPOINTS = {
     REFRESH: "/auth/refresh",
     LOGOUT: "/auth/logout",
     ME: "/auth/me",
+    ALTERAR_SENHA: "/auth/alterar-senha",
   },
   TERAPEUTA: {
     BASE: "/terapeuta",

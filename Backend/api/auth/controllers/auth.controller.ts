@@ -161,6 +161,30 @@ export class AuthController {
    * @param res - Express response returning the therapist profile and structured metadata.
    * @returns Resolves when the HTTP response has been sent.
    */
+  /**
+   * Handles PATCH /api/auth/alterar-senha to update password for authenticated user.
+   */
+  static async alterarSenha(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      if (!usuarioLogado || !usuarioLogado.id) {
+        res.status(401).json({ error: 'Acesso não autorizado. Usuário não autenticado.' });
+        return;
+      }
+      const { novaSenha } = req.body;
+      if (!novaSenha || typeof novaSenha !== 'string' || novaSenha.trim().length < 6) {
+        res.status(400).json({ error: 'A nova senha deve conter no mínimo 6 caracteres.' });
+        return;
+      }
+      const resultado = await AuthModel.alterarSenha(usuarioLogado.id, novaSenha.trim());
+      res.status(200).json(resultado);
+    } catch (error: unknown) {
+      console.error('[AuthController.alterarSenha]', error);
+      const detalhes = error instanceof Error ? error.message : undefined;
+      res.status(500).json({ error: 'Erro interno ao alterar senha de acesso.', detalhes });
+    }
+  }
+
   static async me(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const user = req.user;

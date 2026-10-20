@@ -70,6 +70,25 @@ export class AuthModel {
    * @param email - Target email address for password reset.
    * @returns Confirmation message detailing the mock recovery action.
    */
+  /**
+   * Atualiza a senha de acesso de um usuário autenticado no Supabase Auth.
+   *
+   * @param userId - UUID do usuário em auth.users.
+   * @param novaSenha - Nova senha em texto plano (mínimo 6 caracteres).
+   * @returns Confirmação da alteração de senha.
+   */
+  static async alterarSenha(userId: string, novaSenha: string): Promise<{ message: string }> {
+    const { error } = await supabase.auth.admin.updateUserById(userId, {
+      password: novaSenha,
+    });
+    if (error) {
+      throw new Error(error.message);
+    }
+    return {
+      message: 'Senha de acesso atualizada com sucesso.',
+    };
+  }
+
   static async recuperarSenha(email: string): Promise<{ message: string; exemplo: boolean }> {
     return {
       message: `[EXEMPLO] Solicitação recebida para o e-mail: ${email}. O envio de e-mails será ativado futuramente.`,

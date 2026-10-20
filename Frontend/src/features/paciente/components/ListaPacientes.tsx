@@ -11,6 +11,7 @@ import {
   Plus,
   LayoutGrid,
   TableProperties,
+  Users,
 } from "lucide-react";
 import { CardPacienteGrid } from "./CardPacienteGrid";
 import { CardAdicionarPaciente } from "./CardAdicionarPaciente";
@@ -243,34 +244,51 @@ export function ListaPacientes({
 
       {/* EXIBIÇÃO: GRID DE CARDS vs TABELA */}
       {visualMode === "grid" ? (
-        <div
-          data-testid="grid-pacientes"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-        >
-          {/* PRIMEIRO CARD: ADICIONAR PACIENTE */}
-          {permitirCadastro && (
-            <CardAdicionarPaciente
-              onClick={() => {
-                if (onOpenCreate) {
-                  onOpenCreate();
-                } else {
-                  setIsCreateOpen(true);
-                }
-              }}
-            />
-          )}
+        filteredPatients.length === 0 && !permitirCadastro ? (
+          <div
+            data-testid="grid-pacientes-vazio"
+            className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-border bg-card/50 my-2"
+          >
+            <div className="h-12 w-12 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground mb-3">
+              <Users className="h-6 w-6" />
+            </div>
+            <p className="text-base font-semibold text-foreground">
+              Nenhum paciente vinculado
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              Você não possui nenhum paciente vinculado aos seus cuidados clínicos no momento.
+            </p>
+          </div>
+        ) : (
+          <div
+            data-testid="grid-pacientes"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          >
+            {/* PRIMEIRO CARD: ADICIONAR PACIENTE */}
+            {permitirCadastro && (
+              <CardAdicionarPaciente
+                onClick={() => {
+                  if (onOpenCreate) {
+                    onOpenCreate();
+                  } else {
+                    setIsCreateOpen(true);
+                  }
+                }}
+              />
+            )}
 
-          {/* CARDS DOS PACIENTES FILTRADOS */}
-          {filteredPatients.map((patient) => (
-            <CardPacienteGrid
-              key={patient.id}
-              patient={patient}
-              isSelected={activeSelectedId === patient.id}
-              onSelect={() => handleSelect(patient)}
-              onVerPerfil={() => handleAbrirPerfil(patient)}
-            />
-          ))}
-        </div>
+            {/* CARDS DOS PACIENTES FILTRADOS */}
+            {filteredPatients.map((patient) => (
+              <CardPacienteGrid
+                key={patient.id}
+                patient={patient}
+                isSelected={activeSelectedId === patient.id}
+                onSelect={() => handleSelect(patient)}
+                onVerPerfil={() => handleAbrirPerfil(patient)}
+              />
+            ))}
+          </div>
+        )
       ) : (
         /* TABELA DE PACIENTES */
         <div className="w-full overflow-x-auto rounded-xl border bg-card shadow-xs">
@@ -294,7 +312,9 @@ export function ListaPacientes({
                   colSpan={7}
                   className="text-center py-12 text-muted-foreground text-sm"
                 >
-                  Nenhum paciente encontrado com os filtros selecionados.
+                  {!permitirCadastro
+                    ? "Nenhum paciente vinculado"
+                    : "Nenhum paciente encontrado com os filtros selecionados."}
                 </TableCell>
               </TableRow>
             ) : (

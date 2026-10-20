@@ -219,6 +219,9 @@ export const authService = {
               crefito: perfil.crefito ?? perfil.registro_profissional ?? null,
               registro_profissional: perfil.registro_profissional ?? perfil.crefito ?? null,
               especialidade: perfil.especialidade ?? null,
+              telefone: perfil.telefone ?? null,
+              tempo_experiencia_anos: perfil.tempo_experiencia_anos,
+              areas_foco: (perfil.areas_foco as unknown[]) ?? undefined,
               created_at: metadados?.created_at ?? undefined,
             };
             return usuario;
@@ -232,8 +235,12 @@ export const authService = {
   },
 
   /**
-   * Verifica de forma síncrona se há um token de acesso válido armazenado no cliente.
+   * Altera a senha do usuário autenticado no sistema.
    */
+  alterarSenha: async (novaSenha: string): Promise<{ message: string }> => {
+    return await http.patch<{ message: string }>(ENDPOINTS.AUTH.ALTERAR_SENHA, { novaSenha });
+  },
+
   estaAutenticado: (): boolean => {
     if (typeof window === "undefined") return false;
     const token =

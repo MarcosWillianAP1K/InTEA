@@ -115,6 +115,15 @@ describe('Backend: AuthModel (Login, Recuperação de Senha e Perfil)', () => {
     expect(tokens.expires_in).toBe(3600);
   });
 
+  it('deve atualizar a senha com sucesso chamando updateUserById', async () => {
+    const mockUpdate = vi.fn().mockResolvedValue({ data: { user: {} }, error: null });
+    vi.spyOn(supabase.auth.admin, 'updateUserById').mockImplementation(mockUpdate as any);
+
+    const res = await AuthModel.alterarSenha('uuid-user-123', 'novaSenhaSegura123');
+    expect(res.message).toContain('atualizada com sucesso');
+    expect(mockUpdate).toHaveBeenCalledWith('uuid-user-123', { password: 'novaSenhaSegura123' });
+  });
+
   it('deve executar logout com sucesso', async () => {
     vi.spyOn(supabase.auth, 'signOut').mockResolvedValue({ error: null });
 

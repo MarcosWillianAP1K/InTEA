@@ -21,6 +21,9 @@ export interface UsuarioAutenticado {
   registro_profissional?: string | null;
   especialidade?: string | null;
   avatar?: string;
+  telefone?: string | null;
+  tempo_experiencia_anos?: number;
+  areas_foco?: unknown[];
   created_at?: string;
 }
 

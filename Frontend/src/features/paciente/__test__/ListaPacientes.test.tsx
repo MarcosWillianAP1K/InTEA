@@ -73,4 +73,21 @@ describe("Componente ListaPacientes (Alternador Tabela vs Grid de Cards)", () =>
     expect(screen.getByText("Paciente")).toBeDefined();
     expect(screen.getByText("Lucas Gabriel Silva")).toBeDefined();
   });
+
+  it("deve exibir aviso 'Nenhum paciente vinculado' quando permitirCadastro={false} e não houver pacientes no Grid", () => {
+    render(<ListaPacientes initialVisualMode="grid" permitirCadastro={false} />);
+    const inputBusca = screen.getByPlaceholderText(/buscar paciente/i);
+    fireEvent.change(inputBusca, { target: { value: "NomeInexistenteXYZ" } });
+
+    expect(screen.getByText("Nenhum paciente vinculado")).toBeDefined();
+    expect(screen.getByTestId("grid-pacientes-vazio")).toBeDefined();
+  });
+
+  it("deve exibir aviso 'Nenhum paciente vinculado' quando permitirCadastro={false} e não houver pacientes na Tabela", () => {
+    render(<ListaPacientes initialVisualMode="table" permitirCadastro={false} />);
+    const inputBusca = screen.getByPlaceholderText(/buscar paciente/i);
+    fireEvent.change(inputBusca, { target: { value: "NomeInexistenteXYZ" } });
+
+    expect(screen.getByText("Nenhum paciente vinculado")).toBeDefined();
+  });
 });
