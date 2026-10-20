@@ -61,6 +61,12 @@ export const pacienteRoutes = Router();
  *         schema:
  *           type: boolean
  *         description: Se true, inclui também pacientes inativos (soft delete)
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Se true, solicita listagem de todos os pacientes cadastrados (requer privilégios de administrador - RN04)
  *     responses:
  *       200:
  *         description: Lista de pacientes e metadados de paginação retornados com sucesso
@@ -89,6 +95,12 @@ export const pacienteRoutes = Router();
  *           application/json:
  *             example:
  *               error: "Token JWT não fornecido"
+ *       403:
+ *         description: Acesso proibido (tentativa de listar todos os pacientes sem privilégios de administrador - RN04)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado: apenas administradores podem visualizar todos os pacientes."
  *       500:
  *         description: Erro interno do servidor
  *         content:

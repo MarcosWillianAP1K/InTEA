@@ -15,6 +15,7 @@ import {
   TerapeutaVinculado,
 } from '../models/paciente.model.js';
 import { TerapeutaModel } from '../../terapeuta/models/terapeuta.model.js';
+import { supabase } from '../../../core/supabase/supabase.client.js';
 import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
 import {
   validarUUID,
@@ -52,12 +53,46 @@ export class PacienteService {
     usuarioLogado?: UsuarioAutenticado,
     verTodosPacientes: boolean = false
   ): Promise<RespostaListagemPaciente> {
-    const isSuperAdmin =
-      usuarioLogado?.is_super_admin === true ||
-      usuarioLogado?.user_metadata?.is_super_admin === true;
+    if (verTodosPacientes) {
+      if (!usuarioLogado || !usuarioLogado.id) {
+        throw new PacienteServiceError(
+          'Acesso negado: apenas administradores podem visualizar todos os pacientes.',
+          403
+        );
+      }
 
-    // Regra RN04: Terapeutas comuns só visualizam seus próprios pacientes vinculados
-    if (usuarioLogado && !(isSuperAdmin && verTodosPacientes)) {
+      let isSuperAdmin =
+        usuarioLogado.is_super_admin === true ||
+        usuarioLogado.user_metadata?.is_super_admin === true;
+
+      let statusAtivo = (usuarioLogado as { status_ativo?: boolean }).status_ativo !== false;
+
+      if (!isSuperAdmin) {
+        const { data: terapeuta } = await supabase
+          .from('terapeuta')
+          .select('is_super_admin, status_ativo')
+          .eq('id', usuarioLogado.id)
+          .maybeSingle();
+
+        if (terapeuta) {
+          if (terapeuta.is_super_admin === true) {
+            isSuperAdmin = true;
+          }
+          if (terapeuta.status_ativo === false) {
+            statusAtivo = false;
+          }
+        }
+      }
+
+      if (!isSuperAdmin || !statusAtivo) {
+        throw new PacienteServiceError(
+          'Acesso negado: apenas administradores podem visualizar todos os pacientes.',
+          403
+        );
+      }
+      // Administrador autorizado: lista todos os pacientes da base (não injeta filtros.terapeutaId)
+    } else if (usuarioLogado?.id) {
+      // Regra RN04: Terapeutas comuns só visualizam seus próprios pacientes vinculados
       filtros.terapeutaId = usuarioLogado.id;
     }
 

@@ -188,7 +188,7 @@ export class JogoModel {
 
         const { data, error, count } = await query.range(from, to);
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           const total = count ?? data.length;
           return {
             data: data.map(j => ({
@@ -267,8 +267,8 @@ export class JogoModel {
 
         const { data, error } = await query.maybeSingle();
 
-        if (!error && data) {
-          return data as Jogo;
+        if (!error) {
+          return data ? (data as Jogo) : undefined;
         }
       } catch (err) {
         console.warn('[JogoModel] Falha ao consultar Supabase por ID, consultando dados locais.');

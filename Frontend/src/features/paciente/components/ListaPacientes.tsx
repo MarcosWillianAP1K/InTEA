@@ -83,6 +83,7 @@ export interface ListaPacientesProps {
   onVerPerfil?: (patient: Patient) => void;
   selectedPatientId?: string | null;
   initialVisualMode?: "table" | "grid";
+  permitirCadastro?: boolean;
   className?: string;
 }
 export type PatientsListProps = ListaPacientesProps;
@@ -93,6 +94,7 @@ export function ListaPacientes({
   onVerPerfil,
   selectedPatientId: propSelectedId,
   initialVisualMode = "grid",
+  permitirCadastro = true,
   className = "",
 }: ListaPacientesProps) {
   const [visualMode, setVisualMode] = useState<"table" | "grid">(initialVisualMode);
@@ -220,20 +222,22 @@ export function ListaPacientes({
           </div>
 
           {/* BOTÃO CADASTRAR PACIENTE ESTILO NOVA SEÇÃO */}
-          <Button
-            type="button"
-            onClick={() => {
-              if (onOpenCreate) {
-                onOpenCreate();
-              } else {
-                setIsCreateOpen(true);
-              }
-            }}
-            className="h-10 px-4 bg-primary text-primary-foreground hover:bg-primary-hover font-semibold rounded-lg flex items-center gap-2 cursor-pointer shadow-xs transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Cadastrar Paciente</span>
-          </Button>
+          {permitirCadastro && (
+            <Button
+              type="button"
+              onClick={() => {
+                if (onOpenCreate) {
+                  onOpenCreate();
+                } else {
+                  setIsCreateOpen(true);
+                }
+              }}
+              className="h-10 px-4 bg-primary text-primary-foreground hover:bg-primary-hover font-semibold rounded-lg flex items-center gap-2 cursor-pointer shadow-xs transition-all"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Cadastrar Paciente</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -244,15 +248,17 @@ export function ListaPacientes({
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
         >
           {/* PRIMEIRO CARD: ADICIONAR PACIENTE */}
-          <CardAdicionarPaciente
-            onClick={() => {
-              if (onOpenCreate) {
-                onOpenCreate();
-              } else {
-                setIsCreateOpen(true);
-              }
-            }}
-          />
+          {permitirCadastro && (
+            <CardAdicionarPaciente
+              onClick={() => {
+                if (onOpenCreate) {
+                  onOpenCreate();
+                } else {
+                  setIsCreateOpen(true);
+                }
+              }}
+            />
+          )}
 
           {/* CARDS DOS PACIENTES FILTRADOS */}
           {filteredPatients.map((patient) => (
@@ -471,7 +477,9 @@ export function ListaPacientes({
       />
 
       {/* MODAL DE CADASTRO DE NOVO PACIENTE */}
-      <DialogFormularioPaciente open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      {permitirCadastro && (
+        <DialogFormularioPaciente open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      )}
     </div>
   );
 }

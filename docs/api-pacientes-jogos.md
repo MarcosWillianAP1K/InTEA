@@ -91,6 +91,7 @@ Todas as respostas seguem formatos previsíveis:
 | `idadeMin` | `integer` | Não | — | Idade mínima calculada sem drift de fuso horário | `4` |
 | `idadeMax` | `integer` | Não | — | Idade máxima calculada sem drift de fuso horário | `12` |
 | `incluirInativos` | `boolean` | Não | `false` | Se `true`, inclui pacientes inativados por soft delete | `false` |
+| `all` | `boolean` | Não | `false` | Se `true`, solicita listagem de todos os pacientes cadastrados (requer privilégios de administrador — RN04) | `true` |
 | `page` | `integer` | Não | `1` | Índice da página atual (início em 1) | `1` |
 | `limit` | `integer` | Não | `10` | Registros por página (teto de segurança: máx 100) | `10` |
 
@@ -143,6 +144,22 @@ Todas as respostas seguem formatos previsíveis:
         "limit": 10,
         "totalPages": 1
       }
+    }
+    ```
+
+  - **Status `401 Unauthorized`:**
+
+    ```json
+    {
+      "error": "Acesso não autorizado. Forneça um token no cabeçalho Authorization: Bearer <token>."
+    }
+    ```
+
+  - **Status `403 Forbidden` (RN04):**
+
+    ```json
+    {
+      "error": "Acesso negado: apenas administradores podem visualizar todos os pacientes."
     }
     ```
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PacienteService, PacienteServiceError } from '../services/paciente.service.js';
 import { PacienteModel } from '../models/paciente.model.js';
+import { supabase } from '../../../core/supabase/supabase.client.js';
 
 describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
   beforeEach(() => {
@@ -32,6 +33,91 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
       await PacienteService.listar({}, superAdmin, true);
 
       expect(spyListar.mock.calls[0]?.[0]?.terapeutaId).toBeUndefined();
+    });
+
+    it('deve lançar PacienteServiceError 403 se usuário comum tentar listar todos com verTodosPacientes=true (RN04)', async () => {
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: { is_super_admin: false, status_ativo: true },
+        error: null,
+      });
+      vi.spyOn(supabase, 'from').mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: mockSingle,
+          }),
+        }),
+      } as unknown as ReturnType<typeof supabase.from>);
+
+      const usuarioComum = { id: 'terapeuta-uuid-1', is_super_admin: false };
+
+      await expect(
+        PacienteService.listar({}, usuarioComum, true)
+      ).rejects.toThrow(PacienteServiceError);
+
+      await expect(
+        PacienteService.listar({}, usuarioComum, true)
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        message: 'Acesso negado: apenas administradores podem visualizar todos os pacientes.',
+      });
+    });
+
+    it('deve reconhecer admin via tabela terapeuta no Supabase quando não presente no JWT/metadata e verTodosPacientes=true', async () => {
+      const spyListar = vi.spyOn(PacienteModel, 'listar').mockResolvedValue({
+        data: [],
+        meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+      });
+
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: { is_super_admin: true, status_ativo: true },
+        error: null,
+      });
+      vi.spyOn(supabase, 'from').mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: mockSingle,
+          }),
+        }),
+      } as unknown as ReturnType<typeof supabase.from>);
+
+      // Usuário sem flag de super admin no JWT
+      const usuarioBanco = { id: 'admin-uuid-db', is_super_admin: false };
+      await PacienteService.listar({}, usuarioBanco, true);
+
+      expect(spyListar).toHaveBeenCalled();
+      expect(spyListar.mock.calls[0]?.[0]?.terapeutaId).toBeUndefined();
+    });
+
+    it('deve lançar PacienteServiceError 403 se usuário for admin mas com status_ativo=false e verTodosPacientes=true', async () => {
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: { is_super_admin: true, status_ativo: false },
+        error: null,
+      });
+      vi.spyOn(supabase, 'from').mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: mockSingle,
+          }),
+        }),
+      } as unknown as ReturnType<typeof supabase.from>);
+
+      const adminInativo = { id: 'admin-inativo-uuid', is_super_admin: false };
+
+      await expect(
+        PacienteService.listar({}, adminInativo, true)
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        message: 'Acesso negado: apenas administradores podem visualizar todos os pacientes.',
+      });
+    });
+
+    it('deve lançar PacienteServiceError 403 se verTodosPacientes=true e usuário não estiver autenticado', async () => {
+      await expect(
+        PacienteService.listar({}, undefined, true)
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        message: 'Acesso negado: apenas administradores podem visualizar todos os pacientes.',
+      });
     });
   });
 

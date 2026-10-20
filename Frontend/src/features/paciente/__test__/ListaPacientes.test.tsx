@@ -52,4 +52,25 @@ describe("Componente ListaPacientes (Alternador Tabela vs Grid de Cards)", () =>
 
     expect(handleOpenCreate).toHaveBeenCalledTimes(1);
   });
+
+  it("não deve renderizar botão 'Cadastrar Paciente' nem 'CardAdicionarPaciente' quando permitirCadastro={false} em modo Grid", () => {
+    render(<ListaPacientes initialVisualMode="grid" permitirCadastro={false} />);
+
+    expect(screen.getByTestId("grid-pacientes")).toBeDefined();
+    expect(screen.queryByTestId("card-adicionar-paciente")).toBeNull();
+    expect(screen.queryByText("Novo Paciente")).toBeNull();
+    expect(screen.queryByText("Cadastrar no sistema")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Cadastrar Paciente/i })).toBeNull();
+
+    // Pacientes da listagem continuam sendo renderizados normalmente
+    expect(screen.getByText("Lucas Gabriel Silva")).toBeDefined();
+  });
+
+  it("não deve renderizar botão 'Cadastrar Paciente' quando permitirCadastro={false} em modo Tabela", () => {
+    render(<ListaPacientes initialVisualMode="table" permitirCadastro={false} />);
+
+    expect(screen.queryByRole("button", { name: /Cadastrar Paciente/i })).toBeNull();
+    expect(screen.getByText("Paciente")).toBeDefined();
+    expect(screen.getByText("Lucas Gabriel Silva")).toBeDefined();
+  });
 });

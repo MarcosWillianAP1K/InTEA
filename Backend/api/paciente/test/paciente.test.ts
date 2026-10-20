@@ -447,6 +447,7 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
 function criarMockReqResPaciente(opcoes: {
   body?: any;
   params?: any;
+  query?: Record<string, string | undefined>;
   user?: any;
   headers?: any;
 }) {
@@ -457,6 +458,7 @@ function criarMockReqResPaciente(opcoes: {
   const req: any = {
     body: opcoes.body || {},
     params: opcoes.params || {},
+    query: opcoes.query || {},
     headers: opcoes.headers || { authorization: 'Bearer token-teste' },
     user: opcoes.user || null,
   };
@@ -1068,4 +1070,201 @@ describe('Equipe Multidisciplinar (GET, POST, DELETE /api/paciente/:id/terapeuta
   });
 });
 
+describe('GET /api/paciente — Listagem, Filtros all/todos e Segurança de Super Admin (RN04)', () => {
+  const terapeutaComumId = '22222222-2222-4222-a222-222222222222';
+  const superAdminId = '33333333-3333-4333-a333-333333333333';
 
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('GET /api/paciente?all=true: deve bloquear com 403 Forbidden terapeuta comum tentando listar todos os pacientes (RN04)', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/', 'get');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: terapeutaComumId } },
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof supabase.auth.getUser>>);
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaComumId, is_super_admin: false, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const mockHttp = criarMockReqResPaciente({
+      query: { all: 'true' },
+    });
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(403);
+    expect(mockHttp.getJson().error).toBe('Acesso negado: apenas administradores podem visualizar todos os pacientes.');
+  });
+
+  it('GET /api/paciente?todos=true: deve bloquear com 403 Forbidden terapeuta comum tentando listar todos via query todos (RN04)', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/', 'get');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: terapeutaComumId } },
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof supabase.auth.getUser>>);
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaComumId, is_super_admin: false, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const mockHttp = criarMockReqResPaciente({
+      query: { todos: 'true' },
+    });
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(403);
+    expect(mockHttp.getJson().error).toBe('Acesso negado: apenas administradores podem visualizar todos os pacientes.');
+  });
+
+  it('GET /api/paciente?all=true: deve retornar 200 OK com listagem completa quando usuário for super admin no JWT', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/', 'get');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: {
+        user: {
+          id: superAdminId,
+          is_super_admin: true,
+        },
+      },
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof supabase.auth.getUser>>);
+
+    const spyModelListar = vi.spyOn(PacienteModel, 'listar').mockResolvedValue({
+      data: [
+        {
+          id: 'paciente-1',
+          nome: 'Paciente Global 1',
+          data_nascimento: '2016-01-01',
+          status_ativo: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          clinica_id: null,
+          telefone: null,
+          cpf: null,
+          cep: null,
+          cidade: null,
+          estado: null,
+          endereco: null,
+          bairro: null,
+          numero: null,
+          complemento: null,
+        },
+      ],
+      meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+    });
+
+    const mockHttp = criarMockReqResPaciente({
+      query: { all: 'true' },
+    });
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    expect(mockHttp.getJson().data).toHaveLength(1);
+    expect(spyModelListar).toHaveBeenCalled();
+    expect(spyModelListar.mock.calls[0]?.[0]?.terapeutaId).toBeUndefined();
+  });
+
+  it('GET /api/paciente?all=true: deve reconhecer admin via tabela terapeuta no Supabase e retornar 200 OK', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/', 'get');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: {
+        user: {
+          id: superAdminId,
+          // Sem is_super_admin no JWT
+        },
+      },
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof supabase.auth.getUser>>);
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: superAdminId, is_super_admin: true, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const spyModelListar = vi.spyOn(PacienteModel, 'listar').mockResolvedValue({
+      data: [],
+      meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+    });
+
+    const mockHttp = criarMockReqResPaciente({
+      query: { all: 'true' },
+    });
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    expect(spyModelListar).toHaveBeenCalled();
+    expect(spyModelListar.mock.calls[0]?.[0]?.terapeutaId).toBeUndefined();
+  });
+
+  it('GET /api/paciente: deve retornar 200 OK filtrando pacientes por terapeuta logado quando não passar all/todos (RN04)', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/', 'get');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: terapeutaComumId } },
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof supabase.auth.getUser>>);
+
+    const spyModelListar = vi.spyOn(PacienteModel, 'listar').mockResolvedValue({
+      data: [],
+      meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+    });
+
+    const mockHttp = criarMockReqResPaciente({});
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    expect(spyModelListar).toHaveBeenCalledWith(
+      expect.objectContaining({ terapeutaId: terapeutaComumId })
+    );
+  });
+});

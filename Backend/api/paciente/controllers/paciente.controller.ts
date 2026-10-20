@@ -19,7 +19,7 @@ export class PacienteController {
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
-      const verTodosPacientes = req.query.all === 'true';
+      const verTodosPacientes = req.query.all === 'true' || req.query.todos === 'true';
       const usuarioLogado = (req as AuthenticatedRequest).user;
 
       const filtros: FiltrosPacienteDTO = {
@@ -40,6 +40,13 @@ export class PacienteController {
         meta: resultado.meta,
       });
     } catch (error: unknown) {
+      if (error instanceof PacienteServiceError) {
+        res.status(error.statusCode).json({
+          error: error.message,
+          detalhes: error.detalhes,
+        });
+        return;
+      }
       console.error('[PacienteController.listar]', error);
       res.status(500).json({
         error: 'Erro interno ao listar pacientes.',
