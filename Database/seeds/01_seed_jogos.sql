@@ -1,14 +1,16 @@
 -- ==============================================================================
 -- PROJETO InTEA: SEED DE JOGOS TERAPÊUTICOS (CARD 2.4 - SPRINT 7)
--- Popula os 3 jogos de demonstração de forma idempotente (sem duplicatas)
+-- Popula os 3 jogos de demonstração clínica de forma idempotente com UUIDs fixos
 -- ==============================================================================
 
 -- Jogo 1: Aventura das Cores
-INSERT INTO public.jogo (nome, descricao, versao, manifesto_json)
-SELECT
+INSERT INTO public.jogo (id, nome, descricao, versao, status_jogo, manifesto_json)
+VALUES (
+    '11111111-1111-4111-8111-111111111111',
     'Aventura das Cores',
     'Estimula atenção compartilhada e reconhecimento facial através de interação cromática e emparelhamento de cores.',
     '1.2.0',
+    'ativo',
     '{
         "id_jogo": "aventura-das-cores",
         "nome": "Aventura das Cores",
@@ -27,16 +29,24 @@ SELECT
             }
         ]
     }'::jsonb
-WHERE NOT EXISTS (
-    SELECT 1 FROM public.jogo WHERE nome = 'Aventura das Cores'
-);
+)
+ON CONFLICT (id) DO UPDATE 
+SET 
+    nome = EXCLUDED.nome,
+    descricao = EXCLUDED.descricao,
+    versao = EXCLUDED.versao,
+    status_jogo = EXCLUDED.status_jogo,
+    manifesto_json = EXCLUDED.manifesto_json,
+    updated_at = TIMEZONE('utc', NOW());
 
 -- Jogo 2: Formas Calmas
-INSERT INTO public.jogo (nome, descricao, versao, manifesto_json)
-SELECT
+INSERT INTO public.jogo (id, nome, descricao, versao, status_jogo, manifesto_json)
+VALUES (
+    '22222222-2222-4222-8222-222222222222',
     'Formas Calmas',
     'Foco em pareamento visual e regulação sensorial em ambiente desacelerado.',
     '2.0.0',
+    'ativo',
     '{
         "id_jogo": "formas-calmas",
         "nome": "Formas Calmas",
@@ -55,16 +65,24 @@ SELECT
             }
         ]
     }'::jsonb
-WHERE NOT EXISTS (
-    SELECT 1 FROM public.jogo WHERE nome = 'Formas Calmas'
-);
+)
+ON CONFLICT (id) DO UPDATE 
+SET 
+    nome = EXCLUDED.nome,
+    descricao = EXCLUDED.descricao,
+    versao = EXCLUDED.versao,
+    status_jogo = EXCLUDED.status_jogo,
+    manifesto_json = EXCLUDED.manifesto_json,
+    updated_at = TIMEZONE('utc', NOW());
 
 -- Jogo 3: Som dos Animais
-INSERT INTO public.jogo (nome, descricao, versao, manifesto_json)
-SELECT
+INSERT INTO public.jogo (id, nome, descricao, versao, status_jogo, manifesto_json)
+VALUES (
+    '33333333-3333-4333-8333-333333333333',
     'Som dos Animais',
     'Associação auditivo-visual para desenvolvimento de linguagem e reconhecimento sonoro.',
     '1.0.0',
+    'ativo',
     '{
         "id_jogo": "som-dos-animais",
         "nome": "Som dos Animais",
@@ -83,6 +101,12 @@ SELECT
             }
         ]
     }'::jsonb
-WHERE NOT EXISTS (
-    SELECT 1 FROM public.jogo WHERE nome = 'Som dos Animais'
-);
+)
+ON CONFLICT (id) DO UPDATE 
+SET 
+    nome = EXCLUDED.nome,
+    descricao = EXCLUDED.descricao,
+    versao = EXCLUDED.versao,
+    status_jogo = EXCLUDED.status_jogo,
+    manifesto_json = EXCLUDED.manifesto_json,
+    updated_at = TIMEZONE('utc', NOW());

@@ -23,9 +23,10 @@ export class JogoController {
   static async listar(req: Request, res: Response): Promise<void> {
     try {
       const statusQuery = req.query.status as string | undefined;
+      const objetivoQuery = req.query.objetivo as string | undefined;
 
       const filtros: FiltrosJogo = {
-        objetivo: req.query.objetivo as string | undefined,
+        objetivo: objetivoQuery && objetivoQuery !== 'todos' && objetivoQuery !== 'all' ? objetivoQuery : undefined,
         status: statusQuery as StatusJogo | undefined,
         page: req.query.page ? Number(req.query.page) : undefined,
         limit: req.query.limit ? Number(req.query.limit) : undefined,

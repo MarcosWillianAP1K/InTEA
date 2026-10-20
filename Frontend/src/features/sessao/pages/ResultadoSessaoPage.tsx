@@ -348,8 +348,14 @@ export function ResultadoSessaoPage({
   const registroTerapeuta =
     dados.terapeuta?.registro_profissional || "CRP 11/04589";
 
-  const taxaConclusao = dados.dados_ia?.resumo.taxa_conclusao ?? 85;
-  const intervencoesDda = dados.dados_ia?.resumo.intervencoes_dda ?? 0;
+  const taxaConclusao =
+    dados.dados_ia?.resumo?.taxa_conclusao ??
+    (dados.dados_ia as unknown as { taxa_conclusao_percentual?: number })?.taxa_conclusao_percentual ??
+    85;
+  const intervencoesDda =
+    dados.dados_ia?.resumo?.intervencoes_dda ??
+    (dados.dados_ia as unknown as { intervencoes_dda?: number })?.intervencoes_dda ??
+    0;
   const duracaoFormatada = formatarDuracao(dados.duracao_segundos);
 
   const anotacaoInicial =

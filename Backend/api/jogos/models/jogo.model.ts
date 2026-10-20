@@ -177,12 +177,12 @@ export class JogoModel {
           .select('id, nome, descricao, versao, status_jogo, manifesto_json', { count: 'exact' });
 
         // Filtro por objetivo_clinico dentro do JSONB (RF19)
-        if (filtros.objetivo) {
+        if (filtros.objetivo && filtros.objetivo !== 'todos' && filtros.objetivo !== 'all') {
           query = query.eq('manifesto_json->>objetivo_clinico', filtros.objetivo);
         }
 
         // Filtro por status operacional do jogo
-        if (filtros.status) {
+        if (filtros.status && filtros.status !== 'todos' && filtros.status !== 'all') {
           query = query.eq('status_jogo', filtros.status);
         }
 
@@ -213,13 +213,13 @@ export class JogoModel {
     // Fallback local com suporte a filtro e paginação em memória
     let lista = this.fallbackJogos;
 
-    if (filtros.objetivo) {
+    if (filtros.objetivo && filtros.objetivo !== 'todos' && filtros.objetivo !== 'all') {
       lista = lista.filter(
         j => j.manifesto_json?.objetivo_clinico === filtros.objetivo
       );
     }
 
-    if (filtros.status) {
+    if (filtros.status && filtros.status !== 'todos' && filtros.status !== 'all') {
       lista = lista.filter(
         j => (j.status_jogo ?? 'ativo') === filtros.status
       );

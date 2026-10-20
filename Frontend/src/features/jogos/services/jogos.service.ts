@@ -33,8 +33,12 @@ function serializarFiltros(
 
   const params: Record<string, string> = {};
   if (filtros.busca) params.busca = filtros.busca;
-  if (filtros.objetivo) params.objetivo = filtros.objetivo;
-  if (filtros.status) params.status = filtros.status;
+  if (filtros.objetivo && filtros.objetivo !== 'todos' && filtros.objetivo !== 'all') {
+    params.objetivo = filtros.objetivo;
+  }
+  if (filtros.status && filtros.status !== 'todos' && filtros.status !== 'all') {
+    params.status = filtros.status;
+  }
   if (filtros.page !== undefined) params.page = String(filtros.page);
   if (filtros.limit !== undefined) params.limit = String(filtros.limit);
 
@@ -61,6 +65,13 @@ function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
     descricaoClinica?: string;
     publico_alvo?: string;
     objetivoTerapeutico?: string;
+    manifesto_json?: {
+      id_jogo?: string;
+      nome?: string;
+      versao?: string;
+      objetivo_clinico?: string;
+      metricas_suportadas?: Array<{ id_metrica: string; tipo_metrica: string; unidade?: string; valores?: string[] }>;
+    };
     manifesto?: ManifestoJogo;
     metricas_suportadas?: Array<{ id_metrica: string; tipo_metrica: string; descricao?: string; nome?: string }>;
     versao?: string;
@@ -74,18 +85,27 @@ function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
   const titulo = raw.titulo || raw.nome || "Jogo Terapêutico";
   const versao = raw.versao || "1.0.0";
   const descricaoClinica = raw.descricaoClinica || raw.descricao || "";
-  const objetivoTerapeutico = raw.objetivoTerapeutico || raw.publico_alvo || "Estimulação Cognitiva e Sensorial";
+  const objetivoTerapeutico =
+    raw.objetivoTerapeutico ||
+    raw.manifesto_json?.objetivo_clinico ||
+    raw.publico_alvo ||
+    "Estimulação Cognitiva e Sensorial";
 
-  const metricasSuportadas: MetricaSuportada[] = (raw.metricas_suportadas || []).map((m) => ({
+  const metricasRaw =
+    raw.metricas_suportadas ||
+    raw.manifesto_json?.metricas_suportadas ||
+    [];
+
+  const metricasSuportadas: MetricaSuportada[] = metricasRaw.map((m: any) => ({
     id_metrica: m.id_metrica,
     nome: m.nome || m.id_metrica,
-    tipo: m.tipo_metrica as TipoMetrica,
-    tipo_metrica: m.tipo_metrica,
+    tipo: (m.tipo_metrica || m.tipo) as TipoMetrica,
+    tipo_metrica: m.tipo_metrica || m.tipo,
     descricao: m.descricao || m.nome || m.id_metrica,
   }));
 
   const manifesto: ManifestoJogo = raw.manifesto || {
-    id_jogo: raw.id,
+    id_jogo: raw.manifesto_json?.id_jogo || String(raw.id),
     nome: titulo,
     versao,
     descricaoClinica,
@@ -119,7 +139,19 @@ export const jogosService = {
         >(ENDPOINTS.JOGOS.BASE, { params });
 
         const lista = Array.isArray(resposta) ? resposta : (resposta.data ?? []);
-        return lista.map(normalizarJogoSeNecessario);
+        let normalizados = lista.map(normalizarJogoSeNecessario);
+
+        if (filtros?.busca && filtros.busca.trim()) {
+          const termo = filtros.busca.trim().toLowerCase();
+          normalizados = normalizados.filter(
+            (j) =>
+              j.titulo?.toLowerCase().includes(termo) ||
+              j.descricaoClinica?.toLowerCase().includes(termo) ||
+              j.objetivoTerapeutico?.toLowerCase().includes(termo)
+          );
+        }
+
+        return normalizados;
       },
       () => listarJogosMock(filtros),
     );

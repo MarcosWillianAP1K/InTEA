@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ShieldCheck,
   Clock,
 } from "lucide-react";
 
@@ -136,14 +135,7 @@ export function BlocoAnotacoesClinicas({
         </div>
       </div>
 
-      {/* Alerta de Inalterabilidade de Prontuário (RN05) */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs">
-        <ShieldCheck className="h-4 w-4 shrink-0" />
-        <span>
-          <strong>Inalterabilidade de Prontuário (RN05):</strong> Todos os registros
-          são auditados e associados indeléveis ao terapeuta autenticado.
-        </span>
-      </div>
+
 
       {/* Campo de Texto Principal */}
       <div className="flex flex-col gap-1.5">
