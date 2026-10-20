@@ -116,12 +116,12 @@ export function LoginPage() {
   return (
     <main
       data-testid="login-page"
-      className="min-h-screen w-full flex flex-row justify-center items-center p-6 md:p-[40px] bg-background-auth"
+      className="min-h-screen w-full flex flex-row justify-center items-center p-6 md:p-10 bg-background-auth"
     >
       {/* Card Central (Figma: Background+Shadow) */}
-      <section className="flex flex-col gap-[32px] md:gap-[40px] pt-[48px] md:pt-[64px] px-[32px] md:px-[64px] pb-[24px] w-full max-w-[480px] rounded-[16px] bg-card shadow-lg border border-border/60">
+      <section className="flex flex-col gap-8 md:gap-10 pt-12 md:pt-16 px-8 md:px-16 pb-6 w-full max-w-120 rounded-2xl bg-card shadow-lg border border-border/60">
         {/* Cabeçalho do Card (Figma: Container) */}
-        <header className="flex flex-col gap-[12px] w-full items-center text-center">
+        <header className="flex flex-col gap-3ll items-center text-center">
           <h1 className="text-[48px] leading-none font-bold text-primary tracking-tight select-none">
             InTEA
           </h1>
@@ -134,10 +134,10 @@ export function LoginPage() {
         <form
           onSubmit={(e) => void handleSubmit(e)}
           noValidate
-          className="flex flex-col gap-[14px] w-full"
+          className="flex flex-col gap-3.5 w-full"
         >
           {/* Campo 1 — E-mail profissional */}
-          <div className="flex flex-row items-center gap-[12px] w-full px-4 py-3.5 rounded-[12px] bg-input border border-transparent focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 transition-all">
+          <div className="flex flex-row items-center gap-3 w-full px-4 py-3.5 rounded-[12px] bg-input border border-transparent focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 transition-all">
             <Mail
               className="w-5 h-5 text-muted-foreground shrink-0"
               aria-hidden="true"
@@ -160,8 +160,8 @@ export function LoginPage() {
           </div>
 
           {/* Campo 2 — Senha */}
-          <div className="flex flex-row justify-between items-center gap-[12px] w-full px-4 py-3.5 rounded-[12px] bg-input border border-transparent focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 transition-all">
-            <div className="flex flex-row items-center gap-[12px] flex-1 min-w-0">
+          <div className="flex flex-row justify-between items-center gap-3 w-full px-4 py-3.5 rounded-[12px] bg-input border border-transparent focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 transition-all">
+            <div className="flex flex-row items-center gap-3 flex-1 min-w-0">
               <Lock
                 className="w-5 h-5 text-muted-foreground shrink-0"
                 aria-hidden="true"
@@ -234,7 +234,7 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex flex-row justify-center items-center gap-[12px] w-full py-3.5 px-6 rounded-[12px] bg-[#1E40AF] hover:bg-primary active:bg-primary-active text-white text-[14px] font-semibold shadow-sm transition-all cursor-pointer disabled:opacity-60 mt-1"
+            className="flex flex-row justify-center items-center gap-3 w-full py-3.5 px-6 rounded-[12px] bg-[#1E40AF] hover:bg-primary active:bg-primary-active text-white text-[14px] font-semibold shadow-sm transition-all cursor-pointer disabled:opacity-60 mt-1"
           >
             {loading ? (
               <>

@@ -75,7 +75,7 @@ export function PainelPage() {
       {pacienteDestaque && (
         <section
           data-testid="sessao-paciente-sumario"
-          className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white p-6 shadow-xs dark:border-blue-900/40 dark:from-blue-950/20 dark:to-background"
+          className="relative overflow-hidden rounded-2xl border border-blue-100 bg-linear-to-r from-blue-50/80 via-indigo-50/50 to-white p-6 shadow-xs dark:border-blue-900/40 dark:from-blue-950/20 dark:to-background"
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
