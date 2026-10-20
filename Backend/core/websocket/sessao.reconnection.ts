@@ -150,6 +150,8 @@ export class SessaoReconnectionManager {
         interrompida_em: new Date().toISOString()
       };
 
+      onTimeout(eventoInterrupcao);
+
       try {
         const sessao = await SessaoModel.buscarPorToken(token);
         if (sessao) {
@@ -170,8 +172,6 @@ export class SessaoReconnectionManager {
       } catch (err) {
         console.error('[SessaoReconnectionManager] Erro ao persistir queda de conexão:', err);
       }
-
-      onTimeout(eventoInterrupcao);
     }, this.janelaToleranciaMs);
 
     // Evita prender o processo Node caso seja encerrado

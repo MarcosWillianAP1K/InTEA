@@ -52,7 +52,7 @@ export function MetricasConsolidadasCards({
         {Array.from({ length: 5 }).map((_, index) => (
           <Card
             key={`skeleton-card-${index}`}
-            className="rounded-2xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between gap-3 h-[132px]"
+            className="rounded-2xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between gap-3 h-33"
           >
             <div className="flex items-center justify-between">
               <Skeleton className="h-3 w-28 rounded-md" />

@@ -9,12 +9,17 @@ import {
   EventoSessaoInterrompida
 } from '../websocket/sessao.reconnection.js';
 import { SessaoGateway } from '../websocket/sessao.gateway.js';
+import { SessaoModel } from '../../api/sessao/models/sessao.model.js';
+import { AuditoriaService } from '../../api/auditoria/services/auditoria.service.js';
 
 describe('Card 2.3 - Protocolo de Reconexão e Janela de Tolerância de 60s', () => {
   describe('Unidade: SessaoReconnectionManager', () => {
     let manager: SessaoReconnectionManager;
 
     beforeEach(() => {
+      vi.spyOn(SessaoModel, 'buscarPorToken').mockResolvedValue(null);
+      vi.spyOn(SessaoModel, 'atualizarStatus').mockResolvedValue(null as any);
+      vi.spyOn(AuditoriaService, 'registrarSilencioso').mockResolvedValue(undefined as any);
       manager = new SessaoReconnectionManager(50); // 50ms para testes determinísticos rápidos
     });
 
@@ -109,6 +114,9 @@ describe('Card 2.3 - Protocolo de Reconexão e Janela de Tolerância de 60s', ()
     });
 
     beforeEach(() => {
+      vi.spyOn(SessaoModel, 'buscarPorToken').mockResolvedValue(null);
+      vi.spyOn(SessaoModel, 'atualizarStatus').mockResolvedValue(null as any);
+      vi.spyOn(AuditoriaService, 'registrarSilencioso').mockResolvedValue(undefined as any);
       const gateway = SessaoGateway.obterInstancia();
       gateway.resetarPresencas();
       // Configura tolerância rápida de 80ms para teste de integração

@@ -120,7 +120,7 @@ export const OverlayNotificacoes: React.FC<OverlayNotificacoesProps> = ({ aberto
         </div>
 
         {/* Lista de Notificações */}
-        <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="max-h-95 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
           {notificacoes.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-500">
               Nenhuma notificação no momento.
@@ -146,7 +146,7 @@ export const OverlayNotificacoes: React.FC<OverlayNotificacoesProps> = ({ aberto
                       {item.titulo}
                     </p>
                     {!item.lida && (
-                      <span className="h-2 w-2 rounded-full bg-[#2170E4] flex-shrink-0" />
+                      <span className="h-2 w-2 rounded-full bg-[#2170E4] shrink-0" />
                     )}
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">

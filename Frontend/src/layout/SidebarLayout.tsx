@@ -47,7 +47,7 @@ export function SidebarLayout({
             </div>
 
             {/* Lado Direito: Notificações + Perfil do Terapeuta */}
-            <div className="flex flex-row items-center gap-[16px] md:gap-[24px] shrink-0 relative">
+            <div className="flex flex-row items-center gap-4 md:gap-6 shrink-0 relative">
               <div className="relative">
                 <button
                   type="button"

@@ -45,7 +45,7 @@ export function GraficoEvolutivoResultado({
     return (
       <Card
         data-testid="grafico-evolutivo-skeleton"
-        className={`rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col gap-4 h-[410px] ${className}`}
+        className={`rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col gap-4 h-102.5 ${className}`}
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div className="space-y-2">
@@ -197,7 +197,7 @@ export function GraficoEvolutivoResultado({
           <svg
             data-testid="grafico-evolutivo-svg"
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full h-auto min-w-[620px] select-none"
+            className="w-full h-auto min-w-155 select-none"
             aria-label="Gráfico de tempo de resposta da sessão clínica"
           >
             <defs>
