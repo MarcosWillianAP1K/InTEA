@@ -3,7 +3,7 @@
 // ==============================================================================
 
 import { supabase } from "../../../core/supabase/supabase.client.js";
-import { CriarSessaoDTO, DispositivoInfoDTO } from "../dtos/sessao.dto.js";
+import { CriarSessaoDTO, DispositivoInfoDTO, FiltrosSessaoDTO, RespostaListagemSessao } from "../dtos/sessao.dto.js";
 
 export const MODO_SESSAO = {
   SESSAO_CLINICA: 'sessao_clinica',
@@ -19,6 +19,7 @@ export const STATUS_SESSAO = {
   FINALIZADA: 'finalizada',
   EXPIRADA: 'expirada',
   CANCELADA: 'cancelada',
+  INTERROMPIDA_POR_QUEDA: 'interrompida_por_queda',
 } as const;
 
 export type StatusSessao = (typeof STATUS_SESSAO)[keyof typeof STATUS_SESSAO];
@@ -45,6 +46,11 @@ export interface Sessao {
   data_hora_fim: string | null;
   created_at: string;
   updated_at: string;
+  paciente?: {
+    id: string;
+    nome: string;
+    data_nascimento?: string;
+  } | null;
   jogo?: {
     id: string;
     nome: string;
@@ -218,6 +224,112 @@ export class SessaoModel {
     } catch (error) {
       console.error('Erro ao finalizar sessão no Supabase:', error);
       return null;
+    }
+  }
+
+  /**
+   * Lista sessões com filtros clínicos, busca temporal, status e paginação.
+   * Suporta visão restrita por terapeuta e visão global para administradores.
+   */
+  static async listar(filtros: FiltrosSessaoDTO = {}): Promise<RespostaListagemSessao<Sessao>> {
+    try {
+      const rawPage = Number(filtros.page);
+      const page = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
+      const rawLimit = Number(filtros.limit);
+      const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(100, Math.floor(rawLimit)) : 10;
+      const offset = (page - 1) * limit;
+
+      let query = supabase
+        .from('sessao')
+        .select('*, paciente:paciente_id(id, nome, data_nascimento), jogo:jogo_id(id, nome, versao)', { count: 'exact' });
+
+      // Filtro de visibilidade institucional (RN04)
+      if (filtros.terapeutaId) {
+        query = query.eq('terapeuta_id', filtros.terapeutaId);
+      }
+
+      if (filtros.pacienteId) {
+        query = query.eq('paciente_id', filtros.pacienteId);
+      }
+
+      if (filtros.jogoId) {
+        query = query.eq('jogo_id', filtros.jogoId);
+      }
+
+      if (filtros.modo) {
+        query = query.eq('modo_sessao', filtros.modo);
+      }
+
+      // Mapeamento semântico de status clínico conforme constraints do banco (chk_status_sessao)
+      if (filtros.status) {
+        const s = filtros.status.toLowerCase().trim();
+        if (s === 'concluida' || s === 'concluidas' || s === 'finalizada' || s === 'completo') {
+          query = query.eq('status_sessao', STATUS_SESSAO.FINALIZADA);
+        } else if (s === 'cancelada' || s === 'canceladas') {
+          query = query.eq('status_sessao', STATUS_SESSAO.CANCELADA);
+        } else if (s === 'falha') {
+          query = query.in('status_sessao', [
+            STATUS_SESSAO.CANCELADA,
+            STATUS_SESSAO.EXPIRADA,
+            STATUS_SESSAO.INTERROMPIDA_POR_QUEDA,
+          ]);
+        } else if (s === 'pendente' || s === 'pendentes' || s === 'incompleto') {
+          query = query.in('status_sessao', [
+            STATUS_SESSAO.AGUARDANDO_PAREAMENTO,
+            STATUS_SESSAO.CONECTADO,
+            STATUS_SESSAO.EM_ANDAMENTO,
+          ]);
+        } else if (Object.values(STATUS_SESSAO).includes(s as StatusSessao)) {
+          query = query.eq('status_sessao', s);
+        }
+      }
+
+      // Filtros temporais
+      if (filtros.data) {
+        query = query
+          .gte('data_hora_inicio', `${filtros.data}T00:00:00.000Z`)
+          .lte('data_hora_inicio', `${filtros.data}T23:59:59.999Z`);
+      } else {
+        if (filtros.dataInicio) {
+          query = query.gte('data_hora_inicio', `${filtros.dataInicio}T00:00:00.000Z`);
+        }
+        if (filtros.dataFim) {
+          query = query.lte('data_hora_inicio', `${filtros.dataFim}T23:59:59.999Z`);
+        }
+      }
+
+      // Ordenação decrescente: sessões mais recentes primeiro
+      query = query.order('data_hora_inicio', { ascending: false });
+
+      // Paginação
+      const { data, error, count } = await query.range(offset, offset + limit - 1);
+
+      if (error) {
+        console.error('Erro ao listar sessões no Supabase:', error);
+        return {
+          data: [],
+          meta: { total: 0, page, limit, totalPages: 0 },
+        };
+      }
+
+      const total = count || 0;
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data: (data || []) as Sessao[],
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+        },
+      };
+    } catch (error) {
+      console.error('Erro inesperado ao listar sessões:', error);
+      return {
+        data: [],
+        meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+      };
     }
   }
 }

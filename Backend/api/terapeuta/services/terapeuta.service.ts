@@ -11,7 +11,8 @@ import {
   AtualizarTerapeutaDTO,
   AreaFoco,
 } from '../models/terapeuta.model.js';
-import { validarTelefone } from '../../../core/utils/validators.js';
+import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
+import { validarTelefone, validarUUID } from '../../../core/utils/validators.js';
 import { formatarTelefone } from '../../../core/utils/formatters.js';
 
 export class TerapeutaServiceError extends Error {
@@ -43,13 +44,32 @@ export class TerapeutaService {
   }
 
   /**
-   * Lists registered therapists, normalizing areas_foco.
+   * Lists registered therapists, normalizing areas_foco and enforcing clinic scope (RN04).
    *
    * @param incluirInativos - If true, includes soft-deleted therapists.
+   * @param usuarioLogado - Optional authenticated user to scope list by clinic when not SuperAdmin.
    * @returns Array of therapists with normalized areas.
    */
-  static async listar(incluirInativos: boolean = false): Promise<Terapeuta[]> {
-    const terapeutas = await TerapeutaModel.listar(incluirInativos);
+  static async listar(
+    incluirInativos: boolean = false,
+    usuarioLogado?: UsuarioAutenticado
+  ): Promise<Terapeuta[]> {
+    const isSuperAdmin =
+      usuarioLogado?.is_super_admin === true ||
+      usuarioLogado?.user_metadata?.is_super_admin === true;
+
+    let clinicaIdFiltro: string | null | undefined = undefined;
+
+    if (usuarioLogado && !isSuperAdmin) {
+      if (usuarioLogado.clinica_id !== undefined) {
+        clinicaIdFiltro = usuarioLogado.clinica_id;
+      } else {
+        const perfil = await TerapeutaModel.buscarPorId(usuarioLogado.id);
+        clinicaIdFiltro = perfil?.clinica_id ?? null;
+      }
+    }
+
+    const terapeutas = await TerapeutaModel.listar(incluirInativos, clinicaIdFiltro);
     return terapeutas.map((t) => ({
       ...t,
       areas_foco: TerapeutaService.normalizarAreasFoco(t.areas_foco),
@@ -57,19 +77,54 @@ export class TerapeutaService {
   }
 
   /**
-   * Retrieves therapist details by UUID.
+   * Retrieves therapist details by UUID and validates institutional isolation (RN04).
    *
    * @param id - Therapist UUID.
+   * @param usuarioLogado - Optional authenticated user to check clinic matching if not SuperAdmin/self.
    * @returns Therapist record with normalized areas or null if not found.
    */
-  static async buscarPorId(id: string): Promise<Terapeuta | null> {
+  static async buscarPorId(
+    id: string,
+    usuarioLogado?: UsuarioAutenticado
+  ): Promise<Terapeuta | null> {
     if (!id || id === 'undefined') {
       throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(id)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
     }
 
     const terapeuta = await TerapeutaModel.buscarPorId(id);
     if (!terapeuta) {
       return null;
+    }
+
+    if (usuarioLogado) {
+      const isSuperAdmin =
+        usuarioLogado.is_super_admin === true ||
+        usuarioLogado.user_metadata?.is_super_admin === true;
+
+      const isProprioTerapeuta = usuarioLogado.id === id;
+
+      if (!isSuperAdmin && !isProprioTerapeuta) {
+        let solicitanteClinicaId = usuarioLogado.clinica_id;
+        if (solicitanteClinicaId === undefined) {
+          const solicitante = await TerapeutaModel.buscarPorId(usuarioLogado.id);
+          solicitanteClinicaId = solicitante?.clinica_id;
+        }
+
+        if (
+          !solicitanteClinicaId ||
+          !terapeuta.clinica_id ||
+          solicitanteClinicaId !== terapeuta.clinica_id
+        ) {
+          throw new TerapeutaServiceError(
+            'Acesso negado: o terapeuta pertence a uma instituição clínica diferente.',
+            403
+          );
+        }
+      }
     }
 
     return {
@@ -111,20 +166,74 @@ export class TerapeutaService {
   }
 
   /**
-   * Updates therapist data.
+   * Updates therapist data with security hardening and attribute sanitization.
    *
    * @param id - Therapist UUID.
    * @param dto - Update fields.
+   * @param usuarioLogado - Optional authenticated user enforcing SuperAdmin checks and anti-IDOR.
    * @returns Updated therapist with normalized areas.
    */
-  static async atualizar(id: string, dto: AtualizarTerapeutaDTO): Promise<Terapeuta> {
+  static async atualizar(
+    id: string,
+    dto: AtualizarTerapeutaDTO,
+    usuarioLogado?: UsuarioAutenticado
+  ): Promise<Terapeuta> {
     if (!id || id === 'undefined') {
       throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(id)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
     }
 
     const existente = await TerapeutaModel.buscarPorId(id);
     if (!existente) {
       throw new TerapeutaServiceError('Terapeuta não encontrado para atualização.', 404);
+    }
+
+    if (usuarioLogado) {
+      const isSuperAdmin =
+        usuarioLogado.is_super_admin === true ||
+        usuarioLogado.user_metadata?.is_super_admin === true;
+
+      if (!isSuperAdmin) {
+        const dtoObj = dto as Record<string, unknown>;
+
+        const tentaAlterarClinica =
+          dto.clinica_id !== undefined && dto.clinica_id !== existente.clinica_id;
+        const tentaAlterarStatus =
+          dto.status_ativo !== undefined && dto.status_ativo !== existente.status_ativo;
+        const tentaAlterarAdmin =
+          dtoObj.is_super_admin !== undefined &&
+          dtoObj.is_super_admin !== existente.is_super_admin;
+        const tentaAlterarEmail =
+          dtoObj.email !== undefined && dtoObj.email !== existente.email;
+
+        if (
+          tentaAlterarClinica ||
+          tentaAlterarStatus ||
+          tentaAlterarAdmin ||
+          tentaAlterarEmail
+        ) {
+          throw new TerapeutaServiceError(
+            'Acesso negado: apenas administradores podem alterar vínculos institucionais, status ativo, privilégios ou e-mail.',
+            403
+          );
+        }
+
+        if (usuarioLogado.id !== id) {
+          throw new TerapeutaServiceError(
+            'Acesso negado: você não tem permissão para alterar recursos de outro usuário.',
+            403
+          );
+        }
+
+        // Sanitizar o payload removendo essas propriedades restritas
+        delete dto.clinica_id;
+        delete dto.status_ativo;
+        delete dtoObj.is_super_admin;
+        delete dtoObj.email;
+      }
     }
 
     if (dto.telefone !== undefined && dto.telefone !== null && dto.telefone.trim() !== '') {
@@ -159,6 +268,10 @@ export class TerapeutaService {
       throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
     }
 
+    if (!validarUUID(id)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
+    }
+
     const existente = await TerapeutaModel.buscarPorId(id);
     if (!existente) {
       throw new TerapeutaServiceError('Terapeuta não encontrado para desativação.', 404);
@@ -187,6 +300,10 @@ export class TerapeutaService {
       throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
     }
 
+    if (!validarUUID(id)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
+    }
+
     const existente = await TerapeutaModel.buscarPorId(id);
     if (!existente) {
       throw new TerapeutaServiceError('Terapeuta não encontrado para reativação.', 404);
@@ -208,6 +325,10 @@ export class TerapeutaService {
   static async deletarHard(id: string): Promise<void> {
     if (!id || id === 'undefined') {
       throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(id)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
     }
 
     const existente = await TerapeutaModel.buscarPorId(id);

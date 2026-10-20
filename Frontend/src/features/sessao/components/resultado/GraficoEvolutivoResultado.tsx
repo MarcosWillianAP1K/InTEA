@@ -45,7 +45,7 @@ export function GraficoEvolutivoResultado({
     return (
       <Card
         data-testid="grafico-evolutivo-skeleton"
-        className={`rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col gap-4 h-[410px] ${className}`}
+        className={`rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col gap-4 h-102.5 ${className}`}
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div className="space-y-2">
@@ -76,7 +76,7 @@ export function GraficoEvolutivoResultado({
         className={`rounded-2xl border border-dashed border-border/80 bg-muted/20 p-8 text-center ${className}`}
       >
         <CardContent className="flex flex-col items-center justify-center p-0 gap-3">
-          <div className="p-3 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#0b3294] dark:text-blue-400">
+          <div className="p-3 rounded-full bg-primary/10 text-primary">
             <Activity className="h-6 w-6 animate-pulse" />
           </div>
           <div>
@@ -154,7 +154,7 @@ export function GraficoEvolutivoResultado({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-[#0b3294] dark:text-blue-400" />
+              <TrendingUp className="h-5 w-5 text-primary" />
               {titulo}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground mt-0.5">
@@ -197,14 +197,14 @@ export function GraficoEvolutivoResultado({
           <svg
             data-testid="grafico-evolutivo-svg"
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full h-auto min-w-[620px] select-none"
+            className="w-full h-auto min-w-155 select-none"
             aria-label="Gráfico de tempo de resposta da sessão clínica"
           >
             <defs>
               {/* Gradiente sob a curva */}
               <linearGradient id="gradiente-tempo-resposta" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#0b3294" stopOpacity="0.28" />
-                <stop offset="100%" stopColor="#0b3294" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0.0" />
               </linearGradient>
 
               {/* Padrão de halo para intervenções de DDA */}
@@ -265,11 +265,11 @@ export function GraficoEvolutivoResultado({
             <path
               d={pathD}
               fill="none"
-              stroke="#0b3294"
+              stroke="currentColor"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="dark:stroke-blue-400"
+              className="text-primary"
             />
 
             {/* Marcadores de Intervenção DDA (Linhas Verticais e Halos) */}

@@ -136,6 +136,7 @@ export interface HttpClientConfig {
 export interface RequestOptions<TBody = unknown> {
   method?: HttpMethod;
   body?: TBody;
+  data?: TBody;
   params?: Record<string, string | number | boolean | undefined | null>;
   headers?: Record<string, string>;
   signal?: AbortSignal;
@@ -511,7 +512,8 @@ export class HttpClient {
   ): Promise<T> {
     const {
       method = "GET",
-      body,
+      body: explicitBody,
+      data: explicitData,
       params,
       headers: extraHeaders,
       signal,
@@ -521,6 +523,7 @@ export class HttpClient {
       skipAuth = false,
       skipAuthRetry = false,
     } = options;
+    const body = explicitBody !== undefined ? explicitBody : explicitData;
 
     const url = buildUrl(this.config.baseURL, path, params);
     const isFormData =
@@ -547,12 +550,19 @@ export class HttpClient {
         headers["Content-Type"] ??= "application/json";
       }
 
+      // Rotas públicas de autenticação (login, refresh, recuperação) NUNCA devem
+      // tentar renovar token ao receber 401 (pois 401 no login significa credenciais inválidas).
+      const isPublicAuthEndpoint =
+        /\/auth\/(login|refresh|recuperar-senha|redefinir-senha)(\/|$|\?)/i.test(
+          path,
+        );
+
       // Guardamos o token usado nesta request específica: se ela tomar 401,
       // comparamos contra o token vigente naquele momento pra saber se
       // outro fluxo já refrescou nesse meio-tempo (retardatário fora da
       // janela de overlap do single-flight).
       let tokenUsedForThisRequest: string | undefined;
-      if (!skipAuth && this.config.auth) {
+      if (!skipAuth && !isPublicAuthEndpoint && this.config.auth) {
         tokenUsedForThisRequest = await this.config.auth.getAccessToken();
         if (tokenUsedForThisRequest)
           headers.Authorization = `Bearer ${tokenUsedForThisRequest}`;
@@ -606,10 +616,16 @@ export class HttpClient {
       const newCsrfToken = response.headers.get(csrfHeaderName);
       if (newCsrfToken) this.csrf.setToken(newCsrfToken);
 
+      // Só aciona renovação automática (refresh token) se:
+      // 1. A resposta foi 401 Unauthorized;
+      // 2. NÃO é um endpoint público de auth (/auth/login, /auth/refresh, etc.);
+      // 3. A requisição realmente enviou um access_token que expirou (`Boolean(tokenUsedForThisRequest)`).
       if (
         response.status === 401 &&
         !skipAuth &&
         !skipAuthRetry &&
+        !isPublicAuthEndpoint &&
+        Boolean(tokenUsedForThisRequest) &&
         this.config.auth
       ) {
         return this.handleUnauthorized<T, TBody>(

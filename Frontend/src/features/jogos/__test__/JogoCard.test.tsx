@@ -10,10 +10,12 @@ describe("JogoCard Component", () => {
     versao: "1.2",
     descricaoClinica: "Estimula atenção compartilhada e reconhecimento facial",
     objetivoTerapeutico: "Atenção Compartilhada",
-    faixaEtariaMin: 4,
-    faixaEtariaMax: 10,
-    suportaDDA: true,
-    metricasEsperadas: [],
+    manifesto: {
+      nome: "Aventura das Cores",
+      versao: "1.2",
+      metricasSuportadas: [],
+      faixaEtaria: "4-10 anos",
+    },
   };
 
   it("deve renderizar o título, versão e descrição do jogo", () => {

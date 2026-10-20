@@ -127,10 +127,9 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
       useSessionStore.getState().confirmarConexaoDispositivo({
         deviceId: "tablet-samsung-s9",
         modelo: "Galaxy Tab S9 FE+",
-        resolucao: "2560x1600",
-        sistemaOperacional: "Android 14",
+        tipoDispositivo: "tablet",
         bateria: 88,
-        ipOrigem: "192.168.1.105",
+        conectadoEm: "2026-09-30T17:50:00.000Z",
       });
     });
 
@@ -173,5 +172,38 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
     expect(state.status).toBe("cancelada");
     expect(state.isModalAberto).toBe(false);
     expect(toast.info).toHaveBeenCalledWith("Configuração de sessão cancelada.");
+  });
+
+  it("deve renderizar o seletor dinâmico de pacientes e permitir simular conexão remota", () => {
+    act(() => {
+      useSessionStore.getState().abrirModalPreSessao({
+        id: "jogo-1",
+        titulo: "Aventura das Cores",
+      });
+    });
+
+    render(<ModalPreSessao />);
+
+    // Seletor de pacientes presente
+    expect(screen.getByText("Paciente em Atendimento")).toBeDefined();
+    expect(screen.getByTestId("select-paciente-pre-sessao")).toBeDefined();
+
+    // Botão de simular conexão do tablet
+    const btnSimular = screen.getByTestId("btn-simular-pareamento");
+    expect(btnSimular).toBeDefined();
+
+    // Ao clicar em simular conexão
+    fireEvent.click(btnSimular);
+
+    expect(useSessionStore.getState().status).toBe("pareado");
+    expect(toast.success).toHaveBeenCalledWith(
+      "Dispositivo pareado com sucesso (Simulação)!",
+    );
+
+    // O botão Iniciar deve ser liberado
+    const botaoIniciar = screen.getByRole("button", {
+      name: /Confirmar e Iniciar Intervenção/i,
+    });
+    expect((botaoIniciar as HTMLButtonElement).disabled).toBe(false);
   });
 });

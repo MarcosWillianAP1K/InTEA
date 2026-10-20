@@ -31,7 +31,7 @@ export function JogosFiltros({
           placeholder="Buscar jogo por nome ou objetivo..."
           value={filtros.busca || ""}
           onChange={(e) => onFiltroBusca(e.target.value)}
-          className="pl-9 bg-card text-foreground border-border focus-visible:border-[#0b3294] focus-visible:ring-[#0b3294]/30"
+          className="pl-9 bg-card text-foreground border-border focus-visible:border-primary focus-visible:ring-primary/30"
         />
       </div>
 
@@ -42,7 +42,7 @@ export function JogosFiltros({
           value={filtros.objetivo || "todos"}
           onValueChange={onFiltroObjetivo}
         >
-          <SelectTrigger className="w-48 bg-card text-foreground border-border focus:border-[#0b3294]">
+          <SelectTrigger className="w-48 bg-card text-foreground border-border focus:border-primary">
             <SelectValue placeholder="Todos os objetivos" />
           </SelectTrigger>
           <SelectContent>

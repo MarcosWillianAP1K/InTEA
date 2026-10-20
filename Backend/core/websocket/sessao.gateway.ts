@@ -6,6 +6,8 @@ import {
   EventoSessaoInterrompida
 } from './sessao.reconnection.js';
 import { SocketRateLimiter } from './socket.limiter.js';
+import { SessaoModel, STATUS_SESSAO } from '../../api/sessao/models/sessao.model.js';
+import { AuditoriaService } from '../../api/auditoria/services/auditoria.service.js';
 
 export interface EntrarSessaoPayload {
   session_token: string;
@@ -20,7 +22,8 @@ export interface DispositivoConectadoEvento {
   modo_sessao?: string;
   dispositivo_info?: Record<string, unknown> | null;
   conectado_em: string;
-  [key: string]: unknown;
+  jogo?: Record<string, unknown> | null;
+  contexto_dda?: Record<string, unknown> | null;
 }
 
 export interface DispositivoDesconectadoEvento {
@@ -222,71 +225,108 @@ export class SessaoGateway {
    */
   private configurarNamespace(): void {
     this.sessaoNamespace.on('connection', (socket: Socket) => {
-      // 0. Middleware de contenção de flood e rate limiting (Card 2.4 - RNF03)
-      socket.use(([event, ...args], next) => {
-        if (event === 'sessao:telemetria' || event === 'telemetria') {
-          const limite = this.rateLimiter.verificarLimite(socket.id, event);
-          if (!limite.permitido) {
-            socket.emit('erro_rate_limit', {
+      this.configurarSocket(socket);
+    });
+    if (this.io && typeof (this.io as { on?: unknown }).on === 'function') {
+      this.io.on('connection', (socket: Socket) => {
+        this.configurarSocket(socket);
+      });
+    }
+  }
+
+  /**
+   * Emite evento com segurança no namespace raiz '/' com verificação defensiva de suporte a .to().
+   */
+  private emitirGlobal(sala: string, event: string, ...args: unknown[]): void {
+    if (this.io && typeof (this.io as { to?: unknown }).to === 'function') {
+      this.io.to(sala).emit(event, ...args);
+    }
+  }
+
+  private configurarSocket(socket: Socket): void {
+    // 0. Middleware de contenção de flood e rate limiting (Card 2.4 - RNF03)
+    socket.use(([event, ...args], next) => {
+      if (event === 'sessao:telemetria' || event === 'telemetria') {
+        const limite = this.rateLimiter.verificarLimite(socket.id, event);
+        if (!limite.permitido) {
+          socket.emit('erro_rate_limit', {
+            sucesso: false,
+            error: limite.mensagem,
+            codigo: limite.codigo,
+            limite_por_segundo: limite.limiteMaximo,
+            tempo_restante_ms: limite.tempoRestanteMs
+          });
+
+          const ultimoArg = args[args.length - 1];
+          if (typeof ultimoArg === 'function') {
+            ultimoArg({
               sucesso: false,
-              error: limite.mensagem,
-              codigo: limite.codigo,
-              limite_por_segundo: limite.limiteMaximo,
-              tempo_restante_ms: limite.tempoRestanteMs
+              erro: limite.mensagem,
+              codigo: limite.codigo
             });
-
-            const ultimoArg = args[args.length - 1];
-            if (typeof ultimoArg === 'function') {
-              ultimoArg({
-                sucesso: false,
-                erro: limite.mensagem,
-                codigo: limite.codigo
-              });
-            }
-            return;
           }
+          return;
         }
-        next();
-      });
+      }
+      next();
+    });
 
-      // 1. Evento para vincular o socket à sala da sessão (terapeuta ou jogo)
-      socket.on('entrar_sessao', (payload: EntrarSessaoPayload) => {
-        this.lidarEntradaSessao(socket, payload);
-      });
+    // 1. Evento para vincular o socket à sala da sessão (suporta entrar_sessao e entrar_sala)
+    type EntradaPayload = {
+      session_token?: string;
+      sessionToken?: string;
+      role?: 'terapeuta' | 'dispositivo' | string;
+      dispositivo_info?: Record<string, unknown>;
+      dispositivoInfo?: Record<string, unknown>;
+    };
 
-      // 2. Heartbeat e monitoramento de presença ativo (Card 2.3 - ping/pong)
-      socket.on('ping_presenca', (payload?: PingPresencaPayload) => {
-        this.lidarPingPresenca(socket, payload);
+    const handlerEntrada = (payload: EntradaPayload) => {
+      const token = payload?.session_token || payload?.sessionToken || '';
+      this.lidarEntradaSessao(socket, {
+        session_token: token,
+        role: payload?.role,
+        dispositivo_info: payload?.dispositivo_info || payload?.dispositivoInfo,
       });
+    };
 
-      // 3. Finalização de sessão solicitada pela interface web do terapeuta
-      socket.on('finalizar_sessao', (dados?: { session_token?: string }) => {
-        const token = dados?.session_token || (socket.data.sessionToken as string | undefined);
-        if (token) {
-          this.notificarSessaoFinalizada(token);
-        }
-      });
+    socket.on('entrar_sessao', handlerEntrada);
+    socket.on('entrar_sala', handlerEntrada);
 
-      // 4. Ingestão e Roteamento de Telemetria Contínua (Card 2.1 - sessao:telemetria)
-      socket.on('sessao:telemetria', (payload: unknown, ack?: (resposta: unknown) => void) => {
-        this.lidarTelemetria(socket, payload, ack);
-      });
-      socket.on('telemetria', (payload: unknown, ack?: (resposta: unknown) => void) => {
-        this.lidarTelemetria(socket, payload, ack);
-      });
+    // 2. Heartbeat e monitoramento de presença ativo (Card 2.3 - ping/pong)
+    socket.on('ping_presenca', (payload?: PingPresencaPayload) => {
+      this.lidarPingPresenca(socket, payload);
+    });
 
-      // 5. Canal de Comandos do Terapeuta para o Jogo Remoto (Card 2.2 - sessao:comando)
-      socket.on('sessao:comando', (payload: unknown, ack?: (res: RespostaComandoAck) => void) => {
-        this.lidarComandoClinico(socket, payload, ack);
-      });
-      socket.on('comando_jogo', (payload: unknown, ack?: (res: RespostaComandoAck) => void) => {
-        this.lidarComandoClinico(socket, payload, ack);
-      });
+    // 3. Finalização de sessão solicitada pela interface web do terapeuta
+    socket.on('finalizar_sessao', (dados?: { session_token?: string; sessionToken?: string }) => {
+      const token = dados?.session_token || dados?.sessionToken || (socket.data.sessionToken as string | undefined);
+      if (token) {
+        this.notificarSessaoFinalizada(token);
+      }
+    });
 
-      // 6. Detecção de perda de conexão / fechamento de janela
-      socket.on('disconnect', (motivo: string) => {
-        this.lidarDesconexao(socket, motivo);
-      });
+    // 4. Ingestão e Roteamento de Telemetria Contínua (Card 2.1 - sessao:telemetria)
+    socket.on('sessao:telemetria', (payload: unknown, ack?: (resposta: unknown) => void) => {
+      this.lidarTelemetria(socket, payload, ack);
+    });
+    socket.on('telemetria', (payload: unknown, ack?: (resposta: unknown) => void) => {
+      this.lidarTelemetria(socket, payload, ack);
+    });
+
+    // 5. Canal de Comandos do Terapeuta para o Jogo Remoto (Card 2.2 - sessao:comando)
+    socket.on('sessao:comando', (payload: unknown, ack?: (res: RespostaComandoAck) => void) => {
+      this.lidarComandoClinico(socket, payload, ack);
+    });
+    socket.on('comando_jogo', (payload: unknown, ack?: (res: RespostaComandoAck) => void) => {
+      this.lidarComandoClinico(socket, payload, ack);
+    });
+    socket.on('enviar_comando', (payload: unknown, ack?: (res: RespostaComandoAck) => void) => {
+      this.lidarComandoClinico(socket, payload, ack);
+    });
+
+    // 6. Detecção de perda de conexão / fechamento de janela
+    socket.on('disconnect', (motivo: string) => {
+      this.lidarDesconexao(socket, motivo);
     });
   }
 
@@ -343,6 +383,7 @@ export class SessaoGateway {
         };
 
         this.sessaoNamespace.to(sala).emit('dispositivo_reconectado', eventoReconexao);
+        this.emitirGlobal(sala, 'dispositivo_reconectado', eventoReconexao);
       } else {
         // Primeira conexão do dispositivo
         this.presencas.set(tokenNormalizado, {
@@ -358,10 +399,11 @@ export class SessaoGateway {
           session_token: tokenNormalizado,
           status_sessao: 'em_andamento',
           dispositivo_info: payload.dispositivo_info || null,
-          conectado_em: new Date(agora).toISOString()
+          conectado_em: new Date(agora).toISOString(),
         };
 
         this.sessaoNamespace.to(sala).emit('dispositivo_conectado', evento);
+        this.emitirGlobal(sala, 'dispositivo_conectado', evento);
       }
     }
   }
@@ -429,6 +471,8 @@ export class SessaoGateway {
 
       this.sessaoNamespace.to(sala).emit('dispositivo_desconectado', evento);
       this.sessaoNamespace.to(sala).emit('sessao:alerta_conexao', alerta);
+      this.emitirGlobal(sala, 'dispositivo_desconectado', evento);
+      this.emitirGlobal(sala, 'sessao:alerta_conexao', alerta);
     }
 
     // Limpa rastreio de taxa do socket desconectado (Card 2.4)
@@ -456,6 +500,7 @@ export class SessaoGateway {
     const tokenNormalizado = this.normalizarToken(sessionToken);
     const sala = `session_${tokenNormalizado}`;
     this.sessaoNamespace.to(sala).emit('dispositivo_conectado', dados);
+    this.emitirGlobal(sala, 'dispositivo_conectado', dados);
   }
 
   /**
@@ -483,6 +528,7 @@ export class SessaoGateway {
       ultimo_heartbeat: presenca?.ultimo_heartbeat
     };
     this.sessaoNamespace.to(sala).emit('dispositivo_desconectado', evento);
+    this.emitirGlobal(sala, 'dispositivo_desconectado', evento);
   }
 
   /**
@@ -493,11 +539,13 @@ export class SessaoGateway {
   notificarSessaoFinalizada(sessionToken: string): void {
     const tokenNormalizado = this.normalizarToken(sessionToken);
     const sala = `session_${tokenNormalizado}`;
-    this.sessaoNamespace.to(sala).emit('sessao_finalizada', {
+    const evento = {
       session_token: tokenNormalizado,
       status_sessao: 'finalizada',
       finalizado_em: new Date().toISOString()
-    });
+    };
+    this.sessaoNamespace.to(sala).emit('sessao_finalizada', evento);
+    this.emitirGlobal(sala, 'sessao_finalizada', evento);
   }
 
   /**
@@ -650,6 +698,15 @@ export class SessaoGateway {
     socket.to(sala).emit('sessao:telemetria', evento);
     socket.to(sala).emit('telemetria_recebida', evento);
 
+    // Emite também no outro namespace para que ouvintes em / ou /sessao recebam
+    if (socket.nsp?.name === '/sessao') {
+      this.emitirGlobal(sala, 'sessao:telemetria', evento);
+      this.emitirGlobal(sala, 'telemetria_recebida', evento);
+    } else {
+      this.sessaoNamespace.to(sala).emit('sessao:telemetria', evento);
+      this.sessaoNamespace.to(sala).emit('telemetria_recebida', evento);
+    }
+
     // Retorna confirmação (ack) imediata ao transmissor se solicitada
     if (typeof ack === 'function') {
       ack({ sucesso: true, timestamp: evento.recebido_em });
@@ -678,6 +735,8 @@ export class SessaoGateway {
     const sala = `session_${tokenNormalizado}`;
     this.sessaoNamespace.to(sala).emit('sessao:telemetria', evento);
     this.sessaoNamespace.to(sala).emit('telemetria_recebida', evento);
+    this.io.to(sala).emit('sessao:telemetria', evento);
+    this.io.to(sala).emit('telemetria_recebida', evento);
   }
 
   /**
@@ -839,6 +898,14 @@ export class SessaoGateway {
     socket.to(sala).emit('sessao:comando', comando);
     socket.to(sala).emit('comando_jogo', comando);
 
+    if (socket.nsp?.name === '/sessao') {
+      this.emitirGlobal(sala, 'sessao:comando', comando);
+      this.emitirGlobal(sala, 'comando_jogo', comando);
+    } else {
+      this.sessaoNamespace.to(sala).emit('sessao:comando', comando);
+      this.sessaoNamespace.to(sala).emit('comando_jogo', comando);
+    }
+
     // Retorna ack de confirmação imediata à interface web do terapeuta
     if (typeof ack === 'function') {
       ack({
@@ -857,6 +924,8 @@ export class SessaoGateway {
     const sala = `session_${tokenNormalizado}`;
     this.sessaoNamespace.to(sala).emit('sessao:comando', comando);
     this.sessaoNamespace.to(sala).emit('comando_jogo', comando);
+    this.emitirGlobal(sala, 'sessao:comando', comando);
+    this.emitirGlobal(sala, 'comando_jogo', comando);
   }
 
   /**
@@ -875,8 +944,9 @@ export class SessaoGateway {
 
   /**
    * Notifica a sala da sessão que a tolerância expirou e a sessão foi interrompida (Card 2.3).
+   * Persiste o status 'interrompida_por_queda' no banco de dados e registra a trilha de auditoria.
    */
-  notificarSessaoInterrompidaPorQueda(sessionToken: string, evento: EventoSessaoInterrompida): void {
+  async notificarSessaoInterrompidaPorQueda(sessionToken: string, evento: EventoSessaoInterrompida): Promise<void> {
     const tokenNormalizado = this.normalizarToken(sessionToken);
     const sala = `session_${tokenNormalizado}`;
     const presenca = this.presencas.get(tokenNormalizado);
@@ -886,6 +956,29 @@ export class SessaoGateway {
     }
     this.sessaoNamespace.to(sala).emit('sessao_interrompida', evento);
     this.sessaoNamespace.to(sala).emit('sessao:interrompida', evento);
+    this.emitirGlobal(sala, 'sessao_interrompida', evento);
+    this.emitirGlobal(sala, 'sessao:interrompida', evento);
+
+    try {
+      const sessao = await SessaoModel.buscarPorToken(tokenNormalizado);
+      if (sessao) {
+        await SessaoModel.atualizarStatus(sessao.id, STATUS_SESSAO.INTERROMPIDA_POR_QUEDA);
+        await AuditoriaService.registrarSilencioso({
+          sessao_id: sessao.id,
+          terapeuta_id: sessao.terapeuta_id,
+          origem: 'dispositivo_jogo',
+          acao: 'interrompida_por_queda',
+          detalhes_json: {
+            session_token: tokenNormalizado,
+            tempo_offline_total_ms: evento.tempo_offline_total_ms,
+            motivo: evento.motivo,
+            interrompida_em: evento.interrompida_em,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('[SessaoGateway] Falha ao persistir status de interrupção por queda:', err);
+    }
   }
 
   /**
@@ -896,8 +989,12 @@ export class SessaoGateway {
   async obterSocketsNaSala(sessionToken: string): Promise<string[]> {
     const tokenNormalizado = this.normalizarToken(sessionToken);
     const sala = `session_${tokenNormalizado}`;
-    const sockets = await this.sessaoNamespace.in(sala).fetchSockets();
-    return sockets.map((s) => s.id);
+    const socketsSessao = await this.sessaoNamespace.in(sala).fetchSockets();
+    const socketsIo = (this.io && typeof (this.io as { in?: unknown }).in === 'function')
+      ? await this.io.in(sala).fetchSockets()
+      : [];
+    const allSockets = [...socketsSessao, ...socketsIo];
+    return Array.from(new Set(allSockets.map((s) => s.id)));
   }
 
   /**

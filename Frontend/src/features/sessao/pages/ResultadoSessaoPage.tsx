@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSessionStore } from "../store/sessionStore";
+import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import {
   sessaoService,
   type DadosResultadoSessao,
-} from "../services/sessaoService";
-import { BlocoAnotacoesClinicas } from "../components/resultado/BlocoAnotacoesClinicas";
+} from "@/features/sessao/services/sessaoService";
+import { BlocoAnotacoesClinicas } from "@/features/sessao/components/resultado/BlocoAnotacoesClinicas";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -615,13 +615,13 @@ export function ResultadoSessaoPage({
                 <circle cx="480" cy="40" r="4" fill="hsl(var(--primary))" />
 
                 {/* Marcadores DDA (Intervenções da IA) */}
-                <g>
+                <g className="text-amber-500">
                   <circle
                     cx="270"
                     cy="60"
                     r="8"
                     fill="none"
-                    stroke="#f59e0b"
+                    stroke="currentColor"
                     strokeWidth="2"
                     strokeDasharray="2 2"
                   />
@@ -630,7 +630,7 @@ export function ResultadoSessaoPage({
                     y="45"
                     fontSize="9"
                     textAnchor="middle"
-                    fill="#f59e0b"
+                    fill="currentColor"
                     fontWeight="bold"
                   >
                     DDA Modulado
@@ -746,3 +746,5 @@ export function ResultadoSessaoPage({
     </main>
   );
 }
+
+export default ResultadoSessaoPage;

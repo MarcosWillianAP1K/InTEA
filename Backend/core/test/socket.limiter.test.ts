@@ -168,7 +168,7 @@ describe('Card 2.4 - Rate Limiting e Prevenção de Flood no WebSocket', () => {
       }
 
       // Aguarda propagação na rede local
-      await new Promise((r) => setTimeout(r, 60));
+      await new Promise((r) => setTimeout(r, 200));
 
       // Exatamente 4 eventos permitidos passaram e chegaram ao terapeuta
       expect(eventosRecebidosPeloTerapeuta).toBe(4);

@@ -48,7 +48,7 @@ export function ModalFinalizarSessao({
     <Dialog open={aberto} onOpenChange={(open) => !open && !isSubmitting && onCancelar()}>
       <DialogContent
         data-testid="modal-finalizar-sessao"
-        className="sm:max-w-[500px] p-0 gap-0 overflow-hidden rounded-2xl bg-card text-card-foreground border border-border shadow-2xl"
+        className="sm:max-w-125 p-0 gap-0 overflow-hidden rounded-2xl bg-card text-card-foreground border border-border shadow-2xl"
       >
         <div className="p-6 pb-4">
           <DialogHeader className="gap-1.5 text-left">
@@ -67,7 +67,7 @@ export function ModalFinalizarSessao({
             {/* Card de resumo de tempo */}
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/40 border border-border">
               <span className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                <Timer className="h-4 w-4 text-[#0b3294] dark:text-blue-400" />
+                <Timer className="h-4 w-4 text-primary" />
                 Duração total da intervenção:
               </span>
               <span
@@ -94,7 +94,7 @@ export function ModalFinalizarSessao({
                 value={anotacoes}
                 onChange={(e) => setAnotacoes(e.target.value)}
                 placeholder="Ex: Paciente demonstrou boa resposta aos estímulos visuais, porém apresentou leve desatenção aos 15 minutos..."
-                className="w-full text-xs rounded-xl border border-border bg-background p-3 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-[#0b3294] transition-all resize-none"
+                className="w-full text-xs rounded-xl border border-border bg-background p-3 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary transition-all resize-none"
               />
             </div>
           </div>
@@ -136,3 +136,5 @@ export function ModalFinalizarSessao({
     </Dialog>
   );
 }
+
+export default ModalFinalizarSessao;

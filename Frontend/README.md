@@ -1,6 +1,6 @@
-# InTEA — Frontend SPA
+# InTEA — Frontend SPA Clínica
 
-Interface do ecossistema InTEA desenvolvida com **React 19**, **Vite**, **TypeScript** e **Tailwind CSS v4**, estruturada em arquitetura modular por feature com estado global via Zustand e consumo da API RESTful do Backend.
+Interface web do ecossistema InTEA desenvolvida com **React 19**, **Vite**, **TypeScript**, **Tailwind CSS v4**, **Zustand** e **Socket.IO Client**, estruturada em arquitetura modular orientada a features (**Feature-Driven Architecture** em `src/features/`).
 
 ---
 
@@ -9,14 +9,14 @@ Interface do ecossistema InTEA desenvolvida com **React 19**, **Vite**, **TypeSc
 | Tecnologia | Versão | Finalidade |
 | :--- | :--- | :--- |
 | React | ^19.x | UI Framework (SPA) |
-| TypeScript | ~5.9.x | Tipagem estrita em toda a aplicação |
-| Vite | ^7.x | Build tool e servidor de desenvolvimento |
-| Tailwind CSS | ^4.x | Estilização utilitária (sem CSS por componente) |
-| React Router DOM | ^7.x | Roteamento client-side (SPA) |
-| Zustand | ^5.x | Gerenciamento de estado global por feature |
-| Supabase JS | ^2.x | Autenticação e Storage direto no cliente |
-| Radix UI + shadcn | — | Componentes acessíveis e primitivos UI |
-| Vitest | ^5.x | Testes unitários de componentes e hooks |
+| TypeScript | ~5.9.x | Tipagem estrita em toda a aplicação (`strict: true`, zero `any`) |
+| Vite | ^7.x | Bundler, servidor de desenvolvimento e proxy reverso local |
+| Tailwind CSS | ^4.x | Estilização utilitária responsiva com `@theme inline` |
+| React Router DOM | ^7.x | Roteamento declarativo SPA (`ProtectedRoute`, `SidebarLayout`, `FocusLayout`) |
+| Zustand | ^5.x | Gerenciamento de estado global em memória e `localStorage` (`persist`) |
+| Socket.IO Client | ^4.x | Streaming de telemetria em tempo real e comandos DDA (`SessionSocketManager`) |
+| Radix UI + shadcn | ^1.x | 17 componentes primitivos acessíveis (`Dialog`, `Select`, `Table`, `Sidebar`, etc.) |
+| Vitest | ^4.x | Testes unitários e de integração (34 suítes / 285 testes) |
 
 ---
 
@@ -25,8 +25,8 @@ Interface do ecossistema InTEA desenvolvida com **React 19**, **Vite**, **TypeSc
 ### Pré-requisitos
 
 - Node.js (versão 20 LTS ou superior)
-- npm ou pnpm
-- Backend InTEA rodando em `http://localhost:3000` (veja [`../Backend/README.md`](../Backend/README.md))
+- npm
+- Backend InTEA em execução em `http://localhost:3000` (veja [`../Backend/README.md`](../Backend/README.md))
 
 ### Instalação de Dependências
 
@@ -34,129 +34,130 @@ Interface do ecossistema InTEA desenvolvida com **React 19**, **Vite**, **TypeSc
 npm install
 ```
 
-### Configuração de Variáveis de Ambiente
+### Configuração de Variáveis de Ambiente (`Frontend/.env`)
 
-Crie um arquivo `.env` na raiz do diretório `Frontend/` baseado no `.env.example`:
+Crie um arquivo `.env` na raiz de `Frontend/` baseado no `.env.example`:
 
 ```env
 VITE_API_URL=http://localhost:3000/api
+VITE_WS_URL=http://localhost:3000
+VITE_USE_MOCK_DATA=false
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-anon-key-publica
 ```
 
-### Executar em Desenvolvimento
+> **Nota sobre `VITE_USE_MOCK_DATA`:**
+> - `false`: consome diretamente a API REST e o WebSocket reais do Backend.
+> - `true`: utiliza as fixtures determinísticas locais (`bdmock.ts`) via `withFallback()`, ideal para desenvolvimento desconectado e suítes de testes.
+
+### Comandos Disponíveis
 
 ```bash
+# Servidor de desenvolvimento (http://localhost:5173)
 npm run dev
-```
 
-A aplicação iniciará em `http://localhost:5173` e abrirá o navegador automaticamente.
-
-### Executar Testes Automatizados
-
-```bash
-npm test
-```
-
-### Verificação de Tipagem (sem emitir build)
-
-```bash
+# Verificação estrita de tipos TypeScript (tsc --noEmit)
 npm run typecheck
-```
 
-### Build de Produção
+# Suíte de testes automatizados (Vitest — 34 suítes / 285 testes)
+npm test
 
-```bash
+# Build de produção
 npm run build
 ```
 
 ---
 
-## Estrutura de Diretórios
+## Arquitetura de Diretórios (`Frontend/src/`)
 
 ```text
 Frontend/src/
-├── core/                       # Configuração global da aplicação
-├── features/                   # Módulos por domínio de negócio
-│   ├── auth/                   # Autenticação e sessão
-│   ├── dashboard/              # Telas e componentes de dashboard
-│   ├── jogos/                  # Módulo de biblioteca de jogos terapêuticos
-│   ├── patients/               # Módulo de pacientes (lista, criação, perfil)
-│   └── settings/               # Preferências e configurações do terapeuta
-├── layout/                     # Estrutura de layout da aplicação (sidebar, header)
-├── routes/                     # Centralização de roteamento
-├── shared/                     # Recursos reutilizáveis entre features
-│   ├── components/ui/          # 17 componentes Radix / shadcn primitivos
-│   ├── hooks/                  # use-mobile.ts e hooks transversais
-│   └── utils/                  # request.ts (HttpClient resiliente)
-├── assets/                     # SVGs e imagens do sistema
-├── styles/                     # CSS global e Tailwind v4
-├── App.tsx                     # Ponto de montagem com ThemeProvider e Routes
-└── main.tsx                    # Ponto de entrada do React
+├── main.tsx                              # Ponto de entrada do React 19
+├── App.tsx                               # Montagem global (ThemeProvider, BrowserRouter, AppRoutes, Toaster)
+├── routes/
+│   └── index.tsx                         # Rotas públicas/privadas, ProtectedRoute e associação de Layouts
+├── layout/
+│   ├── SidebarLayout.tsx                 # Layout administrativo com AppSidebar (/painel, /pacientes, /jogos)
+│   ├── FocusLayout.tsx                   # Layout imersivo em tela cheia para sessões clínicas (RNF07)
+│   └── components/                       # app-sidebar.tsx, nav-header.tsx, nav-main.tsx, nav-user.tsx
+├── core/                                 # Infraestrutura de comunicação HTTP e WebSocket
+│   ├── api/
+│   │   ├── endpoints.ts                  # Constantes tipadas de todas as rotas REST (/auth, /paciente, /sessao, etc.)
+│   │   └── http-client.ts                # Cliente HTTP com injeção automática de Bearer JWT e refresh de 401
+│   └── web.socket.ts                     # Singleton SessionSocketManager (Socket.IO Client) e hooks reativos
+├── features/                             # ★ MÓDULOS VERTICAIS POR DOMÍNIO DE NEGÓCIO
+│   ├── autenticacao/                     # Autenticação, registro e sessão do terapeuta
+│   │   ├── pages/                        # LoginPage.tsx
+│   │   ├── hooks/                        # useAuth.ts
+│   │   ├── services/                     # auth.service.ts
+│   │   ├── store/                        # authStore.ts
+│   │   └── types/                        # auth.types.ts e bdmock.ts
+│   ├── terapeuta/                        # Gestão do perfil do terapeuta e equipe multidisciplinar
+│   │   ├── services/                     # terapeuta.service.ts
+│   │   └── types/                        # terapeuta.types.ts e bdmock.ts
+│   ├── paciente/                         # Gestão cadastral e prontuários clínicos
+│   │   ├── pages/                        # PacientesPage.tsx
+│   │   ├── components/                   # ListaPacientes.tsx, CardPacienteGrid.tsx, DialogFormularioPaciente.tsx, DialogDetalhesPaciente.tsx
+│   │   ├── services/                     # paciente.service.ts
+│   │   ├── store/                        # paciente.store.ts
+│   │   └── types/                        # paciente.types.ts e bdmock.ts
+│   ├── jogos/                            # Catálogo e biblioteca de jogos terapêuticos
+│   │   ├── pages/                        # BibliotecaJogosPage.tsx
+│   │   ├── components/                   # JogoCard.tsx, JogosFiltros.tsx
+│   │   ├── services/                     # jogos.service.ts
+│   │   └── types/                        # jogos.types.ts e bdmock.ts
+│   ├── sessao/                           # Orquestração de sessão, pareamento remoto, cockpit e resultados
+│   │   ├── pages/                        # CockpitSessaoPage.tsx, ResultadoSessaoPage.tsx
+│   │   ├── components/                   # ModalPreSessao.tsx, ModalFinalizarSessao.tsx, ControlesClinicos.tsx, telemetria/, resultado/
+│   │   ├── hooks/                        # useLiveTelemetry.ts, useSessionPersistence.ts, useClinicalTimer.ts, useSessionSync.ts
+│   │   ├── services/                     # sessao.service.ts
+│   │   ├── store/                        # sessionStore.ts
+│   │   └── types/                        # sessao.types.ts e bdmock.ts
+│   ├── anotacao/                         # Registro e histórico de anotações clínicas
+│   │   ├── services/                     # anotacao.service.ts
+│   │   └── types/                        # anotacao.types.ts e bdmock.ts
+│   ├── painel/                           # Dashboard clínico, KPIs, alertas de IA e início rápido
+│   │   ├── pages/                        # PainelPage.tsx
+│   │   ├── services/                     # dashboard.service.ts
+│   │   └── types/                        # dashboard.types.ts e bdmock.ts
+│   └── configuracoes/                    # Preferências visuais, tema e privacidade
+│       ├── pages/                        # settingsPage.tsx
+│       ├── sections/                     # appearanceSetting.tsx
+│       ├── services/                     # settings.service.ts
+│       ├── store/                        # settingsStore.ts
+│       └── types/                        # settings.types.ts e bdmock.ts
+└── shared/                               # Recursos compartilhados entre todas as features
+    ├── components/ui/                    # 17 componentes primitivos Radix UI / shadcn
+    ├── hooks/                            # use-mobile.ts
+    ├── lib/                              # utils.ts (cn()) e mock-adapter.ts (withFallback / shouldUseMock)
+    ├── providers/                        # theme-provider.tsx
+    ├── types/                            # api.types.ts e bdmock.ts global
+    └── utils/                            # request.ts (motor base do HttpClient resiliente)
 ```
 
 ---
 
-## Convenções e Regras de Desenvolvimento
+## Como Funcionam as Camadas Internas
 
-### Componentes
-
-- **Exportação nomeada** em todos os componentes (não `export default`).
-- Props sempre tipadas com `interface`.
-- Estilização **exclusivamente** via Tailwind CSS — sem `style={{}}` inline nem arquivos `.css` por componente.
-- Componentes reutilizáveis de UI ficam em `shared/components/ui/`.
-- Componentes específicos de uma feature ficam em `features/{feature}/components/`.
-
-### Services (Chamadas à API)
-
-- Usar `shared/utils/request.ts` (`createHttpClient`) para chamadas à API com suporte a JWT, refresh, CSRF e retry.
-- Services são **objetos com métodos**, não classes.
-- Nunca colocar lógica de `fetch` diretamente em componentes ou hooks — encapsule no service.
-
-### State Management (Zustand)
-
-- Zustand para estado **global** (dados compartilhados entre páginas/features).
-- `useState` do React para estado **local** (visibilidade de modal, form controlado).
-- Nunca colocar lógica de fetch dentro da store — use hooks que chamam o service e atualizam a store.
-
-### Hooks
-
-- Hooks ficam em `features/{feature}/hooks/` ou `shared/hooks/`.
-- Todo hook de dados deve gerenciar os estados `isLoading` e `error`.
+1. **Páginas Mestre (`features/*/pages/`) e Componentes (`features/*/components/`):**
+   - As páginas orquestram a leitura de parâmetros de rota (`useParams`), acionamento de Custom Hooks, consumo das Stores do Zustand e chamadas aos Services, repassando dados via *props* para os componentes e modais de cada feature.
+2. **Services (`features/*/services/`):**
+   - Objetos com métodos assíncronos em `camelCase` que utilizam `http` (`core/api/http-client.ts`) e `ENDPOINTS` (`core/api/endpoints.ts`).
+   - Normalizam na fronteira do cliente eventuais diferenças de formato da API (`snake_case` $\rightarrow$ `camelCase`) sem exigir chaves duplicadas no Backend.
+3. **Stores Globais com Zustand (`features/*/store/`):**
+   - `useAuthStore`: sessão autenticada do terapeuta e tokens JWT persistidos em `localStorage`.
+   - `useSessionStore`: máquina de estados da sessão clínica (`ocioso` $\rightarrow$ `configurando` $\rightarrow$ `aguardando_dispositivo` $\rightarrow$ `em_andamento` $\rightarrow$ `pausado` $\rightarrow$ `finalizado`), parâmetros DDA e telemetria.
+   - `usePacienteStore`: estado reativo dos pacientes da clínica sincronizado com `pacienteService`.
+   - `useSettingStore`: preferências de tema e idioma persistidas em `localStorage`.
+4. **Custom Hooks (`features/*/hooks/`):**
+   - `useSessionPersistence`: salva e hidrata automaticamente a sessão ativa no `sessionStorage` contra recarregamentos involuntários (`F5`) e ativa proteção `beforeunload`.
+   - `useLiveTelemetry`: processa o streaming de eventos de telemetria em tempo real sem causar re-renderizações desnecessárias na árvore inteira.
+   - `useClinicalTimer`: cronômetro clínico sincronizado com pausas e retomadas da intervenção.
 
 ---
 
-## Features Desenvolvidas (Sprint 7)
+## Documentação Complementar
 
-### Pacientes (`features/patients/`)
-
-Módulo clínico completo para gestão do prontuário:
-
-- Tela de seleção de pacientes com cards e listagem com busca e paginação.
-- Formulário modal com etapas completas de cadastro com dados clínicos e responsáveis.
-- Integração com `GET`, `POST`, `PUT`, `DELETE /api/paciente` com tratamento de regras clínicas.
-
-### Biblioteca de Jogos (`features/jogos/`)
-
-Catálogo visual de jogos terapêuticos:
-
-- Grade responsiva de cards com nome, versão, descrição clínica e badge de status de instalação.
-- Filtro por objetivo clínico (`foco_atencional`, `regulacao_emocional`, `desenvolvimento_linguagem`).
-- Botões de ação **"Modo Livre"** (RF11) e **"Iniciar Sessão"** (fluxo clínico com paciente).
-- Integração com `GET /api/jogos` consumindo manifesto e métricas do Backend.
-
-### Componentes Compartilhados (`shared/components/ui/`)
-
-Biblioteca de componentes base padronizados:
-
-`avatar`, `badge`, `breadcrumb`, `button`, `card`, `collapsible`, `dialog`, `dropdown-menu`, `input`, `label`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `table`, `tooltip`.
-
----
-
-## Documentação da API
-
-As rotas consumidas pelo Frontend estão documentadas em:
-
-**[../docs/api-pacientes-jogos.md](../docs/api-pacientes-jogos.md)** — Especificação completa com exemplos de Request Body, Query Params e todos os códigos de status HTTP.
-
-**`http://localhost:3000/api/docs`** — Swagger UI interativo (com o Backend em execução).
+- **[Arquitetura Completa do Ecossistema (`../docs/architecture.md`)](../docs/architecture.md)**
+- **[Especificação da API RESTful (`../docs/api-pacientes-jogos.md`)](../docs/api-pacientes-jogos.md)**
+- **`http://localhost:3000/api/docs`** — Swagger UI interativo (com o Backend em execução).

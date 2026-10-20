@@ -2,7 +2,6 @@ import { Button } from "@/shared/components/ui/button";
 import {
   Play,
   Pause,
-  Sliders,
   Flag,
   Brain,
 } from "lucide-react";
@@ -79,7 +78,7 @@ export function ControlesClinicos({
       {/* Grupo 2: Modulação de Dificuldade DDA */}
       <div className="flex items-center gap-3 border-y sm:border-y-0 sm:border-x border-border py-2 sm:py-0 sm:px-6">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-          <Brain className="h-4 w-4 text-[#0b3294] dark:text-blue-400" />
+          <Brain className="h-4 w-4 text-primary" />
           <span>Dificuldade DDA:</span>
         </div>
 
@@ -95,7 +94,7 @@ export function ControlesClinicos({
                 onClick={() => onAjustarDda(nivel)}
                 className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
                   isAtivo
-                    ? "bg-[#0b3294] text-white shadow-xs scale-105"
+                    ? "bg-primary text-primary-foreground shadow-xs scale-105"
                     : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >

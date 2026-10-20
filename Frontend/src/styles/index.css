@@ -1,37 +1,52 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.875rem;
+  --shadow-2xs: 0 1px rgb(0 0 0 / 0.05);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Tipografia */
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'Liberation Mono', monospace;
+
+  /* 1. Primárias e Marca */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-light: var(--primary-light);
+  --color-card-patient: var(--card-patient);
+
+  /* 2. Superfícies e Fundos */
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background-auth: var(--background-auth);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-surface-highlight: var(--surface-highlight);
+  --color-surface-pairing: var(--surface-pairing);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+
+  /* Sidebar */
   --color-sidebar: var(--sidebar);
+  --color-sidebar-bg: var(--sidebar-bg);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
@@ -39,75 +54,184 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* 3. Bordas e Controles */
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-neutral: var(--border-neutral);
+  --color-border-pairing: var(--border-pairing);
+  --color-input: var(--input);
+  --color-input-bg: var(--input-bg);
+  --color-ring: var(--ring);
+
+  /* 4. Textos */
+  --color-foreground: var(--foreground);
+  --color-foreground-heading: var(--foreground-heading);
+  --color-placeholder: var(--placeholder);
+
+  /* 5. Status Clínico e Badges */
+  --color-destructive: var(--destructive);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-success-text: var(--status-success-text);
+  --color-status-success-icon: var(--status-success-icon);
+  --color-status-danger-bg: var(--status-danger-bg);
+  --color-status-danger-text: var(--status-danger-text);
+  --color-status-neutral-bg: var(--status-neutral-bg);
+  --color-status-neutral-text: var(--status-neutral-text);
+  --color-status-info: var(--status-info);
+
+  /* Gráficos / Charts */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* 1. Primárias e Marca */
+  --primary: #00288E;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #001F70;
+  --primary-active: #2170E4;
+  --primary-dark: #1E40AF;
+  --primary-light: #D3E4FE;
+  --card-patient: #D3E4FE;
+
+  /* 2. Superfícies e Fundos */
+  --background: #F8F9FF;
+  --background-auth: #F8FAFC;
+  --card: #FFFFFF;
+  --card-foreground: #444653;
+  --popover: #FFFFFF;
+  --popover-foreground: #444653;
+  --surface: #FEFCFF;
+  --surface-alt: #EFF4FF;
+  --surface-highlight: #E5EEFF;
+  --surface-pairing: #EAF1FF;
+  --input-bg: #F1F5F9;
+  --input: #F1F5F9;
+  --muted: #F1F5F9;
+  --muted-foreground: #757684;
+  --secondary: #EFF4FF;
+  --secondary-foreground: #00288E;
+  --accent: #E5EEFF;
+  --accent-foreground: #00288E;
+
+  /* Sidebar */
+  --sidebar: #EFF4FF;
+  --sidebar-bg: #EFF4FF;
+  --sidebar-foreground: #444653;
+  --sidebar-primary: #00288E;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E5EEFF;
+  --sidebar-accent-foreground: #00288E;
+  --sidebar-border: #DCE9FF;
+  --sidebar-ring: #2170E4;
+
+  /* 3. Bordas */
+  --border: #DCE9FF;
+  --border-subtle: #DCE9FF;
+  --border-neutral: #C4C5D5;
+  --border-pairing: #ADC6FF;
+  --ring: #2170E4;
+
+  /* 4. Textos */
+  --foreground: #444653;
+  --foreground-heading: #0B1C30;
+  --placeholder: #6B7280;
+
+  /* 5. Status Clínico e Badges */
+  --destructive: #BA0003;
+  --status-success-bg: #6FFBBE;
+  --status-success-text: #002113;
+  --status-success-icon: #003D27;
+  --status-danger-bg: #BA1A1A;
+  --status-danger-text: #390000;
+  --status-neutral-bg: #E1E1E1;
+  --status-neutral-text: #353535;
+  --status-info: #0058BE;
+
+  /* Charts */
+  --chart-1: #00288E;
+  --chart-2: #2170E4;
+  --chart-3: #6FFBBE;
+  --chart-4: #BA1A1A;
+  --chart-5: #0058BE;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* 1. Primárias e Marca */
+  --primary: #4B8DF8;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #3B7EE6;
+  --primary-active: #60A5FA;
+  --primary-dark: #1D4ED8;
+  --primary-light: #1E293B;
+  --card-patient: #1E2B45;
+
+  /* 2. Superfícies e Fundos */
+  --background: #0B132B;
+  --background-auth: #090D16;
+  --card: #131D31;
+  --card-foreground: #F1F5F9;
+  --popover: #131D31;
+  --popover-foreground: #F1F5F9;
+  --surface: #0F1829;
+  --surface-alt: #141E33;
+  --surface-highlight: #1A2846;
+  --surface-pairing: #16223B;
+  --input-bg: #1E293B;
+  --input: #1E293B;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --secondary: #1E293B;
+  --secondary-foreground: #F1F5F9;
+  --accent: #1A2846;
+  --accent-foreground: #60A5FA;
+
+  /* Sidebar */
+  --sidebar: #0E1726;
+  --sidebar-bg: #0E1726;
+  --sidebar-foreground: #F1F5F9;
+  --sidebar-primary: #4B8DF8;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1A2846;
+  --sidebar-accent-foreground: #F1F5F9;
+  --sidebar-border: #1E2D4A;
+  --sidebar-ring: #60A5FA;
+
+  /* 3. Bordas */
+  --border: #1E2D4A;
+  --border-subtle: #1E2D4A;
+  --border-neutral: #334155;
+  --border-pairing: #2A3F66;
+  --ring: #60A5FA;
+
+  /* 4. Textos */
+  --foreground: #E2E8F0;
+  --foreground-heading: #F8FAFC;
+  --placeholder: #64748B;
+
+  /* 5. Status Clínico e Badges */
+  --destructive: #EF4444;
+  --status-success-bg: #064E3B;
+  --status-success-text: #6EE7B7;
+  --status-success-icon: #34D399;
+  --status-danger-bg: #7F1D1D;
+  --status-danger-text: #FCA5A5;
+  --status-neutral-bg: #334155;
+  --status-neutral-text: #E2E8F0;
+  --status-info: #38BDF8;
+
+  /* Charts */
+  --chart-1: #4B8DF8;
+  --chart-2: #60A5FA;
+  --chart-3: #34D399;
+  --chart-4: #F87171;
+  --chart-5: #38BDF8;
 }
 
 @layer base {
@@ -115,7 +239,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
 }
 
@@ -155,4 +279,4 @@
     box-shadow: none !important;
     border: 1px solid #e2e8f0 !important;
   }
-}
+}

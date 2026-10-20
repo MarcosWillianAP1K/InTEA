@@ -440,3 +440,632 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
   });
 });
 
+// ==============================================================================
+// TESTES DE INTEGRAÇÃO: POST /api/paciente E EQUIPE MULTIDISCIPLINAR (RN04)
+// ==============================================================================
+
+function criarMockReqResPaciente(opcoes: {
+  body?: any;
+  params?: any;
+  user?: any;
+  headers?: any;
+}) {
+  let statusCode = 200;
+  let jsonResult: any = null;
+  let sent = false;
+
+  const req: any = {
+    body: opcoes.body || {},
+    params: opcoes.params || {},
+    headers: opcoes.headers || { authorization: 'Bearer token-teste' },
+    user: opcoes.user || null,
+  };
+
+  const res: any = {
+    status(code: number) {
+      statusCode = code;
+      return this;
+    },
+    json(data: any) {
+      jsonResult = data;
+      sent = true;
+      return this;
+    },
+    send(data?: any) {
+      jsonResult = data;
+      sent = true;
+      return this;
+    },
+  };
+
+  return {
+    req,
+    res,
+    getStatus: () => statusCode,
+    getJson: () => jsonResult,
+    isSent: () => sent,
+  };
+}
+
+function executarPipelinePaciente(
+  handlers: Array<(req: any, res: any, next: (err?: any) => void) => Promise<void> | void>,
+  req: any,
+  res: any
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let idx = 0;
+
+    const originalJson = res.json?.bind(res);
+    const originalSend = res.send?.bind(res);
+
+    res.json = (data: any) => {
+      const ret = originalJson ? originalJson(data) : res;
+      resolve();
+      return ret;
+    };
+
+    res.send = (data?: any) => {
+      const ret = originalSend ? originalSend(data) : res;
+      resolve();
+      return ret;
+    };
+
+    function next(err?: any) {
+      if (err) return reject(err);
+      if (idx < handlers.length) {
+        const handler = handlers[idx++];
+        Promise.resolve(handler(req, res, next)).catch(reject);
+      } else {
+        resolve();
+      }
+    }
+
+    next();
+  });
+}
+
+function obterHandlersPaciente(
+  router: any,
+  path: string,
+  method: string
+): Array<(req: any, res: any, next: (err?: any) => void) => Promise<void> | void> {
+  const layer = router.stack.find(
+    (l: any) => l.route?.path === path && l.route?.methods?.[method.toLowerCase()]
+  );
+  if (!layer?.route?.stack) {
+    throw new Error(`Rota ${method.toUpperCase()} ${path} não encontrada no router`);
+  }
+  return layer.route.stack.map((s: any) => s.handle);
+}
+
+describe('POST /api/paciente — Forçamento de clinica_id e Auto-Vínculo (RN04)', () => {
+  const terapeutaId = '11111111-1111-4111-a111-111111111111';
+  const clinicaRealId = '22222222-2222-4222-a222-222222222222';
+  const clinicaFalsaId = '99999999-9999-4999-a999-999999999999';
+  const pacienteId = '33333333-3333-4333-a333-333333333333';
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('POST /api/paciente: deve forçar clinica_id do terapeuta logado contra spoofing no DTO', async () => {
+    const { PacienteController } = await import('../controllers/paciente.controller.js');
+    const { TerapeutaModel } = await import('../../terapeuta/models/terapeuta.model.js');
+
+    vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
+      id: terapeutaId,
+      nome: 'Dr. Terapeuta',
+      clinica_id: clinicaRealId,
+      status_ativo: true,
+      is_super_admin: false,
+    } as any);
+
+    const spyModelCriar = vi.spyOn(PacienteModel, 'criar').mockResolvedValue({
+      id: pacienteId,
+      nome: 'Paciente Novo',
+      data_nascimento: '2016-03-20',
+      cpf: '529.982.247-25',
+      clinica_id: clinicaRealId,
+      status_ativo: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as any);
+
+    const mockHttp = criarMockReqResPaciente({
+      body: {
+        nome: 'Paciente Novo',
+        data_nascimento: '2016-03-20',
+        cpf: '52998224725',
+        clinica_id: clinicaFalsaId, // Tentativa de spoofing
+      },
+      user: {
+        id: terapeutaId,
+        is_super_admin: false,
+      },
+    });
+
+    await PacienteController.criar(mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(201);
+    expect(spyModelCriar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clinica_id: clinicaRealId, // Forçado para a clínica real do terapeuta
+      }),
+      terapeutaId // Terapeuta criador para auto-vínculo
+    );
+  });
+
+  it('POST /api/paciente: deve registrar o auto-vínculo do criador na tabela associativa terapeuta_paciente', async () => {
+    const novoPacienteDTO: CriarPacienteDTO = {
+      nome: 'Paciente Com Auto Vinculo',
+      data_nascimento: '2017-08-15',
+      cpf: '529.982.247-25',
+      clinica_id: clinicaRealId,
+    };
+
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: { id: pacienteId, ...novoPacienteDTO, status_ativo: true },
+      error: null,
+    });
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+    const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'terapeuta_paciente') {
+        return { upsert: mockUpsert } as any;
+      }
+      return { insert: mockInsert } as any;
+    });
+
+    vi.spyOn(PacienteModel, 'buscarPorId').mockResolvedValue({
+      id: pacienteId,
+      nome: novoPacienteDTO.nome,
+      data_nascimento: novoPacienteDTO.data_nascimento,
+      cpf: novoPacienteDTO.cpf,
+      clinica_id: novoPacienteDTO.clinica_id ?? null,
+      status_ativo: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      telefone: null,
+      cidade: null,
+      estado: null,
+      cep: null,
+      endereco: null,
+      bairro: null,
+      numero: null,
+      complemento: null,
+    });
+
+    const resultado = await PacienteModel.criar(novoPacienteDTO, terapeutaId);
+
+    expect(resultado.id).toBe(pacienteId);
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        terapeuta_id: terapeutaId,
+        paciente_id: pacienteId,
+      }),
+      expect.objectContaining({
+        onConflict: 'terapeuta_id,paciente_id',
+        ignoreDuplicates: true,
+      })
+    );
+  });
+
+  it('POST /api/paciente: não deve sobrescrever clinica_id customizado se o requisitante for SuperAdmin', async () => {
+    const { PacienteController } = await import('../controllers/paciente.controller.js');
+    const adminId = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
+    const clinicaAdminId = 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb';
+
+    const spyModelCriar = vi.spyOn(PacienteModel, 'criar').mockResolvedValue({
+      id: pacienteId,
+      nome: 'Paciente Criado por Admin',
+      data_nascimento: '2016-03-20',
+      cpf: '529.982.247-25',
+      clinica_id: clinicaAdminId,
+      status_ativo: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as any);
+
+    const mockHttp = criarMockReqResPaciente({
+      body: {
+        nome: 'Paciente Criado por Admin',
+        data_nascimento: '2016-03-20',
+        cpf: '52998224725',
+        clinica_id: clinicaAdminId,
+      },
+      user: {
+        id: adminId,
+        is_super_admin: true,
+      },
+    });
+
+    await PacienteController.criar(mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(201);
+    expect(spyModelCriar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clinica_id: clinicaAdminId,
+      }),
+      adminId
+    );
+  });
+});
+
+describe('Equipe Multidisciplinar (GET, POST, DELETE /api/paciente/:id/terapeutas) — RN04', () => {
+  const pacienteId = '11111111-1111-4111-a111-111111111111';
+  const terapeutaLogadoId = '22222222-2222-4222-a222-222222222222';
+  const outroTerapeutaId = '33333333-3333-4333-a333-333333333333';
+  const clinicaA = '44444444-4444-4444-a444-444444444444';
+  const clinicaB = '55555555-5555-4555-a555-555555555555';
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('GET /api/paciente/:id/terapeutas: deve bloquear com 403 Forbidden para terapeuta de outra clínica (RN04)', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/:id/terapeutas', 'get');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: terapeutaLogadoId } },
+      error: null,
+    } as any);
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: pacienteId, clinica_id: clinicaA, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaLogadoId, clinica_id: clinicaB, status_ativo: true, is_super_admin: false },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteId },
+    });
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(403);
+    expect(mockHttp.getJson().error).toContain('instituição clínica diferente');
+  });
+
+  it('GET /api/paciente/:id/terapeutas: deve retornar 200 OK com terapeutas quando terapeuta possui vínculo ativo', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/:id/terapeutas', 'get');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: terapeutaLogadoId } },
+      error: null,
+    } as any);
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: pacienteId, clinica_id: clinicaA, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaLogadoId, clinica_id: clinicaA, status_ativo: true, is_super_admin: false },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta_paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { paciente_id: pacienteId },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    vi.spyOn(PacienteModel, 'listarTerapeutasVinculados').mockResolvedValue([
+      { id: terapeutaLogadoId, nome: 'Dr. Terapeuta', especialidade: 'T.O.' },
+    ] as any);
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteId },
+    });
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    expect(mockHttp.getJson().data).toHaveLength(1);
+    expect(mockHttp.getJson().data[0].id).toBe(terapeutaLogadoId);
+  });
+
+  it('POST /api/paciente/:id/terapeutas: deve bloquear com 403 Forbidden se terapeuta requisitante não tiver vínculo ativo', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/:id/terapeutas', 'post');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: terapeutaLogadoId } },
+      error: null,
+    } as any);
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: pacienteId, clinica_id: clinicaA, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaLogadoId, clinica_id: clinicaA, status_ativo: true, is_super_admin: false },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta_paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: null, // Sem vínculo ativo
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteId },
+      body: { terapeuta_id: outroTerapeutaId },
+    });
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(403);
+    expect(mockHttp.getJson().error).toContain('não possui vínculo ativo');
+  });
+
+  it('POST /api/paciente/:id/terapeutas: deve vincular novo terapeuta com 201 Created quando requisitante tiver vínculo e mesma clínica', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/:id/terapeutas', 'post');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: terapeutaLogadoId } },
+      error: null,
+    } as any);
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: pacienteId, clinica_id: clinicaA, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaLogadoId, clinica_id: clinicaA, status_ativo: true, is_super_admin: false },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta_paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { paciente_id: pacienteId },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    vi.spyOn(PacienteModel, 'vincularTerapeuta').mockResolvedValue(undefined);
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteId },
+      body: { terapeuta_id: outroTerapeutaId },
+    });
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(201);
+    expect(mockHttp.getJson().message).toContain('vinculado');
+  });
+
+  it('DELETE /api/paciente/:id/terapeutas/:terapeutaId: deve bloquear com 403 Forbidden para requisitante sem vínculo', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/:id/terapeutas/:terapeutaId', 'delete');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: terapeutaLogadoId } },
+      error: null,
+    } as any);
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: pacienteId, clinica_id: clinicaA, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaLogadoId, clinica_id: clinicaA, status_ativo: true, is_super_admin: false },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta_paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: null, // Sem vínculo
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteId, terapeutaId: outroTerapeutaId },
+    });
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(403);
+    expect(mockHttp.getJson().error).toContain('não possui vínculo ativo');
+  });
+
+  it('DELETE /api/paciente/:id/terapeutas/:terapeutaId: deve desvincular com 200 OK quando requisitante possui permissão', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const handlers = obterHandlersPaciente(pacienteRoutes, '/:id/terapeutas/:terapeutaId', 'delete');
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: terapeutaLogadoId } },
+      error: null,
+    } as any);
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: pacienteId, clinica_id: clinicaA, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: terapeutaLogadoId, clinica_id: clinicaA, status_ativo: true, is_super_admin: false },
+                error: null,
+              }),
+            }),
+          }),
+        } as any;
+      }
+      if (tabela === 'terapeuta_paciente') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { paciente_id: pacienteId },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    vi.spyOn(PacienteModel, 'desvincularTerapeuta').mockResolvedValue(undefined);
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteId, terapeutaId: outroTerapeutaId },
+    });
+
+    await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    expect(mockHttp.getJson().message).toContain('removido');
+  });
+});
+
+

@@ -9,6 +9,7 @@ import { SessaoExportarService } from '../services/sessao-exportar.service.js';
 // Middlewares de autenticação JWT e validação de vínculo clínico (RN04)
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
+import { verificarSessaoMiddleware } from '../../../core/middlewares/sessao.middleware.js';
 
 export const sessaoRoutes = Router();
 
@@ -48,6 +49,105 @@ export const sessaoRoutes = Router();
  *             example:
  *               error: "Erro interno ao gerar código de pareamento"
  */
+/**
+ * @swagger
+ * /api/sessao:
+ *   get:
+ *     summary: Lista sessões clínicas e em modo livre com filtros e paginação
+ *     description: Lista sessões terapêuticas aplicando filtros clínicos e controle estrito de visibilidade (RN04). Terapeutas comuns visualizam apenas sessões em que atuaram. Super administradores com all=true visualizam todo o ecossistema.
+ *     tags: [Sessão]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Número da página para paginação
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Quantidade máxima de registros por página
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filtro de status clínico (concluida, finalizada, pendente, cancelada, falha)
+ *       - in: query
+ *         name: data
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filtro por data exata (YYYY-MM-DD)
+ *       - in: query
+ *         name: dataInicio
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data inicial do intervalo (YYYY-MM-DD)
+ *       - in: query
+ *         name: dataFim
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data final do intervalo (YYYY-MM-DD)
+ *       - in: query
+ *         name: pacienteId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtro por paciente específico
+ *       - in: query
+ *         name: jogoId
+ *         schema:
+ *           type: string
+ *         description: Filtro por jogo específico
+ *       - in: query
+ *         name: modo
+ *         schema:
+ *           type: string
+ *           enum: [sessao_clinica, modo_livre]
+ *         description: Modo da sessão
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: boolean
+ *         description: Permite a super administradores listar todas as sessões globais
+ *     responses:
+ *       200:
+ *         description: Lista paginada de sessões retornada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *       401:
+ *         description: Não autenticado
+ *       500:
+ *         description: Erro interno ao listar sessões
+ */
+sessaoRoutes.get('/', authMiddleware, SessaoController.listar);
 sessaoRoutes.get('/codigo-pareamento', authMiddleware, SessaoController.gerarCodigoPareamento);
 
 /**
@@ -313,6 +413,8 @@ sessaoRoutes.post('/parear', SessaoController.parear);
  *                       format: date-time
  *       401:
  *         description: Token JWT ausente ou inválido
+ *       403:
+ *         description: Acesso negado — terapeuta sem vínculo com paciente desta sessão (RN04) ou sessão em modo livre de outro autor (RN01)
  *       404:
  *         description: Sessão não encontrada para o token informado
  *         content:
@@ -326,7 +428,7 @@ sessaoRoutes.post('/parear', SessaoController.parear);
  *       500:
  *         description: Erro interno ao buscar sessão por token
  */
-sessaoRoutes.get('/token/:token', authMiddleware, SessaoController.buscarPorToken);
+sessaoRoutes.get('/token/:token', authMiddleware, verificarSessaoMiddleware, SessaoController.buscarPorToken);
 
 /**
  * @swagger
@@ -441,6 +543,8 @@ sessaoRoutes.get('/:token/status', SessaoController.consultarStatus);
  *                       nullable: true
  *       401:
  *         description: Token JWT ausente ou inválido
+ *       403:
+ *         description: Acesso negado — terapeuta sem vínculo com paciente desta sessão (RN04) ou sessão em modo livre de outro autor (RN01)
  *       404:
  *         description: Sessão não encontrada
  *         content:
@@ -454,7 +558,7 @@ sessaoRoutes.get('/:token/status', SessaoController.consultarStatus);
  *       500:
  *         description: Erro interno ao buscar sessão
  */
-sessaoRoutes.get('/:id', authMiddleware, SessaoController.buscarPorId);
+sessaoRoutes.get('/:id', authMiddleware, verificarSessaoMiddleware, SessaoController.buscarPorId);
 
 /**
  * @swagger
@@ -561,7 +665,7 @@ sessaoRoutes.get('/:id', authMiddleware, SessaoController.buscarPorId);
  *             example:
  *               error: "Erro interno ao emitir laudo clínico para exportação."
  */
-sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoController.exportar);
+sessaoRoutes.get('/:id/exportar', authMiddleware, verificarSessaoMiddleware, SessaoController.exportar);
 
 
 /**
@@ -598,6 +702,8 @@ sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoController.exportar);
  *           application/json:
  *             example:
  *               error: "Token JWT não fornecido"
+ *       403:
+ *         description: Acesso negado — terapeuta sem vínculo com paciente desta sessão (RN04) ou sessão em modo livre de outro autor (RN01)
  *       404:
  *         description: Sessão não encontrada para finalização
  *         content:
@@ -611,7 +717,7 @@ sessaoRoutes.get('/:id/exportar', authMiddleware, SessaoController.exportar);
  *       500:
  *         description: Erro interno ao finalizar sessão
  */
-sessaoRoutes.patch('/:id/finalizar', authMiddleware, SessaoController.finalizar);
+sessaoRoutes.patch('/:id/finalizar', authMiddleware, verificarSessaoMiddleware, SessaoController.finalizar);
 
 /**
  * @swagger
@@ -652,12 +758,14 @@ sessaoRoutes.patch('/:id/finalizar', authMiddleware, SessaoController.finalizar)
  *                   example: "A sessão já está no status 'finalizada' e não pode ser cancelada."
  *       401:
  *         description: Token JWT ausente ou inválido
+ *       403:
+ *         description: Acesso negado — terapeuta sem vínculo com paciente desta sessão (RN04) ou sessão em modo livre de outro autor (RN01)
  *       404:
  *         description: Sessão não encontrada
  *       500:
  *         description: Erro interno ao cancelar sessão
  */
-sessaoRoutes.delete('/:id/cancelar', authMiddleware, SessaoController.cancelar);
+sessaoRoutes.delete('/:id/cancelar', authMiddleware, verificarSessaoMiddleware, SessaoController.cancelar);
 
 /**
  * @swagger
@@ -723,6 +831,10 @@ sessaoRoutes.delete('/:id/cancelar', authMiddleware, SessaoController.cancelar);
  *                 error:
  *                   type: string
  *                   example: "O status informado é inválido, deve conter algum desses valores: aguardando_pareamento, conectado, em_andamento, finalizada, expirada, cancelada"
+ *       401:
+ *         description: Token JWT ausente ou inválido
+ *       403:
+ *         description: Acesso negado — terapeuta sem vínculo com paciente desta sessão (RN04) ou sessão em modo livre de outro autor (RN01)
  *       404:
  *         description: Sessão não encontrada para atualização de status
  *         content:
@@ -744,7 +856,7 @@ sessaoRoutes.delete('/:id/cancelar', authMiddleware, SessaoController.cancelar);
  *                   type: string
  *                   example: "Erro interno ao atualizar status da sessão"
  */
-sessaoRoutes.patch('/:id/status', authMiddleware, SessaoController.atualizarStatus);
+sessaoRoutes.patch('/:id/status', authMiddleware, verificarSessaoMiddleware, SessaoController.atualizarStatus);
 
 /**
  * @swagger
@@ -964,5 +1076,5 @@ sessaoRoutes.patch('/:id/status', authMiddleware, SessaoController.atualizarStat
  *       500:
  *         description: Erro interno ao consultar resultado consolidado
  */
-sessaoRoutes.get('/:id/resultado', authMiddleware, SessaoController.consultarResultado);
+sessaoRoutes.get('/:id/resultado', authMiddleware, verificarSessaoMiddleware, SessaoController.consultarResultado);
 

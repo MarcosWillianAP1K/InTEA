@@ -20,6 +20,17 @@ export default defineConfig(() => {
       watch: {
         usePolling: true,
       },
+      proxy: {
+        "/api": {
+          target: process.env.VITE_BACKEND_PROXY_TARGET || "http://localhost:3000",
+          changeOrigin: true,
+        },
+        "/socket.io": {
+          target: process.env.VITE_BACKEND_PROXY_TARGET || "http://localhost:3000",
+          ws: true,
+          changeOrigin: true,
+        },
+      },
     },
     build: {
       chunkSizeWarningLimit: 1000,

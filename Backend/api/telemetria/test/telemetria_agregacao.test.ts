@@ -422,6 +422,7 @@ describe('Card 2.1 — TelemetriaController.obterEstatisticasSessao (Endpoint RE
   });
 
   it('deve retornar 403 Forbidden se terapeuta não tiver vínculo com a sessão (RN04)', async () => {
+    vi.spyOn(TelemetriaController, 'verificarVinculoInstitucionalRN04').mockResolvedValue(false);
     vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
       id: sessaoIdValido,
       terapeuta_id: 'outro-terapeuta-dono',

@@ -6,6 +6,7 @@ export * from "./hooks/useSessionPersistence";
 export * from "./hooks/useRelatorioExport";
 export * from "./hooks/useClinicalTimer";
 export * from "./components/ModalPreSessao";
+export * from "./components/CardSessaoTimer";
 export * from "./components/ControlesClinicos";
 export * from "./components/ModalFinalizarSessao";
 export * from "./components/telemetria/TelemetriaCards";

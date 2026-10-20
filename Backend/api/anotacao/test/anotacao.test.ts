@@ -444,6 +444,52 @@ describe('AnotacaoService - Regras de Negócio e Autoria (RF16, RF21, RN05)', ()
     expect(res.status).toBe(204);
   });
 
+  it('buscarPorId deve retornar 400 se UUID for inválido', async () => {
+    const { AnotacaoService } = await import('../services/anotacao.service.js');
+    const res = await AnotacaoService.buscarPorId('uuid-invalido');
+    expect(res.sucesso).toBe(false);
+    expect(res.status).toBe(400);
+  });
+
+  it('buscarPorId deve retornar 404 se anotação não for encontrada', async () => {
+    const { AnotacaoService } = await import('../services/anotacao.service.js');
+    vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(null);
+
+    const res = await AnotacaoService.buscarPorId('00000000-0000-4000-8000-000000000000');
+    expect(res.sucesso).toBe(false);
+    expect(res.status).toBe(404);
+  });
+
+  it('buscarPorId deve retornar 200 com os dados da anotação', async () => {
+    const { AnotacaoService } = await import('../services/anotacao.service.js');
+    vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacaoBase);
+
+    const res = await AnotacaoService.buscarPorId(mockAnotacaoBase.id);
+    expect(res.sucesso).toBe(true);
+    expect(res.status).toBe(200);
+    expect(res.dados?.id).toBe(mockAnotacaoBase.id);
+  });
+
+  it('softDelete com string ID deve buscar anotação e aplicar soft delete para o autor (204)', async () => {
+    const { AnotacaoService } = await import('../services/anotacao.service.js');
+    vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacaoBase);
+    vi.spyOn(AnotacaoClinicaModel, 'softDelete').mockResolvedValue(true);
+
+    const res = await AnotacaoService.softDelete(mockAnotacaoBase.id, autorId);
+    expect(res.sucesso).toBe(true);
+    expect(res.status).toBe(204);
+  });
+
+  it('softDelete com string ID deve bloquear com 403 e mensagem canônica se não for autor', async () => {
+    const { AnotacaoService } = await import('../services/anotacao.service.js');
+    vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacaoBase);
+
+    const res = await AnotacaoService.softDelete(mockAnotacaoBase.id, outroTerapeutaId);
+    expect(res.sucesso).toBe(false);
+    expect(res.status).toBe(403);
+    expect(res.erro).toContain('apenas o terapeuta autor pode inativar');
+  });
+
   it('criarAnotacaoSessao deve criar com sucesso retornando 201', async () => {
     const { AnotacaoService } = await import('../services/anotacao.service.js');
     vi.spyOn(AnotacaoClinicaModel, 'criar').mockResolvedValue({
@@ -1089,6 +1135,71 @@ describe('Middlewares de Contexto - resolverContextoPaciente e resolverContextoS
     });
 
     await resolverContextoSessao(req as any, res as any, next);
+
+    expect(getStatus()).toBe(500);
+    expect(isNextChamado()).toBe(false);
+  });
+
+  it('resolverContextoAnotacaoPorId: deve rejeitar com 400 se o id for ausente ou inválido', async () => {
+    const { resolverContextoAnotacaoPorId } = await import('../middlewares/anotacao-contexto.middleware.js');
+    const { req, res, next, getStatus, isNextChamado } = criarMockExpress({
+      params: { id: 'uuid-invalido' },
+    });
+
+    await resolverContextoAnotacaoPorId(req as any, res as any, next);
+
+    expect(getStatus()).toBe(400);
+    expect(isNextChamado()).toBe(false);
+  });
+
+  it('resolverContextoAnotacaoPorId: deve retornar 404 se a anotação não for encontrada', async () => {
+    const { resolverContextoAnotacaoPorId } = await import('../middlewares/anotacao-contexto.middleware.js');
+    vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(null);
+
+    const { req, res, next, getStatus, isNextChamado } = criarMockExpress({
+      params: { id: anotacaoId },
+    });
+
+    await resolverContextoAnotacaoPorId(req as any, res as any, next);
+
+    expect(getStatus()).toBe(404);
+    expect(isNextChamado()).toBe(false);
+  });
+
+  it('resolverContextoAnotacaoPorId: deve injetar pacienteAlvoId e contextoAnotacao se localizada com sucesso', async () => {
+    const { resolverContextoAnotacaoPorId } = await import('../middlewares/anotacao-contexto.middleware.js');
+    const mockAnotacao = {
+      id: anotacaoId,
+      terapeuta_id: '111',
+      paciente_id: pacienteId,
+      sessao_id: null,
+      conteudo: 'Anotação geral',
+      soft_delete: false,
+      created_at: '',
+      updated_at: '',
+    };
+    vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacao);
+
+    const { req, res, next, isNextChamado } = criarMockExpress({
+      params: { id: anotacaoId },
+    });
+
+    await resolverContextoAnotacaoPorId(req as any, res as any, next);
+
+    expect(isNextChamado()).toBe(true);
+    expect(req.pacienteAlvoId).toBe(pacienteId);
+    expect(req.contextoAnotacao).toEqual(mockAnotacao);
+  });
+
+  it('resolverContextoAnotacaoPorId: deve retornar 500 se ocorrer exceção inesperada', async () => {
+    const { resolverContextoAnotacaoPorId } = await import('../middlewares/anotacao-contexto.middleware.js');
+    vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockRejectedValue(new Error('Erro de conexão'));
+
+    const { req, res, next, getStatus, isNextChamado } = criarMockExpress({
+      params: { id: anotacaoId },
+    });
+
+    await resolverContextoAnotacaoPorId(req as any, res as any, next);
 
     expect(getStatus()).toBe(500);
     expect(isNextChamado()).toBe(false);
@@ -1958,6 +2069,604 @@ describe('Controllers de Anotações Clínicas - Autoria JWT e Códigos HTTP', (
     const rotaHardPaciente = rotasRegistradas.find((r: any) => r.path === '/paciente/:id/hard');
     const rotaNormalPaciente = rotasRegistradas.find((r: any) => r.path === '/paciente/:id');
     expect(rotaHardPaciente?.stackLength).toBeGreaterThan(rotaNormalPaciente?.stackLength || 0);
+
+    // As rotas canônicas unificadas na raiz também devem estar registradas
+    expect(paths).toContain('/:id');
+    expect(paths).toContain('/:id/hard');
   });
 });
+
+// ==============================================================================
+// TESTES DE INTEGRAÇÃO: ROTAS CANÔNICAS UNIFICADAS (/api/anotacao/:id)
+// ==============================================================================
+
+function criarMockPipelineAnotacao(opcoes: {
+  params?: any;
+  body?: any;
+  headers?: any;
+  user?: any;
+}) {
+  let statusCode = 200;
+  let jsonResult: any = null;
+  let sent = false;
+
+  const req: any = {
+    params: opcoes.params || {},
+    body: opcoes.body || {},
+    headers: opcoes.headers || { authorization: 'Bearer token-teste' },
+    user: opcoes.user || null,
+  };
+
+  const res: any = {
+    status(code: number) {
+      statusCode = code;
+      return this;
+    },
+    json(data: any) {
+      jsonResult = data;
+      sent = true;
+      return this;
+    },
+    send(data?: any) {
+      jsonResult = data;
+      sent = true;
+      return this;
+    },
+  };
+
+  return {
+    req,
+    res,
+    getStatus: () => statusCode,
+    getJson: () => jsonResult,
+    isSent: () => sent,
+  };
+}
+
+function executarPipelineAnotacao(
+  handlers: Array<(req: any, res: any, next: (err?: any) => void) => Promise<void> | void>,
+  req: any,
+  res: any
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let idx = 0;
+
+    const originalJson = res.json?.bind(res);
+    const originalSend = res.send?.bind(res);
+
+    res.json = (data: any) => {
+      const ret = originalJson ? originalJson(data) : res;
+      resolve();
+      return ret;
+    };
+
+    res.send = (data?: any) => {
+      const ret = originalSend ? originalSend(data) : res;
+      resolve();
+      return ret;
+    };
+
+    function next(err?: any) {
+      if (err) return reject(err);
+      if (idx < handlers.length) {
+        const handler = handlers[idx++];
+        Promise.resolve(handler(req, res, next)).catch(reject);
+      } else {
+        resolve();
+      }
+    }
+
+    next();
+  });
+}
+
+function obterHandlersAnotacao(
+  router: any,
+  path: string,
+  method: string
+): Array<(req: any, res: any, next: (err?: any) => void) => Promise<void> | void> {
+  const layer = router.stack.find(
+    (l: any) => l.route?.path === path && l.route?.methods?.[method.toLowerCase()]
+  );
+  if (!layer?.route?.stack) {
+    throw new Error(`Rota ${method.toUpperCase()} ${path} não encontrada no router`);
+  }
+  return layer.route.stack.map((s: any) => s.handle);
+}
+
+describe('Rotas Canônicas Unificadas (/api/anotacao/:id) — Integração de Middlewares, Autoria RF21 e RN04', () => {
+  const autorId = '11111111-1111-4111-a111-111111111111';
+  const coterapeutaId = '22222222-2222-4222-a222-222222222222';
+  const superAdminId = '33333333-3333-4333-a333-333333333333';
+  const pacienteId = '44444444-4444-4444-a444-444444444444';
+  const anotacaoId = '55555555-5555-4555-a555-555555555555';
+  const clinicaId = '66666666-6666-4666-a666-666666666666';
+
+  const mockAnotacao = {
+    id: anotacaoId,
+    terapeuta_id: autorId,
+    paciente_id: pacienteId,
+    sessao_id: null,
+    conteudo: 'Evolução clínica do paciente observada em sessão.',
+    soft_delete: false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // ----------------------------------------------------------------------------
+  // 1. GET /api/anotacao/:id
+  // ----------------------------------------------------------------------------
+  describe('GET /api/anotacao/:id', () => {
+    it('deve retornar 200 OK com os dados da anotação quando terapeuta possuir vínculo ativo (RN04)', async () => {
+      const { anotacaoRoutes } = await import('../routes/anotacao.routes.js');
+      const handlers = obterHandlersAnotacao(anotacaoRoutes, '/:id', 'get');
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: { user: { id: autorId } },
+        error: null,
+      } as any);
+
+      vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacao);
+
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: pacienteId, clinica_id: clinicaId, status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'terapeuta') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: autorId, clinica_id: clinicaId, status_ativo: true, is_super_admin: false },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'terapeuta_paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: { paciente_id: pacienteId },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          } as any;
+        }
+        return {} as any;
+      });
+
+      const mockHttp = criarMockPipelineAnotacao({
+        params: { id: anotacaoId },
+      });
+
+      await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(200);
+      expect(mockHttp.getJson().data.id).toBe(anotacaoId);
+      expect(mockHttp.getJson().data.conteudo).toBe(mockAnotacao.conteudo);
+    });
+
+    it('deve retornar 404 Not Found se anotação clínica for inexistente no banco', async () => {
+      const { anotacaoRoutes } = await import('../routes/anotacao.routes.js');
+      const handlers = obterHandlersAnotacao(anotacaoRoutes, '/:id', 'get');
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: { user: { id: autorId } },
+        error: null,
+      } as any);
+
+      vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(null);
+
+      const mockHttp = criarMockPipelineAnotacao({
+        params: { id: anotacaoId },
+      });
+
+      await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(404);
+      expect(mockHttp.getJson().error).toContain('não encontrada');
+    });
+
+    it('deve retornar 403 Forbidden se terapeuta requisitante não possuir vínculo ativo com o paciente (RN04)', async () => {
+      const { anotacaoRoutes } = await import('../routes/anotacao.routes.js');
+      const handlers = obterHandlersAnotacao(anotacaoRoutes, '/:id', 'get');
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: { user: { id: coterapeutaId } },
+        error: null,
+      } as any);
+
+      vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacao);
+
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: pacienteId, clinica_id: clinicaId, status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'terapeuta') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: coterapeutaId, clinica_id: clinicaId, status_ativo: true, is_super_admin: false },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'terapeuta_paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: null, // Sem vínculo ativo
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          } as any;
+        }
+        return {} as any;
+      });
+
+      const mockHttp = criarMockPipelineAnotacao({
+        params: { id: anotacaoId },
+      });
+
+      await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(403);
+      expect(mockHttp.getJson().error).toContain('não possui vínculo ativo');
+    });
+  });
+
+  // ----------------------------------------------------------------------------
+  // 2. DELETE /api/anotacao/:id (Soft Delete)
+  // ----------------------------------------------------------------------------
+  describe('DELETE /api/anotacao/:id', () => {
+    it('deve retornar 204 No Content quando executado pelo próprio autor com vínculo ativo (RF21 e RN04)', async () => {
+      const { anotacaoRoutes } = await import('../routes/anotacao.routes.js');
+      const handlers = obterHandlersAnotacao(anotacaoRoutes, '/:id', 'delete');
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: { user: { id: autorId } },
+        error: null,
+      } as any);
+
+      vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacao);
+      vi.spyOn(AnotacaoClinicaModel, 'softDelete').mockResolvedValue(true);
+
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: pacienteId, clinica_id: clinicaId, status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'terapeuta') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: autorId, clinica_id: clinicaId, status_ativo: true, is_super_admin: false },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'terapeuta_paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: { paciente_id: pacienteId },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          } as any;
+        }
+        return {} as any;
+      });
+
+      const mockHttp = criarMockPipelineAnotacao({
+        params: { id: anotacaoId },
+      });
+
+      await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(204);
+      expect(mockHttp.isSent()).toBe(true);
+    });
+
+    it('deve retornar 403 Forbidden quando executado por outro terapeuta que não seja o autor (RF21)', async () => {
+      const { anotacaoRoutes } = await import('../routes/anotacao.routes.js');
+      const handlers = obterHandlersAnotacao(anotacaoRoutes, '/:id', 'delete');
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: { user: { id: coterapeutaId } }, // Coterapeuta tentando excluir nota do autor
+        error: null,
+      } as any);
+
+      vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacao);
+
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: pacienteId, clinica_id: clinicaId, status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'terapeuta') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: coterapeutaId, clinica_id: clinicaId, status_ativo: true, is_super_admin: false },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'terapeuta_paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: { paciente_id: pacienteId }, // Possui vínculo, mas NÃO é o autor!
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          } as any;
+        }
+        return {} as any;
+      });
+
+      const mockHttp = criarMockPipelineAnotacao({
+        params: { id: anotacaoId },
+      });
+
+      await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(403);
+      expect(mockHttp.getJson().error).toContain('apenas o terapeuta autor');
+    });
+
+    it('deve retornar 403 Forbidden se terapeuta não possuir vínculo ativo com o paciente (RN04)', async () => {
+      const { anotacaoRoutes } = await import('../routes/anotacao.routes.js');
+      const handlers = obterHandlersAnotacao(anotacaoRoutes, '/:id', 'delete');
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: { user: { id: autorId } },
+        error: null,
+      } as any);
+
+      vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacao);
+
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: pacienteId, clinica_id: clinicaId, status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'terapeuta') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: autorId, clinica_id: clinicaId, status_ativo: true, is_super_admin: false },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'terapeuta_paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: null, // Vínculo revogado
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          } as any;
+        }
+        return {} as any;
+      });
+
+      const mockHttp = criarMockPipelineAnotacao({
+        params: { id: anotacaoId },
+      });
+
+      await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(403);
+      expect(mockHttp.getJson().error).toContain('não possui vínculo ativo');
+    });
+
+    it('deve retornar 404 Not Found se anotação for inexistente', async () => {
+      const { anotacaoRoutes } = await import('../routes/anotacao.routes.js');
+      const handlers = obterHandlersAnotacao(anotacaoRoutes, '/:id', 'delete');
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: { user: { id: autorId } },
+        error: null,
+      } as any);
+
+      vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(null);
+
+      const mockHttp = criarMockPipelineAnotacao({
+        params: { id: anotacaoId },
+      });
+
+      await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(404);
+      expect(mockHttp.getJson().error).toContain('não encontrada');
+    });
+  });
+
+  // ----------------------------------------------------------------------------
+  // 3. DELETE /api/anotacao/:id/hard (Hard Delete Dev/Testes)
+  // ----------------------------------------------------------------------------
+  describe('DELETE /api/anotacao/:id/hard', () => {
+    it('deve retornar 204 No Content para SuperAdmin através do adminMiddleware', async () => {
+      const { anotacaoRoutes } = await import('../routes/anotacao.routes.js');
+      const handlers = obterHandlersAnotacao(anotacaoRoutes, '/:id/hard', 'delete');
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: {
+          user: {
+            id: superAdminId,
+            is_super_admin: true,
+            user_metadata: { is_super_admin: true },
+          },
+        },
+        error: null,
+      } as any);
+
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'terapeuta') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { is_super_admin: true, status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        if (tabela === 'paciente') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: pacienteId, clinica_id: clinicaId, status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        return {} as any;
+      });
+
+      vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacao);
+      vi.spyOn(AnotacaoClinicaModel, 'deletarHard').mockResolvedValue(true);
+
+      const mockHttp = criarMockPipelineAnotacao({
+        params: { id: anotacaoId },
+      });
+
+      await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(204);
+      expect(mockHttp.isSent()).toBe(true);
+    });
+
+    it('deve retornar 403 Forbidden para terapeuta comum (não SuperAdmin)', async () => {
+      const { anotacaoRoutes } = await import('../routes/anotacao.routes.js');
+      const handlers = obterHandlersAnotacao(anotacaoRoutes, '/:id/hard', 'delete');
+
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+        data: {
+          user: {
+            id: autorId,
+            is_super_admin: false,
+            user_metadata: { is_super_admin: false },
+          },
+        },
+        error: null,
+      } as any);
+
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'terapeuta') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { is_super_admin: false, status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as any;
+        }
+        return {} as any;
+      });
+
+      const mockHttp = criarMockPipelineAnotacao({
+        params: { id: anotacaoId },
+      });
+
+      await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(403);
+      expect(mockHttp.getJson().error).toContain('administradores do sistema');
+    });
+  });
+});
+
 

@@ -1,3 +1,4 @@
+import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 
 // ==============================================================================
@@ -78,13 +79,14 @@ export interface LoginDTO {
 
 export class TerapeutaModel {
   /**
-   * Lists therapists from the database, filtering active ones by default (RN05).
+   * Lists therapists from the database, filtering active ones by default (RN05) and clinic if provided.
    *
    * @param incluirInativos - If true, deactivated therapists are included in the results.
+   * @param clinicaId - Optional clinic UUID to filter therapists by institution.
    * @returns Array of therapist entities including linked focus areas.
    * @throws {Error} If querying the database fails.
    */
-  static async listar(incluirInativos: boolean = false): Promise<Terapeuta[]> {
+  static async listar(incluirInativos: boolean = false, clinicaId?: string | null): Promise<Terapeuta[]> {
     let query = supabase
       .from('terapeuta')
       .select('*, areas_foco:terapeuta_area_foco(areas_foco(*))')
@@ -92,6 +94,14 @@ export class TerapeutaModel {
 
     if (!incluirInativos) {
       query = query.eq('status_ativo', true);
+    }
+
+    if (clinicaId !== undefined) {
+      if (clinicaId === null) {
+        query = query.is('clinica_id', null);
+      } else {
+        query = query.eq('clinica_id', clinicaId);
+      }
     }
 
     const { data, error } = await query;
@@ -210,7 +220,7 @@ export class TerapeutaModel {
    * @throws {Error} If updating the database record fails.
    */
   static async atualizar(id: string, dto: AtualizarTerapeutaDTO): Promise<Terapeuta> {
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -327,7 +337,7 @@ export class TerapeutaModel {
    * @returns Object containing user, session, access token, and therapist profile.
    * @throws {Error} If credentials are invalid or the account is inactive.
    */
-  static async login(dto: LoginDTO): Promise<{ user: any; session: any; access_token: string; terapeuta: Terapeuta | null }> {
+  static async login(dto: LoginDTO): Promise<{ user: User; session: Session; access_token: string; terapeuta: Terapeuta | null }> {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: dto.email,
       password: dto.password,

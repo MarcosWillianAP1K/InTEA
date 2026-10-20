@@ -4,14 +4,16 @@
 
 import { Request, Response } from 'express';
 import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, StatusSessao, Sessao } from '../models/sessao.model.js';
-import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO } from '../dtos/sessao.dto.js';
+import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO, FiltrosSessaoDTO } from '../dtos/sessao.dto.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
+import { SessaoListarService } from '../services/sessao-listar.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { SessaoResultadoService } from '../services/sessao-resultado.service.js';
 import { SessaoExportarService } from '../services/sessao-exportar.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { eventBus } from '../../../core/events/event-bus.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { REGEX_PIN_PAREAMENTO } from '../../../core/middlewares/sessao.middleware.js';
 
 export class SessaoController {
   // Callback opcional injetado pelo gateway WebSocket (Card 2.2) para notificação em tempo real
@@ -48,6 +50,49 @@ export class SessaoController {
    * @param res - Express response returning the newly initialized session.
    * @returns Resolves when the HTTP response has been sent.
    */
+  /**
+   * Handles GET /api/sessao to list sessions with optional filters and pagination.
+   * Restricts to the authenticated therapist's sessions, unless is_super_admin requests with all=true.
+   *
+   * @param req - Express request with query params (status, data, dataInicio, dataFim, pacienteId, jogoId, modo, page, limit, all).
+   * @param res - Express response returning sessions array and pagination metadata.
+   */
+  static async listar(req: Request, res: Response): Promise<void> {
+    try {
+      const query = (req.query || {}) as Record<string, unknown>;
+      const verTodasSessoes = query.all === 'true';
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+
+      const pageParsed = query.page !== undefined ? Number(query.page) : undefined;
+      const limitParsed = query.limit !== undefined ? Number(query.limit) : undefined;
+
+      const filtros: FiltrosSessaoDTO = {
+        status: typeof query.status === 'string' ? query.status : undefined,
+        data: typeof query.data === 'string' ? query.data : undefined,
+        dataInicio: typeof query.dataInicio === 'string' ? query.dataInicio : undefined,
+        dataFim: typeof query.dataFim === 'string' ? query.dataFim : undefined,
+        pacienteId: typeof query.pacienteId === 'string' ? query.pacienteId : undefined,
+        jogoId: typeof query.jogoId === 'string' ? query.jogoId : undefined,
+        modo: typeof query.modo === 'string' ? query.modo : undefined,
+        page: Number.isFinite(pageParsed) && (pageParsed as number) > 0 ? Math.floor(pageParsed as number) : undefined,
+        limit: Number.isFinite(limitParsed) && (limitParsed as number) > 0 ? Math.min(100, Math.floor(limitParsed as number)) : undefined,
+      };
+
+      const resultado = await SessaoListarService.listar(filtros, usuarioLogado, verTodasSessoes);
+
+      res.status(200).json({
+        data: resultado.data,
+        meta: resultado.meta,
+      });
+    } catch (error: unknown) {
+      console.error('[SessaoController.listar]', error);
+      res.status(500).json({
+        error: 'Erro interno ao listar sessões.',
+        detalhes: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   static async iniciar(req: Request, res: Response): Promise<void> {
     try {
       // 1. Extração segura da identidade do terapeuta a partir do token JWT verificado (RF21, CA-1)
@@ -86,6 +131,12 @@ export class SessaoController {
         return;
       }
 
+      // Validação estrita de UUIDs para evitar Postgres 22P02 e HTTP 500
+      if (!validarUUID(jogo_id)) {
+        res.status(400).json({ error: 'Identificador jogo_id inválido: deve ser um UUID válido.' });
+        return;
+      }
+
       if (modo_sessao && !Object.values(MODO_SESSAO).includes(modo_sessao)) {
         res.status(400).json({ error: 'Modo de sessão inválido. Escolha entre: ' + Object.values(MODO_SESSAO).join(', ') });
         return;
@@ -99,6 +150,11 @@ export class SessaoController {
 
       if (modo_sessao === MODO_SESSAO.MODO_LIVRE && paciente_id) {
         res.status(400).json({ error: 'Partidas em modo livre não podem ter paciente vinculado (RN01)' });
+        return;
+      }
+
+      if (paciente_id && !validarUUID(paciente_id)) {
+        res.status(400).json({ error: 'Identificador paciente_id inválido: deve ser um UUID válido.' });
         return;
       }
 
@@ -143,8 +199,9 @@ export class SessaoController {
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
+      const authReq = req as AuthenticatedRequest;
       const id = String(req.params.id);
-      const sessao = await SessaoModel.buscarPorId(id);
+      const sessao = authReq.contextoSessao || await SessaoModel.buscarPorId(id);
       if (!sessao) {
         res.status(404).json({ error: 'Sessão não encontrada' });
         return;
@@ -164,8 +221,9 @@ export class SessaoController {
    */
   static async buscarPorToken(req: Request, res: Response): Promise<void> {
     try {
+      const authReq = req as AuthenticatedRequest;
       const token = String(req.params.token);
-      const sessao = await SessaoModel.buscarPorToken(token);
+      const sessao = authReq.contextoSessao || await SessaoModel.buscarPorToken(token);
       if (!sessao) {
         res.status(404).json({ error: 'Código de sessão inválido ou expirado' });
         return;
@@ -185,24 +243,27 @@ export class SessaoController {
    */
   static async finalizar(req: Request, res: Response): Promise<void> {
     try {
+      const authReq = req as AuthenticatedRequest;
       const idParam = String(req.params.id || '').trim();
 
-      // 1. Busca prévia para validação estrita da máquina de estados (suporta UUID ou token de sessão)
-      let sessaoAtual: Sessao | null = null;
-      if (validarUUID(idParam)) {
-        sessaoAtual = await SessaoModel.buscarPorId(idParam);
-      } else {
-        // Valida se o identificador atende ao formato de token de pareamento (ex: 4M5S-8U7B ou 849-291)
-        const isPossivelToken = /^[A-Z0-9]{3,5}-?[A-Z0-9]{3,5}$/i.test(idParam);
-        if (!isPossivelToken) {
-          res.status(400).json({ error: 'O identificador da sessão deve ser um UUID válido ou token existente.' });
-          return;
-        }
+      // 1. Busca prévia para validação estrita da máquina de estados (reusa contextoSessao com fallback)
+      let sessaoAtual: Sessao | null = authReq.contextoSessao || null;
+      if (!sessaoAtual) {
+        if (validarUUID(idParam)) {
+          sessaoAtual = await SessaoModel.buscarPorId(idParam);
+        } else {
+          // Valida se o identificador atende ao formato de token de pareamento (ex: 4M5S-8U7B ou 849-291)
+          const isPossivelToken = /^[A-Z0-9]{3,5}-?[A-Z0-9]{3,5}$/i.test(idParam);
+          if (!isPossivelToken) {
+            res.status(400).json({ error: 'O identificador da sessão deve ser um UUID válido ou token existente.' });
+            return;
+          }
 
-        sessaoAtual = await SessaoModel.buscarPorToken(idParam);
-        if (!sessaoAtual) {
-          res.status(400).json({ error: 'O identificador da sessão deve ser um UUID válido ou token existente.' });
-          return;
+          sessaoAtual = await SessaoModel.buscarPorToken(idParam);
+          if (!sessaoAtual) {
+            res.status(400).json({ error: 'O identificador da sessão deve ser um UUID válido ou token existente.' });
+            return;
+          }
         }
       }
 
@@ -316,9 +377,10 @@ export class SessaoController {
    */
   static async cancelar(req: Request, res: Response): Promise<void> {
     try {
+      const authReq = req as AuthenticatedRequest;
       const id = String(req.params.id);
 
-      const sessao = await SessaoModel.buscarPorId(id);
+      const sessao = authReq.contextoSessao || await SessaoModel.buscarPorId(id);
 
       if (!sessao) {
         res.status(404).json({ error: 'Sessão não encontrada' });
@@ -526,9 +588,17 @@ export class SessaoController {
    */
   static async consultarStatus(req: Request, res: Response): Promise<void> {
     try {
-      const token = String(req.params.token || '');
+      const token = String(req.params.token || '').trim();
       if (!token) {
         res.status(400).json({ error: 'Token não fornecido' });
+        return;
+      }
+
+      if (!REGEX_PIN_PAREAMENTO.test(token)) {
+        res.status(400).json({
+          error: 'Formato de token de pareamento inválido.',
+          detalhes: 'O código PIN deve conter entre 3 a 5 caracteres alfanuméricos por bloco (ex: 4M5S-8U7B ou 849291).',
+        });
         return;
       }
 
@@ -536,6 +606,21 @@ export class SessaoController {
       if (!sessao) {
         res.status(404).json({ error: 'Sessão não encontrada' });
         return;
+      }
+
+      // Validação de expiração pelo TTL de 15 minutos (retorno 410 Gone)
+      if (sessao.expira_em) {
+        const agora = Date.now();
+        const dataExpiracao = new Date(sessao.expira_em).getTime();
+
+        if (agora > dataExpiracao) {
+          res.status(410).json({
+            error: 'Token de pareamento expirado. Solicite um novo código ao terapeuta.',
+            detalhes: 'O tempo limite de 15 minutos para pareamento foi ultrapassado.',
+            expirado_em: sessao.expira_em,
+          });
+          return;
+        }
       }
 
       const presenca = SessaoController.obterPresencaCallback
@@ -605,7 +690,8 @@ export class SessaoController {
    */
   static async atualizarStatus(req: Request, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id);
+      const authReq = req as AuthenticatedRequest;
+      const id = authReq.contextoSessao?.id || String(req.params.id);
       const { status } = req.body;
 
       if (!status) {
@@ -615,6 +701,27 @@ export class SessaoController {
 
       if (!Object.values(STATUS_SESSAO).includes(status)) {
         res.status(400).json({ error: 'O status informado é inválido, deve conter algum desses valores: ' + Object.values(STATUS_SESSAO).join(', ') });
+        return;
+      }
+
+      // Validação de integridade e trava de máquina de estados (FSM)
+      const sessaoExistente = authReq.contextoSessao || await SessaoModel.buscarPorId(id);
+      if (!sessaoExistente) {
+        res.status(404).json({ error: 'Sessão não encontrada para atualização de status' });
+        return;
+      }
+
+      const estadosTerminais: StatusSessao[] = [
+        STATUS_SESSAO.FINALIZADA,
+        STATUS_SESSAO.CANCELADA,
+        STATUS_SESSAO.EXPIRADA,
+        STATUS_SESSAO.INTERROMPIDA_POR_QUEDA,
+      ];
+
+      if (estadosTerminais.includes(sessaoExistente.status_sessao)) {
+        res.status(400).json({
+          error: `Transição inválida de máquina de estados: a sessão já se encontra no estado terminal '${sessaoExistente.status_sessao}'.`,
+        });
         return;
       }
 

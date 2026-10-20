@@ -180,7 +180,7 @@ export function BlocoAnotacoesClinicas({
       {/* Rodapé de Ações e Feedback Visual de Persistência */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         {/* Status de Persistência */}
-        <div className="flex items-center gap-2 text-xs min-h-[24px]">
+        <div className="flex items-center gap-2 text-xs min-h-6">
           {statusSalvar === "salvando" && (
             <span
               data-testid="status-salvando"

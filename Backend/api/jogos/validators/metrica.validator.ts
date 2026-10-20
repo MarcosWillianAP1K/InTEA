@@ -6,7 +6,7 @@ export interface EventoTelemetria {
   tipo_evento: string;
   dados: {
     id_metrica: string;
-    valor: any;
+    valor: unknown;
   };
 }
 
@@ -27,7 +27,7 @@ export class MetricaValidator {
    * @param metrica - Raw metric definition object from a game manifest.
    * @returns Validation result with boolean `valido` and error message if invalid.
    */
-  static validarTipagemEstrita(metrica: any): { valido: boolean; erro?: string } {
+  static validarTipagemEstrita(metrica: unknown): { valido: boolean; erro?: string } {
     if (!metrica || typeof metrica !== 'object') {
       return {
         valido: false,
@@ -35,17 +35,19 @@ export class MetricaValidator {
       };
     }
 
-    const { id_metrica, tipo_metrica } = metrica;
+    const obj = metrica as Record<string, unknown>;
+    const id_metrica = typeof obj.id_metrica === 'string' ? obj.id_metrica : undefined;
+    const tipo_metrica = typeof obj.tipo_metrica === 'string' ? obj.tipo_metrica : undefined;
     const label = id_metrica ? `'${id_metrica}'` : 'desconhecida';
 
-    if (!tipo_metrica || typeof tipo_metrica !== 'string' || tipo_metrica.trim() === '') {
+    if (!tipo_metrica || tipo_metrica.trim() === '') {
       return {
         valido: false,
         erro: `Métrica ${label} sem tipo definido. Rejeitada estritamente conforme RN02 (proibido fallback automático).`
       };
     }
 
-    if (!this.TIPOS_VALIDOS.includes(tipo_metrica as any)) {
+    if (!(this.TIPOS_VALIDOS as readonly string[]).includes(tipo_metrica)) {
       return {
         valido: false,
         erro: `Métrica ${label} com tipo inválido '${tipo_metrica}'. Apenas 'numerica' e 'categorica' são permitidas.`
@@ -64,17 +66,34 @@ export class MetricaValidator {
    * @returns Object indicating if writing is permitted (`podeGravar`), detected type, and error if blocked.
    */
   static validarGravacaoProntuario(
-    evento: any,
+    evento: unknown,
     manifesto: ManifestoJogo
   ): ResultadoValidacaoProntuario {
-    if (!evento || !evento.dados || !evento.dados.id_metrica) {
+    if (!evento || typeof evento !== 'object') {
+      return {
+        podeGravar: false,
+        erro: 'Evento de telemetria inválido.'
+      };
+    }
+
+    const ev = evento as Record<string, unknown>;
+    if (!ev.dados || typeof ev.dados !== 'object') {
       return {
         podeGravar: false,
         erro: 'Evento de telemetria mal formatado ou sem id_metrica nos dados.'
       };
     }
 
-    const { id_metrica, valor } = evento.dados;
+    const dados = ev.dados as Record<string, unknown>;
+    if (!dados.id_metrica || typeof dados.id_metrica !== 'string') {
+      return {
+        podeGravar: false,
+        erro: 'Evento de telemetria mal formatado ou sem id_metrica nos dados.'
+      };
+    }
+
+    const id_metrica = dados.id_metrica;
+    const valor = dados.valor;
 
     // 1. Busca a métrica declarada no manifesto do jogo
     const metricaDeclarada = manifesto.metricas_suportadas?.find(

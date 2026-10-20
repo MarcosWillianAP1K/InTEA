@@ -8,6 +8,8 @@ import { Request, Response } from 'express';
 import { CriarTerapeutaDTO, AtualizarTerapeutaDTO } from '../models/terapeuta.model.js';
 import { TerapeutaService, TerapeutaServiceError } from '../services/terapeuta.service.js';
 import { obterMensagemErro } from '../../../core/utils/formatters.js';
+import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { validarUUID } from '../../../core/utils/validators.js';
 
 export class TerapeutaController {
   /**
@@ -19,9 +21,14 @@ export class TerapeutaController {
   static async listar(req: Request, res: Response): Promise<void> {
     try {
       const incluirInativos = req.query.incluirInativos === 'true';
-      const terapeutas = await TerapeutaService.listar(incluirInativos);
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const terapeutas = await TerapeutaService.listar(incluirInativos, usuarioLogado);
       res.status(200).json({ data: terapeutas });
     } catch (error: unknown) {
+      if (error instanceof TerapeutaServiceError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
       console.error('[TerapeutaController.listar]', error);
       res.status(500).json({
         error: 'Erro interno ao listar terapeutas.',
@@ -39,7 +46,12 @@ export class TerapeutaController {
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
-      const terapeuta = await TerapeutaService.buscarPorId(id);
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'Identificador de terapeuta inválido: deve ser um UUID válido.' });
+        return;
+      }
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const terapeuta = await TerapeutaService.buscarPorId(id, usuarioLogado);
 
       if (!terapeuta) {
         res.status(404).json({ error: 'Terapeuta não encontrado.' });
@@ -106,9 +118,14 @@ export class TerapeutaController {
   static async atualizar(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'Identificador de terapeuta inválido: deve ser um UUID válido.' });
+        return;
+      }
       const dto: AtualizarTerapeutaDTO = req.body;
+      const usuarioLogado = (req as AuthenticatedRequest).user;
 
-      const atualizado = await TerapeutaService.atualizar(id, dto);
+      const atualizado = await TerapeutaService.atualizar(id, dto, usuarioLogado);
 
       res.status(200).json({
         data: atualizado,
@@ -137,6 +154,10 @@ export class TerapeutaController {
   static async desativar(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'Identificador de terapeuta inválido: deve ser um UUID válido.' });
+        return;
+      }
       const { terapeuta, jaInativo } = await TerapeutaService.desativar(id);
 
       if (jaInativo) {
@@ -174,6 +195,10 @@ export class TerapeutaController {
   static async reativar(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'Identificador de terapeuta inválido: deve ser um UUID válido.' });
+        return;
+      }
       const reativado = await TerapeutaService.reativar(id);
 
       res.status(200).json({
@@ -203,6 +228,10 @@ export class TerapeutaController {
   static async deletarHard(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
+      if (!validarUUID(id)) {
+        res.status(400).json({ error: 'Identificador de terapeuta inválido: deve ser um UUID válido.' });
+        return;
+      }
       await TerapeutaService.deletarHard(id);
 
       res.status(200).json({

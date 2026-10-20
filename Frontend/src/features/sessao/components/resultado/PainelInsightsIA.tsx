@@ -1,4 +1,3 @@
-import * as React from "react";
 import {
   Card,
   CardHeader,
@@ -51,7 +50,7 @@ export function PainelInsightsIA({
     return (
       <Card
         data-testid="painel-insights-ia-skeleton"
-        className={`rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col gap-4 h-[380px] ${className}`}
+        className={`rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col gap-4 h-95 ${className}`}
       >
         <div className="flex items-center justify-between">
           <div className="space-y-2">
@@ -118,7 +117,7 @@ export function PainelInsightsIA({
         className={`rounded-2xl border border-dashed border-border/80 bg-muted/20 p-8 text-center ${className}`}
       >
         <CardContent className="flex flex-col items-center justify-center p-0 gap-3">
-          <div className="p-3 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#0b3294] dark:text-blue-400">
+          <div className="p-3 rounded-full bg-primary/10 text-primary">
             <Sparkles className="h-6 w-6 animate-pulse" />
           </div>
           <div>
@@ -297,7 +296,7 @@ export function PainelInsightsIA({
             data-testid="bloco-recomendacoes-adaptativas"
             className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 flex items-start gap-3"
           >
-            <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-[#0b3294] dark:text-blue-300 shrink-0">
+            <div className="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0">
               <Lightbulb className="h-4 w-4" />
             </div>
             <div className="space-y-1 w-full">

@@ -263,4 +263,35 @@ describe("Card 4.2 — Store Reativa de Sessão e Pareamento (features/sessao/st
       expect(useSessionStore.getState().pareamento?.dispositivo).toBeNull();
     });
   });
+
+  describe("Desbloqueio de Armadilha de Estado (statusAnterior e limparErro)", () => {
+    it("deve salvar statusAnterior ao definir erro e restaurar via limparErro", () => {
+      const store = useSessionStore.getState();
+      store.abrirModalPreSessao({ id: "jogo-1", titulo: "Jogo 1" });
+      expect(useSessionStore.getState().status).toBe("configurando");
+
+      store.setErro("Falha temporária de rede");
+      const errorState = useSessionStore.getState();
+      expect(errorState.status).toBe("erro");
+      expect(errorState.statusAnterior).toBe("configurando");
+      expect(errorState.erro).toBe("Falha temporária de rede");
+
+      store.limparErro();
+      const recoveredState = useSessionStore.getState();
+      expect(recoveredState.status).toBe("configurando");
+      expect(recoveredState.statusAnterior).toBeNull();
+      expect(recoveredState.erro).toBeNull();
+    });
+
+    it("deve limpar erro quando setErro(null) é chamado diretamente", () => {
+      const store = useSessionStore.getState();
+      store.abrirModalPreSessao({ id: "jogo-1", titulo: "Jogo 1" });
+      store.setErro("Erro de teste");
+      expect(useSessionStore.getState().status).toBe("erro");
+
+      store.setErro(null);
+      expect(useSessionStore.getState().status).toBe("configurando");
+      expect(useSessionStore.getState().erro).toBeNull();
+    });
+  });
 });

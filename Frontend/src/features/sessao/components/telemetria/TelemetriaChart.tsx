@@ -35,7 +35,7 @@ export function TelemetriaChart({
       >
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Activity className="h-4 w-4 text-[#0b3294] dark:text-blue-400" />
+            <Activity className="h-4 w-4 text-primary" />
             {titulo}
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
@@ -91,7 +91,7 @@ export function TelemetriaChart({
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-[#0b3294] dark:text-blue-400" />
+            <TrendingUp className="h-4 w-4 text-primary" />
             {titulo}
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
@@ -102,7 +102,7 @@ export function TelemetriaChart({
         {/* Legenda */}
         <div className="flex items-center gap-4 text-2xs">
           <div className="flex items-center gap-1.5 font-medium">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#0b3294] dark:bg-blue-400 inline-block" />
+            <span className="w-2.5 h-2.5 rounded-full bg-primary inline-block" />
             <span>Engajamento ({ultimoPonto.engajamento}%)</span>
           </div>
           <div className="flex items-center gap-1.5 font-medium text-muted-foreground">
@@ -121,8 +121,8 @@ export function TelemetriaChart({
           >
             <defs>
               <linearGradient id="engajamentoGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#0b3294" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#0b3294" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0.0" />
               </linearGradient>
             </defs>
 
@@ -169,8 +169,9 @@ export function TelemetriaChart({
             <path
               d={caminhoEngajamento}
               fill="none"
-              stroke="#0b3294"
+              stroke="currentColor"
               strokeWidth="2.5"
+              className="text-primary"
             />
 
             {/* Marcadores de tempo no eixo X */}

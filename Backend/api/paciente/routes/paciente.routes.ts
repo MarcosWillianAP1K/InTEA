@@ -536,7 +536,7 @@ pacienteRoutes.patch('/:id/reativar', authMiddleware, adminMiddleware, PacienteC
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado (sem vínculo ativo com o paciente)
+ *         description: Acesso negado (sem vínculo ativo com o paciente - RN04)
  *         content:
  *           application/json:
  *             example:
@@ -554,7 +554,7 @@ pacienteRoutes.patch('/:id/reativar', authMiddleware, adminMiddleware, PacienteC
  *             example:
  *               error: "Erro interno ao listar terapeutas do paciente."
  */
-pacienteRoutes.get('/:id/terapeutas', authMiddleware, PacienteController.listarTerapeutas);
+pacienteRoutes.get('/:id/terapeutas', authMiddleware, verificarVisibilidadePaciente, PacienteController.listarTerapeutas);
 
 /**
  * @swagger
@@ -599,6 +599,12 @@ pacienteRoutes.get('/:id/terapeutas', authMiddleware, PacienteController.listarT
  *           application/json:
  *             example:
  *               error: "Token JWT não fornecido"
+ *       403:
+ *         description: Acesso negado (sem vínculo ativo com o paciente ou clínica divergente - RN04)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado: terapeuta não possui vínculo com este paciente (RN04)."
  *       404:
  *         description: Paciente ou terapeuta não encontrado
  *         content:
@@ -612,7 +618,7 @@ pacienteRoutes.get('/:id/terapeutas', authMiddleware, PacienteController.listarT
  *             example:
  *               error: "Erro interno ao vincular terapeuta ao paciente."
  */
-pacienteRoutes.post('/:id/terapeutas', authMiddleware, PacienteController.vincularTerapeuta);
+pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaciente, PacienteController.vincularTerapeuta);
 
 /**
  * @swagger
@@ -654,6 +660,12 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, PacienteController.vincul
  *           application/json:
  *             example:
  *               error: "Token JWT não fornecido"
+ *       403:
+ *         description: Acesso negado (sem vínculo ativo com o paciente ou clínica divergente - RN04)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Acesso negado: terapeuta não possui vínculo com este paciente (RN04)."
  *       404:
  *         description: Paciente não encontrado
  *         content:
@@ -667,4 +679,4 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, PacienteController.vincul
  *             example:
  *               error: "Erro interno ao desvincular terapeuta."
  */
-pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, PacienteController.desvincularTerapeuta);
+pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, verificarVisibilidadePaciente, PacienteController.desvincularTerapeuta);

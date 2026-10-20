@@ -117,6 +117,81 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         })
       ).rejects.toThrow(PacienteServiceError);
     });
+
+    it('deve forçar clinica_id do terapeuta e auto-vincular criador quando usuarioLogado não for super admin (RN04)', async () => {
+      const { TerapeutaModel } = await import('../../terapeuta/models/terapeuta.model.js');
+      const terapeutaLogadoId = '11111111-1111-4111-a111-111111111111';
+      const clinicaRealId = '22222222-2222-4222-a222-222222222222';
+
+      vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
+        id: terapeutaLogadoId,
+        nome: 'Dra. Terapeuta',
+        clinica_id: clinicaRealId,
+        status_ativo: true,
+      } as any);
+
+      const spyCriar = vi.spyOn(PacienteModel, 'criar').mockResolvedValue({
+        id: '33333333-3333-4333-a333-333333333333',
+        nome: 'Paciente Criado',
+        data_nascimento: '2019-01-01',
+        cpf: '529.982.247-25',
+        clinica_id: clinicaRealId,
+        status_ativo: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any);
+
+      const usuarioLogado = {
+        id: terapeutaLogadoId,
+        is_super_admin: false,
+      };
+
+      await PacienteService.criar(
+        {
+          nome: 'Paciente Criado',
+          data_nascimento: '2019-01-01',
+          cpf: '52998224725',
+          clinica_id: 'tentativa-spoofing-clinica-falsa',
+        },
+        usuarioLogado
+      );
+
+      // Deve ter forçado clinica_id da terapeuta e repassado o ID do criador
+      expect(spyCriar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinica_id: clinicaRealId,
+        }),
+        terapeutaLogadoId
+      );
+    });
+
+    it('deve rejeitar com 403 se o terapeuta requisitante estiver inativo', async () => {
+      const { TerapeutaModel } = await import('../../terapeuta/models/terapeuta.model.js');
+      const terapeutaLogadoId = '11111111-1111-4111-a111-111111111111';
+
+      vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
+        id: terapeutaLogadoId,
+        nome: 'Dra. Inativa',
+        clinica_id: 'clinica-qualquer',
+        status_ativo: false,
+      } as any);
+
+      const usuarioLogado = {
+        id: terapeutaLogadoId,
+        is_super_admin: false,
+      };
+
+      await expect(
+        PacienteService.criar(
+          {
+            nome: 'Paciente Teste',
+            data_nascimento: '2019-01-01',
+            cpf: '52998224725',
+          },
+          usuarioLogado
+        )
+      ).rejects.toMatchObject({ statusCode: 403 });
+    });
   });
 
   describe('desativar (RN05)', () => {

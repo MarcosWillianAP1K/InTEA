@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { sessaoService } from "../services/sessaoService";
 
 describe("Sessao Service (sessaoService)", () => {
-  const originalFetch = global.fetch;
+  const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
+    globalThis.fetch = originalFetch;
   });
 
   it("deve retornar erro se o identificador de sessão for vazio", async () => {
@@ -30,7 +30,7 @@ describe("Sessao Service (sessaoService)", () => {
         },
       }),
     });
-    global.fetch = mockFetch;
+    globalThis.fetch = mockFetch;
 
     const res = await sessaoService.finalizar("849-291", "Paciente focado.");
 
@@ -46,7 +46,7 @@ describe("Sessao Service (sessaoService)", () => {
   });
 
   it("deve tratar resposta de erro do servidor (ex: 400)", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 400,
       json: async () => ({ error: "A sessão já se encontra finalizada." }),
@@ -58,7 +58,7 @@ describe("Sessao Service (sessaoService)", () => {
   });
 
   it("deve tratar erro de rede graciosamente", async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error("Falha na conexão de rede"));
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error("Falha na conexão de rede"));
 
     const res = await sessaoService.finalizar("uuid-sessao-1");
     expect(res.sucesso).toBe(false);

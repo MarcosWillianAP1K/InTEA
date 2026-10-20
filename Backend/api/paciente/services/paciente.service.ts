@@ -14,6 +14,7 @@ import {
   ResponsavelVinculado,
   TerapeutaVinculado,
 } from '../models/paciente.model.js';
+import { TerapeutaModel } from '../../terapeuta/models/terapeuta.model.js';
 import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
 import {
   validarUUID,
@@ -110,19 +111,38 @@ export class PacienteService {
   }
 
   /**
-   * Creates a new patient record with sanitized demographic data and masks.
+   * Creates a new patient record with sanitized demographic data, masks, and auto-linkage.
    *
    * @param dto - New patient payload data.
+   * @param usuarioLogado - Optional authenticated user enforcing clinic isolation and author linkage.
    * @returns Newly created patient record.
    */
-  static async criar(dto: CriarPacienteDTO): Promise<Paciente> {
+  static async criar(
+    dto: CriarPacienteDTO,
+    usuarioLogado?: UsuarioAutenticado
+  ): Promise<Paciente> {
     // 1. Validação estrutural do payload
     const validacao = validarCriarPacienteDTO(dto);
     if (!validacao.valido) {
       throw new PacienteServiceError('Erro de validação nos dados do paciente.', 400, validacao.erros);
     }
 
-    // 2. Normalização e aplicação de máscaras canônicas
+    // 2. Isolamento Institucional e Anti-Spoofing de Clínica (RN04)
+    if (usuarioLogado) {
+      const isSuperAdmin =
+        usuarioLogado.is_super_admin === true ||
+        usuarioLogado.user_metadata?.is_super_admin === true;
+
+      if (!isSuperAdmin) {
+        const terapeuta = await TerapeutaModel.buscarPorId(usuarioLogado.id);
+        if (!terapeuta || !terapeuta.status_ativo) {
+          throw new PacienteServiceError('Acesso negado: terapeuta inexistente ou inativo.', 403);
+        }
+        dto.clinica_id = terapeuta.clinica_id;
+      }
+    }
+
+    // 3. Normalização e aplicação de máscaras canônicas
     dto.cpf = formatarCPF(dto.cpf);
     if (dto.cep) dto.cep = formatarCEP(dto.cep);
     if (dto.telefone) dto.telefone = formatarTelefone(dto.telefone);
@@ -132,7 +152,10 @@ export class PacienteService {
       if (dto.responsavel.telefone) dto.responsavel.telefone = formatarTelefone(dto.responsavel.telefone);
     }
 
-    // 3. Persistência
+    // 4. Persistência e auto-vínculo do criador
+    if (usuarioLogado?.id) {
+      return await PacienteModel.criar(dto, usuarioLogado.id);
+    }
     return await PacienteModel.criar(dto);
   }
 

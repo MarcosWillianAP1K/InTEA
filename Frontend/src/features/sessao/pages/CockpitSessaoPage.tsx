@@ -1,27 +1,23 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSessionStore } from "../store/sessionStore";
-import { useSessionPersistence } from "../hooks/useSessionPersistence";
-import { useLiveTelemetry } from "../hooks/useLiveTelemetry";
-import { useClinicalTimer } from "../hooks/useClinicalTimer";
+import { useSessionStore } from "@/features/sessao/store/sessionStore";
+import { useSessionPersistence } from "@/features/sessao/hooks/useSessionPersistence";
+import { useLiveTelemetry } from "@/features/sessao/hooks/useLiveTelemetry";
+import { useClinicalTimer } from "@/features/sessao/hooks/useClinicalTimer";
 import { SessionSocketManager } from "@/core/web.socket";
-import { ControlesClinicos } from "../components/ControlesClinicos";
+import { ControlesClinicos } from "@/features/sessao/components/ControlesClinicos";
 import { ModalFinalizarSessao } from "../components/ModalFinalizarSessao";
-import { TelemetriaCards } from "../components/telemetria/TelemetriaCards";
-import { TelemetriaChart } from "../components/telemetria/TelemetriaChart";
-import { TabletDiagnosticCard } from "../components/telemetria/TabletDiagnosticCard";
-import { sessaoService } from "../services/sessaoService";
+import { TelemetriaCards } from "@/features/sessao/components/telemetria/TelemetriaCards";
+import { TelemetriaChart } from "@/features/sessao/components/telemetria/TelemetriaChart";
+import { TabletDiagnosticCard } from "@/features/sessao/components/telemetria/TabletDiagnosticCard";
+import { sessaoService } from "@/features/sessao/services/sessaoService";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { toast } from "sonner";
 import {
   Gamepad2,
-  User,
   Clock,
   ArrowLeft,
-  Activity,
-  CheckCircle2,
-  ShieldAlert,
 } from "lucide-react";
 
 /**
@@ -176,13 +172,13 @@ export function CockpitSessaoPage() {
               </span>
               <Badge
                 variant="outline"
-                className="text-2xs bg-blue-50 text-[#0b3294] border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
+                className="text-2xs bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary-foreground dark:border-primary/40"
               >
                 Prontuário Ativo
               </Badge>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Gamepad2 className="h-3.5 w-3.5 text-[#0b3294] dark:text-blue-400" />
+              <Gamepad2 className="h-3.5 w-3.5 text-primary" />
               <span data-testid="cockpit-jogo-titulo" className="font-medium text-foreground/80">
                 {tituloJogo}
               </span>
@@ -200,7 +196,7 @@ export function CockpitSessaoPage() {
               className={`h-4 w-4 ${
                 isPausado
                   ? "text-amber-500 animate-pulse"
-                  : "text-[#0b3294] dark:text-blue-400"
+                  : "text-primary"
               }`}
             />
             <span

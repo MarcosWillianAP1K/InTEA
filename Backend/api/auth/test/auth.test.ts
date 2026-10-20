@@ -46,7 +46,7 @@ describe('Backend: AuthModel (Login, Recuperação de Senha e Perfil)', () => {
 
     expect(resultado).toBeDefined();
     expect(resultado.access_token).toBe('jwt-access-token-xyz');
-    expect(resultado.perfil.status_ativo).toBe(true);
+    expect(resultado.perfil?.status_ativo).toBe(true);
     expect(mockSignIn).toHaveBeenCalledWith({
       email: dto.email,
       password: dto.password,
@@ -92,5 +92,35 @@ describe('Backend: AuthModel (Login, Recuperação de Senha e Perfil)', () => {
     expect(res.exemplo).toBe(true);
     expect(res.message).toContain('[EXEMPLO]');
     expect(res.message).toContain(email);
+  });
+
+  it('deve renovar sessão chamando refreshSession', async () => {
+    vi.spyOn(supabase.auth, 'refreshSession').mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'new-access-token',
+          refresh_token: 'new-refresh-token',
+          expires_in: 3600,
+        },
+        user: { id: 'uuid-user-123' },
+      },
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof supabase.auth.refreshSession>>);
+
+    const tokens = await AuthModel.refreshSession('old-refresh-token');
+
+    expect(tokens.access_token).toBe('new-access-token');
+    expect(tokens.refresh_token).toBe('new-refresh-token');
+    expect(tokens.token_type).toBe('Bearer');
+    expect(tokens.expires_in).toBe(3600);
+  });
+
+  it('deve executar logout com sucesso', async () => {
+    vi.spyOn(supabase.auth, 'signOut').mockResolvedValue({ error: null });
+
+    const res = await AuthModel.logout();
+
+    expect(res.success).toBe(true);
+    expect(res.message).toContain('Logout realizado com sucesso');
   });
 });

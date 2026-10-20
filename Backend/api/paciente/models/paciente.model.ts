@@ -1,4 +1,5 @@
 import { supabase } from '../../../core/supabase/supabase.client.js';
+import { validarUUID } from '../../../core/utils/validators.js';
 
 // ==============================================================================
 // 1. INTERFACES E TIPAGENS (TypeScript)
@@ -154,7 +155,7 @@ export class PacienteModel {
             throw new Error(`Erro ao consultar vínculos do terapeuta: ${vinculoError.message}`);
           }
 
-          idsVinculados = vinculos?.map((v: any) => v.paciente_id) || [];
+          idsVinculados = vinculos?.map((v: { paciente_id: string }) => v.paciente_id) || [];
 
           // Se o terapeuta não possui nenhum paciente vinculado, retorna imediatamente lista vazia
           if (idsVinculados.length === 0) {
@@ -169,8 +170,9 @@ export class PacienteModel {
             };
           }
         }
-      } catch (err: any) {
-        if (err?.message?.includes('vínculos do terapeuta')) {
+      } catch (err: unknown) {
+        const errorObj = err as Error;
+        if (errorObj?.message?.includes('vínculos do terapeuta')) {
           throw err;
         }
         // Ignora erro em caso de mocks parciais em testes unitários
@@ -288,7 +290,7 @@ export class PacienteModel {
    * @returns The created or reactivated patient entity with generated ID and timestamps.
    * @throws {Error} If patient is already active or insertion/update fails.
    */
-  static async criar(dto: CriarPacienteDTO): Promise<Paciente> {
+  static async criar(dto: CriarPacienteDTO, terapeutaCriadorId?: string): Promise<Paciente> {
     // 1. Verifica se já existe paciente com este CPF na base
     let pacienteExistente: { id: string; status_ativo: boolean; nome: string } | null = null;
     try {
@@ -313,7 +315,7 @@ export class PacienteModel {
 
       // Cenário B: Paciente existe mas estava INATIVO (soft delete anterior)
       // Reativa o cadastro existente, atualiza seus dados com os novos informados e preserva o histórico clínico (RN05)
-      return await this.reativarEAtualizar(pacienteExistente.id, dto);
+      return await this.reativarEAtualizar(pacienteExistente.id, dto, terapeutaCriadorId);
     }
 
     // 2. Se não existe paciente prévio, insere novo registro
@@ -357,7 +359,7 @@ export class PacienteModel {
             .maybeSingle();
 
           if (pInativo && !pInativo.status_ativo) {
-            return await this.reativarEAtualizar(pInativo.id, dto);
+            return await this.reativarEAtualizar(pInativo.id, dto, terapeutaCriadorId);
           }
         } catch {
           // segue para lançamento de conflito abaixo
@@ -374,6 +376,29 @@ export class PacienteModel {
       await this.salvarOuVincularResponsavel(novoPaciente.id, dto.responsavel);
     }
 
+    // Auto-vínculo do criador na tabela associativa (RN04)
+    if (terapeutaCriadorId && validarUUID(terapeutaCriadorId)) {
+      try {
+        const client = supabase.from('terapeuta_paciente');
+        if (typeof client?.upsert === 'function') {
+          const { error: vinculoError } = await client.upsert(
+            {
+              terapeuta_id: terapeutaCriadorId,
+              paciente_id: novoPaciente.id,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: 'terapeuta_id,paciente_id', ignoreDuplicates: true }
+          );
+
+          if (vinculoError) {
+            console.warn('[PacienteModel.criar] Falha ao auto-vincular criador:', vinculoError);
+          }
+        }
+      } catch (err) {
+        console.warn('[PacienteModel.criar] Aviso ao auto-vincular criador:', err);
+      }
+    }
+
     const pacienteCompleto = await this.buscarPorId(novoPaciente.id);
     return pacienteCompleto || novoPaciente;
   }
@@ -381,7 +406,11 @@ export class PacienteModel {
   /**
    * Helper para reativar e atualizar os dados cadastrais de um paciente previamente inativado.
    */
-  private static async reativarEAtualizar(id: string, dto: CriarPacienteDTO): Promise<Paciente> {
+  private static async reativarEAtualizar(
+    id: string,
+    dto: CriarPacienteDTO,
+    terapeutaCriadorId?: string
+  ): Promise<Paciente> {
     const { data: pacienteReativado, error: reativarError } = await supabase
       .from('paciente')
       .update({
@@ -409,6 +438,29 @@ export class PacienteModel {
 
     if (dto.responsavel) {
       await this.salvarOuVincularResponsavel(id, dto.responsavel);
+    }
+
+    // Auto-vínculo do criador na tabela associativa (RN04)
+    if (terapeutaCriadorId && validarUUID(terapeutaCriadorId)) {
+      try {
+        const client = supabase.from('terapeuta_paciente');
+        if (typeof client?.upsert === 'function') {
+          const { error: vinculoError } = await client.upsert(
+            {
+              terapeuta_id: terapeutaCriadorId,
+              paciente_id: id,
+              created_at: new Date().toISOString(),
+            },
+            { onConflict: 'terapeuta_id,paciente_id', ignoreDuplicates: true }
+          );
+
+          if (vinculoError) {
+            console.warn('[PacienteModel.reativarEAtualizar] Falha ao auto-vincular criador:', vinculoError);
+          }
+        }
+      } catch (err) {
+        console.warn('[PacienteModel.reativarEAtualizar] Aviso ao auto-vincular criador:', err);
+      }
     }
 
     const pacienteCompleto = await this.buscarPorId(id);
@@ -495,7 +547,7 @@ export class PacienteModel {
    * @throws {Error} If updating the database record fails.
    */
   static async atualizar(id: string, dto: AtualizarPacienteDTO): Promise<Paciente> {
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -734,7 +786,7 @@ export class PacienteModel {
    * @returns Array of associated therapist records.
    * @throws {Error} If the patient does not exist or querying relations fails.
    */
-  static async listarTerapeutasVinculados(pacienteId: string): Promise<any[]> {
+  static async listarTerapeutasVinculados(pacienteId: string): Promise<TerapeutaVinculado[]> {
     const { data: paciente, error: pacError } = await supabase
       .from('paciente')
       .select('id')
@@ -754,6 +806,6 @@ export class PacienteModel {
       throw new Error(`Erro ao listar terapeutas vinculados: ${error.message}`);
     }
 
-    return data || [];
+    return (data as unknown as TerapeutaVinculado[]) || [];
   }
 }
