@@ -384,6 +384,11 @@ CREATE INDEX IF NOT EXISTS idx_telemetria_tipo_evento ON public.telemetria_event
 CREATE INDEX IF NOT EXISTS idx_telemetria_id_metrica ON public.telemetria_evento ((dados->>'id_metrica'));
 CREATE INDEX IF NOT EXISTS idx_telemetria_dados_gin ON public.telemetria_evento USING gin (dados);
 
+-- Índices Otimizados para Prontuário Longitudinal e Gráficos Históricos (Sprint 11 - RF15, RNF05, RN01, RN05)
+CREATE INDEX IF NOT EXISTS idx_sessao_paciente_engajamento ON public.sessao (paciente_id, status_sessao, data_hora_fim DESC) WHERE paciente_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sessao_paciente_jogo_fim ON public.sessao (paciente_id, jogo_id, data_hora_fim DESC) WHERE status_sessao = 'finalizada' AND paciente_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_relatorio_dados_ia_gin ON public.relatorio_sessao USING gin (dados_ia_json);
+
 -- Trigger para atualizacao automatica de updated_at em sessao
 CREATE OR REPLACE FUNCTION public.fn_sessao_set_updated_at()
 RETURNS TRIGGER AS $$
