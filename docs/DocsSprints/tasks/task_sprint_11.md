@@ -58,7 +58,7 @@
 
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
-* **Fronteira de Arquivos:** `Backend/api/paciente/controllers/paciente.controller.ts`, `Backend/api/paciente/services/paciente-historico.service.ts`, `Backend/api/paciente/models/paciente-historico.model.ts`, `Backend/api/paciente/routes/paciente.routes.ts`
+* **Fronteira de Arquivos:** `Backend/api/paciente/controllers/paciente.controller.ts`, `Backend/api/paciente/services/paciente-historico.service.ts`, `Backend/api/paciente/models/historico.model.ts`, `Backend/api/paciente/routes/paciente.routes.ts`
 * **Ordem de Execução / Dependência:** **FAZ DEPOIS DE (Task 1: Modelagem e Índices - Dias 2 a 3)**. Execução nos **Dias 3 a 4 (Construção do Serviço e Controller)** e **Dia 5 (Integração e Validação de Permissões)**.
 * **Requisitos:** RF15, RF19, RF21, RN01, RN02, RN04, RNF02, RNF06
 * **Referência Documentação:** Projeto_de_InTEA.pdf (Seção 5, RF15 — Prontuário Longitudinal; RF19 — Filtros e Paginação), docs/api-pacientes-jogos.md (Seção 2 — Módulo de Pacientes), AGENTS.md (Seção 6.1 — Back-end Quality Gate)
