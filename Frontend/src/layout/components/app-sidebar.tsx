@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Gamepad2, LayoutDashboard, Users, UserCheck, History, Settings } from "lucide-react";
+import { Gamepad2, LayoutDashboard, Users, UserCheck, History, Settings, ShieldCheck } from "lucide-react";
 
 import { NavProjects } from "./nav-projects";
 import { NavHeader } from "./nav-header";
@@ -69,6 +69,11 @@ export function AppSidebar({
             name: "Todos os Pacientes",
             url: "/pacientes/todos",
             icon: UserCheck,
+          },
+          {
+            name: "Auditoria Clínica",
+            url: "/admin/auditoria",
+            icon: ShieldCheck,
           },
         ]
       : []),
