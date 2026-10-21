@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthModel, LoginDTO, RecuperarSenhaDTO } from '../models/auth.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { SessoesAtivasService } from '../../../core/auth/sessoes-ativas.service.js';
 
 // ==============================================================================
 // CONTROLLER: AuthController
@@ -36,6 +37,25 @@ export class AuthController {
         token_type: 'Bearer',
         expires_in: resultado.session.expires_in,
       };
+
+      // Rastreia a nova sessão ativa do terapeuta (RF02)
+      try {
+        const xForwardedFor = req.headers['x-forwarded-for'];
+        const ip =
+          typeof xForwardedFor === 'string'
+            ? xForwardedFor.split(',')[0]?.trim()
+            : req.ip || req.socket.remoteAddress || null;
+        const userAgent = (req.headers['user-agent'] as string) || null;
+
+        await SessoesAtivasService.registrarSessao({
+          usuarioId: resultado.user.id,
+          token: resultado.access_token,
+          ip: ip ?? null,
+          userAgent,
+        });
+      } catch (errSession) {
+        console.warn('[AuthController.login] Falha ao registrar sessão ativa:', errSession);
+      }
 
       res.status(200).json({
         data: {
@@ -240,4 +260,96 @@ export class AuthController {
       res.status(500).json({ error: 'Erro interno ao recuperar perfil.', detalhes });
     }
   }
+
+  /**
+   * Handles GET /api/auth/sessoes to list all active sessions for authenticated therapist (RF02).
+   */
+  static async listarSessoes(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      if (!usuarioLogado || !usuarioLogado.id) {
+        res.status(401).json({ error: 'Usuário não autenticado.' });
+        return;
+      }
+
+      const authHeader = req.headers.authorization;
+      const tokenAtual = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+
+      const sessoes = await SessoesAtivasService.listarSessoes(usuarioLogado.id, tokenAtual);
+
+      res.status(200).json({
+        data: sessoes,
+        total: sessoes.length,
+      });
+    } catch (error: unknown) {
+      console.error('[AuthController.listarSessoes]', error);
+      res.status(500).json({ error: 'Erro interno ao listar sessões ativas.' });
+    }
+  }
+
+  /**
+   * Handles POST /api/auth/logout-all to remotely disconnect all other active sessions (RF02).
+   */
+  static async logoutAll(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      if (!usuarioLogado || !usuarioLogado.id) {
+        res.status(401).json({ error: 'Usuário não autenticado.' });
+        return;
+      }
+
+      const authHeader = req.headers.authorization;
+      const tokenAtual = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+
+      if (!tokenAtual) {
+        res.status(400).json({ error: 'Token JWT não fornecido no cabeçalho Authorization.' });
+        return;
+      }
+
+      const resultado = await SessoesAtivasService.revogarOutrasSessoes(usuarioLogado.id, tokenAtual);
+
+      res.status(200).json({
+        data: null,
+        message: 'Todas as outras sessões ativas foram desconectadas com sucesso.',
+        sessoesRevogadas: resultado.revogadas,
+      });
+    } catch (error: unknown) {
+      console.error('[AuthController.logoutAll]', error);
+      res.status(500).json({ error: 'Erro interno ao desconectar outras sessões ativas.' });
+    }
+  }
+
+  /**
+   * Handles DELETE /api/auth/sessoes/:id to revoke a specific remote active session by UUID.
+   */
+  static async revogarSessao(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      if (!usuarioLogado || !usuarioLogado.id) {
+        res.status(401).json({ error: 'Usuário não autenticado.' });
+        return;
+      }
+
+      const sessaoId = String(req.params.id || '').trim();
+      if (!sessaoId || sessaoId.length < 10) {
+        res.status(400).json({ error: 'Identificador de sessão inválido.' });
+        return;
+      }
+
+      const revogado = await SessoesAtivasService.revogarSessaoPorId(usuarioLogado.id, sessaoId);
+      if (!revogado) {
+        res.status(404).json({ error: 'Sessão ativa não encontrada ou já revogada.' });
+        return;
+      }
+
+      res.status(200).json({
+        data: null,
+        message: 'Sessão revogada com sucesso.',
+      });
+    } catch (error: unknown) {
+      console.error('[AuthController.revogarSessao]', error);
+      res.status(500).json({ error: 'Erro interno ao revogar sessão remota.' });
+    }
+  }
 }
+

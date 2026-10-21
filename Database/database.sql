@@ -447,7 +447,29 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ==============================================================================
--- 21. SEMENTES DE DADOS (Seeds Iniciais)
+-- 21. TABELA: sessao_ativa (Controle de Dispositivos e Sessões Concorrentes - RF02)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.sessao_ativa (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) NOT NULL UNIQUE,
+    ip_origem VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    dispositivo VARCHAR(100) NULL,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+    ultimo_acesso_em TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+    expira_em TIMESTAMPTZ NOT NULL,
+    revogado BOOLEAN NOT NULL DEFAULT FALSE,
+    revogado_em TIMESTAMPTZ NULL,
+    motivo_revogacao VARCHAR(100) NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessao_ativa_usuario_id ON public.sessao_ativa(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_sessao_ativa_token_hash ON public.sessao_ativa(token_hash);
+CREATE INDEX IF NOT EXISTS idx_sessao_ativa_ativas ON public.sessao_ativa(usuario_id, revogado, expira_em) WHERE revogado = FALSE;
+
+-- ==============================================================================
+-- 22. SEMENTES DE DADOS (Seeds Iniciais)
 -- ==============================================================================
 
 -- Gatilhos Sensoriais
