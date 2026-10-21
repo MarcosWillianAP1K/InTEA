@@ -37,39 +37,10 @@ export class AuthController {
         expires_in: resultado.session.expires_in,
       };
 
-      const user = resultado.perfil
-        ? {
-            id: resultado.perfil.id,
-            nome: resultado.perfil.nome,
-            email: resultado.perfil.email,
-            clinica_id: resultado.perfil.clinica_id ?? null,
-            is_super_admin: Boolean(resultado.perfil.is_super_admin ?? false),
-            status_ativo: Boolean(resultado.perfil.status_ativo),
-            role: (resultado.perfil.is_super_admin ? 'super_admin' : 'terapeuta') as 'terapeuta' | 'super_admin',
-            crefito: resultado.perfil.crefito ?? resultado.perfil.registro_profissional ?? null,
-            registro_profissional: resultado.perfil.registro_profissional ?? resultado.perfil.crefito ?? null,
-            especialidade: resultado.perfil.especialidade ?? null,
-            created_at: resultado.perfil.created_at ?? resultado.user?.created_at,
-          }
-        : {
-            id: resultado.user.id,
-            nome: (resultado.user.user_metadata?.nome as string) || resultado.user.email || 'Usuário',
-            email: resultado.user.email || '',
-            clinica_id: null,
-            is_super_admin: Boolean(resultado.user.user_metadata?.is_super_admin ?? false),
-            status_ativo: true,
-            role: (resultado.user.user_metadata?.is_super_admin ? 'super_admin' : 'terapeuta') as 'terapeuta' | 'super_admin',
-            created_at: resultado.user.created_at,
-          };
-
       res.status(200).json({
         data: {
-          access_token: resultado.access_token,
-          refresh_token: resultado.session.refresh_token ?? null,
-          token_type: 'Bearer',
-          expires_in: resultado.session.expires_in,
+          token: tokens,
           tokens,
-          user,
         },
         message: 'Login realizado com sucesso.',
       });

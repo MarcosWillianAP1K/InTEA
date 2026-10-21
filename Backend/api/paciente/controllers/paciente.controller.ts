@@ -7,6 +7,7 @@
 import { Request, Response } from 'express';
 import { CriarPacienteDTO, AtualizarPacienteDTO, FiltrosPacienteDTO } from '../models/paciente.model.js';
 import { PacienteService, PacienteServiceError } from '../services/paciente.service.js';
+import { PacienteHistoricoService } from '../services/paciente-historico.service.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { obterMensagemErro } from '../../../core/utils/formatters.js';
 
@@ -369,4 +370,48 @@ export class PacienteController {
       });
     }
   }
+
+  /**
+   * Handles GET /api/paciente/:id/historico to retrieve longitudinal patient history
+   * with universal engagement metrics and game-specific metric series (RF15, RF19, RN01, RN02, RN04, RN05).
+   *
+   * @param req - Express request containing `:id` and optional query filters (`jogoId`, `dataInicio`, `dataFim`, `page`, `limit`).
+   * @param res - Express response returning 200 with `engajamento_geral` and `historico_por_jogo`.
+   */
+  static async buscarHistorico(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id);
+
+      const filtros = {
+        jogoId: typeof req.query.jogoId === 'string' && req.query.jogoId.trim() ? req.query.jogoId.trim() : undefined,
+        dataInicio: typeof req.query.dataInicio === 'string' && req.query.dataInicio.trim() ? req.query.dataInicio.trim() : undefined,
+        dataFim: typeof req.query.dataFim === 'string' && req.query.dataFim.trim() ? req.query.dataFim.trim() : undefined,
+        page: req.query.page !== undefined ? Number(req.query.page) : undefined,
+        limit: req.query.limit !== undefined ? Number(req.query.limit) : undefined,
+      };
+
+      const resultado = await PacienteHistoricoService.buscarHistoricoPaciente(pacienteId, filtros);
+
+      res.status(200).json({
+        data: resultado,
+        engajamento_geral: resultado.engajamento_geral,
+        historico_por_jogo: resultado.historico_por_jogo,
+      });
+    } catch (error: unknown) {
+      if (error instanceof PacienteServiceError) {
+        res.status(error.statusCode).json({
+          error: error.message,
+          ...(typeof error.detalhes === 'object' && error.detalhes !== null ? error.detalhes : { detalhes: error.detalhes }),
+        });
+        return;
+      }
+
+      console.error('[PacienteController.buscarHistorico]', error);
+      res.status(500).json({
+        error: 'Erro interno ao consultar histórico do paciente.',
+        detalhes: obterMensagemErro(error),
+      });
+    }
+  }
 }
+

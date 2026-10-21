@@ -188,6 +188,91 @@ pacienteRoutes.get('/', authMiddleware, PacienteController.listar);
  */
 pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarPorId);
 
+/**
+ * @swagger
+ * /api/paciente/{id}/historico:
+ *   get:
+ *     summary: Recupera prontuário longitudinal com engajamento geral e séries por jogo (RF15, RF19, RN01, RN02, RN04, RN05)
+ *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente
+ *       - in: query
+ *         name: jogoId
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do jogo para extração detalhada de métricas. Se omitido, retorna catálogo de jogos jogados.
+ *       - in: query
+ *         name: dataInicio
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Data inicial do filtro de sessões
+ *       - in: query
+ *         name: dataFim
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Data final do filtro de sessões
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Página de paginação para as sessões do jogo
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Quantidade máxima de sessões por página
+ *     responses:
+ *       200:
+ *         description: Prontuário longitudinal e séries recuperados com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 paciente_id: "123e4567-e89b-12d3-a456-426614174000"
+ *                 engajamento_geral:
+ *                   total_sessoes: 10
+ *                   total_iniciadas: 10
+ *                   sessoes_finalizadas: 8
+ *                   sessoes_interrompidas: 2
+ *                   taxa_conclusao_porcentagem: 80
+ *                   tempo_total_segundos: 4800
+ *                   tempo_medio_segundos: 600
+ *                 historico_por_jogo:
+ *                   tipo: "detalhado"
+ *                   series_temporais: []
+ *       400:
+ *         description: Erro de validação nos filtros ou UUID inválido
+ *       401:
+ *         description: Não autorizado (token ausente ou expirado)
+ *       403:
+ *         description: Proibido por ausência de vínculo clínico institucional (RN04)
+ *       404:
+ *         description: Paciente ou jogo não encontrado
+ *       422:
+ *         description: Violação de tipagem estrita de métricas no manifesto (RN02)
+ *       500:
+ *         description: Erro interno no servidor
+ */
+pacienteRoutes.get('/:id/historico', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarHistorico);
+
 // ------------------------------------------------------------------------------
 // 2. Persistência (Criação e Atualização de Pacientes)
 // ------------------------------------------------------------------------------

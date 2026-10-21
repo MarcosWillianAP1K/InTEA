@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthModel, LoginDTO } from '../models/auth.model.js';
+import { AuthController } from '../controllers/auth.controller.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 
 describe('Backend: AuthModel (Login, Recuperação de Senha e Perfil)', () => {
@@ -131,5 +132,54 @@ describe('Backend: AuthModel (Login, Recuperação de Senha e Perfil)', () => {
 
     expect(res.success).toBe(true);
     expect(res.message).toContain('Logout realizado com sucesso');
+  });
+
+  it('AuthController.login deve retornar data.token e data.tokens padronizados sem campos redundantes soltos', async () => {
+    vi.spyOn(AuthModel, 'login').mockResolvedValue({
+      user: { id: 'uuid-123', email: 'teste@intea.com.br' } as any,
+      session: {
+        access_token: 'jwt-access-token-123',
+        refresh_token: 'refresh-token-xyz',
+        expires_in: 3600,
+      } as any,
+      access_token: 'jwt-access-token-123',
+      perfil: {
+        id: 'uuid-123',
+        nome: 'Dr. Marcos',
+        email: 'teste@intea.com.br',
+        status_ativo: true,
+        is_super_admin: false,
+      } as any,
+    });
+
+    const mockReq = {
+      body: {
+        email: 'teste@intea.com.br',
+        password: 'senhaSegura123',
+      },
+    } as any;
+
+    let respostaJson: any = null;
+    const mockRes = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockImplementation((val) => {
+        respostaJson = val;
+      }),
+    } as any;
+
+    await AuthController.login(mockReq, mockRes);
+
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+    expect(respostaJson).toBeDefined();
+    // Verifica padronização data.token.access_token e data.tokens.access_token
+    expect(respostaJson.data.token.access_token).toBe('jwt-access-token-123');
+    expect(respostaJson.data.tokens.access_token).toBe('jwt-access-token-123');
+    expect(respostaJson.data.token.refresh_token).toBe('refresh-token-xyz');
+    expect(respostaJson.data.user).toBeUndefined();
+    // Verifica ausência de campos soltos redundantes na raiz de data
+    expect(respostaJson.data.access_token).toBeUndefined();
+    expect(respostaJson.data.refresh_token).toBeUndefined();
+    expect(respostaJson.data.token_type).toBeUndefined();
+    expect(respostaJson.data.expires_in).toBeUndefined();
   });
 });

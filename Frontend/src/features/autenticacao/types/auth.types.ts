@@ -53,10 +53,12 @@ export interface AuthTokens {
 
 export interface LoginResponse {
   data: {
-    user: UsuarioAutenticado;
+    user?: UsuarioAutenticado;
     tokens: AuthTokens;
+    token?: AuthTokens;
   };
   tokens?: AuthTokens;
+  token?: AuthTokens;
   user?: UsuarioAutenticado;
   message: string;
 }

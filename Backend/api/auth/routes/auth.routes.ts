@@ -28,10 +28,23 @@ export const authRoutes = Router();
  *           application/json:
  *             example:
  *               data:
- *                 access_token: "eyJhbGciOiJFUzI1NiIs..."
- *                 refresh_token: "v1.bW9ja19yZWZyZXNo..."
- *                 token_type: "Bearer"
- *                 expires_in: 3600
+ *                 token:
+ *                   access_token: "eyJhbGciOiJFUzI1NiIs..."
+ *                   refresh_token: "v1.bW9ja19yZWZyZXNo..."
+ *                   token_type: "Bearer"
+ *                   expires_in: 3600
+ *                 tokens:
+ *                   access_token: "eyJhbGciOiJFUzI1NiIs..."
+ *                   refresh_token: "v1.bW9ja19yZWZyZXNo..."
+ *                   token_type: "Bearer"
+ *                   expires_in: 3600
+
+
+
+
+
+
+
  *               message: "Login realizado com sucesso."
  *       400:
  *         description: E-mail ou senha não informados
@@ -100,7 +113,7 @@ authRoutes.post('/recuperar-senha', AuthController.recuperarSenha);
  *             example:
  *               data:
  *                 perfil:
- *                   id: "a9849163-613f-4492-90cf-89985902d16e"
+
  *                   nome: "Dra. Mariana Costa"
  *                   email: "mariana.costa@intea.com.br"
  *                   telefone: "(11) 98765-4321"

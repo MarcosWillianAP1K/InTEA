@@ -67,6 +67,7 @@ export const authService = {
         );
         type RawData = {
           tokens?: AuthTokens;
+          token?: AuthTokens;
           user?: UsuarioAutenticado;
           access_token?: string;
           refresh_token?: string | null;
@@ -74,7 +75,7 @@ export const authService = {
           expires_in?: number;
         };
         const dataObj = resposta.data as unknown as RawData | undefined;
-        let tokens: AuthTokens | undefined = dataObj?.tokens || resposta.tokens;
+        let tokens: AuthTokens | undefined = dataObj?.token || dataObj?.tokens || resposta.token || resposta.tokens;
 
         if (!tokens && dataObj?.access_token) {
           tokens = {
@@ -91,7 +92,7 @@ export const authService = {
           salvarTokens(tokens);
         }
 
-        if (dataObj?.user && dataObj?.tokens) {
+        if (dataObj?.token || dataObj?.tokens) {
           return resposta;
         }
 
@@ -101,6 +102,7 @@ export const authService = {
             ...resposta.data,
             user: user as UsuarioAutenticado,
             tokens: tokens as AuthTokens,
+            token: tokens as AuthTokens,
           },
         };
       },
