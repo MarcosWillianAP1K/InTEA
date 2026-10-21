@@ -4,6 +4,7 @@ import { PacienteController } from '../controllers/paciente.controller.js';
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
+import { validarIntervaloHistorico } from '../../../core/middlewares/query-range.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/paciente
@@ -108,7 +109,7 @@ export const pacienteRoutes = Router();
  *             example:
  *               error: "Erro interno ao listar pacientes."
  */
-pacienteRoutes.get('/', authMiddleware, PacienteController.listar);
+pacienteRoutes.get('/', authMiddleware, validarIntervaloHistorico, PacienteController.listar);
 
 /**
  * @swagger
@@ -850,3 +851,4 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
  *               error: "Erro interno ao desvincular terapeuta."
  */
 pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, verificarVisibilidadePaciente, PacienteController.desvincularTerapeuta);
+
