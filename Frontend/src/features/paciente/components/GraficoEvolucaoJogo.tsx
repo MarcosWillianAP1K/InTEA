@@ -1,7 +1,6 @@
 import * as React from "react";
 import {
   Card,
-  CardHeader,
   CardTitle,
   CardDescription,
   CardContent,
@@ -12,12 +11,9 @@ import { Button } from "@/shared/components/ui/button";
 import {
   Gamepad2,
   Layers,
-  Sparkles,
   Calendar,
-  AlertCircle,
-  TrendingUp,
 } from "lucide-react";
-import type { HistoricoJogoDetalhado, SerieMetricaJogo } from "../types/historico.types";
+import type { HistoricoJogoDetalhado } from "../types/historico.types";
 import { GraficoPolimorficoMetrica } from "./GraficoPolimorficoMetrica";
 
 export interface GraficoEvolucaoJogoProps {

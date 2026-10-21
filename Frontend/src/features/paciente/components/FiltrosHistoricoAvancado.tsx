@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useEffect } from "react";
-import { Calendar, Filter, RotateCcw, ChevronDown } from "lucide-react";
+import { Calendar, Filter, RotateCcw } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import type { FiltrosHistorico } from "../types/historico.types";
@@ -163,7 +163,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
             onClick={handleLimparFiltros}
             disabled={isLoading}
             data-testid="btn-resetar-filtros"
-            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5 cursor-pointer min-h-[44px]"
+            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5 cursor-pointer min-h-11"
           >
             <RotateCcw className="h-3 w-3" />
             <span>Restaurar Padrão (30d)</span>
@@ -189,7 +189,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
               aria-pressed={isAtivo}
               data-testid={`btn-periodo-${opcao.id}`}
               className={cn(
-                "inline-flex items-center justify-center px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer min-h-[44px] border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed",
+                "inline-flex items-center justify-center px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer min-h-11 border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed",
                 isAtivo
                   ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
                   : "bg-muted/30 text-foreground/80 border-border/80 hover:bg-muted/70 hover:text-foreground",
@@ -208,7 +208,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
           data-testid="painel-intervalo-personalizado"
           className="pt-2 border-t border-border/60 flex flex-wrap items-end gap-3"
         >
-          <div className="flex flex-col gap-1.5 flex-1 min-w-[160px]">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-40">
             <label
               htmlFor="filtro-data-inicio"
               className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1"
@@ -223,11 +223,11 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
               onChange={(e) => setDataInicioInput(e.target.value)}
               disabled={isLoading}
               data-testid="input-data-inicio"
-              className="min-h-[44px] px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              className="min-h-11 px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
             />
           </div>
 
-          <div className="flex flex-col gap-1.5 flex-1 min-w-[160px]">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-40">
             <label
               htmlFor="filtro-data-fim"
               className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1"
@@ -242,7 +242,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
               onChange={(e) => setDataFimInput(e.target.value)}
               disabled={isLoading}
               data-testid="input-data-fim"
-              className="min-h-[44px] px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              className="min-h-11 px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
             />
           </div>
 
@@ -251,7 +251,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
             size="sm"
             disabled={isLoading || (!dataInicioInput && !dataFimInput)}
             data-testid="btn-aplicar-datas"
-            className="min-h-[44px] px-4 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
+            className="min-h-11 px-4 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
           >
             Aplicar Intervalo
           </Button>

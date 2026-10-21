@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
-import { CheckCircle2, XCircle, ToggleLeft, Activity } from "lucide-react";
+import { ToggleLeft } from "lucide-react";
 import type { SerieMetricaJogo, PontoSerieMetrica } from "../types/historico.types";
 
 export interface IndicadorBooleanoMetricaProps {
