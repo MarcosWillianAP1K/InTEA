@@ -852,3 +852,44 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
  */
 pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, verificarVisibilidadePaciente, PacienteController.desvincularTerapeuta);
 
+// ------------------------------------------------------------------------------
+// 5. Exportação de Prontuário Longitudinal (RF20)
+// ------------------------------------------------------------------------------
+
+/**
+ * @swagger
+ * /api/paciente/{id}/prontuario/exportar:
+ *   get:
+ *     summary: Exporta o prontuário longitudinal do paciente em PDF formatado (RF20)
+ *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente
+ *     responses:
+ *       200:
+ *         description: Prontuário longitudinal gerado com sucesso em PDF
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: ID do paciente inválido
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Acesso proibido por regra institucional (RN04)
+ *       404:
+ *         description: Paciente não encontrado ou inativo (RN05)
+ *       500:
+ *         description: Erro interno do servidor
+ */
+pacienteRoutes.get('/:id/prontuario/exportar', authMiddleware, PacienteController.exportarProntuario);
+
