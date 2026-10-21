@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TerapeutaService, TerapeutaServiceError } from '../services/terapeuta.service.js';
-import { TerapeutaModel } from '../models/terapeuta.model.js';
+import { TerapeutaModel, Terapeuta } from '../models/terapeuta.model.js';
 import type { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
 
 describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () => {
@@ -298,6 +298,151 @@ describe('TerapeutaService — Camada de Domínio e Regras Profissionais', () =>
         id,
         expect.not.objectContaining({ clinica_id: 'clinica-a', status_ativo: true })
       );
+    });
+  });
+
+  describe('obterPerfil', () => {
+    it('deve lançar TerapeutaServiceError 401 se usuário logado não for informado', async () => {
+      await expect(TerapeutaService.obterPerfil(undefined)).rejects.toMatchObject({
+        statusCode: 401,
+      });
+    });
+
+    it('deve lançar TerapeutaServiceError 404 se perfil de terapeuta não existir', async () => {
+      vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue(null);
+      await expect(
+        TerapeutaService.obterPerfil({ id: '00000000-0000-4000-8000-000000000000' })
+      ).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    it('deve retornar perfil com terapeuta, clinica e areas_foco normalizadas', async () => {
+      const terapeutaId = '11111111-1111-4111-a111-111111111111';
+      const clinicaId = '22222222-2222-4222-a222-222222222222';
+
+      vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
+        id: terapeutaId,
+        nome: 'Dra. Mariana Costa',
+        email: 'mariana.costa@intea.com.br',
+        telefone: '+55 (11) 98765-4321',
+        crefito: 'CREFITO-3/12345-TO',
+        registro_profissional: 'CREFITO-3/12345-TO',
+        especialidade: 'TO',
+        tempo_experiencia_anos: 5,
+        clinica_id: clinicaId,
+        is_super_admin: false,
+        status_ativo: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        areas_foco: [{ areas_foco: { id: 'uuid-area-1', nome: 'Integração Sensorial' } }],
+      });
+
+      vi.spyOn(TerapeutaModel, 'buscarClinicaPorId').mockResolvedValue({
+        id: clinicaId,
+        nome: 'Clínica Escola UFPI',
+        cnpj: '00.123.456/0001-78',
+      });
+
+      const perfil = await TerapeutaService.obterPerfil({ id: terapeutaId });
+
+      expect(perfil).toBeDefined();
+      expect(perfil.terapeuta.id).toBe(terapeutaId);
+      expect((perfil.terapeuta as Record<string, unknown>).areas_foco).toBeUndefined();
+      expect(perfil.clinica).toEqual({
+        id: clinicaId,
+        nome: 'Clínica Escola UFPI',
+        cnpj: '00.123.456/0001-78',
+      });
+      expect(perfil.areas_foco).toEqual([{ id: 'uuid-area-1', nome: 'Integração Sensorial' }]);
+    });
+
+    it('deve retornar clinica como null quando o terapeuta não possuir clinica_id', async () => {
+      const terapeutaId = '11111111-1111-4111-a111-111111111111';
+
+      vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
+        id: terapeutaId,
+        nome: 'Dr. Autônomo',
+        email: 'autonomo@intea.com.br',
+        telefone: null,
+        crefito: null,
+        registro_profissional: null,
+        especialidade: null,
+        tempo_experiencia_anos: 2,
+        clinica_id: null,
+        is_super_admin: false,
+        status_ativo: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        areas_foco: [],
+      });
+
+      const perfil = await TerapeutaService.obterPerfil({ id: terapeutaId });
+      expect(perfil.clinica).toBeNull();
+      expect(perfil.areas_foco).toEqual([]);
+    });
+  });
+
+  describe('listarPacientesVinculados', () => {
+    it('deve lançar 400 se o id informado for inválido', async () => {
+      await expect(
+        TerapeutaService.listarPacientesVinculados('id-invalido')
+      ).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it('deve lançar 404 se o terapeuta não for encontrado', async () => {
+      vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue(null);
+      await expect(
+        TerapeutaService.listarPacientesVinculados('00000000-0000-4000-8000-000000000000')
+      ).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    it('deve bloquear com 403 se solicitante for de clínica diferente da do terapeuta alvo (RN04)', async () => {
+      const terapeutaId = '11111111-1111-4111-a111-111111111111';
+      vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
+        id: terapeutaId,
+        nome: 'Dra. Alvo',
+        clinica_id: 'uuid-clinica-a',
+        status_ativo: true,
+      } as unknown as Terapeuta);
+
+      const solicitante: UsuarioAutenticado = {
+        id: '22222222-2222-4222-a222-222222222222',
+        is_super_admin: false,
+        clinica_id: 'uuid-clinica-b',
+      };
+
+      await expect(
+        TerapeutaService.listarPacientesVinculados(terapeutaId, solicitante)
+      ).rejects.toMatchObject({ statusCode: 403 });
+    });
+
+    it('deve retornar pacientes vinculados quando solicitado pelo próprio terapeuta', async () => {
+      const terapeutaId = '11111111-1111-4111-a111-111111111111';
+      vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
+        id: terapeutaId,
+        nome: 'Eu Mesmo',
+        clinica_id: 'uuid-clinica-a',
+        status_ativo: true,
+      } as unknown as Terapeuta);
+
+      const mockVinculos = [
+        {
+          terapeuta_id: terapeutaId,
+          paciente_id: '33333333-3333-4333-a333-333333333333',
+          created_at: new Date().toISOString(),
+          paciente: { id: '33333333-3333-4333-a333-333333333333', nome: 'Paciente Teste' },
+        },
+      ];
+      vi.spyOn(TerapeutaModel, 'listarPacientesVinculados').mockResolvedValue(mockVinculos);
+
+      const solicitante: UsuarioAutenticado = {
+        id: terapeutaId,
+        is_super_admin: false,
+        clinica_id: 'uuid-clinica-a',
+      };
+
+      const vinculos = await TerapeutaService.listarPacientesVinculados(terapeutaId, solicitante);
+      expect(vinculos).toHaveLength(1);
+      expect(vinculos[0].paciente_id).toBe('33333333-3333-4333-a333-333333333333');
     });
   });
 });

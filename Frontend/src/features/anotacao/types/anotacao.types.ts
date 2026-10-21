@@ -44,13 +44,24 @@ export interface FiltroAnotacaoDTO {
 }
 
 export interface AnotacaoRespostaApi {
-  data: AnotacaoClinica;
+  data: {
+    anotacao: AnotacaoClinica;
+  } | AnotacaoClinica;
   message?: string;
 }
 
 export interface AnotacoesListaRespostaApi {
-  data: AnotacaoClinica[];
+  data: {
+    anotacoes: AnotacaoClinica[];
+    meta?: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  } | AnotacaoClinica[];
   total?: number;
   page?: number;
   totalPages?: number;
+  message?: string;
 }

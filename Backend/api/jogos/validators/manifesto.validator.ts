@@ -26,7 +26,7 @@ export class ManifestoValidator {
       };
     }
 
-    const m = manifesto as Record<string, any>;
+    const m = manifesto as Record<string, unknown>;
 
     // 2. Campo obrigatório: id_jogo
     if (!m.id_jogo || typeof m.id_jogo !== 'string' || m.id_jogo.trim() === '') {
@@ -55,40 +55,42 @@ export class ManifestoValidator {
       erros.push("O array 'metricas_suportadas' deve conter pelo menos uma métrica suportada.");
     } else {
       // Validação item a item das métricas
-      m.metricas_suportadas.forEach((metrica: any, index: number) => {
+      m.metricas_suportadas.forEach((metricaItem: unknown, index: number) => {
         const prefixo = `Métrica [índice ${index}]`;
 
-        if (!metrica || typeof metrica !== 'object' || Array.isArray(metrica)) {
+        if (!metricaItem || typeof metricaItem !== 'object' || Array.isArray(metricaItem)) {
           erros.push(`${prefixo}: deve ser um objeto JSON.`);
           return;
         }
 
-        const idMetrica = metrica.id_metrica;
+        const metrica = metricaItem as Record<string, unknown>;
+        const idMetrica = typeof metrica.id_metrica === 'string' ? metrica.id_metrica : undefined;
         const idLabel = idMetrica ? `'${idMetrica}'` : `[índice ${index}]`;
 
         // 6.1. id_metrica
-        if (!idMetrica || typeof idMetrica !== 'string' || idMetrica.trim() === '') {
+        if (!idMetrica || idMetrica.trim() === '') {
           erros.push(`${prefixo}: 'id_metrica' é obrigatório e deve ser uma string não vazia.`);
         }
 
         // 6.2. tipo_metrica (RN02: Validação Estrita sem Fallback)
-        if (!metrica.tipo_metrica || typeof metrica.tipo_metrica !== 'string' || metrica.tipo_metrica.trim() === '') {
+        const tipoMetrica = typeof metrica.tipo_metrica === 'string' ? metrica.tipo_metrica : undefined;
+        if (!tipoMetrica || tipoMetrica.trim() === '') {
           erros.push(`Métrica ${idLabel}: 'tipo_metrica' é obrigatório e não pode ser nulo ou ausente (RN02: proibido fallback automático para categórica).`);
-        } else if (!this.TIPOS_METRICA_PERMITIDOS.includes(metrica.tipo_metrica)) {
+        } else if (!this.TIPOS_METRICA_PERMITIDOS.includes(tipoMetrica)) {
           erros.push(
-            `Métrica ${idLabel}: tipo '${metrica.tipo_metrica}' inválido. Tipos permitidos: ${this.TIPOS_METRICA_PERMITIDOS.map(t => `'${t}'`).join(', ')} (RN02: tipagem estrita).`
+            `Métrica ${idLabel}: tipo '${tipoMetrica}' inválido. Tipos permitidos: ${this.TIPOS_METRICA_PERMITIDOS.map(t => `'${t}'`).join(', ')} (RN02: tipagem estrita).`
           );
         } else {
           // 6.3. Validações específicas por tipo
-          if (metrica.tipo_metrica === 'numerica') {
+          if (tipoMetrica === 'numerica') {
             if (metrica.unidade !== undefined && typeof metrica.unidade !== 'string') {
               erros.push(`Métrica numérica ${idLabel}: o campo 'unidade' deve ser uma string.`);
             }
-          } else if (metrica.tipo_metrica === 'categorica') {
+          } else if (tipoMetrica === 'categorica') {
             if (!metrica.valores || !Array.isArray(metrica.valores) || metrica.valores.length === 0) {
               erros.push(`Métrica categórica ${idLabel}: o campo 'valores' é obrigatório e deve ser um array não vazio de opções.`);
             } else {
-              const temValorInvalido = metrica.valores.some((v: any) => typeof v !== 'string' || v.trim() === '');
+              const temValorInvalido = metrica.valores.some((v: unknown) => typeof v !== 'string' || v.trim() === '');
               if (temValorInvalido) {
                 erros.push(`Métrica categórica ${idLabel}: todos os itens do array 'valores' devem ser strings não vazias.`);
               }
@@ -108,7 +110,7 @@ export class ManifestoValidator {
     return {
       valido: true,
       erros: [],
-      manifestoValido: m as ManifestoJogo
+      manifestoValido: m as unknown as ManifestoJogo
     };
   }
 }

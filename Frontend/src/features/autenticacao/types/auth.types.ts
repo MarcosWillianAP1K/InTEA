@@ -51,18 +51,53 @@ export interface AuthTokens {
   expires_in: number;
 }
 
+/** POST /auth/login → `{ data: { token }, message }` (user vem de /auth/me; opcional no fallback mock). */
 export interface LoginResponse {
   data: {
-    user: UsuarioAutenticado;
-    tokens: AuthTokens;
+    token: AuthTokens;
+    user?: UsuarioAutenticado;
   };
-  tokens?: AuthTokens;
-  user?: UsuarioAutenticado;
   message: string;
 }
 
+/** POST /auth/refresh → `{ data: { token }, message }` */
+export interface RefreshRespostaApi {
+  data: {
+    token: AuthTokens;
+  };
+  message: string;
+}
+
+/** Backend devolve em /auth/me um perfil com `is_admin` em vez de `is_super_admin`. */
+export type UsuarioApi = Omit<UsuarioAutenticado, "is_super_admin"> & {
+  is_super_admin?: boolean;
+  is_admin?: boolean;
+};
+
+/** GET /auth/me → `{ data: { user }, message }` */
+export interface UsuarioAtualRespostaApi {
+  data: {
+    user: UsuarioApi;
+  };
+  message: string;
+}
+
+/** POST /auth/logout e PATCH /auth/alterar-senha → `{ data: null, message }` */
 export interface LogoutResponse {
-  success: boolean;
+  data: null;
+  message: string;
+}
+
+export type AlterarSenhaRespostaApi = LogoutResponse;
+
+/** POST /auth/recuperar-senha → `{ data: { recuperacao }, message }` */
+export interface RecuperarSenhaRespostaApi {
+  data: {
+    recuperacao: {
+      email: string;
+      solicitado: boolean;
+    };
+  };
   message: string;
 }
 

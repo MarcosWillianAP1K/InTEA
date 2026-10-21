@@ -32,10 +32,10 @@ export const sessaoRoutes = Router();
  *         content:
  *           application/json:
  *             example:
- *               message: "Código de pareamento gerado com sucesso"
+ *               message: "Código de pareamento gerado com sucesso."
  *               data:
- *                 codigo: "4M5S-8U7B"
- *               codigo: "4M5S-8U7B"
+ *                 token_pareamento:
+ *                   codigo: "4M5S-8U7B"
  *       401:
  *         description: Token JWT ausente ou inválido
  *         content:
@@ -212,28 +212,49 @@ sessaoRoutes.get('/codigo-pareamento', authMiddleware, SessaoController.gerarCod
  *             schema:
  *               type: object
  *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Sessão iniciada com sucesso."
  *                 data:
  *                   type: object
  *                   properties:
- *                     session_id:
- *                       type: string
- *                       format: uuid
- *                     session_token:
- *                       type: string
- *                       example: "4M5S-8U7B"
- *                     status_sessao:
- *                       type: string
- *                       example: "aguardando_pareamento"
- *                     modo_sessao:
- *                       type: string
- *                       example: "sessao_clinica"
- *                     paciente_id:
- *                       type: string
- *                       format: uuid
- *                       nullable: true
- *                     expira_em:
- *                       type: string
- *                       format: date-time
+ *                     sessao:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           format: uuid
+ *                         status_sessao:
+ *                           type: string
+ *                           example: "aguardando_pareamento"
+ *                         modo_sessao:
+ *                           type: string
+ *                           example: "sessao_clinica"
+ *                         paciente_id:
+ *                           type: string
+ *                           format: uuid
+ *                           nullable: true
+ *                         terapeuta_id:
+ *                           type: string
+ *                           format: uuid
+ *                         jogo_id:
+ *                           type: string
+ *                           format: uuid
+ *                         data_hora_inicio:
+ *                           type: string
+ *                           format: date-time
+ *                     token_pareamento:
+ *                       type: object
+ *                       properties:
+ *                         token:
+ *                           type: string
+ *                           example: "4M5S-8U7B"
+ *                         codigo:
+ *                           type: string
+ *                           example: "4M5S-8U7B"
+ *                         expira_em:
+ *                           type: string
+ *                           format: date-time
  *       400:
  *         description: Dados incompletos ou violação da regra RN01
  *         content:
@@ -296,28 +317,47 @@ sessaoRoutes.post('/iniciar', authMiddleware, verificarVisibilidadePaciente, Ses
  *             schema:
  *               type: object
  *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Dispositivo pareado com sucesso."
  *                 data:
  *                   type: object
  *                   properties:
- *                     session_id:
- *                       type: string
- *                       format: uuid
- *                     session_token:
- *                       type: string
- *                       example: "4M5S-8U7B"
- *                     status_sessao:
- *                       type: string
- *                       example: "conectado"
- *                     jogo_id:
- *                       type: string
- *                       format: uuid
- *                     paciente_id:
- *                       type: string
- *                       format: uuid
- *                       nullable: true
- *                     contexto_dda_json:
+ *                     sessao:
  *                       type: object
- *                       description: Parâmetros DDA para o Agente de IA (RN03)
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           format: uuid
+ *                         session_token:
+ *                           type: string
+ *                           example: "4M5S-8U7B"
+ *                         status_sessao:
+ *                           type: string
+ *                           example: "conectado"
+ *                         modo_sessao:
+ *                           type: string
+ *                           example: "sessao_clinica"
+ *                         jogo_id:
+ *                           type: string
+ *                           format: uuid
+ *                         paciente_id:
+ *                           type: string
+ *                           format: uuid
+ *                           nullable: true
+ *                         contexto_dda:
+ *                           type: object
+ *                           description: Parâmetros DDA para o Agente de IA (RN03)
+ *                     conexao:
+ *                       type: object
+ *                       properties:
+ *                         url:
+ *                           type: string
+ *                         canal:
+ *                           type: string
+ *                         pareado_em:
+ *                           type: string
+ *                           format: date-time
  *       400:
  *         description: session_token ausente ou sessão não está em 'aguardando_pareamento'
  *         content:
@@ -386,6 +426,9 @@ sessaoRoutes.post('/parear', SessaoController.parear);
  *             schema:
  *               type: object
  *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Resultado consolidado da sessão consultado com sucesso."
  *                 data:
  *                   type: object
  *                   properties:
@@ -506,6 +549,9 @@ sessaoRoutes.get('/:token/status', SessaoController.consultarStatus);
  *             schema:
  *               type: object
  *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Resultado consolidado da sessão consultado com sucesso."
  *                 data:
  *                   type: object
  *                   properties:
@@ -586,8 +632,10 @@ sessaoRoutes.get('/:id', authMiddleware, verificarSessaoMiddleware, SessaoContro
  *         content:
  *           application/json:
  *             example:
+ *               message: "Laudo clínico emitido com sucesso para exportação."
  *               data:
- *                 cabecalho:
+ *                 laudo:
+ *                   cabecalho:
  *                   instituicao: "Clínica Integrada InTEA"
  *                   cnpj_clinica: "12.345.678/0001-90"
  *                   emissao_em: "2026-10-15T18:00:00.000Z"
@@ -691,11 +739,15 @@ sessaoRoutes.get('/:id/exportar', authMiddleware, verificarSessaoMiddleware, Ses
  *         content:
  *           application/json:
  *             example:
- *               message: "Sessão finalizada com sucesso"
+ *               message: "Sessão finalizada com sucesso."
  *               data:
- *                 id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
- *                 status_sessao: "finalizada"
- *                 data_hora_fim: "2026-10-15T18:00:00.000Z"
+ *                 sessao:
+ *                   id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                   status_sessao: "finalizada"
+ *                   data_hora_fim: "2026-10-15T18:00:00.000Z"
+ *                 relatorio:
+ *                   token_sessao: "4M5S-8U7B"
+ *                   duracao_segundos: 1200
  *       401:
  *         description: Token JWT ausente ou inválido
  *         content:
@@ -742,10 +794,11 @@ sessaoRoutes.patch('/:id/finalizar', authMiddleware, verificarSessaoMiddleware, 
  *         content:
  *           application/json:
  *             example:
- *               message: "Sessão cancelada com sucesso"
+ *               message: "Sessão cancelada com sucesso."
  *               data:
- *                 id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
- *                 status_sessao: "cancelada"
+ *                 sessao:
+ *                   id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                   status_sessao: "cancelada"
  *       400:
  *         description: Sessão já está em status terminal (finalizada, expirada ou cancelada)
  *         content:
@@ -812,6 +865,9 @@ sessaoRoutes.delete('/:id/cancelar', authMiddleware, verificarSessaoMiddleware, 
  *             schema:
  *               type: object
  *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Resultado consolidado da sessão consultado com sucesso."
  *                 data:
  *                   type: object
  *                   properties:
@@ -883,6 +939,9 @@ sessaoRoutes.patch('/:id/status', authMiddleware, verificarSessaoMiddleware, Ses
  *             schema:
  *               type: object
  *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Resultado consolidado da sessão consultado com sucesso."
  *                 data:
  *                   type: object
  *                   properties:

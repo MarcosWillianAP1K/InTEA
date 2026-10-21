@@ -23,7 +23,10 @@ describe("Dominio Terapeuta — terapeutaService", () => {
   describe("Modo API (Requisições HTTP bem-sucedidas)", () => {
     it("deve chamar ENDPOINTS.TERAPEUTA.BASE e retornar lista de terapeutas", async () => {
       const mockResposta = {
-        data: [MOCK_TERAPEUTA_MARCOS, MOCK_TERAPEUTA_LUMA],
+        data: {
+          terapeutas: [MOCK_TERAPEUTA_MARCOS, MOCK_TERAPEUTA_LUMA],
+          meta: { total: 2, incluir_inativos: false },
+        },
       };
 
       const getSpy = vi.spyOn(http, "get").mockResolvedValue(mockResposta);
@@ -38,7 +41,10 @@ describe("Dominio Terapeuta — terapeutaService", () => {
 
     it("deve passar parâmetro incluirInativos quando solicitado", async () => {
       const mockResposta = {
-        data: [MOCK_TERAPEUTA_MARCOS, MOCK_TERAPEUTA_INATIVO],
+        data: {
+          terapeutas: [MOCK_TERAPEUTA_MARCOS, MOCK_TERAPEUTA_INATIVO],
+          meta: { total: 2, incluir_inativos: true },
+        },
       };
 
       const getSpy = vi.spyOn(http, "get").mockResolvedValue(mockResposta);
@@ -57,7 +63,7 @@ describe("Dominio Terapeuta — terapeutaService", () => {
     it("deve consultar terapeuta por ID via ENDPOINTS.TERAPEUTA.BY_ID", async () => {
       const getSpy = vi
         .spyOn(http, "get")
-        .mockResolvedValue({ data: MOCK_TERAPEUTA_MARCOS });
+        .mockResolvedValue({ data: { terapeuta: MOCK_TERAPEUTA_MARCOS } });
 
       const resultado = await terapeutaService.buscarPorId(
         MOCK_TERAPEUTA_MARCOS.id,
@@ -78,7 +84,7 @@ describe("Dominio Terapeuta — terapeutaService", () => {
 
       const postSpy = vi
         .spyOn(http, "post")
-        .mockResolvedValue({ data: novoTerapeuta });
+        .mockResolvedValue({ data: { terapeuta: novoTerapeuta } });
 
       const dto = {
         nome: "Dra. Carolina Nova",
@@ -101,7 +107,7 @@ describe("Dominio Terapeuta — terapeutaService", () => {
 
       const putSpy = vi
         .spyOn(http, "put")
-        .mockResolvedValue({ data: terapeutaAtualizado });
+        .mockResolvedValue({ data: { terapeuta: terapeutaAtualizado } });
 
       const dto = { telefone: "(86) 91111-9999" };
       const resultado = await terapeutaService.atualizar(
@@ -124,7 +130,7 @@ describe("Dominio Terapeuta — terapeutaService", () => {
 
       const deleteSpy = vi
         .spyOn(http, "delete")
-        .mockResolvedValue({ data: terapeutaInativado });
+        .mockResolvedValue({ data: { terapeuta: terapeutaInativado } });
 
       const resultado = await terapeutaService.inativar(
         MOCK_TERAPEUTA_MARCOS.id,
@@ -144,7 +150,7 @@ describe("Dominio Terapeuta — terapeutaService", () => {
 
       const patchSpy = vi
         .spyOn(http, "patch")
-        .mockResolvedValue({ data: terapeutaReativado });
+        .mockResolvedValue({ data: { terapeuta: terapeutaReativado } });
 
       const resultado = await terapeutaService.reativar(
         MOCK_TERAPEUTA_INATIVO.id,

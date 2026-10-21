@@ -802,14 +802,14 @@ describe('SessaoResultadoService — Endpoint GET /api/sessao/:id/resultado (RF1
     const res = await SessaoResultadoService.obterResultadoConsolidado(sessaoId, terapeutaId);
     expect(res.sucesso).toBe(true);
 
-    const metricas = res.dados!.metricas_cards;
+    const metricas = res.dados!.metricas_cards!;
     expect(metricas.total_acertos).toBe(1);
     expect(metricas.total_erros).toBe(1);
     expect(metricas.taxa_conclusao).toBe(95);
     expect(metricas.intervencoes_dda).toBe(1);
     expect(metricas.pontuacao_geral).toBeGreaterThan(0);
 
-    const grafico = res.dados!.grafico_evolutivo;
+    const grafico = res.dados!.grafico_evolutivo!;
     expect(grafico.tipo).toBe('intra_sessao');
     expect(grafico.tentativas).toHaveLength(2);
     expect(grafico.tentativas[0].acerto).toBe(true);
@@ -882,6 +882,17 @@ describe('SessaoController.consultarResultado — Integração REST e Códigos H
           terapeuta: null,
           jogo: null,
         },
+        metricas_consolidadas: {
+          pontuacao_geral: 0,
+          taxa_conclusao: 0,
+          total_toques: 0,
+          total_acertos: 0,
+          total_erros: 0,
+          taxa_precisao_percentual: 0,
+          tempo_medio_resposta_ms: 0,
+          estabilidade_foco: 0,
+          intervencoes_dda: 0,
+        },
         metricas_cards: {
           pontuacao_geral: 0,
           taxa_conclusao: 0,
@@ -894,6 +905,11 @@ describe('SessaoController.consultarResultado — Integração REST e Códigos H
           intervencoes_dda: 0,
         },
         insights_ia: null,
+        historico_evolutivo: {
+          tipo: 'intra_sessao',
+          tempo_medio_referencia: 0,
+          tentativas: [],
+        },
         grafico_evolutivo: {
           tipo: 'intra_sessao',
           tempo_medio_referencia: 0,
@@ -908,6 +924,9 @@ describe('SessaoController.consultarResultado — Integração REST e Códigos H
 
     expect(getStatus()).toBe(200);
     expect(getJson().data.sessao.id).toBe(sessaoId);
+    expect(getJson().data.metricas_consolidadas).toBeDefined();
+    expect(getJson().data.historico_evolutivo).toBeDefined();
+    expect(getJson().message).toBe('Resultado consolidado da sessão obtido com sucesso.');
   });
 
   it('deve repassar o status e erro do service quando validação falhar (ex: 400 Bad Request)', async () => {

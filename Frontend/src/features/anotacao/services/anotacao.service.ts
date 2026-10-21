@@ -47,6 +47,33 @@ function serializarFiltros(
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
+function extrairAnotacao(
+  resposta: AnotacaoRespostaApi | AnotacaoClinica | { data?: unknown } | null | undefined,
+): AnotacaoClinica | null {
+  if (!resposta) return null;
+  if ("data" in resposta && resposta.data) {
+    const d = resposta.data as Record<string, unknown>;
+    if ("anotacao" in d && d.anotacao) {
+      return d.anotacao as AnotacaoClinica;
+    }
+    return resposta.data as AnotacaoClinica;
+  }
+  return resposta as AnotacaoClinica;
+}
+
+function extrairListaAnotacoes(
+  resposta: AnotacoesListaRespostaApi | AnotacaoClinica[] | { data?: unknown } | null | undefined,
+): AnotacaoClinica[] {
+  if (!resposta) return [];
+  if (Array.isArray(resposta)) return resposta;
+  if ("data" in resposta && resposta.data) {
+    if (Array.isArray(resposta.data)) return resposta.data;
+    const d = resposta.data as Record<string, unknown>;
+    if (Array.isArray(d.anotacoes)) return d.anotacoes as AnotacaoClinica[];
+  }
+  return [];
+}
+
 export const anotacaoService = {
   /**
    * Lista anotações clínicas de um paciente (RF16, RN04, RN05).
@@ -64,10 +91,7 @@ export const anotacaoService = {
           AnotacoesListaRespostaApi | AnotacaoClinica[]
         >(ENDPOINTS.ANOTACAO.POR_PACIENTE(pacienteId), { params });
 
-        if (Array.isArray(resposta)) {
-          return resposta;
-        }
-        return resposta.data ?? [];
+        return extrairListaAnotacoes(resposta);
       },
       () => listarAnotacoesMock({ paciente_id: pacienteId, ...filtro }),
     );
@@ -85,10 +109,7 @@ export const anotacaoService = {
           AnotacaoRespostaApi | AnotacaoClinica
         >(ENDPOINTS.ANOTACAO.BY_ID(id));
 
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as AnotacaoClinica) ?? null;
+        return extrairAnotacao(resposta);
       },
       () => buscarAnotacaoMockPorId(id),
     );
@@ -104,10 +125,7 @@ export const anotacaoService = {
           AnotacaoRespostaApi | AnotacaoClinica
         >(ENDPOINTS.ANOTACAO.BASE, dto);
 
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return resposta as AnotacaoClinica;
+        return extrairAnotacao(resposta) as AnotacaoClinica;
       },
       () => criarAnotacaoMock(dto),
     );
@@ -128,10 +146,7 @@ export const anotacaoService = {
           AnotacaoRespostaApi | AnotacaoClinica
         >(ENDPOINTS.ANOTACAO.BY_ID(id), dto);
 
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as AnotacaoClinica) ?? null;
+        return extrairAnotacao(resposta);
       },
       () => atualizarAnotacaoMock(id, dto),
     );
@@ -149,10 +164,7 @@ export const anotacaoService = {
           AnotacaoRespostaApi | AnotacaoClinica
         >(ENDPOINTS.ANOTACAO.BY_ID(id));
 
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as AnotacaoClinica) ?? null;
+        return extrairAnotacao(resposta);
       },
       () => softDeleteAnotacaoMock(id),
     );
@@ -170,10 +182,7 @@ export const anotacaoService = {
           AnotacaoRespostaApi | AnotacaoClinica
         >(ENDPOINTS.ANOTACAO.REATIVAR(id));
 
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as AnotacaoClinica) ?? null;
+        return extrairAnotacao(resposta);
       },
       () => reativarAnotacaoMock(id),
     );

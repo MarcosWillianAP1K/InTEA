@@ -234,13 +234,14 @@ export const sessaoService = {
   iniciarSessao: async (dto: IniciarSessaoDTO): Promise<Sessao> => {
     return await withFallback(
       async () => {
-        const resposta = await http.post<{ data: Sessao } | Sessao>(
+        const resposta = await http.post<{ data: { sessao?: Sessao } | Sessao } | Sessao>(
           ENDPOINTS.SESSAO.INICIAR,
           dto,
         );
         let dados: Sessao;
         if ("data" in resposta && resposta.data) {
-          dados = resposta.data;
+          const dataObj = resposta.data as unknown as { sessao?: Sessao } & Sessao;
+          dados = dataObj.sessao || dataObj;
         } else {
           dados = resposta as Sessao;
         }
@@ -266,11 +267,12 @@ export const sessaoService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.get<{ data: Sessao } | Sessao>(
+        const resposta = await http.get<{ data: { sessao?: Sessao } | Sessao } | Sessao>(
           ENDPOINTS.SESSAO.BY_ID(id),
         );
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const dataObj = resposta.data as unknown as { sessao?: Sessao } & Sessao;
+          return dataObj.sessao || dataObj;
         }
         return (resposta as Sessao) ?? null;
       },
@@ -286,11 +288,12 @@ export const sessaoService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.get<{ data: Sessao } | Sessao>(
+        const resposta = await http.get<{ data: { sessao?: Sessao } | Sessao } | Sessao>(
           ENDPOINTS.SESSAO.BY_TOKEN(token),
         );
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const dataObj = resposta.data as unknown as { sessao?: Sessao } & Sessao;
+          return dataObj.sessao || dataObj;
         }
         return (resposta as Sessao) ?? null;
       },
@@ -332,12 +335,13 @@ export const sessaoService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.patch<{ data: Sessao } | Sessao>(
+        const resposta = await http.patch<{ data: { sessao?: Sessao } | Sessao } | Sessao>(
           ENDPOINTS.SESSAO.STATUS(id),
           { status },
         );
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const dataObj = resposta.data as unknown as { sessao?: Sessao } & Sessao;
+          return dataObj.sessao || dataObj;
         }
         return (resposta as Sessao) ?? null;
       },
@@ -364,9 +368,9 @@ export const sessaoService = {
         >(ENDPOINTS.SESSAO.FINALIZAR(id), payload);
 
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          return normalizarResultadoSessao(resposta.data);
         }
-        return resposta as ResultadoSessao;
+        return normalizarResultadoSessao(resposta);
       },
       () => finalizarSessaoMock(id, dto),
     );
@@ -622,11 +626,14 @@ export const sessaoService = {
       }
 
       const resultado = (await response.json()) as {
-        data?: AnotacaoClinicaResultado;
+        data?: AnotacaoClinicaResultado | { anotacao?: AnotacaoClinicaResultado };
       };
+      const anotacao = (resultado.data && typeof resultado.data === "object" && "anotacao" in resultado.data)
+        ? (resultado.data as { anotacao: AnotacaoClinicaResultado }).anotacao
+        : (resultado.data as AnotacaoClinicaResultado);
       return {
         sucesso: true,
-        data: resultado.data,
+        data: anotacao,
       };
     } catch {
       return {

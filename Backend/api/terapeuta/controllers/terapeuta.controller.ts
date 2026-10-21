@@ -1,7 +1,8 @@
 // ==============================================================================
 // InTEA: Controller de Terapeutas (Camada HTTP / Thin Controller)
 // ==============================================================================
-// Conformidade: RF21 (Autoria), RN04 (Vínculo), RN05 (Soft Delete)
+// Conformidade: RF04 (Perfil), RF21 (Autoria), RN04 (Vínculo), RN05 (Soft Delete)
+// Envelope Pattern: { data: { <categoria>: ... }, message: "..." }
 // ==============================================================================
 
 import { Request, Response } from 'express';
@@ -16,14 +17,24 @@ export class TerapeutaController {
    * Handles GET /api/terapeuta to list registered therapists.
    *
    * @param req - Express request with optional query `incluirInativos=true`.
-   * @param res - Express response returning therapist list.
+   * @param res - Express response returning therapist list wrapped in envelope pattern.
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
       const incluirInativos = req.query.incluirInativos === 'true';
       const usuarioLogado = (req as AuthenticatedRequest).user;
       const terapeutas = await TerapeutaService.listar(incluirInativos, usuarioLogado);
-      res.status(200).json({ data: terapeutas });
+
+      res.status(200).json({
+        data: {
+          terapeutas,
+          meta: {
+            total: terapeutas.length,
+            incluir_inativos: incluirInativos,
+          },
+        },
+        message: 'Terapeutas listados com sucesso.',
+      });
     } catch (error: unknown) {
       if (error instanceof TerapeutaServiceError) {
         res.status(error.statusCode).json({ error: error.message });
@@ -38,10 +49,42 @@ export class TerapeutaController {
   }
 
   /**
+   * Handles GET /api/terapeuta/perfil to retrieve the authenticated therapist's full profile.
+   *
+   * @param req - Express request with authenticated therapist session.
+   * @param res - Express response returning profile, clinic, and focus areas.
+   */
+  static async obterPerfil(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const perfil = await TerapeutaService.obterPerfil(usuarioLogado);
+
+      res.status(200).json({
+        data: {
+          terapeuta: perfil.terapeuta,
+          clinica: perfil.clinica,
+          areas_foco: perfil.areas_foco,
+        },
+        message: 'Perfil do terapeuta recuperado com sucesso.',
+      });
+    } catch (error: unknown) {
+      if (error instanceof TerapeutaServiceError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      console.error('[TerapeutaController.obterPerfil]', error);
+      res.status(500).json({
+        error: 'Erro interno ao recuperar perfil do terapeuta.',
+        detalhes: obterMensagemErro(error),
+      });
+    }
+  }
+
+  /**
    * Handles GET /api/terapeuta/:id to retrieve therapist details by UUID.
    *
    * @param req - Express request containing therapist UUID in `:id`.
-   * @param res - Express response returning therapist record or 404 if not found.
+   * @param res - Express response returning therapist record in envelope or 404 if not found.
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
@@ -58,7 +101,12 @@ export class TerapeutaController {
         return;
       }
 
-      res.status(200).json({ data: terapeuta });
+      res.status(200).json({
+        data: {
+          terapeuta,
+        },
+        message: 'Terapeuta recuperado com sucesso.',
+      });
     } catch (error: unknown) {
       if (error instanceof TerapeutaServiceError) {
         res.status(error.statusCode).json({ error: error.message });
@@ -73,10 +121,48 @@ export class TerapeutaController {
   }
 
   /**
+   * Handles GET /api/terapeuta/:id/pacientes to list patients linked to a therapist.
+   *
+   * @param req - Express request containing therapist UUID in `:id` (or fallback to authenticated user).
+   * @param res - Express response returning patient links in envelope pattern.
+   */
+  static async listarPacientesVinculados(req: Request, res: Response): Promise<void> {
+    try {
+      const id = req.params.id ? String(req.params.id) : (req as AuthenticatedRequest).user?.id;
+      if (!id || !validarUUID(id)) {
+        res.status(400).json({ error: 'Identificador de terapeuta inválido: deve ser um UUID válido.' });
+        return;
+      }
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const vinculos = await TerapeutaService.listarPacientesVinculados(id, usuarioLogado);
+
+      res.status(200).json({
+        data: {
+          vinculos,
+          meta: {
+            total: vinculos.length,
+          },
+        },
+        message: 'Pacientes vinculados listados com sucesso.',
+      });
+    } catch (error: unknown) {
+      if (error instanceof TerapeutaServiceError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      console.error('[TerapeutaController.listarPacientesVinculados]', error);
+      res.status(500).json({
+        error: 'Erro interno ao listar pacientes vinculados.',
+        detalhes: obterMensagemErro(error),
+      });
+    }
+  }
+
+  /**
    * Handles POST /api/terapeuta to register a new therapist and create Supabase Auth credentials.
    *
    * @param req - Express request containing `CriarTerapeutaDTO` in body.
-   * @param res - Express response returning status 201 with created therapist.
+   * @param res - Express response returning status 201 with created therapist in envelope pattern.
    */
   static async criar(req: Request, res: Response): Promise<void> {
     try {
@@ -84,7 +170,9 @@ export class TerapeutaController {
       const novoTerapeuta = await TerapeutaService.criar(dto);
 
       res.status(201).json({
-        data: novoTerapeuta,
+        data: {
+          terapeuta: novoTerapeuta,
+        },
         message: 'Terapeuta cadastrado e conta de acesso criada com sucesso.',
       });
     } catch (error: unknown) {
@@ -110,10 +198,10 @@ export class TerapeutaController {
   }
 
   /**
-   * Handles PUT /api/terapeuta/:id to update therapist details.
+   * Handles PUT /api/terapeuta/:id and PATCH /api/terapeuta/:id to update therapist details.
    *
    * @param req - Express request containing therapist UUID in `:id` and update fields in body.
-   * @param res - Express response returning status 200 with updated therapist.
+   * @param res - Express response returning status 200 with updated therapist in envelope pattern.
    */
   static async atualizar(req: Request, res: Response): Promise<void> {
     try {
@@ -128,7 +216,9 @@ export class TerapeutaController {
       const atualizado = await TerapeutaService.atualizar(id, dto, usuarioLogado);
 
       res.status(200).json({
-        data: atualizado,
+        data: {
+          terapeuta: atualizado,
+        },
         message: 'Terapeuta atualizado com sucesso.',
       });
     } catch (error: unknown) {
@@ -149,7 +239,7 @@ export class TerapeutaController {
    * Handles DELETE /api/terapeuta/:id applying soft deletion (RN05).
    *
    * @param req - Express request containing therapist UUID in `:id`.
-   * @param res - Express response returning status 200 with deactivated therapist.
+   * @param res - Express response returning status 200 with deactivated therapist in envelope pattern.
    */
   static async desativar(req: Request, res: Response): Promise<void> {
     try {
@@ -162,14 +252,18 @@ export class TerapeutaController {
 
       if (jaInativo) {
         res.status(200).json({
-          data: terapeuta,
+          data: {
+            terapeuta,
+          },
           message: 'O terapeuta já se encontra inativo.',
         });
         return;
       }
 
       res.status(200).json({
-        data: terapeuta,
+        data: {
+          terapeuta,
+        },
         message: 'Terapeuta desativado com sucesso (soft delete aplicado).',
       });
     } catch (error: unknown) {
@@ -190,7 +284,7 @@ export class TerapeutaController {
    * Handles PATCH /api/terapeuta/:id/reativar to reactivate a therapist account.
    *
    * @param req - Express request containing therapist UUID in `:id`.
-   * @param res - Express response returning status 200 with reactivated therapist.
+   * @param res - Express response returning status 200 with reactivated therapist in envelope pattern.
    */
   static async reativar(req: Request, res: Response): Promise<void> {
     try {
@@ -202,7 +296,9 @@ export class TerapeutaController {
       const reativado = await TerapeutaService.reativar(id);
 
       res.status(200).json({
-        data: reativado,
+        data: {
+          terapeuta: reativado,
+        },
         message: 'Terapeuta reativado com sucesso.',
       });
     } catch (error: unknown) {
@@ -223,7 +319,7 @@ export class TerapeutaController {
    * Handles DELETE /api/terapeuta/:id/hard to permanently delete a therapist (testing/dev).
    *
    * @param req - Express request containing therapist UUID in `:id`.
-   * @param res - Express response acknowledging permanent removal.
+   * @param res - Express response returning 204 No Content upon permanent removal.
    */
   static async deletarHard(req: Request, res: Response): Promise<void> {
     try {
@@ -234,9 +330,7 @@ export class TerapeutaController {
       }
       await TerapeutaService.deletarHard(id);
 
-      res.status(200).json({
-        message: 'Terapeuta e credenciais excluídos fisicamente com sucesso (hard delete para testes).',
-      });
+      res.status(204).send();
     } catch (error: unknown) {
       if (error instanceof TerapeutaServiceError) {
         res.status(error.statusCode).json({ error: error.message });

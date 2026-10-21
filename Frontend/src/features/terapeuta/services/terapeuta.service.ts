@@ -37,13 +37,9 @@ export const terapeutaService = {
           ? { incluirInativos: "true" }
           : undefined;
         const resposta = await http.get<
-          TerapeutasListaRespostaApi | Terapeuta[]
+          TerapeutasListaRespostaApi
         >(ENDPOINTS.TERAPEUTA.BASE, { params });
-
-        if (Array.isArray(resposta)) {
-          return resposta;
-        }
-        return resposta.data ?? [];
+        return resposta.data?.terapeutas ?? [];
       },
       () => listarTerapeutasMock(incluirInativos),
     );
@@ -57,13 +53,10 @@ export const terapeutaService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.get<TerapeutaRespostaApi | Terapeuta>(
+        const resposta = await http.get<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.BY_ID(id),
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Terapeuta) ?? null;
+        return resposta.data?.terapeuta ?? null;
       },
       () => buscarTerapeutaMockPorId(id),
     );
@@ -75,14 +68,11 @@ export const terapeutaService = {
   criar: async (dto: CriarTerapeutaDTO): Promise<Terapeuta> => {
     return await withFallback(
       async () => {
-        const resposta = await http.post<TerapeutaRespostaApi | Terapeuta>(
+        const resposta = await http.post<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.BASE,
           dto,
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return resposta as Terapeuta;
+        return resposta.data.terapeuta;
       },
       () => criarTerapeutaMock(dto),
     );
@@ -99,14 +89,11 @@ export const terapeutaService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.put<TerapeutaRespostaApi | Terapeuta>(
+        const resposta = await http.put<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.BY_ID(id),
           dto,
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Terapeuta) ?? null;
+        return resposta.data?.terapeuta ?? null;
       },
       () => atualizarTerapeutaMock(id, dto),
     );
@@ -120,13 +107,10 @@ export const terapeutaService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.delete<TerapeutaRespostaApi | Terapeuta>(
+        const resposta = await http.delete<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.BY_ID(id),
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Terapeuta) ?? null;
+        return resposta.data?.terapeuta ?? null;
       },
       () => inativarTerapeutaMock(id),
     );
@@ -140,13 +124,10 @@ export const terapeutaService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.patch<TerapeutaRespostaApi | Terapeuta>(
+        const resposta = await http.patch<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.REATIVAR(id),
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Terapeuta) ?? null;
+        return resposta.data?.terapeuta ?? null;
       },
       () => reativarTerapeutaMock(id),
     );

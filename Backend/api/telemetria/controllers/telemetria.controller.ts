@@ -13,9 +13,10 @@ import { supabase } from '../../../core/supabase/supabase.client.js';
 export class TelemetriaController {
   /**
    * Handles POST /api/telemetria to ingest an individual clinical telemetry event.
+   * Adheres to Envelope Pattern and RN01/RN02 invariant clinical rules.
    *
    * @param req - Express request containing session ID or token, event type, and telemetry data.
-   * @param res - Express response returning the recorded telemetry event or persistence status.
+   * @param res - Express response returning the recorded telemetry event in categorized envelope.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async registrar(req: Request, res: Response): Promise<void> {
@@ -45,23 +46,39 @@ export class TelemetriaController {
         res.status(409).json({
           error: 'Não é possível registrar telemetria para uma sessão que não está em andamento.',
           detalhes: resultado.motivo,
-          persistido: false,
+        });
+        return;
+      }
+
+      if (!resultado.persistido && resultado.violacaoRN02) {
+        res.status(422).json({
+          error: resultado.motivo,
         });
         return;
       }
 
       if (!resultado.persistido && resultado.motivo?.includes('RN01')) {
         res.status(200).json({
+          data: {
+            telemetria: null,
+            meta: {
+              persistido: false,
+              modo_sessao: 'modo_livre',
+            },
+          },
           message: 'Evento processado em memória (Modo Livre não persiste telemetria - RN01)',
-          persistido: false,
         });
         return;
       }
 
       res.status(201).json({
+        data: {
+          telemetria: resultado.dados,
+          meta: {
+            persistido: true,
+          },
+        },
         message: 'Evento de telemetria registrado com sucesso',
-        data: resultado.dados,
-        persistido: true,
       });
     } catch (error) {
       console.error('[TelemetriaController] Erro ao registrar telemetria:', error);
@@ -71,9 +88,10 @@ export class TelemetriaController {
 
   /**
    * Handles POST /api/telemetria/lote to batch ingest multiple telemetry events.
+   * Adheres to Envelope Pattern and RN01/RN02 invariant clinical rules.
    *
    * @param req - Express request containing session ID or token and an array of telemetry events.
-   * @param res - Express response returning the batch processing results and statistics.
+   * @param res - Express response returning batch processing status in categorized envelope.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async registrarLote(req: Request, res: Response): Promise<void> {
@@ -123,26 +141,41 @@ export class TelemetriaController {
         res.status(409).json({
           error: 'Não é possível registrar telemetria para uma sessão que não está em andamento.',
           detalhes: resultado.motivo,
-          total: resultado.total,
-          persistido: false,
+        });
+        return;
+      }
+
+      if (!resultado.persistido && resultado.violacaoRN02) {
+        res.status(422).json({
+          error: resultado.motivo,
         });
         return;
       }
 
       if (!resultado.persistido && resultado.motivo?.includes('RN01')) {
         res.status(200).json({
+          data: {
+            telemetria: [],
+            meta: {
+              total_processados: resultado.total ?? eventos.length,
+              persistido: false,
+              modo_sessao: 'modo_livre',
+            },
+          },
           message: 'Lote processado em memória (Modo Livre não persiste telemetria - RN01)',
-          total: resultado.total,
-          persistido: false,
         });
         return;
       }
 
       res.status(201).json({
+        data: {
+          telemetria: resultado.dados ?? [],
+          meta: {
+            total_processados: resultado.total ?? (Array.isArray(resultado.dados) ? resultado.dados.length : eventos.length),
+            persistido: true,
+          },
+        },
         message: 'Lote de telemetria registrado com sucesso',
-        total: resultado.total,
-        data: resultado.dados,
-        persistido: true,
       });
     } catch (error) {
       console.error('[TelemetriaController] Erro ao registrar lote de telemetria:', error);
@@ -152,9 +185,10 @@ export class TelemetriaController {
 
   /**
    * Handles GET /api/telemetria/sessao/:sessaoId to list telemetry events for a session.
+   * Adheres to Envelope Pattern and RN04 (Visibilidade Institucional).
    *
    * @param req - Express request containing session UUID in `:sessaoId` and optional filters/pagination.
-   * @param res - Express response returning the array of telemetry events.
+   * @param res - Express response returning categorized array of telemetry events.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async listarPorSessao(req: Request, res: Response): Promise<void> {
@@ -197,13 +231,15 @@ export class TelemetriaController {
 
       const telemetrias = await TelemetriaService.listarPorSessao(sessaoId, idMetrica, limite, pagina);
       res.status(200).json({
-        data: telemetrias,
-        meta: {
-          pagina,
-          limite: limite ?? null,
-          total_pagina: telemetrias.length,
+        data: {
+          telemetria: telemetrias,
+          meta: {
+            pagina,
+            limite: limite ?? null,
+            total_pagina: telemetrias.length,
+          },
         },
-        ...(limite ? { pagina, limite, total_pagina: telemetrias.length } : {}),
+        message: 'Eventos de telemetria listados com sucesso',
       });
     } catch (error) {
       console.error('[TelemetriaController] Erro ao buscar telemetria:', error);
@@ -213,9 +249,10 @@ export class TelemetriaController {
 
   /**
    * Handles GET /api/telemetria/sessao/:sessaoId/agregada to retrieve aggregated telemetry metrics.
+   * Adheres to Envelope Pattern and RN04 (Visibilidade Institucional).
    *
    * @param req - Express request containing session UUID in URL parameter `:sessaoId`.
-   * @param res - Express response returning aggregated session statistics.
+   * @param res - Express response returning categorized aggregated session statistics.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async obterEstatisticasSessao(req: Request, res: Response): Promise<void> {
@@ -260,7 +297,14 @@ export class TelemetriaController {
       }
 
       res.status(200).json({
-        data: consolidado,
+        data: {
+          agregacao: consolidado,
+          meta: {
+            total_eventos: consolidado.total_eventos,
+            duracao_estimada_segundos: consolidado.duracao_estimada_segundos,
+          },
+        },
+        message: 'Estatísticas agregadas de telemetria consultadas com sucesso',
       });
     } catch (error) {
       console.error('[TelemetriaController] Erro ao agregar telemetria da sessão:', error);
@@ -312,4 +356,3 @@ export class TelemetriaController {
     }
   }
 }
-

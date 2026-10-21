@@ -53,6 +53,30 @@ function serializarFiltros(
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
+function extrairPaciente(resposta: PacienteRespostaApi | Paciente | null | undefined): Paciente | null {
+  if (!resposta) return null;
+  if ("id" in resposta && typeof (resposta as Paciente).id === "string") {
+    return resposta as Paciente;
+  }
+  if ("data" in resposta && resposta.data) {
+    const d = resposta.data;
+    if ("paciente" in d && d.paciente) {
+      const p = { ...d.paciente };
+      if ("responsaveis" in d && d.responsaveis && !p.responsaveis) {
+        p.responsaveis = d.responsaveis;
+      }
+      if ("dados_clinicos" in d && d.dados_clinicos && !p.dados_clinicos) {
+        p.dados_clinicos = d.dados_clinicos;
+      }
+      return p;
+    }
+    if ("id" in d && typeof (d as Paciente).id === "string") {
+      return d as Paciente;
+    }
+  }
+  return null;
+}
+
 export const pacienteService = {
   /**
    * Lista pacientes cadastrados aplicando filtros de busca, idade e paginação (RF19, RN05).
@@ -68,7 +92,15 @@ export const pacienteService = {
         if (Array.isArray(resposta)) {
           return resposta;
         }
-        return resposta.data ?? [];
+        if (resposta && "data" in resposta && resposta.data) {
+          if (Array.isArray(resposta.data)) {
+            return resposta.data;
+          }
+          if ("pacientes" in resposta.data && Array.isArray(resposta.data.pacientes)) {
+            return resposta.data.pacientes;
+          }
+        }
+        return [];
       },
       () => listarPacientesMock(filtros),
     );
@@ -85,10 +117,7 @@ export const pacienteService = {
         const resposta = await http.get<PacienteRespostaApi | Paciente>(
           ENDPOINTS.PACIENTE.BY_ID(id),
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Paciente) ?? null;
+        return extrairPaciente(resposta);
       },
       () => buscarPacienteMockPorId(id),
     );
@@ -104,10 +133,11 @@ export const pacienteService = {
           ENDPOINTS.PACIENTE.BASE,
           dto,
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
+        const p = extrairPaciente(resposta);
+        if (!p) {
+          throw new Error("Falha ao instanciar paciente retornado pela API.");
         }
-        return resposta as Paciente;
+        return p;
       },
       () => criarPacienteMock(dto),
     );
@@ -128,10 +158,7 @@ export const pacienteService = {
           ENDPOINTS.PACIENTE.BY_ID(id),
           dto,
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Paciente) ?? null;
+        return extrairPaciente(resposta);
       },
       () => atualizarPacienteMock(id, dto),
     );
@@ -148,10 +175,7 @@ export const pacienteService = {
         const resposta = await http.delete<PacienteRespostaApi | Paciente>(
           ENDPOINTS.PACIENTE.BY_ID(id),
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Paciente) ?? null;
+        return extrairPaciente(resposta);
       },
       () => inativarPacienteMock(id),
     );
@@ -168,10 +192,7 @@ export const pacienteService = {
         const resposta = await http.patch<PacienteRespostaApi | Paciente>(
           ENDPOINTS.PACIENTE.REATIVAR(id),
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Paciente) ?? null;
+        return extrairPaciente(resposta);
       },
       () => reativarPacienteMock(id),
     );
@@ -186,13 +207,22 @@ export const pacienteService = {
     return await withFallback(
       async () => {
         const resposta = await http.get<
-          { data: TerapeutaPaciente[] } | TerapeutaPaciente[]
+          | { data: TerapeutaPaciente[] | { terapeutas: TerapeutaPaciente[] } }
+          | TerapeutaPaciente[]
         >(ENDPOINTS.PACIENTE.TERAPEUTAS(id));
 
         if (Array.isArray(resposta)) {
           return resposta;
         }
-        return resposta.data ?? [];
+        if (resposta && "data" in resposta && resposta.data) {
+          if (Array.isArray(resposta.data)) {
+            return resposta.data;
+          }
+          if ("terapeutas" in resposta.data && Array.isArray(resposta.data.terapeutas)) {
+            return resposta.data.terapeutas;
+          }
+        }
+        return [];
       },
       () => listarTerapeutasPacienteMock(id),
     );

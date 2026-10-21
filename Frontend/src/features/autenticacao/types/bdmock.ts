@@ -157,10 +157,8 @@ export async function loginMock(payload: LoginPayload): Promise<LoginResponse> {
     return {
       data: {
         user: { ...MOCK_USUARIO_ADMIN },
-        tokens: { ...MOCK_AUTH_TOKENS_ADMIN },
+        token: { ...MOCK_AUTH_TOKENS_ADMIN },
       },
-      tokens: { ...MOCK_AUTH_TOKENS_ADMIN },
-      user: { ...MOCK_USUARIO_ADMIN },
       message: "Autenticação realizada com sucesso (SuperAdmin).",
     };
   }
@@ -176,10 +174,8 @@ export async function loginMock(payload: LoginPayload): Promise<LoginResponse> {
     return {
       data: {
         user: usuarioLogadoAtual,
-        tokens: { ...MOCK_AUTH_TOKENS },
+        token: { ...MOCK_AUTH_TOKENS },
       },
-      tokens: { ...MOCK_AUTH_TOKENS },
-      user: usuarioLogadoAtual,
       message: "Autenticação realizada com sucesso.",
     };
   }
@@ -195,10 +191,8 @@ export async function loginMock(payload: LoginPayload): Promise<LoginResponse> {
     return {
       data: {
         user: usuarioLogadoAtual,
-        tokens: { ...MOCK_AUTH_TOKENS },
+        token: { ...MOCK_AUTH_TOKENS },
       },
-      tokens: { ...MOCK_AUTH_TOKENS },
-      user: usuarioLogadoAtual,
       message: "Autenticação realizada com sucesso.",
     };
   }
@@ -214,10 +208,8 @@ export async function loginMock(payload: LoginPayload): Promise<LoginResponse> {
     return {
       data: {
         user: usuarioLogadoAtual,
-        tokens: { ...MOCK_AUTH_TOKENS },
+        token: { ...MOCK_AUTH_TOKENS },
       },
-      tokens: { ...MOCK_AUTH_TOKENS },
-      user: usuarioLogadoAtual,
       message: "Autenticação realizada com sucesso.",
     };
   }
@@ -233,10 +225,8 @@ export async function loginMock(payload: LoginPayload): Promise<LoginResponse> {
     return {
       data: {
         user: usuarioLogadoAtual,
-        tokens: { ...MOCK_AUTH_TOKENS },
+        token: { ...MOCK_AUTH_TOKENS },
       },
-      tokens: { ...MOCK_AUTH_TOKENS },
-      user: usuarioLogadoAtual,
       message: "Autenticação realizada com sucesso.",
     };
   }
@@ -251,7 +241,7 @@ export async function logoutMock(): Promise<LogoutResponse> {
   usuarioLogadoAtual = null;
   tokensAtuais = null;
   return {
-    success: true,
+    data: null,
     message: "Sessão encerrada com sucesso.",
   };
 }

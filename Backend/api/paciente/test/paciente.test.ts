@@ -815,8 +815,9 @@ describe('Equipe Multidisciplinar (GET, POST, DELETE /api/paciente/:id/terapeuta
     await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
 
     expect(mockHttp.getStatus()).toBe(200);
-    expect(mockHttp.getJson().data).toHaveLength(1);
-    expect(mockHttp.getJson().data[0].id).toBe(terapeutaLogadoId);
+    expect(mockHttp.getJson().data.terapeutas).toHaveLength(1);
+    expect(mockHttp.getJson().data.terapeutas[0].id).toBe(terapeutaLogadoId);
+    expect(mockHttp.getJson().message).toBe('Terapeutas vinculados listados com sucesso.');
   });
 
   it('POST /api/paciente/:id/terapeutas: deve bloquear com 403 Forbidden se terapeuta requisitante não tiver vínculo ativo', async () => {
@@ -1193,7 +1194,8 @@ describe('GET /api/paciente — Listagem, Filtros all/todos e Segurança de Supe
     await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);
 
     expect(mockHttp.getStatus()).toBe(200);
-    expect(mockHttp.getJson().data).toHaveLength(1);
+    expect(mockHttp.getJson().data.pacientes).toHaveLength(1);
+    expect(mockHttp.getJson().message).toBe('Pacientes listados com sucesso.');
     expect(spyModelListar).toHaveBeenCalled();
     expect(spyModelListar.mock.calls[0]?.[0]?.terapeutaId).toBeUndefined();
   });
@@ -1266,5 +1268,270 @@ describe('GET /api/paciente — Listagem, Filtros all/todos e Segurança de Supe
     expect(spyModelListar).toHaveBeenCalledWith(
       expect.objectContaining({ terapeutaId: terapeutaComumId })
     );
+  });
+});
+
+// ==============================================================================
+// AUDITORIA DE BACKEND: ENVELOPE PATTERN CATEGORIZADO E SANITIZAÇÃO ESTRITA
+// ==============================================================================
+describe('Auditoria de Backend: Envelope Pattern Categorizado e Sanitização Estrita (RN01-RN05)', () => {
+  const pacienteUuid = '123e4567-e89b-12d3-a456-426614174000';
+  const jogoUuid = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
+
+  const mockPacienteRetorno = {
+    id: pacienteUuid,
+    nome: 'Enzo Gabriel da Silva',
+    data_nascimento: '2018-05-14',
+    cpf: '529.982.247-25',
+    telefone: '+55 (11) 98765-4321',
+    cep: '01310-100',
+    cidade: 'São Paulo',
+    estado: 'SP',
+    endereco: 'Av Paulista',
+    bairro: 'Bela Vista',
+    numero: '1000',
+    complemento: 'Apto 12',
+    clinica_id: 'f28b49b7-7f91-4e78-8384-25010629ec0b',
+    status_ativo: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    responsaveis: [
+      {
+        responsavel: {
+          id: '0e16bed1-a27a-41d3-bf0d-4e43ac5139ff',
+          nome: 'Mariana da Silva',
+          cpf: '364.721.890-50',
+          telefone: '+55 (11) 98765-4321',
+          parentesco: 'Mãe',
+          principal: true,
+        },
+      },
+    ],
+    terapeutas: [],
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('1. GET /api/paciente (Listagem): deve retornar { data: { pacientes, meta }, message } sem propriedades soltas na raiz de data', async () => {
+    const { PacienteController } = await import('../controllers/paciente.controller.js');
+    const { PacienteService } = await import('../services/paciente.service.js');
+
+    vi.spyOn(PacienteService, 'listar').mockResolvedValue({
+      data: [mockPacienteRetorno as any],
+      meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+    });
+
+    const mockHttp = criarMockReqResPaciente({});
+    await PacienteController.listar(mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    const json = mockHttp.getJson();
+
+    // Verificação estrita do Envelope
+    expect(Object.keys(json).sort()).toEqual(['data', 'message'].sort());
+    expect(Object.keys(json.data).sort()).toEqual(['meta', 'pacientes'].sort());
+    expect(json.data.pacientes).toBeInstanceOf(Array);
+    expect(json.data.meta).toEqual(
+      expect.objectContaining({
+        total: 1,
+        pagina: 1,
+        limite: 10,
+        total_paginas: 1,
+      })
+    );
+    expect(json.message).toBe('Pacientes listados com sucesso.');
+  });
+
+  it('2. GET /api/paciente/:id (Detalhes): deve retornar { data: { paciente, responsaveis, dados_clinicos, meta }, message }', async () => {
+    const { PacienteController } = await import('../controllers/paciente.controller.js');
+    const { PacienteService } = await import('../services/paciente.service.js');
+
+    vi.spyOn(PacienteService, 'buscarPorId').mockResolvedValue(mockPacienteRetorno as any);
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteUuid },
+    });
+    await PacienteController.buscarPorId(mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    const json = mockHttp.getJson();
+
+    // Verificação estrita do Envelope
+    expect(Object.keys(json).sort()).toEqual(['data', 'message'].sort());
+    expect(Object.keys(json.data).sort()).toEqual(['dados_clinicos', 'meta', 'paciente', 'responsaveis'].sort());
+    expect(json.data.paciente.id).toBe(pacienteUuid);
+    expect(json.data.paciente.nome).toBe('Enzo Gabriel da Silva');
+    expect(json.data.responsaveis).toBeInstanceOf(Array);
+    expect(json.data.responsaveis[0].nome).toBe('Mariana da Silva');
+    expect(json.data.meta.total_responsaveis).toBe(1);
+    expect(json.message).toBe('Paciente recuperado com sucesso.');
+  });
+
+  it('3. POST /api/paciente (Criação): deve retornar 201 Created com { data: { paciente, responsavel }, message }', async () => {
+    const { PacienteController } = await import('../controllers/paciente.controller.js');
+    const { PacienteService } = await import('../services/paciente.service.js');
+
+    vi.spyOn(PacienteService, 'criar').mockResolvedValue(mockPacienteRetorno as any);
+
+    const mockHttp = criarMockReqResPaciente({
+      body: {
+        nome: 'Enzo Gabriel da Silva',
+        data_nascimento: '2018-05-14',
+        cpf: '529.982.247-25',
+        responsavel: {
+          nome: 'Mariana da Silva',
+          cpf: '364.721.890-50',
+          telefone: '+55 (11) 98765-4321',
+          parentesco: 'Mãe',
+        },
+      },
+    });
+    await PacienteController.criar(mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(201);
+    const json = mockHttp.getJson();
+
+    expect(Object.keys(json).sort()).toEqual(['data', 'message'].sort());
+    expect(Object.keys(json.data).sort()).toEqual(['paciente', 'responsavel'].sort());
+    expect(json.data.paciente.id).toBe(pacienteUuid);
+    expect(json.data.responsavel.nome).toBe('Mariana da Silva');
+    expect(json.message).toBe('Paciente cadastrado com sucesso.');
+  });
+
+  it('4. PATCH /api/paciente/:id (Edição): deve retornar 200 OK com { data: { paciente }, message }', async () => {
+    const { PacienteController } = await import('../controllers/paciente.controller.js');
+    const { PacienteService } = await import('../services/paciente.service.js');
+
+    vi.spyOn(PacienteService, 'atualizar').mockResolvedValue({
+      ...mockPacienteRetorno,
+      nome: 'Enzo Gabriel Atualizado',
+    } as any);
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteUuid },
+      body: { nome: 'Enzo Gabriel Atualizado' },
+    });
+    await PacienteController.atualizar(mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    const json = mockHttp.getJson();
+
+    expect(Object.keys(json).sort()).toEqual(['data', 'message'].sort());
+    expect(Object.keys(json.data)).toEqual(['paciente']);
+    expect(json.data.paciente.nome).toBe('Enzo Gabriel Atualizado');
+    expect(json.message).toBe('Paciente atualizado com sucesso.');
+  });
+
+  it('5. DELETE /api/paciente/:id (Soft Delete): deve retornar 200 OK com { data: { paciente }, message }', async () => {
+    const { PacienteController } = await import('../controllers/paciente.controller.js');
+    const { PacienteService } = await import('../services/paciente.service.js');
+
+    vi.spyOn(PacienteService, 'desativar').mockResolvedValue({
+      paciente: { ...mockPacienteRetorno, status_ativo: false } as any,
+      jaInativo: false,
+    });
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteUuid },
+    });
+    await PacienteController.desativar(mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    const json = mockHttp.getJson();
+
+    expect(Object.keys(json).sort()).toEqual(['data', 'message'].sort());
+    expect(Object.keys(json.data)).toEqual(['paciente']);
+    expect(json.data.paciente.status_ativo).toBe(false);
+    expect(json.message).toContain('soft delete aplicado');
+  });
+
+  it('6. PATCH /api/paciente/:id/reativar (Reativação): deve retornar 200 OK com { data: { paciente }, message }', async () => {
+    const { PacienteController } = await import('../controllers/paciente.controller.js');
+    const { PacienteService } = await import('../services/paciente.service.js');
+
+    vi.spyOn(PacienteService, 'reativar').mockResolvedValue({
+      ...mockPacienteRetorno,
+      status_ativo: true,
+    } as any);
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteUuid },
+    });
+    await PacienteController.reativar(mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    const json = mockHttp.getJson();
+
+    expect(Object.keys(json).sort()).toEqual(['data', 'message'].sort());
+    expect(Object.keys(json.data)).toEqual(['paciente']);
+    expect(json.data.paciente.status_ativo).toBe(true);
+    expect(json.message).toBe('Paciente reativado com sucesso.');
+  });
+
+  it('7. GET /api/paciente/:id/historico (Histórico Geral): deve retornar { data: { engajamento, jogos, meta }, message }', async () => {
+    const { PacienteController } = await import('../controllers/paciente.controller.js');
+    const { PacienteHistoricoService } = await import('../services/paciente-historico.service.js');
+
+    vi.spyOn(PacienteHistoricoService, 'buscarHistoricoGeral').mockResolvedValue({
+      engajamento: {
+        total_sessoes: 5,
+        total_iniciadas: 5,
+        sessoes_finalizadas: 4,
+        sessoes_interrompidas: 1,
+        taxa_conclusao_porcentagem: 80,
+        taxa_conclusao: 80,
+        tempo_total_segundos: 2400,
+        tempo_medio_segundos: 480,
+      },
+      jogos: [{ jogo_id: jogoUuid, nome: 'Jogo Sensorial', versao: '1.0.0', total_sessoes: 5, ultima_sessao: new Date().toISOString() }],
+      meta: { paciente_id: pacienteUuid },
+    });
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteUuid },
+    });
+    await PacienteController.buscarHistoricoGeral(mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    const json = mockHttp.getJson();
+
+    expect(Object.keys(json).sort()).toEqual(['data', 'message'].sort());
+    expect(Object.keys(json.data).sort()).toEqual(['engajamento', 'jogos', 'meta'].sort());
+    expect(json.data.engajamento.total_sessoes).toBe(5);
+    expect(json.data.jogos).toHaveLength(1);
+    expect(json.message).toBe('Histórico geral de engajamento do paciente recuperado com sucesso.');
+  });
+
+  it('8. GET /api/paciente/:id/historico/jogo/:jogoId (Histórico do Jogo): deve retornar { data: { jogo, metricas_declaradas, series_temporais, sessoes, meta }, message }', async () => {
+    const { PacienteController } = await import('../controllers/paciente.controller.js');
+    const { PacienteHistoricoService } = await import('../services/paciente-historico.service.js');
+
+    vi.spyOn(PacienteHistoricoService, 'buscarHistoricoJogo').mockResolvedValue({
+      jogo: { id: jogoUuid, nome: 'Jogo Sensorial', versao: '1.0.0' },
+      metricas_declaradas: [],
+      series_temporais: [],
+      sessoes: [],
+      meta: {
+        paciente_id: pacienteUuid,
+        jogo_id: jogoUuid,
+        sessao_referencia_id: null,
+        paginacao: { page: 1, limit: 20, total_registros: 0 },
+      },
+    });
+
+    const mockHttp = criarMockReqResPaciente({
+      params: { id: pacienteUuid, jogoId: jogoUuid },
+    });
+    await PacienteController.buscarHistoricoJogo(mockHttp.req, mockHttp.res);
+
+    expect(mockHttp.getStatus()).toBe(200);
+    const json = mockHttp.getJson();
+
+    expect(Object.keys(json).sort()).toEqual(['data', 'message'].sort());
+    expect(Object.keys(json.data).sort()).toEqual(['jogo', 'meta', 'metricas_declaradas', 'series_temporais', 'sessoes'].sort());
+    expect(json.data.jogo.id).toBe(jogoUuid);
+    expect(json.message).toBe('Histórico do jogo para o paciente recuperado com sucesso.');
   });
 });

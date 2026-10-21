@@ -174,18 +174,39 @@ export interface VincularTerapeutaDTO {
 }
 
 export interface PacienteRespostaApi {
-  data: Paciente;
+  data:
+    | Paciente
+    | {
+        paciente: Paciente;
+        responsaveis?: Responsavel[];
+        dados_clinicos?: DadosClinicos;
+        responsavel?: Responsavel | null;
+      };
   message?: string;
 }
 
 export interface PacientesListaRespostaApi {
-  data: Paciente[];
+  data:
+    | Paciente[]
+    | {
+        pacientes: Paciente[];
+        meta?: {
+          total: number;
+          pagina?: number;
+          limite?: number;
+          total_paginas?: number;
+          page?: number;
+          limit?: number;
+          totalPages?: number;
+        };
+      };
   meta?: {
     total: number;
     page: number;
     limit: number;
     totalPages: number;
   };
+  message?: string;
 }
 
 // ============================================================================

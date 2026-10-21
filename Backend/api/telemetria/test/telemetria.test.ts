@@ -15,6 +15,7 @@ import { TelemetriaModel, TelemetriaEvento } from '../models/telemetria.model.js
 import { TelemetriaService } from '../services/telemetria.service.js';
 import { TelemetriaController } from '../controllers/telemetria.controller.js';
 import { SessaoModel, MODO_SESSAO, STATUS_SESSAO, Sessao } from '../../sessao/models/sessao.model.js';
+import { JogoModel } from '../../jogos/models/jogo.model.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 
 // Helper para mock de Request e Response do Express
@@ -425,6 +426,90 @@ describe('TelemetriaService — Lógica de Negócio e RN01', () => {
     expect(res.persistido).toBe(true);
     expect(res.total).toBe(0);
   });
+
+  it('RN02: deve rejeitar evento com violacaoRN02 se métrica não constar no manifesto do jogo', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(sessaoClinicaValida);
+    vi.spyOn(JogoModel, 'buscarPorId').mockResolvedValue({
+      id: sessaoClinicaValida.jogo_id!,
+      nome: 'Jogo Teste',
+      descricao: 'Desc',
+      versao: '1.0.0',
+      status_jogo: 'ativo',
+      manifesto_json: {
+        id_jogo: 'jogo-1',
+        nome: 'Jogo Teste',
+        versao: '1.0.0',
+        metricas_suportadas: [
+          { id_metrica: 'tempo_resposta', tipo_metrica: 'numerica' },
+        ],
+      },
+    });
+
+    const res = await TelemetriaService.persistirEvento(sessaoClinicaValida.id, {
+      tipo_evento: 'clique',
+      dados: { id_metrica: 'metrica_inexistente', valor: 10 },
+    });
+
+    expect(res.persistido).toBe(false);
+    expect(res.violacaoRN02).toBe(true);
+    expect(res.motivo).toContain('RN02');
+  });
+
+  it('RN02: deve rejeitar evento se valor for incompatível com o tipo no manifesto (ex.: string para métrica numérica)', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(sessaoClinicaValida);
+    vi.spyOn(JogoModel, 'buscarPorId').mockResolvedValue({
+      id: sessaoClinicaValida.jogo_id!,
+      nome: 'Jogo Teste',
+      descricao: 'Desc',
+      versao: '1.0.0',
+      status_jogo: 'ativo',
+      manifesto_json: {
+        id_jogo: 'jogo-1',
+        nome: 'Jogo Teste',
+        versao: '1.0.0',
+        metricas_suportadas: [
+          { id_metrica: 'tempo_resposta', tipo_metrica: 'numerica' },
+        ],
+      },
+    });
+
+    const res = await TelemetriaService.persistirEvento(sessaoClinicaValida.id, {
+      tipo_evento: 'clique',
+      dados: { id_metrica: 'tempo_resposta', valor: 'invalido' },
+    });
+
+    expect(res.persistido).toBe(false);
+    expect(res.violacaoRN02).toBe(true);
+    expect(res.motivo).toContain('não-numérico');
+  });
+
+  it('RN02: deve rejeitar lote com violacaoRN02 se algum evento violar o manifesto', async () => {
+    vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue(sessaoClinicaValida);
+    vi.spyOn(JogoModel, 'buscarPorId').mockResolvedValue({
+      id: sessaoClinicaValida.jogo_id!,
+      nome: 'Jogo Teste',
+      descricao: 'Desc',
+      versao: '1.0.0',
+      status_jogo: 'ativo',
+      manifesto_json: {
+        id_jogo: 'jogo-1',
+        nome: 'Jogo Teste',
+        versao: '1.0.0',
+        metricas_suportadas: [
+          { id_metrica: 'tempo_resposta', tipo_metrica: 'numerica' },
+        ],
+      },
+    });
+
+    const res = await TelemetriaService.persistirLote(sessaoClinicaValida.id, [
+      { tipo_evento: 'e1', dados: { id_metrica: 'tempo_resposta', valor: 2.5 } },
+      { tipo_evento: 'e2', dados: { id_metrica: 'metrica_fantasma', valor: 10 } },
+    ]);
+
+    expect(res.persistido).toBe(false);
+    expect(res.violacaoRN02).toBe(true);
+    expect(res.motivo).toContain('RN02');
+  });
 });
 
 describe('TelemetriaController — Endpoints e Validações REST', () => {
@@ -514,8 +599,14 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
 
     await TelemetriaController.registrar(mockReq, mockRes);
     expect(getStatus()).toBe(200);
-    expect(getJson()).toMatchObject({
-      persistido: false,
+    expect(getJson()).toEqual({
+      data: {
+        telemetria: null,
+        meta: {
+          persistido: false,
+          modo_sessao: 'modo_livre',
+        },
+      },
       message: expect.stringContaining('Modo Livre'),
     });
   });
@@ -542,9 +633,14 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
 
     await TelemetriaController.registrar(mockReq, mockRes);
     expect(getStatus()).toBe(201);
-    expect(getJson()).toMatchObject({
-      persistido: true,
-      data: mockEvento,
+    expect(getJson()).toEqual({
+      data: {
+        telemetria: mockEvento,
+        meta: {
+          persistido: true,
+        },
+      },
+      message: 'Evento de telemetria registrado com sucesso',
     });
   });
 
@@ -640,16 +736,28 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
 
     await TelemetriaController.registrarLote(mockReq, mockRes);
     expect(getStatus()).toBe(200);
-    expect(getJson()).toMatchObject({
-      persistido: false,
-      total: 3,
+    expect(getJson()).toEqual({
+      data: {
+        telemetria: [],
+        meta: {
+          total_processados: 3,
+          persistido: false,
+          modo_sessao: 'modo_livre',
+        },
+      },
+      message: expect.stringContaining('Modo Livre'),
     });
   });
 
   it('POST /api/telemetria/lote: deve retornar 201 com persistido: true e total para Sessão Clínica', async () => {
+    const mockLoteGravado = [
+      { id: '1', sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', tipo_evento: 'e1', dados: { id_metrica: 'm1', valor: 1 }, data_hora: '2026-09-01T15:00:00Z' },
+      { id: '2', sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', tipo_evento: 'e2', dados: { id_metrica: 'm2', valor: 2 }, data_hora: '2026-09-01T15:01:00Z' },
+    ];
     vi.spyOn(TelemetriaService, 'persistirLote').mockResolvedValue({
       persistido: true,
       total: 2,
+      dados: mockLoteGravado,
     });
 
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({
@@ -662,9 +770,15 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
 
     await TelemetriaController.registrarLote(mockReq, mockRes);
     expect(getStatus()).toBe(201);
-    expect(getJson()).toMatchObject({
-      persistido: true,
-      total: 2,
+    expect(getJson()).toEqual({
+      data: {
+        telemetria: mockLoteGravado,
+        meta: {
+          total_processados: 2,
+          persistido: true,
+        },
+      },
+      message: 'Lote de telemetria registrado com sucesso',
     });
   });
 
@@ -818,15 +932,15 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
     await TelemetriaController.listarPorSessao(mockReq, mockRes);
     expect(getStatus()).toBe(200);
     expect(getJson()).toEqual({
-      data: mockHistorico,
-      limite: 10,
-      pagina: 2,
-      total_pagina: 1,
-      meta: {
-        limite: 10,
-        pagina: 2,
-        total_pagina: 1,
+      data: {
+        telemetria: mockHistorico,
+        meta: {
+          pagina: 2,
+          limite: 10,
+          total_pagina: 1,
+        },
       },
+      message: 'Eventos de telemetria listados com sucesso',
     });
     expect(TelemetriaService.listarPorSessao).toHaveBeenCalledWith(
       'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
@@ -855,5 +969,44 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
     await TelemetriaController.listarPorSessao(mockReq, mockRes);
     expect(getStatus()).toBe(500);
     expect(getJson()).toHaveProperty('error');
+  });
+
+  it('POST /api/telemetria: deve retornar 422 Unprocessable se violar RN02 (tipo incompatível no manifesto)', async () => {
+    vi.spyOn(TelemetriaService, 'persistirEvento').mockResolvedValue({
+      persistido: false,
+      motivo: "Métrica 'tempo_resposta' possui tipo inválido ou não declarada no manifesto (RN02).",
+      violacaoRN02: true,
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      tipo_evento: 'clique',
+      dados: { id_metrica: 'tempo_resposta', valor: 'invalido' },
+    });
+
+    await TelemetriaController.registrar(mockReq, mockRes);
+    expect(getStatus()).toBe(422);
+    expect((getJson() as { error: string }).error).toContain('RN02');
+  });
+
+  it('POST /api/telemetria/lote: deve retornar 422 Unprocessable se violar RN02 no lote', async () => {
+    vi.spyOn(TelemetriaService, 'persistirLote').mockResolvedValue({
+      persistido: false,
+      motivo: "Métrica 'metrica_inexistente' não declarada no manifesto do jogo (RN02 - proibido fallback).",
+      violacaoRN02: true,
+      total: 2,
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      sessao_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      eventos: [
+        { tipo_evento: 'e1', dados: { id_metrica: 'tempo_resposta', valor: 2.1 } },
+        { tipo_evento: 'e2', dados: { id_metrica: 'metrica_inexistente', valor: 99 } },
+      ],
+    });
+
+    await TelemetriaController.registrarLote(mockReq, mockRes);
+    expect(getStatus()).toBe(422);
+    expect((getJson() as { error: string }).error).toContain('RN02');
   });
 });

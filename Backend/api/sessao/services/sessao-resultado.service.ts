@@ -130,7 +130,7 @@ export interface SessaoResultadoConsolidado {
     dispositivo_info?: Record<string, unknown> | null;
   };
 
-  // 2. Chaves na raiz para retrocompatibilidade direta com suítes de testes e front-end
+  // 2. Categorias canônicas sem propriedades primitivas soltas na raiz
   jogo: SessaoResultadoJogo | null;
   terapeuta: SessaoResultadoTerapeuta | null;
   paciente: SessaoResultadoPaciente | null;
@@ -140,21 +140,15 @@ export interface SessaoResultadoConsolidado {
   } | null;
   anotacoes: SessaoResultadoAnotacaoItem[];
 
-  // Aliases na raiz para consumo flexível da interface web
-  id?: string;
-  session_token?: string;
-  status_sessao?: string;
-  data_hora_inicio?: string;
-  data_hora_fim?: string | null;
-  duracao_segundos?: number;
-  is_modo_livre?: boolean;
-  dados_ia?: RelatorioIAContrato | null;
-
-  // 3. Novos blocos consolidados ricos (RF14 e Laudo pós-sessão)
+  // 3. Blocos consolidados ricos (RF14, Contrato 4 e Laudo pós-sessão)
   cabecalho: CabecalhoResultadoConsolidado;
-  metricas_cards: MetricasCardsResultado;
+  metricas_consolidadas: MetricasCardsResultado;
   insights_ia: RelatorioIAContrato | null;
-  grafico_evolutivo: GraficoEvolutivoResultado;
+  historico_evolutivo: GraficoEvolutivoResultado;
+
+  // Aliases para retrocompatibilidade opcional durante testes/transição
+  metricas_cards?: MetricasCardsResultado;
+  grafico_evolutivo?: GraficoEvolutivoResultado;
 }
 
 export interface RespostaResultadoService {
@@ -468,18 +462,10 @@ export class SessaoResultadoService {
               duracao_formatada: duracaoFormatada,
               dispositivo_info: (sessao.dispositivo_info as Record<string, unknown>) || null,
             },
-            id: sessao.id,
-            session_token: sessao.session_token,
-            status_sessao: sessao.status_sessao,
-            duracao_segundos: duracaoSegundos,
-            data_hora_inicio: sessao.data_hora_inicio,
-            data_hora_fim: sessao.data_hora_fim,
-            is_modo_livre: true,
             jogo: jogoLivre ? { ...jogoLivre, titulo: jogoLivre.nome } : null,
             terapeuta: terapeutaLivre,
             paciente: null, // Conforme RN01
             relatorio: null, // Conforme RN01
-            dados_ia: null, // Conforme RN01
             anotacoes: [], // Conforme RN01
             cabecalho: {
               paciente: null, // Conforme RN01
@@ -498,8 +484,14 @@ export class SessaoResultadoService {
                 descricao: jogoLivre.descricao || null,
               } : null,
             },
+            metricas_consolidadas: metricasLivre,
             metricas_cards: metricasLivre,
             insights_ia: null, // Conforme RN01
+            historico_evolutivo: {
+              tipo: 'intra_sessao',
+              tempo_medio_referencia: telemetriaLivre.tempo_resposta.media,
+              tentativas: tentativasLivre,
+            },
             grafico_evolutivo: {
               tipo: 'intra_sessao',
               tempo_medio_referencia: telemetriaLivre.tempo_resposta.media,
@@ -623,18 +615,10 @@ export class SessaoResultadoService {
             duracao_formatada: duracaoFormatada,
             dispositivo_info: (sessao.dispositivo_info as Record<string, unknown>) || null,
           },
-          id: sessao.id,
-          session_token: sessao.session_token,
-          status_sessao: sessao.status_sessao,
-          duracao_segundos: duracaoSegundos,
-          data_hora_inicio: sessao.data_hora_inicio,
-          data_hora_fim: sessao.data_hora_fim,
-          is_modo_livre: false,
           jogo: jogoData ? { ...jogoData, titulo: jogoData.nome } : null,
           terapeuta: terapeutaData,
           paciente: pacienteEnriquecido,
           relatorio: relatorioConsolidado,
-          dados_ia: relatorioConsolidado?.dados_ia_json || null,
           anotacoes: anotacoesMapeadas,
           cabecalho: {
             paciente: pacienteEnriquecido
@@ -670,8 +654,14 @@ export class SessaoResultadoService {
                 }
               : null,
           },
+          metricas_consolidadas: metricasCards,
           metricas_cards: metricasCards,
           insights_ia: relatorioConsolidado?.dados_ia_json || null,
+          historico_evolutivo: {
+            tipo: 'intra_sessao',
+            tempo_medio_referencia: telemetriaConsolidada.tempo_resposta.media,
+            tentativas,
+          },
           grafico_evolutivo: {
             tipo: 'intra_sessao',
             tempo_medio_referencia: telemetriaConsolidada.tempo_resposta.media,

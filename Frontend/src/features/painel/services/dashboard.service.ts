@@ -27,6 +27,20 @@ import {
   marcarAlertaLidoMock,
 } from "../types/bdmock";
 
+function extrairArray<T>(res: unknown, chave: string): T[] {
+  if (!res) return [];
+  if (Array.isArray(res)) return res as T[];
+  if (typeof res === "object" && res !== null && "data" in res) {
+    const data = (res as { data: unknown }).data;
+    if (Array.isArray(data)) return data as T[];
+    if (typeof data === "object" && data !== null && chave in data) {
+      const sub = (data as Record<string, unknown>)[chave];
+      if (Array.isArray(sub)) return sub as T[];
+    }
+  }
+  return [];
+}
+
 export const dashboardService = {
   /**
    * Obtém as métricas quantitativas e qualitativas consolidadas do painel.
@@ -45,12 +59,8 @@ export const dashboardService = {
             >(ENDPOINTS.JOGOS.BASE),
           ]);
 
-          const listaPacientes = Array.isArray(resPacientes)
-            ? resPacientes
-            : resPacientes.data ?? [];
-          const listaJogos = Array.isArray(resJogos)
-            ? resJogos
-            : resJogos.data ?? [];
+          const listaPacientes = extrairArray<{ id: string }>(resPacientes, "pacientes");
+          const listaJogos = extrairArray<{ id: string; nome?: string; titulo?: string }>(resJogos, "jogos");
 
           return {
             pacientesAtivos: listaPacientes.length,

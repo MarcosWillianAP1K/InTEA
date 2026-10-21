@@ -62,10 +62,25 @@ export interface PerfilTerapeuta extends Terapeuta {
 }
 
 export interface TerapeutaRespostaApi {
-  data: Terapeuta;
+  data: { terapeuta: Terapeuta };
   message?: string;
 }
 
+export interface TerapeutasMetaApi {
+  total: number;
+  incluir_inativos: boolean;
+}
+
 export interface TerapeutasListaRespostaApi {
-  data: Terapeuta[];
+  data: { terapeutas: Terapeuta[]; meta: TerapeutasMetaApi };
+  message?: string;
+}
+
+export interface TerapeutaPerfilRespostaApi {
+  data: {
+    terapeuta: Terapeuta;
+    clinica: { id: string; nome: string } | null;
+    areas_foco: AreaFoco[];
+  };
+  message?: string;
 }

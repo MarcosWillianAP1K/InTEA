@@ -156,6 +156,57 @@ export class TerapeutaModel {
   }
 
   /**
+   * Retrieves clinic basic data by UUID.
+   *
+   * @param clinicaId - The UUID identifier of the clinic.
+   * @returns Clinic data or null if not found.
+   * @throws {Error} If querying the database fails.
+   */
+  static async buscarClinicaPorId(clinicaId: string): Promise<{ id: string; nome: string; cnpj: string | null } | null> {
+    const { data, error } = await supabase
+      .from('clinica')
+      .select('id, nome, cnpj')
+      .eq('id', clinicaId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Erro ao buscar dados da clínica: ${error.message}`);
+    }
+
+    return (data as { id: string; nome: string; cnpj: string | null }) || null;
+  }
+
+  /**
+   * Lists patients linked to a therapist in the associative table terapeuta_paciente.
+   *
+   * @param terapeutaId - The UUID identifier of the therapist.
+   * @returns Array of link records containing patient details.
+   * @throws {Error} If querying the database fails.
+   */
+  static async listarPacientesVinculados(terapeutaId: string): Promise<Array<{
+    terapeuta_id: string;
+    paciente_id: string;
+    created_at: string;
+    paciente?: unknown;
+  }>> {
+    const { data, error } = await supabase
+      .from('terapeuta_paciente')
+      .select('terapeuta_id, paciente_id, created_at, paciente:paciente(*)')
+      .eq('terapeuta_id', terapeutaId);
+
+    if (error) {
+      throw new Error(`Erro ao listar pacientes vinculados ao terapeuta: ${error.message}`);
+    }
+
+    return (data as Array<{
+      terapeuta_id: string;
+      paciente_id: string;
+      created_at: string;
+      paciente?: unknown;
+    }>) || [];
+  }
+
+  /**
    * Registers a new therapist, creating their Supabase Auth credentials and profile record.
    *
    * @param dto - Therapist registration details including email and password.
