@@ -626,6 +626,27 @@ export class PacienteController {
         dataFim: typeof req.query.dataFim === 'string' && req.query.dataFim.trim() ? req.query.dataFim.trim() : undefined,
       };
 
+      const jogoIdQuery = typeof req.query.jogoId === 'string' && req.query.jogoId.trim() ? req.query.jogoId.trim() : undefined;
+      if (jogoIdQuery) {
+        const resultado = await PacienteHistoricoService.buscarHistoricoPaciente(pacienteId, {
+          ...filtros,
+          jogoId: jogoIdQuery,
+          page: req.query.page !== undefined ? Number(req.query.page) : undefined,
+          limit: req.query.limit !== undefined ? Number(req.query.limit) : undefined,
+          sessaoId: typeof req.query.sessaoId === 'string' && req.query.sessaoId.trim() ? req.query.sessaoId.trim() : undefined,
+        });
+
+        res.status(200).json({
+          data: {
+            paciente_id: resultado.paciente_id,
+            engajamento_geral: resultado.engajamento_geral,
+            historico_por_jogo: resultado.historico_por_jogo,
+          },
+          message: 'Histórico longitudinal do paciente recuperado com sucesso.',
+        });
+        return;
+      }
+
       const resultado = await PacienteHistoricoService.buscarHistoricoGeral(pacienteId, filtros);
 
       res.status(200).json({
