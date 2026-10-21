@@ -1,25 +1,19 @@
 ﻿"use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
-  Calendar,
-  Clock,
   Gamepad2,
   Play,
   RotateCcw,
   ShieldAlert,
-  User,
   Activity,
   AlertCircle,
-  FileCheck2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
-import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import { pacienteService } from "../services/paciente.service";
 import type { Paciente } from "../types/paciente.types";
@@ -190,7 +184,7 @@ export function HistoricoPacientePage() {
             variant="ghost"
             size="sm"
             onClick={() => navigate(`/pacientes/${pacienteId}`)}
-            className="h-9 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer min-h-[44px]"
+            className="h-9 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer min-h-11"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Voltar ao Prontuário</span>
@@ -214,7 +208,7 @@ export function HistoricoPacientePage() {
             variant="outline"
             size="sm"
             onClick={() => navigate("/pacientes")}
-            className="min-h-[44px] px-4 text-xs font-semibold cursor-pointer"
+            className="min-h-11 px-4 text-xs font-semibold cursor-pointer"
           >
             Retornar à Lista de Pacientes
           </Button>
@@ -237,7 +231,7 @@ export function HistoricoPacientePage() {
             variant="ghost"
             size="sm"
             onClick={() => navigate(`/pacientes/${pacienteId}`)}
-            className="h-9 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer min-h-[44px]"
+            className="h-9 px-2 gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer min-h-11"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Voltar ao Prontuário</span>
@@ -255,7 +249,7 @@ export function HistoricoPacientePage() {
           <Button
             onClick={handleTentarNovamente}
             size="sm"
-            className="min-h-[44px] px-4 text-xs font-bold gap-1.5 cursor-pointer"
+            className="min-h-11 px-4 text-xs font-bold gap-1.5 cursor-pointer"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span>Tentar Novamente</span>
@@ -281,7 +275,7 @@ export function HistoricoPacientePage() {
               size="sm"
               onClick={() => navigate(`/pacientes/${pacienteId}`)}
               data-testid="btn-voltar-perfil"
-              className="h-8 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer min-h-[44px]"
+              className="h-8 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer min-h-11"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>Prontuário</span>
@@ -321,7 +315,7 @@ export function HistoricoPacientePage() {
           <Button
             onClick={handleIniciarNovaSessao}
             data-testid="btn-nova-sessao-historico"
-            className="min-h-[44px] px-4 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 cursor-pointer shadow-xs"
+            className="min-h-11 px-4 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 cursor-pointer shadow-xs"
           >
             <Play className="h-3.5 w-3.5 fill-current" />
             <span>Iniciar Sessão</span>
@@ -414,7 +408,7 @@ export function HistoricoPacientePage() {
                   size="sm"
                   variant="outline"
                   onClick={handleIniciarNovaSessao}
-                  className="min-h-[44px] text-xs cursor-pointer"
+                  className="min-h-11 text-xs cursor-pointer"
                 >
                   Criar Primeira Sessão de Jogo
                 </Button>
