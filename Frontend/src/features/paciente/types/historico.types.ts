@@ -79,12 +79,16 @@ export interface MetricaManifestoJogo {
  * Resumo de jogo já experimentado pelo paciente no histórico.
  */
 export interface ResumoJogoPaciente {
-  id: string | number;
+  jogo_id: string;
   nome: string;
-  versao?: string;
+  versao: string;
   total_sessoes: number;
-  data_ultima_sessao: string;
+  ultima_sessao: string;
   icone?: string;
+  /** @deprecated Use jogo_id */
+  id?: string | number;
+  /** @deprecated Use ultima_sessao */
+  data_ultima_sessao?: string;
 }
 
 /**

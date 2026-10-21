@@ -240,7 +240,14 @@ export class PacienteHistoricoService {
         throw new PacienteServiceError('A sessão informada não pertence ao jogo especificado.', 400);
       }
 
-      dataFimEfetiva = sessaoRef.data_hora_fim || sessaoRef.data_hora_inicio;
+      if (sessaoRef.status_sessao !== 'finalizada') {
+        throw new PacienteServiceError(
+          'A sessão de referência informada não foi finalizada. Apenas sessões clínicas concluídas podem ser usadas como ponto de corte temporal.',
+          400
+        );
+      }
+
+      dataFimEfetiva = sessaoRef.data_hora_fim!;
     }
 
     const jogo = await JogoModel.buscarPorId(jogoId);
@@ -285,16 +292,26 @@ export class PacienteHistoricoService {
     const limit = filtros.limit || 20;
     const offset = (page - 1) * limit;
 
-    const sessoes = await HistoricoSessaoModel.buscarHistoricoPorJogo(
-      pacienteId,
-      jogoId,
-      limit,
-      offset,
-      {
-        dataInicio: filtros.dataInicio,
-        dataFim: dataFimEfetiva,
-      }
-    );
+    const [sessoes, totalRegistros] = await Promise.all([
+      HistoricoSessaoModel.buscarHistoricoPorJogo(
+        pacienteId,
+        jogoId,
+        limit,
+        offset,
+        {
+          dataInicio: filtros.dataInicio,
+          dataFim: dataFimEfetiva,
+        }
+      ),
+      HistoricoSessaoModel.contarHistoricoPorJogo(
+        pacienteId,
+        jogoId,
+        {
+          dataInicio: filtros.dataInicio,
+          dataFim: dataFimEfetiva,
+        }
+      ),
+    ]);
 
     if (!sessoes) {
       throw new PacienteServiceError('Falha ao consultar histórico de sessões do jogo.', 500);
@@ -357,7 +374,7 @@ export class PacienteHistoricoService {
         paginacao: {
           page,
           limit,
-          total_registros: sessoes.length,
+          total_registros: totalRegistros,
         },
       },
     };

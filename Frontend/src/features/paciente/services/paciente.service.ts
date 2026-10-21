@@ -53,6 +53,56 @@ function serializarFiltros(
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
+function resolverPeriodoParaDatas(periodo: string): { dataInicio?: string; dataFim?: string } {
+  const agora = new Date();
+  const formatISO = (d: Date) => d.toISOString().split("T")[0];
+
+  switch (periodo) {
+    case "7d": {
+      const inicio = new Date(agora);
+      inicio.setDate(agora.getDate() - 7);
+      return { dataInicio: formatISO(inicio), dataFim: formatISO(agora) };
+    }
+    case "30d": {
+      const inicio = new Date(agora);
+      inicio.setDate(agora.getDate() - 30);
+      return { dataInicio: formatISO(inicio), dataFim: formatISO(agora) };
+    }
+    case "3m": {
+      const inicio = new Date(agora);
+      inicio.setMonth(agora.getMonth() - 3);
+      return { dataInicio: formatISO(inicio), dataFim: formatISO(agora) };
+    }
+    case "todos":
+    case "personalizado":
+    default:
+      return {};
+  }
+}
+
+/**
+ * Converte filtros de historico clinico para Record<string, string> aceito pelo cliente HTTP (RF19).
+ */
+function serializarFiltrosHistorico(
+  filtros?: FiltrosHistorico,
+): Record<string, string> | undefined {
+  if (!filtros) return undefined;
+  const params: Record<string, string> = {};
+
+  if (filtros.periodo && filtros.periodo !== "personalizado" && filtros.periodo !== "todos") {
+    const { dataInicio, dataFim } = resolverPeriodoParaDatas(filtros.periodo);
+    if (dataInicio) params.dataInicio = dataInicio;
+    if (dataFim) params.dataFim = dataFim;
+  } else {
+    if (filtros.dataInicio) params.dataInicio = filtros.dataInicio;
+    if (filtros.dataFim) params.dataFim = filtros.dataFim;
+  }
+
+  if (filtros.jogoId) params.jogoId = filtros.jogoId;
+  if (filtros.page !== undefined) params.page = String(filtros.page);
+  if (filtros.limit !== undefined) params.limit = String(filtros.limit);
+  return Object.keys(params).length > 0 ? params : undefined;
+}
 function extrairPaciente(resposta: PacienteRespostaApi | Paciente | null | undefined): Paciente | null {
   if (!resposta) return null;
   if ("id" in resposta && typeof (resposta as Paciente).id === "string") {
@@ -249,6 +299,123 @@ export const pacienteService = {
   /**
    * Desvincula um terapeuta do paciente (RF18).
    */
+  /**
+   * Consulta o historico longitudinal do paciente com engajamento geral e series por jogo (RF15, RF19, RN04).
+   * Suporta filtro opcional por jogoId e intervalo de datas.
+   */
+  buscarHistorico: async (
+    pacienteId: string,
+    filtros?: FiltrosHistorico,
+  ): Promise<RespostaHistoricoPaciente> => {
+    return await withFallback(
+      async () => {
+        const params = serializarFiltrosHistorico(filtros);
+        if (params && params.jogoId) {
+          delete params.jogoId;
+        }
+        const resposta = await http.get<HistoricoRespostaApi | RespostaHistoricoPaciente>(
+          ENDPOINTS.PACIENTE.HISTORICO(pacienteId),
+          { params },
+        );
+
+        if (resposta && "data" in resposta && resposta.data) {
+          const d = resposta.data;
+          if ("engajamento_geral" in d) {
+            return d as RespostaHistoricoPaciente;
+          }
+        }
+        if (resposta && "engajamento_geral" in (resposta as RespostaHistoricoPaciente)) {
+          return resposta as RespostaHistoricoPaciente;
+        }
+
+        throw new Error("Payload de historico longitudinal retornado em formato incompativel.");
+      },
+      () => buscarHistoricoPacienteMock(pacienteId, filtros),
+    );
+  },
+
+  /**
+   * Consulta o historico geral de engajamento e catalogo de jogos do paciente (RF15, RF19).
+   */
+  buscarHistoricoGeral: async (
+    pacienteId: string,
+    filtros?: FiltrosHistorico,
+  ): Promise<{
+    engajamento: MetricasEngajamentoGeral;
+    jogos: ResumoJogoPaciente[];
+    meta?: unknown;
+  }> => {
+    return await withFallback(
+      async () => {
+        const params = serializarFiltrosHistorico(filtros);
+        if (params && params.jogoId) {
+          delete params.jogoId;
+        }
+        const resposta = await http.get<HistoricoGeralRespostaApi | {
+          engajamento: MetricasEngajamentoGeral;
+          jogos: ResumoJogoPaciente[];
+          meta?: unknown;
+        }>(
+          ENDPOINTS.PACIENTE.HISTORICO(pacienteId),
+          { params },
+        );
+
+        if (resposta && "data" in resposta && resposta.data) {
+          const d = resposta.data;
+          if ("engajamento" in d && "jogos" in d) {
+            return d;
+          }
+        }
+        if (resposta && "engajamento" in resposta && "jogos" in resposta) {
+          return resposta;
+        }
+
+        return buscarHistoricoGeralMock(pacienteId, filtros);
+      },
+      () => buscarHistoricoGeralMock(pacienteId, filtros),
+    );
+  },
+
+  /**
+   * Consulta series temporais de metricas e sessoes de um jogo especifico do paciente (RF15, RN02).
+   */
+  buscarHistoricoJogo: async (
+    pacienteId: string,
+    jogoId: string,
+    filtros?: FiltrosHistorico,
+  ): Promise<HistoricoJogoDetalhado> => {
+    return await withFallback(
+      async () => {
+        const params = serializarFiltrosHistorico(filtros);
+        if (params && params.jogoId) {
+          delete params.jogoId;
+        }
+        const resposta = await http.get<HistoricoJogoRespostaApi | HistoricoJogoDetalhado>(
+          ENDPOINTS.PACIENTE.HISTORICO_JOGO(pacienteId, jogoId),
+          { params },
+        );
+
+        if (resposta && "data" in resposta && resposta.data) {
+          const d = resposta.data as unknown as Record<string, unknown>;
+          if ("series_temporais" in d && "sessoes" in d) {
+            return {
+              tipo: "detalhado",
+              jogo: d.jogo as HistoricoJogoDetalhado["jogo"],
+              sessoes: (d.sessoes || []) as HistoricoJogoDetalhado["sessoes"],
+              series_temporais: (d.series_temporais || []) as HistoricoJogoDetalhado["series_temporais"],
+            };
+          }
+        }
+        if (resposta && "tipo" in (resposta as HistoricoJogoDetalhado) && (resposta as HistoricoJogoDetalhado).tipo === "detalhado") {
+          return resposta as HistoricoJogoDetalhado;
+        }
+
+        return buscarHistoricoJogoMock(pacienteId, jogoId, filtros);
+      },
+      () => buscarHistoricoJogoMock(pacienteId, jogoId, filtros),
+    );
+  },
+
   desvincularTerapeuta: async (
     pacienteId: string,
     terapeutaId: string,

@@ -213,69 +213,141 @@ export function GraficoBarrasCategorico({
             strokeWidth="1.5"
           />
 
-          {/* Barras e Hitboxes por Sessão */}
-          {pontosValidos.map((ponto, idx) => {
-            const valorStr = String(ponto.valor);
-            const catIndex = categorias.indexOf(valorStr);
-            const nivel = catIndex >= 0 ? catIndex + 1 : 1;
-            const barHeight = (nivel / totalNiveis) * chartHeight;
+          {/* Renderização Condicional: Ordinal (por Sessão) vs Categórica Pura (Distribuição de Frequência) */}
+          {isOrdinal
+            ? pontosValidos.map((ponto, idx) => {
+                const valorStr = String(ponto.valor);
+                const catIndex = categorias.indexOf(valorStr);
+                const nivel = catIndex >= 0 ? catIndex + 1 : 1;
+                const barHeight = (nivel / totalNiveis) * chartHeight;
 
-            const xCenter = padLeft + idx * barSlotWidth + barSlotWidth / 2;
-            const x = xCenter - barWidth / 2;
-            const y = padTop + chartHeight - barHeight;
+                const xCenter = padLeft + idx * barSlotWidth + barSlotWidth / 2;
+                const x = xCenter - barWidth / 2;
+                const y = padTop + chartHeight - barHeight;
 
-            const cor =
-              catIndex >= 0
-                ? CORES_CATEGORIAS[catIndex % CORES_CATEGORIAS.length]
-                : "#6b7280";
+                const cor =
+                  catIndex >= 0
+                    ? CORES_CATEGORIAS[catIndex % CORES_CATEGORIAS.length]
+                    : "#6b7280";
 
-            const isHovered = pontoAtivo?.sessao_id === ponto.sessao_id;
+                const isHovered = pontoAtivo?.sessao_id === ponto.sessao_id;
 
-            return (
-              <g key={`barra-group-${idx}`}>
-                {/* Rótulo Eixo X */}
-                <text
-                  x={xCenter}
-                  y={padTop + chartHeight + 18}
-                  textAnchor="middle"
-                  className="fill-muted-foreground text-2xs select-none"
-                >
-                  {ponto.rotulo || `S${idx + 1}`}
-                </text>
+                return (
+                  <g key={`barra-ordinal-${idx}`}>
+                    <text
+                      x={xCenter}
+                      y={padTop + chartHeight + 18}
+                      textAnchor="middle"
+                      className="fill-muted-foreground text-2xs select-none"
+                    >
+                      {ponto.rotulo || `S${idx + 1}`}
+                    </text>
 
-                {/* Barra SVG */}
-                <rect
-                  data-testid={`barra-svg-${idx}`}
-                  x={x}
-                  y={y}
-                  width={barWidth}
-                  height={barHeight}
-                  rx="4"
-                  fill={cor}
-                  opacity={isHovered ? 1 : 0.85}
-                  className="transition-all duration-150"
-                />
+                    <rect
+                      data-testid={`barra-svg-${idx}`}
+                      x={x}
+                      y={y}
+                      width={barWidth}
+                      height={barHeight}
+                      rx="4"
+                      fill={cor}
+                      opacity={isHovered ? 1 : 0.85}
+                      className="transition-all duration-150"
+                    />
 
-                {/* Hitbox ergonômica (>= 44x44px para RNF07) */}
-                <rect
-                  data-testid={`hitbox-barra-${idx}`}
-                  x={xCenter - 22}
-                  y={y - 10}
-                  width="44"
-                  height={Math.max(44, barHeight + 20)}
-                  fill="transparent"
-                  className="cursor-pointer"
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`${ponto.rotulo || `Sessão ${idx + 1}`}: ${valorStr}`}
-                  onMouseEnter={() => setPontoAtivo(ponto)}
-                  onMouseLeave={() => setPontoAtivo(null)}
-                  onFocus={() => setPontoAtivo(ponto)}
-                  onBlur={() => setPontoAtivo(null)}
-                />
-              </g>
-            );
-          })}
+                    <rect
+                      data-testid={`hitbox-barra-${idx}`}
+                      x={xCenter - 22}
+                      y={y - 10}
+                      width="44"
+                      height={Math.max(44, barHeight + 20)}
+                      fill="transparent"
+                      className="cursor-pointer"
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`${ponto.rotulo || `Sessão ${idx + 1}`}: ${valorStr}`}
+                      onMouseEnter={() => setPontoAtivo(ponto)}
+                      onMouseLeave={() => setPontoAtivo(null)}
+                      onFocus={() => setPontoAtivo(ponto)}
+                      onBlur={() => setPontoAtivo(null)}
+                    />
+                  </g>
+                );
+              })
+            : categorias.map((cat, idx) => {
+                const freq = distribuicao[cat] || 0;
+                const maxFreq = Math.max(1, ...Object.values(distribuicao));
+                const barHeight = Math.max(4, (freq / maxFreq) * chartHeight);
+
+                const slotWidth = chartWidth / categorias.length;
+                const catBarWidth = Math.min(56, Math.max(20, slotWidth * 0.55));
+                const xCenter = padLeft + idx * slotWidth + slotWidth / 2;
+                const x = xCenter - catBarWidth / 2;
+                const y = padTop + chartHeight - barHeight;
+                const cor = CORES_CATEGORIAS[idx % CORES_CATEGORIAS.length];
+
+                const pontoCat: PontoSerieMetrica = {
+                  sessao_id: `cat-${idx}`,
+                  data_hora: "",
+                  valor: cat,
+                  rotulo: `${cat} (${freq} ${freq === 1 ? "registro" : "registros"})`,
+                };
+
+                const isHovered = pontoAtivo?.valor === cat;
+
+                return (
+                  <g key={`barra-cat-${idx}`}>
+                    <text
+                      x={xCenter}
+                      y={padTop + chartHeight + 18}
+                      textAnchor="middle"
+                      className="fill-muted-foreground text-2xs select-none font-medium"
+                    >
+                      {cat}
+                    </text>
+
+                    {freq > 0 && (
+                      <text
+                        x={xCenter}
+                        y={y - 6}
+                        textAnchor="middle"
+                        className="fill-foreground text-2xs font-bold select-none"
+                      >
+                        {freq}×
+                      </text>
+                    )}
+
+                    <rect
+                      data-testid={`barra-svg-${idx}`}
+                      x={x}
+                      y={y}
+                      width={catBarWidth}
+                      height={barHeight}
+                      rx="4"
+                      fill={cor}
+                      opacity={isHovered ? 1 : 0.85}
+                      className="transition-all duration-150"
+                    />
+
+                    <rect
+                      data-testid={`hitbox-barra-${idx}`}
+                      x={xCenter - 22}
+                      y={y - 10}
+                      width="44"
+                      height={Math.max(44, barHeight + 20)}
+                      fill="transparent"
+                      className="cursor-pointer"
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`${cat}: ${freq} ocorrências`}
+                      onMouseEnter={() => setPontoAtivo(pontoCat)}
+                      onMouseLeave={() => setPontoAtivo(null)}
+                      onFocus={() => setPontoAtivo(pontoCat)}
+                      onBlur={() => setPontoAtivo(null)}
+                    />
+                  </g>
+                );
+              })}
         </svg>
 
         {/* Tooltip Dinâmico */}

@@ -24,6 +24,7 @@ import type {
   ResumoJogoPaciente,
   HistoricoJogoDetalhado,
   RespostaHistoricoPaciente,
+  FiltrosHistorico,
 } from "./historico.types";
 import { MOCK_CLINICA, MOCK_TERAPEUTA_LOGADO } from "@/shared/types";
 
@@ -1026,18 +1027,22 @@ export const MOCK_SERIE_INVALIDA_RN02: SerieMetricaJogo = {
 
 export const MOCK_CATALOGO_JOGOS_PACIENTE: ResumoJogoPaciente[] = [
   {
+    jogo_id: "jogo-floresta-01",
     id: "jogo-floresta-01",
     nome: "Aventuras na Floresta",
     versao: "1.2.0",
     total_sessoes: 5,
+    ultima_sessao: "2026-10-18T14:30:00Z",
     data_ultima_sessao: "2026-10-18T14:30:00Z",
     icone: "Gamepad2",
   },
   {
+    jogo_id: "jogo-ritmos-02",
     id: "jogo-ritmos-02",
     nome: "Cores e Ritmos",
     versao: "2.0.1",
     total_sessoes: 5,
+    ultima_sessao: "2026-10-15T10:15:00Z",
     data_ultima_sessao: "2026-10-15T10:15:00Z",
     icone: "Sparkles",
   },
@@ -1120,10 +1125,80 @@ export const MOCK_HISTORICO_JOGO_COMPLETO: HistoricoJogoDetalhado = {
   },
 };
 
-export const MOCK_RESPOSTA_HISTORICO_PACIENTE: RespostaHistoricoPaciente = {
+export const MOCK_HISTORICO_CATALOGO = {
+  tipo: "catalogo" as const,
+  jogos: MOCK_CATALOGO_JOGOS_PACIENTE,
+};
+
+export const MOCK_RESPOSTA_HISTORICO_CATALOGO: RespostaHistoricoPaciente = {
+  paciente_id: "pac-001",
+  engajamento_geral: MOCK_HISTORICO_ENGAJAMENTO_GERAL,
+  historico_por_jogo: MOCK_HISTORICO_CATALOGO,
+};
+
+export const MOCK_RESPOSTA_HISTORICO_DETALHADO: RespostaHistoricoPaciente = {
   paciente_id: "pac-001",
   engajamento_geral: MOCK_HISTORICO_ENGAJAMENTO_GERAL,
   historico_por_jogo: MOCK_HISTORICO_JOGO_COMPLETO,
 };
 
+export const MOCK_RESPOSTA_HISTORICO_PACIENTE: RespostaHistoricoPaciente = MOCK_RESPOSTA_HISTORICO_CATALOGO;
 
+
+
+/**
+ * ============================================================================
+ * FUNÇÕES MOCK PARA HISTÓRICO LONGITUDINAL (RF15, RF19)
+ * Fallback resiliente para paciente.service.ts
+ * ============================================================================
+ */
+export function buscarHistoricoPacienteMock(
+  pacienteId: string,
+  filtros?: FiltrosHistorico,
+): RespostaHistoricoPaciente {
+  if (filtros?.jogoId) {
+    return {
+      paciente_id: pacienteId,
+      engajamento_geral: MOCK_HISTORICO_ENGAJAMENTO_GERAL,
+      historico_por_jogo: MOCK_HISTORICO_JOGO_COMPLETO,
+    };
+  }
+
+  return {
+    paciente_id: pacienteId,
+    engajamento_geral: MOCK_HISTORICO_ENGAJAMENTO_GERAL,
+    historico_por_jogo: {
+      tipo: "catalogo",
+      jogos: MOCK_CATALOGO_JOGOS_PACIENTE,
+    },
+  };
+}
+
+export function buscarHistoricoGeralMock(
+  _pacienteId: string,
+  _filtros?: FiltrosHistorico,
+): {
+  engajamento: MetricasEngajamentoGeral;
+  jogos: ResumoJogoPaciente[];
+  meta: {
+    total_jogos: number;
+    periodo_analisado_dias: number;
+  };
+} {
+  return {
+    engajamento: MOCK_HISTORICO_ENGAJAMENTO_GERAL,
+    jogos: MOCK_CATALOGO_JOGOS_PACIENTE,
+    meta: {
+      total_jogos: MOCK_CATALOGO_JOGOS_PACIENTE.length,
+      periodo_analisado_dias: 30,
+    },
+  };
+}
+
+export function buscarHistoricoJogoMock(
+  _pacienteId: string,
+  _jogoId: string,
+  _filtros?: FiltrosHistorico,
+): HistoricoJogoDetalhado {
+  return MOCK_HISTORICO_JOGO_COMPLETO;
+}

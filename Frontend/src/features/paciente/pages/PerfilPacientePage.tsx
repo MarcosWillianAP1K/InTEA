@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -396,7 +396,18 @@ export function PerfilPacientePage() {
             <Clock className="h-4 w-4 text-primary" />
             <span>Histórico de Sessões do Paciente</span>
           </div>
-          <span className="text-xs text-muted-foreground">{sessoes.length} sessões</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">{sessoes.length} sessões</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/pacientes/${id}/historico`)}
+              data-testid="btn-analise-longitudinal-sessao"
+              className="h-8 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer min-h-[36px]"
+            >
+              <span>Ver Análise Longitudinal Completa →</span>
+            </Button>
+          </div>
         </div>
 
         <Table>

@@ -55,8 +55,26 @@ export function GraficoPolimorficoMetrica({
     );
   }
 
-  // 2. Empty State (Série vazia ou nula)
-  if (!serie || !serie.pontos || serie.pontos.length === 0) {
+  if (!serie) {
+    return (
+      <Card
+        data-testid="grafico-polimorfico-empty"
+        className={`rounded-2xl border border-dashed border-border/80 bg-muted/15 p-6 text-center flex flex-col items-center justify-center gap-2 h-72 ${className}`}
+      >
+        <CardContent className="p-0 flex flex-col items-center justify-center gap-2">
+          <div className="p-2.5 rounded-full bg-muted text-muted-foreground">
+            <FileX className="h-5 w-5" />
+          </div>
+          <h4 className="text-sm font-semibold text-foreground">
+            Nenhum Dado Registrado para Esta Métrica
+          </h4>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // 3. Empty State (Série válida com tipo homologado mas sem pontos)
+  if (!serie.pontos || serie.pontos.length === 0) {
     return (
       <Card
         data-testid="grafico-polimorfico-empty"
@@ -70,14 +88,14 @@ export function GraficoPolimorficoMetrica({
             Nenhum Dado Registrado para Esta Métrica
           </h4>
           <p className="text-xs text-muted-foreground max-w-sm">
-            A métrica &ldquo;{serie?.nome_metrica || serie?.id_metrica || "desconhecida"}&rdquo; não possui eventos clínicos ou pontos temporais registrados.
+            A métrica &ldquo;{serie.nome_metrica || serie.id_metrica || "desconhecida"}&rdquo; não possui eventos clínicos ou pontos temporais registrados.
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  // 3. GARANTIA INVIOLÁVEL DA REGRA CLÍNICA RN02 (Rejeição de Fallback Automático)
+  // 2. GARANTIA INVIOLÁVEL DA REGRA CLÍNICA RN02 (Rejeição de Fallback Automático)
   // Toda métrica DEVE ter tipo_metrica explicitamente homologado no manifesto.
   const tipo = serie.tipo_metrica?.trim()?.toLowerCase();
 

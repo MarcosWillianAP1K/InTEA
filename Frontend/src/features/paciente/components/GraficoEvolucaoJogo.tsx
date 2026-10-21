@@ -198,6 +198,7 @@ export function GraficoEvolucaoJogo({
           <GraficoPolimorficoMetrica
             key={`grafico-${serie.id_metrica}`}
             serie={serie}
+            titulo={serie.nome_metrica || serie.id_metrica}
           />
         ))}
       </div>

@@ -19,6 +19,11 @@ import { JogoModel } from '../../jogos/models/jogo.model.js';
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 import { Request, Response } from 'express';
+import type {
+  EnvelopeResposta,
+  RespostaDataHistoricoGeral,
+  RespostaDataHistoricoJogo,
+} from './historico.test.types.js';
 
 // ==============================================================================
 // CONSTANTES CANÔNICAS DE TESTE (UUIDs V4)
@@ -378,7 +383,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
           metricas_suportadas: [
             {
               id_metrica: 'metrica_sem_tipo',
-              tipo_metrica: '' as any, // Violação frontal da RN02
+              tipo_metrica: '' as unknown as string, // Violação frontal da RN02
             },
           ],
         },
@@ -434,8 +439,9 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
       expect(mockHttp.getStatus()).toBe(200);
       const json = mockHttp.getJson();
       expect(json.message).toBe('Histórico geral de engajamento do paciente recuperado com sucesso.');
-      expect((json.data as any).engajamento.taxa_conclusao_porcentagem).toBe(80.0);
-      expect((json.data as any).jogos).toHaveLength(1);
+      const dataGeral = (json as EnvelopeResposta<RespostaDataHistoricoGeral>).data;
+      expect(dataGeral.engajamento.taxa_conclusao_porcentagem).toBe(80.0);
+      expect(dataGeral.jogos).toHaveLength(1);
     });
   });
 
@@ -529,11 +535,13 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
       ];
 
       // Filtro aplicado pelo model deve expurgar modo livre
+      const mockNotPaciente = vi.fn().mockResolvedValue({
+        data: [sessoesContaminadas[0]],
+        error: null,
+      });
+
       const mockEqModo = vi.fn().mockReturnValue({
-        not: vi.fn().mockResolvedValue({
-          data: [sessoesContaminadas[0]], // A query do Supabase filtra strictly modo_sessao = 'sessao_clinica' e not null
-          error: null,
-        }),
+        not: mockNotPaciente,
       });
 
       const mockEqPaciente = vi.fn().mockReturnValue({
@@ -551,6 +559,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
       expect(engajamento?.total_iniciadas).toBe(1);
       expect(engajamento?.sessoes_finalizadas).toBe(1);
       expect(mockEqModo).toHaveBeenCalledWith('modo_sessao', 'sessao_clinica');
+      expect(mockNotPaciente).toHaveBeenCalledWith('paciente_id', 'is', null);
     });
   });
 
@@ -660,88 +669,28 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
   });
 
   // ============================================================================
-  // 6. ROTA UNIFICADA E FILTRO POR JOGO VIA QUERY PARAM (?jogoId=...)
+  // 6. PROTEÇÃO DE CONTRATO REST E ISOLAMENTO DE ROTAS (T1-P1 / Correção 3A)
   // ============================================================================
-  describe('6. Rota GET /api/paciente/:id/historico com Filtro de Jogo e Paginação (RF19)', () => {
-    it('deve retornar histórico longitudinal detalhado quando query param jogoId for fornecido', async () => {
+  describe('6. Rejeição de jogoId como query param na Rota 1 (Proteção de Contrato Canônico)', () => {
+    it('deve retornar 400 Bad Request orientando o terapeuta a utilizar a rota dedicada de jogos', async () => {
       configurarVisibilidadeMock();
 
-      vi.spyOn(JogoModel, 'buscarPorId').mockResolvedValue({
-        id: JOGO_HOMOLOGADO_ID,
-        nome: 'Aventura Espacial',
-        descricao: 'Treino de atenção e foco',
-        versao: '2.1.0',
-        manifesto_json: {
-          nome: 'Aventura Espacial',
-          versao: '2.1.0',
-          metricas_suportadas: [
-            {
-              id_metrica: 'tempo_reacao_ms',
-              tipo_metrica: 'numerica',
-              unidade: 'ms',
-            },
-            {
-              id_metrica: 'foco_atencional',
-              tipo_metrica: 'categorica',
-              valores: ['Baixo', 'Médio', 'Alto'],
-            },
-          ],
-        },
-      });
-
-      vi.spyOn(HistoricoSessaoModel, 'buscarMetricasEngajamentoGeral').mockResolvedValue({
-        total_sessoes: 6,
-        total_iniciadas: 6,
-        sessoes_finalizadas: 5,
-        sessoes_interrompidas: 1,
-        taxa_conclusao_porcentagem: 83.33,
-        taxa_conclusao: 83.33,
-        tempo_total_segundos: 6000,
-        tempo_medio_segundos: 1200,
-      });
-
-      vi.spyOn(HistoricoSessaoModel, 'buscarHistoricoPorJogo').mockResolvedValue([
-        {
-          sessao_id: 'sessao-1',
-          terapeuta_id: TERAPEUTA_VINCULADO_ID,
-          paciente_id: PACIENTE_ID,
-          jogo_id: JOGO_HOMOLOGADO_ID,
-          modo_sessao: 'sessao_clinica',
-          status_sessao: 'finalizada',
-          data_hora_inicio: '2026-10-10T14:00:00Z',
-          data_hora_fim: '2026-10-10T14:20:00Z',
-          duracao_segundos: 1200,
-          conteudo_relatorio: 'Sessão produtiva',
-          dados_ia_json: {
-            metricas_agregadas: [
-              { id_metrica: 'tempo_reacao_ms', valor_dominante: 450, tendencia: 'queda' },
-              { id_metrica: 'foco_atencional', valor_dominante: 'Alto' },
-            ],
-          },
-        },
-      ]);
-
-      const handlers = obterHandlers(pacienteRoutes as unknown as Parameters<typeof obterHandlers>[0], '/:id/historico', 'get');
+      const handlers = obterHandlers(
+        pacienteRoutes as unknown as Parameters<typeof obterHandlers>[0],
+        '/:id/historico',
+        'get'
+      );
       const mockHttp = criarMockReqRes({
         params: { id: PACIENTE_ID },
         query: {
           jogoId: JOGO_HOMOLOGADO_ID,
-          page: 1,
-          limit: 10,
         },
       });
 
       await executarPipeline(handlers, mockHttp.req, mockHttp.res);
 
-      expect(mockHttp.getStatus()).toBe(200);
-      const data = mockHttp.getJson().data as any;
-      expect(data.paciente_id).toBe(PACIENTE_ID);
-      expect(data.engajamento_geral.taxa_conclusao_porcentagem).toBe(83.33);
-      expect(data.historico_por_jogo.tipo).toBe('detalhado');
-      expect(data.historico_por_jogo.jogo.nome).toBe('Aventura Espacial');
-      expect(data.historico_por_jogo.series_temporais).toHaveLength(2);
-      expect(data.historico_por_jogo.series_temporais[0].id_metrica).toBe('tempo_reacao_ms');
-      expect(data.historico_por_jogo.series_temporais[0].pontos[0].valor).toBe(450);
+      expect(mockHttp.getStatus()).toBe(400);
+      expect(mockHttp.getJson().error).toContain('/api/paciente/:id/historico/jogo/:jogoId');
     });
   });
 
@@ -770,6 +719,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
         },
       });
 
+      vi.spyOn(HistoricoSessaoModel, 'contarHistoricoPorJogo').mockResolvedValue(1);
       vi.spyOn(HistoricoSessaoModel, 'buscarHistoricoPorJogo').mockResolvedValue([
         {
           sessao_id: 'sessao-1',
@@ -804,7 +754,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
       expect(mockHttp.getStatus()).toBe(200);
       const json = mockHttp.getJson();
       expect(json.message).toBe('Histórico do jogo para o paciente recuperado com sucesso.');
-      const data = json.data as any;
+      const data = (json as EnvelopeResposta<RespostaDataHistoricoJogo>).data;
       expect(data.jogo.id).toBe(JOGO_HOMOLOGADO_ID);
       expect(data.series_temporais).toHaveLength(1);
       expect(data.series_temporais[0].pontos[0].valor).toBe(95);
@@ -836,7 +786,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
         id: SESSAO_REF_ID,
         paciente_id: OUTRO_PACIENTE_ID, // Pertence a outro paciente
         jogo_id: JOGO_HOMOLOGADO_ID,
-      } as any);
+      } as unknown as { id: string; paciente_id: string; jogo_id: string; status_sessao: string; data_hora_fim: string });
 
       const handlers = obterHandlers(
         pacienteRoutes as unknown as Parameters<typeof obterHandlers>[0],
@@ -852,6 +802,123 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
 
       expect(mockHttp.getStatus()).toBe(400);
       expect(mockHttp.getJson().error).toContain('não pertence ao paciente especificado');
+    });
+
+    it('P4: deve retornar total_registros como count real do banco (não apenas o tamanho da página)', async () => {
+      configurarVisibilidadeMock();
+
+      vi.spyOn(JogoModel, 'buscarPorId').mockResolvedValue({
+        id: JOGO_HOMOLOGADO_ID,
+        nome: 'Aventura Espacial',
+        descricao: 'Treino de atenção',
+        versao: '1.0.0',
+        manifesto_json: {
+          nome: 'Aventura Espacial',
+          versao: '1.0.0',
+          metricas_suportadas: [{ id_metrica: 'pontuacao', tipo_metrica: 'numerica' }],
+        },
+      });
+
+      // Simula banco com 15 sessões no total, mas a página 2 (limit 5) traz 5
+      vi.spyOn(HistoricoSessaoModel, 'buscarHistoricoPorJogo').mockResolvedValue(
+        Array(5).fill({
+          sessao_id: 'sessao-pag-2',
+          terapeuta_id: TERAPEUTA_VINCULADO_ID,
+          paciente_id: PACIENTE_ID,
+          jogo_id: JOGO_HOMOLOGADO_ID,
+          modo_sessao: 'sessao_clinica',
+          status_sessao: 'finalizada',
+          data_hora_inicio: '2026-10-10T14:00:00Z',
+          data_hora_fim: '2026-10-10T14:20:00Z',
+          duracao_segundos: 1200,
+          conteudo_relatorio: 'OK',
+          dados_ia_json: { metricas_agregadas: [{ id_metrica: 'pontuacao', valor_dominante: 80 }] },
+        })
+      );
+      vi.spyOn(HistoricoSessaoModel, 'contarHistoricoPorJogo').mockResolvedValue(15);
+
+      const handlers = obterHandlers(
+        pacienteRoutes as unknown as Parameters<typeof obterHandlers>[0],
+        '/:id/historico/jogo/:jogoId',
+        'get'
+      );
+      const mockHttp = criarMockReqRes({
+        params: { id: PACIENTE_ID, jogoId: JOGO_HOMOLOGADO_ID },
+        query: { page: 2, limit: 5 },
+      });
+
+      await executarPipeline(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(200);
+      const data = (mockHttp.getJson() as EnvelopeResposta<RespostaDataHistoricoJogo>).data;
+      expect(data.sessoes).toHaveLength(5);
+      expect(data.meta.paginacao.total_registros).toBe(15);
+      expect(data.meta.paginacao.page).toBe(2);
+      expect(data.meta.paginacao.limit).toBe(5);
+    });
+
+    it('P5: deve filtrar pontos por intervalo temporal (dataInicio e dataFim)', async () => {
+      configurarVisibilidadeMock();
+
+      vi.spyOn(JogoModel, 'buscarPorId').mockResolvedValue({
+        id: JOGO_HOMOLOGADO_ID,
+        nome: 'Aventura Espacial',
+        descricao: 'Treino de atenção',
+        versao: '1.0.0',
+        manifesto_json: {
+          nome: 'Aventura Espacial',
+          versao: '1.0.0',
+          metricas_suportadas: [{ id_metrica: 'pontuacao', tipo_metrica: 'numerica' }],
+        },
+      });
+
+      const spyBuscar = vi.spyOn(HistoricoSessaoModel, 'buscarHistoricoPorJogo').mockResolvedValue([]);
+      const spyContar = vi.spyOn(HistoricoSessaoModel, 'contarHistoricoPorJogo').mockResolvedValue(0);
+
+      const handlers = obterHandlers(
+        pacienteRoutes as unknown as Parameters<typeof obterHandlers>[0],
+        '/:id/historico/jogo/:jogoId',
+        'get'
+      );
+      const mockHttp = criarMockReqRes({
+        params: { id: PACIENTE_ID, jogoId: JOGO_HOMOLOGADO_ID },
+        query: { dataInicio: '2026-01-01', dataFim: '2026-06-30' },
+      });
+
+      await executarPipeline(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(200);
+      expect(spyBuscar).toHaveBeenCalledWith(
+        PACIENTE_ID,
+        JOGO_HOMOLOGADO_ID,
+        20,
+        0,
+        expect.objectContaining({ dataInicio: '2026-01-01', dataFim: '2026-06-30' })
+      );
+      expect(spyContar).toHaveBeenCalledWith(
+        PACIENTE_ID,
+        JOGO_HOMOLOGADO_ID,
+        expect.objectContaining({ dataInicio: '2026-01-01', dataFim: '2026-06-30' })
+      );
+    });
+
+    it('P5: deve retornar 400 Bad Request se dataInicio for posterior a dataFim na Rota 2', async () => {
+      configurarVisibilidadeMock();
+
+      const handlers = obterHandlers(
+        pacienteRoutes as unknown as Parameters<typeof obterHandlers>[0],
+        '/:id/historico/jogo/:jogoId',
+        'get'
+      );
+      const mockHttp = criarMockReqRes({
+        params: { id: PACIENTE_ID, jogoId: JOGO_HOMOLOGADO_ID },
+        query: { dataInicio: '2026-12-31', dataFim: '2026-01-01' },
+      });
+
+      await executarPipeline(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(400);
+      expect(mockHttp.getJson().error).toContain('data inicial não pode ser posterior');
     });
   });
 
@@ -895,6 +962,52 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
       expect(dataKeys).toContain('engajamento');
       expect(dataKeys).toContain('jogos');
       expect(dataKeys).toContain('meta');
+    });
+
+    it('P6: Rota 2 deve possuir estritamente { data: { jogo, metricas_declaradas, series_temporais, sessoes, meta }, message: "..." }', async () => {
+      configurarVisibilidadeMock();
+
+      vi.spyOn(JogoModel, 'buscarPorId').mockResolvedValue({
+        id: JOGO_HOMOLOGADO_ID,
+        nome: 'Aventura Espacial',
+        descricao: 'Treino',
+        versao: '1.0.0',
+        manifesto_json: {
+          nome: 'Aventura Espacial',
+          versao: '1.0.0',
+          metricas_suportadas: [{ id_metrica: 'pontuacao', tipo_metrica: 'numerica' }],
+        },
+      });
+      vi.spyOn(HistoricoSessaoModel, 'buscarHistoricoPorJogo').mockResolvedValue([]);
+      vi.spyOn(HistoricoSessaoModel, 'contarHistoricoPorJogo').mockResolvedValue(0);
+
+      const handlers = obterHandlers(
+        pacienteRoutes as unknown as Parameters<typeof obterHandlers>[0],
+        '/:id/historico/jogo/:jogoId',
+        'get'
+      );
+      const mockHttp = criarMockReqRes({
+        params: { id: PACIENTE_ID, jogoId: JOGO_HOMOLOGADO_ID },
+      });
+
+      await executarPipeline(handlers, mockHttp.req, mockHttp.res);
+
+      expect(mockHttp.getStatus()).toBe(200);
+      const json = mockHttp.getJson();
+
+      expect(Object.keys(json).sort()).toEqual(['data', 'message'].sort());
+      expect(typeof json.message).toBe('string');
+      expect(typeof json.data).toBe('object');
+      expect(json.data).not.toBeNull();
+
+      const dataKeys = Object.keys(json.data as Record<string, unknown>);
+      expect(dataKeys).toContain('jogo');
+      expect(dataKeys).toContain('metricas_declaradas');
+      expect(dataKeys).toContain('series_temporais');
+      expect(dataKeys).toContain('sessoes');
+      expect(dataKeys).toContain('meta');
+      expect(dataKeys).not.toContain('engajamento');
+      expect(dataKeys).not.toContain('jogos');
     });
   });
 });

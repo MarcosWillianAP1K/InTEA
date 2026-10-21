@@ -138,16 +138,17 @@ export class HistoricoSessaoModel {
         return null;
       }
 
-      const totalSessoes = data.length;
+      const totalSessoes = data.filter((s) => s.status_sessao !== 'aguardando_pareamento').length;
       const sessoesFinalizadas = data.filter((s) => s.status_sessao === 'finalizada').length;
       const sessoesInterrompidas = data.filter((s) =>
         ['cancelada', 'interrompida_por_queda', 'expirada'].includes(s.status_sessao)
       ).length;
 
+
       // Sessões que iniciaram a execução clínica (não ficaram apenas em aguardando_pareamento)
-      const totalIniciadas = data.filter(
-        (s) => s.status_sessao !== 'aguardando_pareamento'
-      ).length;
+      const totalIniciadas = totalSessoes;
+
+
 
       const baseCalculo = totalIniciadas > 0 ? totalIniciadas : totalSessoes;
       const taxaConclusao =
@@ -300,6 +301,50 @@ export class HistoricoSessaoModel {
       return null;
     }
   }
+  /**
+   * Conta o total de sessões finalizadas com relatório ativo para um paciente/jogo.
+   * Utilizado para paginação precisa (RF19).
+   */
+  static async contarHistoricoPorJogo(
+    pacienteId: string,
+    jogoId: string,
+    filtros?: FiltrosHistoricoDTO
+  ): Promise<number> {
+    if (!pacienteId || !validarUUID(pacienteId) || !jogoId || !validarUUID(jogoId)) {
+      return 0;
+    }
+
+    try {
+      let query = supabase
+        .from('sessao')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', pacienteId)
+        .eq('jogo_id', jogoId)
+        .eq('modo_sessao', 'sessao_clinica')
+        .eq('status_sessao', 'finalizada')
+        .not('paciente_id', 'is', null);
+
+      if (filtros?.dataInicio) {
+        query = query.gte('data_hora_fim', filtros.dataInicio);
+      }
+      if (filtros?.dataFim) {
+        query = query.lte('data_hora_fim', filtros.dataFim);
+      }
+
+      const { count, error } = await query;
+
+      if (error || count === null) {
+        console.error('[HistoricoSessaoModel] Erro ao contar histórico por jogo:', error);
+        return 0;
+      }
+
+      return count;
+    } catch (err) {
+      console.error('[HistoricoSessaoModel] Exceção em contarHistoricoPorJogo:', err);
+      return 0;
+    }
+  }
+
 
   /**
    * Lista o catálogo de jogos com intervenções clínicas realizadas pelo paciente.
@@ -327,6 +372,7 @@ export class HistoricoSessaoModel {
         `)
         .eq('paciente_id', pacienteId)
         .eq('modo_sessao', 'sessao_clinica')
+        .eq('status_sessao', 'finalizada')
         .not('paciente_id', 'is', null)
         .order('data_hora_fim', { ascending: false });
 
