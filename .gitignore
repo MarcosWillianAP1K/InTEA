@@ -49,7 +49,8 @@ docs/figma
 # Documentação interna / Projetos
 BRAIN_PROJECT/
 AGENTS.md
-# Documentação interna / Projetos
-BRAIN_PROJECT/
-AGENTS.MD
-=======
+
+# MkDocs build output
+site/
+docs_site/
+.venv/
