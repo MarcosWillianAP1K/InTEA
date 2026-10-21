@@ -19,6 +19,7 @@
    - [4.6 Hooks Nativos e Custom Hooks (`hooks/`)](#46-hooks-nativos-e-custom-hooks-hooks)
    - [4.7 Comunicação em Tempo Real via WebSocket (`core/web.socket.ts`)](#47-comunicação-em-tempo-real-via-websocket-corewebsocketts)
    - [4.8 Como Tudo se Conecta nas Telas (`Pages` vs `Components`)](#48-como-tudo-se-conecta-nas-telas-pages-vs-components)
+   - [4.9 Prontuário Longitudinal, Histórico e Gráficos Dinâmicos (Sprint 11)](#49-prontuário-longitudinal-histórico-e-gráficos-dinâmicos-sprint-11)
 5. [Convenções de Nomenclatura](#5-convenções-de-nomenclatura)
 6. [Regras de Git e Branches](#6-regras-de-git-e-branches)
 7. [Docker, CI/CD e Testes Automatizados](#7-docker-cicd-e-testes-automatizados)
@@ -239,12 +240,12 @@ Frontend/src/
 │   ├── terapeuta/                        # Gestão do perfil profissional e equipe multidisciplinar
 │   │   ├── services/                     # terapeuta.service.ts
 │   │   └── types/                        # terapeuta.types.ts e bdmock.ts
-│   ├── paciente/                         # Gestão cadastral e prontuários clínicos
-│   │   ├── pages/                        # PacientesPage.tsx
-│   │   ├── components/                   # ListaPacientes.tsx, CardPacienteGrid.tsx, DialogFormularioPaciente.tsx, DialogDetalhesPaciente.tsx
+│   ├── paciente/                         # Gestão cadastral, prontuários clínicos e histórico longitudinal (RF15)
+│   │   ├── pages/                        # PacientesPage.tsx, HistoricoPacientePage.tsx
+│   │   ├── components/                   # ListaPacientes.tsx, CardPacienteGrid.tsx, DialogFormularioPaciente.tsx, DialogDetalhesPaciente.tsx, CardsEngajamentoGeral.tsx, GraficoEvolucaoJogo.tsx, GraficoPolimorficoMetrica.tsx, LinhaDoTempoSessoes.tsx, SeletorJogoHistorico.tsx
 │   │   ├── services/                     # paciente.service.ts
 │   │   ├── store/                        # paciente.store.ts
-│   │   └── types/                        # paciente.types.ts e bdmock.ts
+│   │   └── types/                        # paciente.types.ts, historico.types.ts e bdmock.ts
 │   ├── jogos/                            # Catálogo e biblioteca de jogos terapêuticos
 │   │   ├── pages/                        # BibliotecaJogosPage.tsx
 │   │   ├── components/                   # JogoCard.tsx, JogosFiltros.tsx
@@ -409,6 +410,66 @@ sequenceDiagram
     Modal->>Cockpit: 12. navigate("/sessao/:token/monitoramento")
     Cockpit->>WS: 13. Recebe telemetria ao vivo e envia comandos DDA em tempo real
 ```
+
+---
+
+### 4.9 Prontuário Longitudinal, Histórico e Gráficos Dinâmicos (Sprint 11)
+
+A evolução clínica do paciente com TEA exige análise longitudinal fundamentada em evidências, superando a heterogeneidade das mecânicas de jogos através de um **modelo arquitetural em dois níveis**:
+
+```mermaid
+flowchart TD
+    subgraph Frontend["Frontend SPA (React 19 + SVG Puro)"]
+        Page["HistoricoPacientePage.tsx\n(/pacientes/:id/historico)"]
+        Level1["CardsEngajamentoGeral.tsx\n(Taxa de Conclusão %, Horas Jogadas, Interrupções)"]
+        Selector["SeletorJogoHistorico.tsx\n(Isolamento por Jogo)"]
+        Level2["GraficoEvolucaoJogo.tsx\n(Séries do Jogo Selecionado)"]
+        Polymorphic["GraficoPolimorficoMetrica.tsx\n(Dispatch por tipo_metrica)"]
+        Line["GraficoLinhaTemporal (numerica)"]
+        Bar["GraficoBarrasCategorico (categorica/ordinal)"]
+        Bool["IndicadorBooleanoMetrica (booleana)"]
+        ErrState["Error State RN02 (tipo ausente/inválido)"]
+        
+        Page --> Level1
+        Page --> Selector
+        Selector --> Level2
+        Level2 --> Polymorphic
+        Polymorphic --> Line
+        Polymorphic --> Bar
+        Polymorphic --> Bool
+        Polymorphic -.-> ErrState
+    end
+
+    subgraph Backend["Backend API (Express + TypeScript)"]
+        Route["GET /api/paciente/:id/historico"]
+        Service["PacienteHistoricoService.ts"]
+        Model["HistoricoSessaoModel.ts"]
+        
+        Route --> Service
+        Service --> Model
+    end
+
+    subgraph Database["PostgreSQL / Supabase (3FN)"]
+        Sessao["sessao\n(idx_sessao_paciente_engajamento\nidx_sessao_paciente_jogo_fim)"]
+        Relatorio["relatorio_sessao\n(dados_ia_json GIN)"]
+        Jogo["jogo\n(manifesto_json)"]
+        
+        Model --> Sessao
+        Model --> Relatorio
+        Model --> Jogo
+    end
+
+    Page -- "HTTP GET com query params\n(jogoId, dataInicio, dataFim)" --> Route
+```
+
+1. **Nível 1 — Panorama Universal de Engajamento e Adesão:**
+   - Métricas de ciclo de vida que se aplicam de forma idêntica a todos os jogos: Taxa de Conclusão de Sessões ($\frac{\text{Sessões Finalizadas}}{\text{Sessões Iniciadas}} \times 100$), Tempo Acumulado de Permanência Ativa e Frequência de Interrupções por recusa/desregulação sensorial.
+   - Renderizados no topo da tela através de `CardsEngajamentoGeral.tsx` e refletidos em mini-gráficos `SparklineTendencia.tsx` na listagem de pacientes.
+
+2. **Nível 2 — Séries Temporais Especializadas por Jogo:**
+   - Métricas clínicas finas (ex: tempo de reação em ms, acurácia, tônus, frustração) consultadas exclusivamente mediante seleção de um `jogo_id`.
+   - O backend cruza os relatórios anteriores com o `manifesto_json` do jogo correspondente. Caso alguma métrica não possua `tipo_metrica` válido, a requisição é rejeitada com código **`422 Unprocessable Entity`** (**RN02**).
+   - O frontend renderiza visualizações puras em SVG escalável através de `GraficoPolimorficoMetrica`, sem dependência de bibliotecas pesadas de terceiros (zero Chart.js / zero Recharts), garantindo alvos de toque de 44x44px (**RNF07**) e aderência a temas claro e escuro via Tailwind CSS.
 
 ---
 

@@ -104,12 +104,12 @@ Frontend/src/
 │   ├── terapeuta/                        # Gestão do perfil do terapeuta e equipe multidisciplinar
 │   │   ├── services/                     # terapeuta.service.ts
 │   │   └── types/                        # terapeuta.types.ts e bdmock.ts
-│   ├── paciente/                         # Gestão cadastral e prontuários clínicos
-│   │   ├── pages/                        # PacientesPage.tsx
-│   │   ├── components/                   # ListaPacientes, CardPacienteGrid, DialogFormularioPaciente, DialogDetalhesPaciente
+│   ├── paciente/                         # Gestão cadastral, prontuários clínicos e histórico longitudinal (RF15)
+│   │   ├── pages/                        # PacientesPage.tsx, HistoricoPacientePage.tsx
+│   │   ├── components/                   # ListaPacientes, CardPacienteGrid, DialogFormularioPaciente, DialogDetalhesPaciente, CardsEngajamentoGeral, GraficoEvolucaoJogo, GraficoPolimorficoMetrica, LinhaDoTempoSessoes, SeletorJogoHistorico
 │   │   ├── services/                     # paciente.service.ts
 │   │   ├── store/                        # paciente.store.ts
-│   │   └── types/                        # paciente.types.ts e bdmock.ts
+│   │   └── types/                        # paciente.types.ts, historico.types.ts e bdmock.ts
 │   ├── jogos/                            # Biblioteca e leitura de manifestos de jogos terapêuticos
 │   │   ├── pages/                        # BibliotecaJogosPage.tsx
 │   │   ├── components/                   # JogoCard, JogosFiltros

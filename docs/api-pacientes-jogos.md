@@ -71,6 +71,7 @@ Todas as respostas seguem formatos previsíveis:
 | `GET` | `/api/paciente/:id/terapeutas` | Sim (JWT + Vínculo) | **RF18**, **RN04** | Lista terapeutas da equipe multidisciplinar vinculados |
 | `POST` | `/api/paciente/:id/terapeutas` | Sim (JWT) | **RF18**, **RF21** | Vincula um novo terapeuta da mesma clínica ao paciente |
 | `DELETE` | `/api/paciente/:id/terapeutas/:terapeutaId` | Sim (JWT) | **RF18** | Remove o vínculo do terapeuta com o paciente |
+| `GET` | `/api/paciente/:id/historico` | Sim (JWT + Vínculo) | **RF15**, **RF19**, **RN01**, **RN02**, **RN04**, **RN05** | Consulta histórico longitudinal (Engajamento geral e séries por jogo) |
 
 ---
 
@@ -730,6 +731,155 @@ Todas as respostas seguem formatos previsíveis:
     ```json
     {
       "error": "Paciente não encontrado para desvincular terapeuta."
+    }
+    ```
+
+#### Rota 11: Consultar Histórico Longitudinal do Paciente (Engajamento e Séries por Jogo)
+
+- **Método:** `GET`
+- **URL:** `/api/paciente/:id/historico`
+- **Autenticação:** Obrigatória (`Bearer <TOKEN_JWT>`)
+- **Regras Clínicas Aplicadas:** **RF15** (Prontuário Longitudinal), **RF19** (Filtros Avançados), **RN01** (Exclusão de Modo Livre), **RN02** (Tipagem Estrita sem Fallback), **RN04** (Vínculo Institucional e Mesma Clínica), **RN05** (Inalterabilidade / Soft Delete).
+- **Headers Requeridos:**
+  - `Authorization: Bearer <TOKEN_JWT>`
+  - `Content-Type: application/json`
+
+- **Parâmetros de Rota (Path Parameters):**
+
+| Parâmetro | Tipo | Obrigatório | Descrição | Exemplo |
+| :--- | :---: | :---: | :--- | :--- |
+| `id` | `string (UUID)` | Sim | Identificador único UUID do paciente no Supabase | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
+
+- **Parâmetros de Consulta (Query Parameters):**
+
+| Parâmetro | Tipo | Obrigatório | Padrão | Descrição | Exemplo |
+| :--- | :---: | :---: | :--- | :--- |
+| `jogoId` | `string (UUID)` | Não | — | Filtra séries temporais e laudos exclusivamente para aquele jogo específico | `f47ac10b-58cc-4372-a567-0e02b2c3d479` |
+| `dataInicio` | `string (ISO 8601)` | Não | — | Filtro inicial do intervalo cronológico (UTC) | `2026-09-01T00:00:00.000Z` |
+| `dataFim` | `string (ISO 8601)` | Não | — | Filtro final do intervalo cronológico (UTC) | `2026-10-20T23:59:59.999Z` |
+| `page` | `integer` | Não | `1` | Página atual da listagem cronológica de sessões | `1` |
+| `limit` | `integer` | Não | `20` | Quantidade de registros por página (teto de segurança: máx 100) | `20` |
+
+- **Respostas da Rota:**
+
+  - **Status `200 OK` (Sucesso — Com `jogoId` específico fornecido):**
+
+    ```json
+    {
+      "data": {
+        "paciente": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "nome": "Henrique Souza",
+          "clinica_id": "c1d2e3f4-a5b6-7890-abcd-ef1234567890"
+        },
+        "engajamento_geral": {
+          "total_sessoes_iniciadas": 10,
+          "total_sessoes_finalizadas": 8,
+          "total_sessoes_interrompidas": 2,
+          "taxa_conclusao_percentual": 80.0,
+          "taxa_recusa_percentual": 20.0,
+          "tempo_total_segundos": 14400,
+          "tempo_medio_sessao_segundos": 1800,
+          "data_primeira_sessao": "2026-08-15T14:30:00.000Z",
+          "data_ultima_sessao": "2026-10-18T16:00:00.000Z"
+        },
+        "historico_por_jogo": {
+          "jogo_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+          "nome_jogo": "Rastreio Visual e Foco Atenção",
+          "total_partidas": 5,
+          "metricas_declaradas": [
+            {
+              "nome": "tempo_reacao_ms",
+              "tipo_metrica": "numerica",
+              "unidade": "ms",
+              "rotulo": "Tempo Médio de Reação"
+            },
+            {
+              "nome": "nivel_frustracao",
+              "tipo_metrica": "ordinal",
+              "unidade": "escala_1_5",
+              "rotulo": "Índice de Frustração Estimado"
+            },
+            {
+              "nome": "concluiu_meta_diaria",
+              "tipo_metrica": "booleana",
+              "rotulo": "Meta Terapêutica Cumprida"
+            }
+          ],
+          "series_temporais": [
+            {
+              "sessao_id": "e1f2a3b4-5678-90ab-cdef-1234567890ab",
+              "data_hora_fim": "2026-10-10T15:30:00.000Z",
+              "dda_nivel_final": 2,
+              "valores_metricas": {
+                "tempo_reacao_ms": 420.5,
+                "nivel_frustracao": "baixo",
+                "concluiu_meta_diaria": true
+              }
+            },
+            {
+              "sessao_id": "d1e2f3a4-5678-90ab-cdef-1234567890ac",
+              "data_hora_fim": "2026-10-18T16:00:00.000Z",
+              "dda_nivel_final": 3,
+              "valores_metricas": {
+                "tempo_reacao_ms": 385.0,
+                "nivel_frustracao": "baixo",
+                "concluiu_meta_diaria": true
+              }
+            }
+          ]
+        }
+      },
+      "meta": {
+        "page": 1,
+        "limit": 20,
+        "total": 5,
+        "totalPages": 1
+      }
+    }
+    ```
+
+  - **Status `400 Bad Request` (Parâmetros inválidos ou datas invertidas):**
+
+    ```json
+    {
+      "error": "Intervalo temporal inconsistente: 'dataInicio' não pode ser superior a 'dataFim'."
+    }
+    ```
+
+  - **Status `401 Unauthorized` (Token ausente ou inválido):**
+
+    ```json
+    {
+      "error": "Token de autenticação não fornecido ou expirado."
+    }
+    ```
+
+  - **Status `403 Forbidden` (Sem vínculo ativo na clínica — RN04):**
+
+    ```json
+    {
+      "error": "Acesso negado: terapeuta não possui vínculo ativo com este paciente ou pertence a outra clínica.",
+      "regraViolada": "RN04 - Visibilidade por Vínculo Institucional"
+    }
+    ```
+
+  - **Status `404 Not Found` (Paciente inexistente ou inativo):**
+
+    ```json
+    {
+      "error": "Paciente com o ID informado não foi localizado ou está inativo."
+    }
+    ```
+
+  - **Status `422 Unprocessable Entity` (Violação de Tipagem Estrita — RN02):**
+
+    ```json
+    {
+      "error": "Inconsistência técnica no manifesto do jogo: a métrica 'acuracia_toque' não possui 'tipo_metrica' explicitado no manifesto cadastrado.",
+      "regraViolada": "RN02 - Fallback de Métrica Proibido / Tipagem Estrita"
+    }
+    ```
     }
     ```
 

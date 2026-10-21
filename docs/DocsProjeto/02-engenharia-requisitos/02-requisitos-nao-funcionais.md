@@ -58,15 +58,17 @@ Os Requisitos Não-Funcionais (RNF) especificam os critérios de qualidade, dese
 ---
 
 ### RNF04 — Geração Automática de Visualizações por Tipo de Métrica
-* **Descrição Oficial:** Os gráficos de evolução do paciente na tela de resultados e no histórico devem ser gerados dinamicamente com base no atributo `metric_type` (numérico contínuo, ordinal discreto, categórico, booleano) declarado no manifesto do jogo, sem exigir recodificação ou acoplamento da interface para cada novo jogo adicionado ao catálogo.
+* **Descrição Oficial:** Os gráficos de evolução do paciente na tela de resultados e no histórico devem ser gerados dinamicamente com base no atributo `metric_type` (numérico contínuo, ordinal discreto, categórico, booleano) declarado no manifesto do jogo selecionado, sem exigir recodificação ou acoplamento da interface para cada novo jogo adicionado ao catálogo, preservando o desacoplamento e a integridade clínica sem fundir arbitrariamente métricas de jogos distintos.
 * **Métrica / SLA:**
   * Suporte a 100% dos tipos canônicos de métricas clínicas sem falhas de renderização.
   * **Proibição absoluta de fallback automático** para tipo categórico quando o tipo for omitido ou inválido (**RN02**).
-* **Mecanismo Técnico:** Componentes visuais polimórficos no frontend que inspecionam o manifesto e selecionam o renderizador adequado (linhas temporais, barras ou sparklines).
+* **Mecanismo Técnico:** Arquitetura dual: Nível 1 com métricas transversais universais (taxa de conclusão % e engajamento); e Nível 2 com componentes visuais polimórficos em SVG nativo no frontend (`GraficoPolimorficoMetrica`) que inspecionam o manifesto do jogo selecionado e selecionam o renderizador adequado (linhas temporais, barras, indicadores booleanos ou sparklines), sem dependências pesadas de bibliotecas de terceiros.
 * **Critérios de Verificação:**
   * [ ] Renderização de gráfico de linha contínua para métricas numéricas (ex.: tempo de reação em ms).
   * [ ] Renderização de gráfico de barras/frequência para métricas categóricas ou níveis discretos.
-  * [ ] Rejeição no upload/cadastro de manifestos com métricas sem `tipo_metrica` explícito.
+  * [ ] Renderização de indicador discreto/timeline para métricas booleanas.
+  * [ ] Rejeição no upload/cadastro de manifestos com métricas sem `tipo_metrica` explícito e resposta HTTP 422 na API (**RN02**).
+  * [ ] Isolamento de séries longitudinais por jogo selecionado, eliminando a mistura indevida de dados heterogêneos entre jogos distintos.
 
 ---
 

@@ -24,7 +24,8 @@ Os relatórios acadêmicos e retrospectivas detalhadas de cada Sprint residem em
 | **Sprint 7** | 17/09 a 24/09/2026 | Gestão de Pacientes, Catálogo de Jogos e Leitura de Manifesto | RF06, RF09, RF18, RF19, RN02, RN04, RN05 | [task_sprint_7.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_7.md) | [sprint-7.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-7.md) | ✅ Concluída |
 | **Sprint 8** | 24/09 a 01/10/2026 | Pareamento Remoto via Session Token e Testes Prévios | RF10, RF11, RNF03, RNF04, RNF06 | [task_sprint_8.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_8.md) | [sprint-8.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-8.md) | ✅ Concluída |
 | **Sprint 9** | 01/10 a 08/10/2026 | Gestão de Sessão Ativa, Telemetria Contínua e Cockpit | RF12, RF13, RF17, RF21, RN01, RNF05 | [task_sprint_9.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_9.md) | [sprint-9.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-9.md) | ✅ Concluída |
-| **Sprint 10** | 08/10 a 15/10/2026 | Tela de Resultados, Relatório Analítico da IA e Exportação | RF14, RF16, RF20, RN01, RN04, RN05, RNF02 | [task_sprint_10.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_10.md) | [sprint-10.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-10.md) | 🚀 Em Andamento |
+| **Sprint 10** | 08/10 a 15/10/2026 | Tela de Resultados, Relatório Analítico da IA e Exportação | RF14, RF16, RF20, RN01, RN04, RN05, RNF02 | [task_sprint_10.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_10.md) | [sprint-10.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-10.md) | ✅ Concluída |
+| **Sprint 11** | 15/10 a 22/10/2026 | Histórico Evolutivo, Prontuário Longitudinal e Gráficos Dinâmicos | RF15, RNF04, RF19, RN01, RN02, RN04, RN05 | [task_sprint_11.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_11.md) | [sprint-11.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-11.md) | 🚀 Em Andamento |
 
 ---
 
@@ -49,6 +50,11 @@ Os relatórios acadêmicos e retrospectivas detalhadas de cada Sprint residem em
 * **Arquivo Detalhado:** [task_sprint_10.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_10.md)
 * **Escopo:** Consolidação dos dados pós-sessão, motor de agregação estatística de telemetria, síntese analítica do Agente de IA (**Contrato 4**), Tela de Resultados web (**Figura 12** do PDF), bloco interativo de anotações médicas (**RF16**), módulo de exportação e impressão clínica em PDF (**RF20**) e isolamento estrito por vínculo institucional (**RN04**).
 * **Documento da Sprint:** [sprint-10.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-10.md)
+
+### 3.5. Sprint 11 — Histórico Evolutivo e Gráficos Dinâmicos (Engajamento e Séries por Jogo)
+* **Arquivo Detalhado:** [task_sprint_11.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_11.md)
+* **Escopo:** Prontuário longitudinal do paciente (**RF15**) estruturado em dois níveis clínicos: métricas universais de engajamento e aderência (taxa de conclusão de sessões %, tempo jogado e interrupções/desistências) e séries históricas especializadas segmentadas por jogo (**RNF04**). Renderizador polimórfico em SVG nativo, proibição de fallback (**RN02**), seletor de jogos do catálogo (**RF19**), tela mestre de histórico (**Figura 13** do PDF), endpoint com validação de vínculo (**RN04**) e supressão de modo livre (**RN01**).
+* **Documento da Sprint:** [sprint-11.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-11.md)
 
 ---
 

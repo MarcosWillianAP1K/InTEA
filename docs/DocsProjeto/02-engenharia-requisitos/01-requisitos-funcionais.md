@@ -176,12 +176,16 @@ Os Requisitos Funcionais (RF) definem as capacidades comportamentais, operaçõe
 ---
 
 ### RF15 — Prontuário Longitudinal e Linha do Tempo Evolutiva
-* **Descrição Oficial:** O sistema deve exibir a linha do tempo cronológica de sessões do paciente, com gráficos comparativos gerados automaticamente a partir do tipo de métrica declarado.
+* **Descrição Oficial:** O sistema deve exibir a linha do tempo cronológica de sessões do paciente, implementando arquitetura dual de histórico: (1) Nível Universal de Engajamento e Adesão (Taxa de Conclusão % de sessões, tempo de permanência ativa e registro de interrupções por recusa do paciente) transversal a todos os jogos; e (2) Nível Especializado por Jogo, com gráficos comparativos dinâmicos em SVG gerados automaticamente a partir do manifesto do jogo selecionado (`metric_type`), vedada a unificação artificial de métricas heterogêneas de jogos distintos.
 * **Atores:** Terapeuta.
-* **Camada:** Frontend (`features/historico/`), Backend (`api/paciente/`).
+* **Camada:** Frontend (`features/paciente/pages/HistoricoPacientePage.tsx`, `components/`), Backend (`api/paciente/`).
 * **Critérios de Aceite:**
   * [ ] Linha do tempo longitudinal listando todas as intervenções anteriores do paciente.
-  * [ ] Gráficos adaptativos (linhas para métricas contínuas, barras para categóricas) derivados de `metric_type` (**RNF04**).
+  * [ ] Métricas transversais de Engajamento Geral exibindo Taxa de Conclusão (%) e tempo de permanência ativa.
+  * [ ] Seletor por jogo permitindo isolar as séries temporais e laudos específicos daquele jogo selecionado.
+  * [ ] Gráficos adaptativos em SVG nativo (linhas para métricas contínuas, barras para categóricas/ordinais e timeline para booleanas) derivados de `metric_type` (**RNF04**).
+  * [ ] Rejeição com HTTP 422 caso alguma métrica do jogo consultado não possua tipo válido declarado no manifesto (**RN02**).
+  * [ ] Supressão total de partidas em Modo Livre do histórico clínico (**RN01**).
   * [ ] Isolamento de prontuário exigindo vínculo em `terapeuta_paciente` e mesma clínica (**RN04**).
 
 ---
@@ -228,6 +232,7 @@ Os Requisitos Funcionais (RF) definem as capacidades comportamentais, operaçõe
   * [ ] Busca de pacientes por nome parcial e CPF (com e sem formatação).
   * [ ] Filtro de jogos por objetivo clínico e status de instalação.
   * [ ] Paginação consistente com parâmetros `pagina` e `limite` em todas as listagens volumosas.
+  * [ ] Filtro avançado no histórico do paciente por `jogoId`, intervalo temporal (`dataInicio`, `dataFim`) e paginação para análise longitudinal segmentada.
 
 ---
 
