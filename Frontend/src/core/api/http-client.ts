@@ -13,7 +13,13 @@ const REQUEST_TIMEOUT_MS = 15_000;
 
 export interface TokenRefreshResponse {
   data?: {
-    access_token: string;
+    token?: {
+      access_token: string;
+      refresh_token?: string;
+      token_type?: string;
+      expires_in?: number;
+    };
+    access_token?: string;
     refresh_token?: string;
   };
   access_token?: string;
@@ -62,9 +68,14 @@ export const http: HttpClient = createHttpClient({
       }
 
       const payload = (await response.json()) as TokenRefreshResponse;
-      const newAccessToken = payload.data?.access_token || payload.access_token;
+      const newAccessToken =
+        payload.data?.token?.access_token ||
+        payload.data?.access_token ||
+        payload.access_token;
       const newRefreshToken =
-        payload.data?.refresh_token || payload.refresh_token;
+        payload.data?.token?.refresh_token ||
+        payload.data?.refresh_token ||
+        payload.refresh_token;
 
       if (!newAccessToken) {
         throw new Error("Novo access_token não retornado pelo servidor.");

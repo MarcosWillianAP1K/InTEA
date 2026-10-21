@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { MetricaValidator } from '../validators/metrica.validator.js';
 import { ManifestoValidator } from '../validators/manifesto.validator.js';
 import { JogoController } from '../controllers/jogo.controller.js';
-import { ManifestoJogo } from '../models/jogo.model.js';
+import { ManifestoJogo, MetricaManifesto } from '../models/jogo.model.js';
 import { Request, Response } from 'express';
 
 describe('Validação Estrita de Tipagem de Métricas (RN02 / RNF04)', () => {
@@ -67,7 +67,7 @@ describe('Validação Estrita de Tipagem de Métricas (RN02 / RNF04)', () => {
       const manifestoComMetricaVazia = {
         ...manifestoTeste,
         metricas_suportadas: [
-          { id_metrica: 'metrica_nula', tipo_metrica: null }
+          { id_metrica: 'metrica_nula', tipo_metrica: null as unknown as string }
         ]
       };
 
@@ -94,10 +94,10 @@ describe('Validação Estrita de Tipagem de Métricas (RN02 / RNF04)', () => {
     });
 
     it('deve bloquear gravação se a métrica no manifesto estiver sem tipo válido', () => {
-      const manifestoIncompleto: any = {
+      const manifestoIncompleto: ManifestoJogo = {
         ...manifestoTeste,
         metricas_suportadas: [
-          { id_metrica: 'metrica_corrompida' } // Sem tipo_metrica
+          { id_metrica: 'metrica_corrompida', tipo_metrica: '' as unknown as string }
         ]
       };
 
@@ -166,9 +166,9 @@ describe('Validação Estrita de Tipagem de Métricas (RN02 / RNF04)', () => {
   });
 
   describe('Endpoint POST /api/jogos/:id/validar-telemetria', () => {
-    it('deve retornar 200 OK com podeGravar: true para telemetria válida', async () => {
+    it('deve retornar 200 OK com payload estruturado no Envelope Pattern para telemetria válida', async () => {
       let statusCode = 200;
-      let responseJson: any = null;
+      let responseJson: Record<string, any> = {};
 
       const req = {
         params: { id: '1' }, // Aventura das Cores
@@ -188,7 +188,7 @@ describe('Validação Estrita de Tipagem de Métricas (RN02 / RNF04)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseJson = data;
           return this;
         }
@@ -197,13 +197,16 @@ describe('Validação Estrita de Tipagem de Métricas (RN02 / RNF04)', () => {
       await JogoController.validarTelemetria(req, res);
 
       expect(statusCode).toBe(200);
-      expect(responseJson.podeGravar).toBe(true);
-      expect(responseJson.tipoDetectado).toBe('numerica');
+      expect(responseJson).toHaveProperty('data');
+      expect(responseJson).toHaveProperty('message');
+      expect(responseJson.data.validacao.pode_gravar).toBe(true);
+      expect(responseJson.data.validacao.tipo_detectado).toBe('numerica');
+      expect(responseJson.data.metrica.id_metrica).toBe('tempo_resposta');
     });
 
     it('deve retornar 422 Unprocessable Entity com regraViolada: RN02 para telemetria incompatível', async () => {
       let statusCode = 200;
-      let responseJson: any = null;
+      let responseJson: Record<string, any> = {};
 
       const req = {
         params: { id: '1' },
@@ -223,7 +226,7 @@ describe('Validação Estrita de Tipagem de Métricas (RN02 / RNF04)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseJson = data;
           return this;
         }
@@ -232,7 +235,7 @@ describe('Validação Estrita de Tipagem de Métricas (RN02 / RNF04)', () => {
       await JogoController.validarTelemetria(req, res);
 
       expect(statusCode).toBe(422);
-      expect(responseJson.podeGravar).toBe(false);
+      expect(responseJson.error).toBeDefined();
       expect(responseJson.regraViolada).toContain('RN02');
     });
   });

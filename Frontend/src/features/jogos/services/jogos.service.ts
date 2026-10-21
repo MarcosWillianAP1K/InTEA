@@ -96,7 +96,7 @@ function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
     raw.manifesto_json?.metricas_suportadas ||
     [];
 
-  const metricasSuportadas: MetricaSuportada[] = metricasRaw.map((m: any) => ({
+  const metricasSuportadas: MetricaSuportada[] = metricasRaw.map((m: { id_metrica: string; tipo_metrica?: string; tipo?: string; nome?: string; descricao?: string }) => ({
     id_metrica: m.id_metrica,
     nome: m.nome || m.id_metrica,
     tipo: (m.tipo_metrica || m.tipo) as TipoMetrica,
@@ -138,7 +138,20 @@ export const jogosService = {
           JogosListaRespostaApi | Jogo[]
         >(ENDPOINTS.JOGOS.BASE, { params });
 
-        const lista = Array.isArray(resposta) ? resposta : (resposta.data ?? []);
+        let lista: Jogo[] = [];
+        if (Array.isArray(resposta)) {
+          lista = resposta;
+        } else if ("data" in resposta && resposta.data) {
+          if (Array.isArray(resposta.data)) {
+            lista = resposta.data;
+          } else if (
+            typeof resposta.data === "object" &&
+            "jogos" in (resposta.data as Record<string, unknown>) &&
+            Array.isArray((resposta.data as { jogos?: Jogo[] }).jogos)
+          ) {
+            lista = (resposta.data as { jogos: Jogo[] }).jogos;
+          }
+        }
         let normalizados = lista.map(normalizarJogoSeNecessario);
 
         if (filtros?.busca && filtros.busca.trim()) {
@@ -169,7 +182,9 @@ export const jogosService = {
           ENDPOINTS.JOGOS.BY_ID(id),
         );
         if ("data" in resposta && resposta.data) {
-          return normalizarJogoSeNecessario(resposta.data);
+          const rawData = resposta.data as unknown as { jogo?: Jogo } & Jogo;
+          const jogo = rawData.jogo || rawData;
+          return normalizarJogoSeNecessario(jogo);
         }
         return resposta ? normalizarJogoSeNecessario(resposta as Jogo) : null;
       },
@@ -190,7 +205,8 @@ export const jogosService = {
         >(ENDPOINTS.JOGOS.MANIFESTO(id));
 
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const rawData = resposta.data as unknown as { manifesto?: ManifestoJogo } & ManifestoJogo;
+          return rawData.manifesto || rawData;
         }
         return (resposta as ManifestoJogo) ?? null;
       },

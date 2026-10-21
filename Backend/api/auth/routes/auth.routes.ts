@@ -23,7 +23,7 @@ export const authRoutes = Router();
  *             password: "senhaSegura123"
  *     responses:
  *       200:
- *         description: Login realizado com sucesso (retorna tokens de autenticação)
+ *         description: Login realizado com sucesso (retorna tokens de autenticação sob data.token)
  *         content:
  *           application/json:
  *             example:
@@ -33,18 +33,6 @@ export const authRoutes = Router();
  *                   refresh_token: "v1.bW9ja19yZWZyZXNo..."
  *                   token_type: "Bearer"
  *                   expires_in: 3600
- *                 tokens:
- *                   access_token: "eyJhbGciOiJFUzI1NiIs..."
- *                   refresh_token: "v1.bW9ja19yZWZyZXNo..."
- *                   token_type: "Bearer"
- *                   expires_in: 3600
-
-
-
-
-
-
-
  *               message: "Login realizado com sucesso."
  *       400:
  *         description: E-mail ou senha não informados
@@ -53,11 +41,17 @@ export const authRoutes = Router();
  *             example:
  *               error: "Os campos 'email' e 'password' são obrigatórios."
  *       401:
- *         description: Credenciais incorretas ou conta inativa
+ *         description: Credenciais incorretas
  *         content:
  *           application/json:
  *             example:
  *               error: "Credenciais inválidas. Verifique seu e-mail e senha."
+ *       403:
+ *         description: Conta inativada
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Esta conta de terapeuta encontra-se inativada. Contate o administrador."
  */
 authRoutes.post('/login', AuthController.login);
 
@@ -66,7 +60,7 @@ authRoutes.post('/login', AuthController.login);
  * /api/auth/recuperar-senha:
  *   post:
  *     summary: "[EXEMPLO] Solicita recuperação de senha por e-mail (simulado)"
- *     description: "Endpoint mantido como exemplo ilustrativo para integração futura com serviço de e-mail."
+ *     description: "Endpoint ilustrativo para integração com serviço de e-mail."
  *     tags: [Autenticação]
  *     requestBody:
  *       required: true
@@ -76,12 +70,15 @@ authRoutes.post('/login', AuthController.login);
  *             email: "terapeuta@intea.com.br"
  *     responses:
  *       200:
- *         description: Resposta simulada de exemplo retornada com sucesso
+ *         description: Confirmação da solicitação de recuperação de senha
  *         content:
  *           application/json:
  *             example:
+ *               data:
+ *                 recuperacao:
+ *                   email: "terapeuta@intea.com.br"
+ *                   solicitado: true
  *               message: "[EXEMPLO] Solicitação recebida para o e-mail: terapeuta@intea.com.br. O envio de e-mails será ativado futuramente."
- *               exemplo: true
  *       400:
  *         description: E-mail não informado
  *         content:
@@ -90,12 +87,39 @@ authRoutes.post('/login', AuthController.login);
  *               error: "O campo \"email\" é obrigatório."
  *       500:
  *         description: Erro interno do servidor
+ */
+authRoutes.post('/recuperar-senha', AuthController.recuperarSenha);
+
+/**
+ * @swagger
+ * /api/auth/alterar-senha:
+ *   patch:
+ *     summary: Atualiza a senha de acesso do usuário autenticado
+ *     tags: [Autenticação]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             novaSenha: "novaSenhaSegura123"
+ *     responses:
+ *       200:
+ *         description: Senha de acesso atualizada com sucesso
  *         content:
  *           application/json:
  *             example:
- *               error: "Erro interno ao processar recuperação de senha."
+ *               data: null
+ *               message: "Senha de acesso atualizada com sucesso."
+ *       400:
+ *         description: Senha com menos de 6 caracteres
+ *       401:
+ *         description: Usuário não autenticado
+ *       500:
+ *         description: Erro interno ao alterar senha
  */
-authRoutes.post('/recuperar-senha', AuthController.recuperarSenha);
+authRoutes.patch('/alterar-senha', authMiddleware, AuthController.alterarSenha);
 
 /**
  * @swagger
@@ -107,13 +131,13 @@ authRoutes.post('/recuperar-senha', AuthController.recuperarSenha);
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Dados do perfil e metadados do usuário logado
+ *         description: Dados do perfil e metadados categorizados sob data.user
  *         content:
  *           application/json:
  *             example:
  *               data:
- *                 perfil:
-
+ *                 user:
+ *                   id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
  *                   nome: "Dra. Mariana Costa"
  *                   email: "mariana.costa@intea.com.br"
  *                   telefone: "(11) 98765-4321"
@@ -123,15 +147,16 @@ authRoutes.post('/recuperar-senha', AuthController.recuperarSenha);
  *                   tempo_experiencia_anos: 5
  *                   clinica_id: null
  *                   areas_foco: []
- *                 metadados:
  *                   is_admin: false
+ *                   role: "terapeuta"
+ *                   status_ativo: true
  *                   autenticado: true
  *                   email_confirmado: true
  *                   telefone_confirmado: false
- *                   status_ativo: true
  *                   last_sign_in_at: "2026-10-15T17:33:30.829Z"
  *                   created_at: "2026-09-27T21:41:27.762Z"
  *                   updated_at: "2026-09-27T21:41:27.762Z"
+ *               message: "Dados do perfil do usuário autenticado recuperados com sucesso."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
  *       404:
@@ -139,7 +164,53 @@ authRoutes.post('/recuperar-senha', AuthController.recuperarSenha);
  *       500:
  *         description: Erro interno do servidor
  */
-authRoutes.patch('/alterar-senha', authMiddleware, AuthController.alterarSenha);
 authRoutes.get('/me', authMiddleware, AuthController.me);
+
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Renova access token JWT utilizando refresh_token
+ *     tags: [Autenticação]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             refresh_token: "v1.bW9ja19yZWZyZXNo..."
+ *     responses:
+ *       200:
+ *         description: Token renovado com sucesso sob data.token
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 token:
+ *                   access_token: "eyJhbGciOiJFUzI1NiIs..."
+ *                   refresh_token: "v1.bW9ja19yZWZyZXNo..."
+ *                   token_type: "Bearer"
+ *                   expires_in: 3600
+ *               message: "Token renovado com sucesso."
+ *       400:
+ *         description: refresh_token não informado
+ *       401:
+ *         description: Token inválido ou expirado
+ */
 authRoutes.post('/refresh', AuthController.refresh);
+
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: Encerra a sessão ativa do usuário
+ *     tags: [Autenticação]
+ *     responses:
+ *       200:
+ *         description: Logout realizado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data: null
+ *               message: "Logout realizado com sucesso."
+ */
 authRoutes.post('/logout', AuthController.logout);

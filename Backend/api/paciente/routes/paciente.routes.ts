@@ -271,7 +271,79 @@ pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, Pacien
  *       500:
  *         description: Erro interno no servidor
  */
-pacienteRoutes.get('/:id/historico', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarHistorico);
+/**
+ * Rota 1: Histórico Geral de Engajamento do Paciente (RF15).
+ * Retorna dados limpos e simples de engajamento e catálogo de jogos para cards de perfil.
+ */
+pacienteRoutes.get('/:id/historico', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarHistoricoGeral);
+
+/**
+ * @swagger
+ * /api/paciente/{id}/historico/jogo/{jogoId}:
+ *   get:
+ *     summary: Recupera séries evolutivas de um jogo específico para o paciente (RF15, RN02, RN04, RN05)
+ *     description: Retorna as métricas homologadas do jogo. Se informado sessaoId, limita o histórico até a data da sessão.
+ *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente
+ *       - in: path
+ *         name: jogoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do jogo terapêutico
+ *       - in: query
+ *         name: sessaoId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da sessão de referência para delimitar o histórico até sua conclusão
+ *       - in: query
+ *         name: dataInicio
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: dataFim
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Histórico evolutivo do jogo retornado com sucesso
+ *       400:
+ *         description: Parâmetros inválidos ou sessão não pertencente ao paciente/jogo
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Vínculo clínico não autorizado (RN04)
+ *       404:
+ *         description: Paciente, jogo ou sessão de referência não encontrado
+ *       422:
+ *         description: Violação de tipagem estrita de métricas no manifesto (RN02)
+ *       500:
+ *         description: Erro interno no servidor
+ */
+pacienteRoutes.get('/:id/historico/jogo/:jogoId', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarHistoricoJogo);
 
 // ------------------------------------------------------------------------------
 // 2. Persistência (Criação e Atualização de Pacientes)
@@ -410,6 +482,7 @@ pacienteRoutes.post('/', authMiddleware, PacienteController.criar);
  *               error: "Erro interno ao atualizar paciente."
  */
 pacienteRoutes.put('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.atualizar);
+pacienteRoutes.patch('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.atualizar);
 
 // ------------------------------------------------------------------------------
 // 3. Exclusão e Reativação (Soft Delete e Hard Delete)

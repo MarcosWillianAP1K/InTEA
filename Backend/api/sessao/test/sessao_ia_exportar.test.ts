@@ -379,9 +379,10 @@ describe('Card 2.3 — SessaoExportarService.handlerExportarHttp (Controller Exp
     await SessaoExportarService.handlerExportarHttp(mockReq, mockRes);
 
     expect(getStatus()).toBe(200);
-    const json = getJson() as { data: LaudoClinicoExportavel };
-    expect(json.data).toBeDefined();
-    expect(json.data.cabecalho.codigo_autenticidade).toBe('AUT-123');
+    const json = getJson() as { data: { laudo: LaudoClinicoExportavel }; message: string };
+    expect(json.data.laudo).toBeDefined();
+    expect(json.data.laudo.cabecalho.codigo_autenticidade).toBe('AUT-123');
+    expect(json.message).toBe('Laudo clínico emitido com sucesso para exportação.');
   });
 
   it('deve responder com status de erro quando a validação de regras falhar', async () => {

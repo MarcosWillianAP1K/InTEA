@@ -70,7 +70,8 @@ describe('Feature Sessão - Estrutura e Serviços Base', () => {
 
     expect(getStatus()).toBe(200);
     expect(getJson()).toBeDefined();
-    expect((getJson() as { codigo: string }).codigo).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+    expect((getJson() as any).data.token_pareamento.codigo).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+    expect((getJson() as any).message).toBe('Código de pareamento gerado com sucesso.');
   });
 
   it('deve tentar gerar outro código caso ocorra colisão no banco de dados', async () => {
@@ -96,7 +97,8 @@ describe('Feature Sessão - Estrutura e Serviços Base', () => {
 
     expect(getStatus()).toBe(200);
     expect(chamadas).toBe(2);
-    expect((getJson() as { codigo: string }).codigo).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+    expect((getJson() as any).data.token_pareamento.codigo).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+    expect((getJson() as any).message).toBe('Código de pareamento gerado com sucesso.');
   });
 });
 
@@ -181,7 +183,8 @@ describe('SessaoController.atualizarStatus', () => {
     await SessaoController.atualizarStatus(mockReq, mockRes);
 
     expect(getStatus()).toBe(200);
-    expect((getJson() as { data: { status_sessao: string } }).data.status_sessao).toBe('em_andamento');
+    expect((getJson() as any).data.sessao.status_sessao).toBe('em_andamento');
+    expect((getJson() as any).message).toBe('Status da sessão atualizado com sucesso.');
   });
 });
 
@@ -360,7 +363,10 @@ describe('SessaoController.iniciar', () => {
 
     expect(getStatus()).toBe(201);
     expect(terapeutaIdRecebidoPeloModel).toBe(TERAPEUTA_UUID);
-    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('123e4567-e89b-12d3-a456-426614174000');
+    const json = getJson() as any;
+    expect(json.data.sessao.id).toBe('123e4567-e89b-12d3-a456-426614174000');
+    expect(json.data.token_pareamento.token).toBe('4M5S-8U7B');
+    expect(json.message).toBe('Sessão iniciada com sucesso.');
   });
 
   it('deve permitir iniciar sessão quando terapeuta_id no body for idêntico ao do token', async () => {
@@ -393,7 +399,9 @@ describe('SessaoController.iniciar', () => {
     SessaoModel.criar = originalCriar;
 
     expect(getStatus()).toBe(201);
-    expect((getJson() as { data: { session_id: string } }).data.session_id).toBe('123e4567-e89b-12d3-a456-426614174001');
+    expect((getJson() as any).data.sessao.id).toBe('123e4567-e89b-12d3-a456-426614174001');
+    expect((getJson() as any).data.token_pareamento.token).toBe('4M5S-8U7B');
+    expect((getJson() as any).message).toBe('Sessão iniciada com sucesso.');
   });
 
   it('verificarVisibilidadePaciente deve permitir modo_livre sem paciente_id (RN01)', async () => {
@@ -521,7 +529,7 @@ describe('SessaoController.finalizar', () => {
     SessaoModel.finalizarSessao = originalFinalizar;
 
     expect(getStatus()).toBe(200);
-    expect((getJson() as { data: { data_hora_fim: string } }).data.data_hora_fim).toBe(agora);
+    expect((getJson() as any).data.sessao.data_hora_fim).toBe(agora);
   });
 
   it('deve finalizar sessão clínica, sintetizar relatório no formato Contrato 4 e chamar persistência', async () => {
@@ -571,7 +579,7 @@ describe('SessaoController.finalizar', () => {
 
     expect(getStatus()).toBe(200);
     const resposta = getJson() as any;
-    expect(resposta.data.status_sessao).toBe('finalizada');
+    expect(resposta.data.sessao.status_sessao).toBe('finalizada');
     expect(resposta.data.relatorio).toBeDefined();
     expect(resposta.data.relatorio.token_sessao).toBe('4M5S-8U7B');
     expect(resposta.data.relatorio.duracao_segundos).toBeGreaterThanOrEqual(1199);
@@ -630,7 +638,7 @@ describe('SessaoController.finalizar', () => {
 
     expect(getStatus()).toBe(200);
     const resposta = getJson() as any;
-    expect(resposta.data.relatorio).toBeUndefined();
+    expect(resposta.data.relatorio).toBeNull();
     expect(relatorioChamado).toBe(false);
   });
 });
@@ -656,7 +664,7 @@ describe('SessaoController.buscarPorToken', () => {
     SessaoModel.buscarPorToken = originalBuscar;
 
     expect(getStatus()).toBe(200);
-    expect((getJson() as { data: { session_token: string } }).data.session_token).toBe('4M5S-8U7B');
+    expect((getJson() as any).data.sessao.session_token).toBe('4M5S-8U7B');
   });
 
   it('deve retornar 404 quando o token não for encontrado', async () => {
@@ -926,7 +934,8 @@ describe('SessaoTokenService — Geração e Validação de Token', () => {
       expect(getStatus()).toBe(200);
       expect(filtrosRecebidos.terapeutaId).toBe('terapeuta-123');
       expect(filtrosRecebidos.status).toBe('concluida');
-      expect((getJson() as any).data.length).toBe(1);
+      expect((getJson() as any).data.sessoes.length).toBe(1);
+      expect((getJson() as any).message).toBe('Sessões listadas com sucesso.');
     });
 
     it('deve permitir listar todas as sessões quando super admin enviar all=true', async () => {
@@ -972,10 +981,11 @@ describe('SessaoTokenService — Geração e Validação de Token', () => {
       expect(filtrosRecebidos.page).toBe(2);
       expect(filtrosRecebidos.limit).toBe(15);
       const json = getJson() as any;
-      expect(json.meta.total).toBe(45);
-      expect(json.meta.page).toBe(2);
-      expect(json.meta.limit).toBe(15);
-      expect(json.meta.totalPages).toBe(5);
+      expect(json.data.meta.total).toBe(45);
+      expect(json.data.meta.page).toBe(2);
+      expect(json.data.meta.limit).toBe(15);
+      expect(json.data.meta.totalPages).toBe(5);
+      expect(json.message).toBe('Sessões listadas com sucesso.');
     });
 
     it('deve normalizar valores inválidos de paginação para limites seguros', async () => {

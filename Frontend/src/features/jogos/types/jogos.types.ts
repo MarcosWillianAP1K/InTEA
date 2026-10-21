@@ -89,18 +89,32 @@ export interface JogoFiltroDTO {
 export type FiltrosJogos = JogoFiltroDTO;
 
 export interface JogoRespostaApi {
-  data: Jogo;
+  data: {
+    jogo: Jogo;
+    manifesto?: ManifestoJogo;
+  } | Jogo;
   message?: string;
 }
 
 export interface JogosListaRespostaApi {
-  data: Jogo[];
+  data: {
+    jogos: Jogo[];
+    meta?: {
+      total: number;
+      pagina: number;
+      limite: number;
+      total_paginas: number;
+    };
+  } | Jogo[];
   total?: number;
   page?: number;
   totalPages?: number;
+  message?: string;
 }
 
 export interface ManifestoRespostaApi {
-  data: ManifestoJogo;
+  data: {
+    manifesto: ManifestoJogo;
+  } | ManifestoJogo;
   message?: string;
 }

@@ -79,6 +79,8 @@ export const ENDPOINTS = {
     PACIENTE_REATIVAR: "/paciente/:id/reativar",
     PACIENTE_TERAPEUTAS: "/paciente/:id/terapeutas",
     PACIENTE_TERAPEUTA_ID: "/paciente/:id/terapeutas/:terapeutaId",
+    PACIENTE_HISTORICO: "/paciente/:id/historico",
+    PACIENTE_HISTORICO_JOGO: "/paciente/:id/historico/jogo/:jogoId",
     JOGOS_BASE: "/jogos",
     JOGOS_BY_ID: "/jogos/:id",
     JOGOS_MANIFESTO: "/jogos/:id/manifesto",

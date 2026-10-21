@@ -37,8 +37,8 @@ describe('Catálogo de Jogos (RF09)', () => {
   });
 
   describe('JogoController', () => {
-    it('listar: deve responder com status 200 e payload no formato { data: [...] }', async () => {
-      let responseData: any = null;
+    it('listar: deve responder com status 200 e envelope categorizado { data: { jogos: [...], meta: {...} }, message }', async () => {
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = { query: {} } as unknown as Request;
@@ -47,7 +47,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -57,12 +57,18 @@ describe('Catálogo de Jogos (RF09)', () => {
 
       expect(statusCode).toBe(200);
       expect(responseData).toHaveProperty('data');
-      expect(Array.isArray(responseData.data)).toBe(true);
-      expect(responseData.data.length).toBeGreaterThanOrEqual(3);
+      expect(responseData).toHaveProperty('message');
+      expect(responseData.data).toHaveProperty('jogos');
+      expect(Array.isArray(responseData.data.jogos)).toBe(true);
+      expect(responseData.data.jogos.length).toBeGreaterThanOrEqual(3);
+      expect(responseData.data).toHaveProperty('meta');
+      expect(responseData.data.meta).toHaveProperty('total');
+      expect(responseData.data.meta).toHaveProperty('pagina');
+      expect(responseData.data.meta).toHaveProperty('limite');
     });
 
-    it('buscarPorId: deve retornar 200 com payload unificado e validação do manifesto', async () => {
-      let responseData: any = null;
+    it('buscarPorId: deve retornar 200 com envelope categorizado { data: { jogo: {...}, manifesto: {...} }, message }', async () => {
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -74,7 +80,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -84,19 +90,22 @@ describe('Catálogo de Jogos (RF09)', () => {
 
       expect(statusCode).toBe(200);
       expect(responseData).toHaveProperty('data');
-      expect(responseData.data.id).toBe(1);
-      expect(responseData.data.nome).toBe('Aventura das Cores');
-      expect(responseData.data.descricao).toBeDefined();
-      expect(responseData.data.versao).toBe('1.2.0');
-      expect(responseData.data.id_jogo).toBe('aventura-das-cores');
-      expect(Array.isArray(responseData.data.metricas_suportadas)).toBe(true);
-      expect(responseData).toHaveProperty('validacao');
-      expect(responseData.validacao.valido).toBe(true);
-      expect(responseData.validacao.erros).toHaveLength(0);
+      expect(responseData).toHaveProperty('message');
+      expect(responseData.data).toHaveProperty('jogo');
+      expect(responseData.data).toHaveProperty('manifesto');
+      expect(responseData.data.jogo.id).toBe(1);
+      expect(responseData.data.jogo.nome).toBe('Aventura das Cores');
+      expect(responseData.data.jogo.descricao).toBeDefined();
+      expect(responseData.data.jogo.versao).toBe('1.2.0');
+      expect(responseData.data.jogo.id_jogo).toBe('aventura-das-cores');
+      expect(responseData.data.jogo.status_jogo).toBe('ativo');
+      expect(Array.isArray(responseData.data.manifesto.metricas_suportadas)).toBe(true);
+      expect(responseData.data.manifesto.validacao.valido).toBe(true);
+      expect(responseData.data.manifesto.validacao.erros).toHaveLength(0);
     });
 
     it('buscarPorId: deve responder 404 quando o jogo não for encontrado', async () => {
-      let responseData: any = null;
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -108,7 +117,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -120,8 +129,8 @@ describe('Catálogo de Jogos (RF09)', () => {
       expect(responseData).toHaveProperty('error', 'Jogo não encontrado');
     });
 
-    it('cadastrar: deve cadastrar jogo com sucesso, gerando id_jogo slug e retornando 201', async () => {
-      let responseData: any = null;
+    it('cadastrar: deve cadastrar jogo com sucesso, gerando id_jogo slug e retornando 201 no envelope categorizado', async () => {
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -145,7 +154,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -154,20 +163,21 @@ describe('Catálogo de Jogos (RF09)', () => {
       await JogoController.cadastrar(mockReq, mockRes);
 
       expect(statusCode).toBe(201);
-      expect(responseData).toHaveProperty('message', 'Jogo cadastrado com sucesso');
+      expect(responseData).toHaveProperty('message', 'Jogo cadastrado com sucesso.');
       expect(responseData.data).toBeDefined();
-      expect(responseData.data.id).toBeDefined();
-      expect(responseData.data.id_jogo).toBe('super-memoria-musical');
-      expect(responseData.data.nome).toBe('Super Memória Musical');
-      expect(responseData.data.descricao).toBe('Estimula memória de trabalho e discriminação auditiva.');
-      expect(responseData.data.versao).toBe('1.0.0');
-      expect(responseData.data.objetivo_clinico).toBe('desenvolvimento_linguagem');
-      expect(responseData.data.metricas_suportadas).toHaveLength(1);
-      expect(responseData.validacao.valido).toBe(true);
+      expect(responseData.data.jogo).toBeDefined();
+      expect(responseData.data.jogo.id).toBeDefined();
+      expect(responseData.data.jogo.id_jogo).toBe('super-memoria-musical');
+      expect(responseData.data.jogo.nome).toBe('Super Memória Musical');
+      expect(responseData.data.jogo.descricao).toBe('Estimula memória de trabalho e discriminação auditiva.');
+      expect(responseData.data.jogo.versao).toBe('1.0.0');
+      expect(responseData.data.manifesto.objetivo_clinico).toBe('desenvolvimento_linguagem');
+      expect(responseData.data.manifesto.metricas_suportadas).toHaveLength(1);
+      expect(responseData.data.manifesto.validacao.valido).toBe(true);
     });
 
     it('cadastrar: deve rejeitar com 400 quando faltar campo obrigatório', async () => {
-      let responseData: any = null;
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -182,7 +192,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -194,8 +204,8 @@ describe('Catálogo de Jogos (RF09)', () => {
       expect(responseData).toHaveProperty('error');
     });
 
-    it('cadastrar: deve rejeitar com 400 se métricas forem inválidas', async () => {
-      let responseData: any = null;
+    it('cadastrar: deve rejeitar com 400 se métricas forem inválidas por falta de itens', async () => {
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -212,7 +222,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -225,8 +235,41 @@ describe('Catálogo de Jogos (RF09)', () => {
       expect(responseData.erros).toBeDefined();
     });
 
+    it('cadastrar: deve rejeitar com 422 se métricas violarem a tipagem estrita RN02', async () => {
+      let responseData: Record<string, any> = {};
+      let statusCode = 200;
+
+      const mockReq = {
+        body: {
+          nome: 'Jogo RN02 Falho',
+          descricao: 'Descrição',
+          versao: '1.0.0',
+          metricas_suportadas: [
+            { id_metrica: 'sem_tipo' }
+          ]
+        }
+      } as unknown as Request;
+
+      const mockRes = {
+        status(code: number) {
+          statusCode = code;
+          return this;
+        },
+        json(data: Record<string, any>) {
+          responseData = data;
+          return this;
+        }
+      } as unknown as Response;
+
+      await JogoController.cadastrar(mockReq, mockRes);
+
+      expect(statusCode).toBe(422);
+      expect(responseData.error).toContain('RN02');
+      expect(responseData.regraViolada).toBe('RN02 - Fallback de Métrica Proibido');
+    });
+
     it('atualizar: deve atualizar status operacional do jogo com sucesso', async () => {
-      let responseData: any = null;
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -242,7 +285,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -251,12 +294,13 @@ describe('Catálogo de Jogos (RF09)', () => {
       await JogoController.atualizar(mockReq, mockRes);
 
       expect(statusCode).toBe(200);
-      expect(responseData.data.status).toBe('manutencao');
-      expect(responseData.data.descricao).toBe('Em manutenção para correção de bugs');
+      expect(responseData.data.jogo.status_jogo).toBe('manutencao');
+      expect(responseData.data.jogo.descricao).toBe('Em manutenção para correção de bugs');
+      expect(responseData.message).toBe('Jogo atualizado com sucesso.');
     });
 
     it('atualizar: deve rejeitar status inválido com 400', async () => {
-      let responseData: any = null;
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -271,7 +315,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -284,7 +328,7 @@ describe('Catálogo de Jogos (RF09)', () => {
     });
 
     it('atualizar: deve responder 404 se jogo não existir', async () => {
-      let responseData: any = null;
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -297,7 +341,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -309,8 +353,8 @@ describe('Catálogo de Jogos (RF09)', () => {
       expect(responseData.error).toBe('Jogo não encontrado');
     });
 
-    it('excluir: deve excluir jogo existente com sucesso retornando 200', async () => {
-      let responseData: any = null;
+    it('excluir: deve excluir jogo existente com sucesso retornando 200 e payload categorizado', async () => {
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       // Primeiro cadastramos um jogo para deletar
@@ -338,7 +382,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -347,8 +391,8 @@ describe('Catálogo de Jogos (RF09)', () => {
       await JogoController.excluir(mockReq, mockRes);
 
       expect(statusCode).toBe(200);
-      expect(responseData.message).toBe('Jogo excluído com sucesso');
-      expect(responseData.id).toBe(String(jogoCriado.id));
+      expect(responseData.message).toBe('Jogo excluído com sucesso.');
+      expect(responseData.data.jogo.id).toBe(String(jogoCriado.id));
 
       // Verifica se realmente foi removido
       const conferir = await JogoModel.buscarPorId(jogoCriado.id);
@@ -356,7 +400,7 @@ describe('Catálogo de Jogos (RF09)', () => {
     });
 
     it('excluir: deve responder 404 quando o jogo não existe', async () => {
-      let responseData: any = null;
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -368,7 +412,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -381,7 +425,7 @@ describe('Catálogo de Jogos (RF09)', () => {
     });
 
     it('buscarPorId: deve encontrar jogo buscando pelo slug técnico (id_jogo)', async () => {
-      let responseData: any = null;
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -393,7 +437,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -403,9 +447,10 @@ describe('Catálogo de Jogos (RF09)', () => {
 
       expect(statusCode).toBe(200);
       expect(responseData.data).toBeDefined();
-      expect(responseData.data.id_jogo).toBe('aventura-das-cores');
-      expect(responseData.data.nome).toBe('Aventura das Cores');
-      expect(responseData.data.status).toBeDefined();
+      expect(responseData.data.jogo.id_jogo).toBe('aventura-das-cores');
+      expect(responseData.data.jogo.nome).toBe('Aventura das Cores');
+      expect(responseData.data.jogo.status_jogo).toBeDefined();
+      expect(responseData.data.manifesto).toBeDefined();
     });
 
     it('gerarSlug: deve sanitizar caracteres especiais, acentos e converter espaços em hífens', () => {
@@ -414,7 +459,7 @@ describe('Catálogo de Jogos (RF09)', () => {
     });
 
     it('listar: deve rejeitar com 400 se o filtro status for inválido', async () => {
-      let responseData: any = null;
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -426,7 +471,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -439,7 +484,7 @@ describe('Catálogo de Jogos (RF09)', () => {
     });
 
     it('cadastrar: deve rejeitar com 409 Conflito se já existir jogo com o mesmo slug', async () => {
-      let responseData: any = null;
+      let responseData: Record<string, any> = {};
       let statusCode = 200;
 
       const mockReq = {
@@ -459,7 +504,7 @@ describe('Catálogo de Jogos (RF09)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseData = data;
           return this;
         }
@@ -474,46 +519,49 @@ describe('Catálogo de Jogos (RF09)', () => {
 
   describe('Middlewares de Segurança e Autorização (jogosRoutes)', () => {
     it('deve vincular authMiddleware e adminMiddleware nas rotas mutáveis do CRUD e authMiddleware nas de consulta', () => {
-      const rotasRegistradas = (jogosRoutes as any).stack
-        .filter((layer: any) => layer.route)
-        .map((layer: any) => ({
-          path: layer.route.path,
-          methods: Object.keys(layer.route.methods),
-          stackLength: layer.route.stack.length,
-          stackNames: layer.route.stack.map((s: any) => s.name)
-        }));
+      const rotasRegistradas = (jogosRoutes as unknown as { stack: Array<{ route?: { path: string; methods: Record<string, boolean>; stack: Array<{ name: string }> } }> }).stack
+        .filter((layer) => Boolean(layer.route))
+        .map((layer) => {
+          const route = layer.route!;
+          return {
+            path: route.path,
+            methods: Object.keys(route.methods),
+            stackLength: route.stack.length,
+            stackNames: route.stack.map((s) => s.name)
+          };
+        });
 
       // Rota de listagem não deve exigir adminMiddleware
-      const rotaListar = rotasRegistradas.find((r: any) => r.path === '/' && r.methods.includes('get'));
+      const rotaListar = rotasRegistradas.find((r) => r.path === '/' && r.methods.includes('get'));
       expect(rotaListar).toBeDefined();
-      expect(rotaListar.stackNames).not.toContain('adminMiddleware');
+      expect(rotaListar?.stackNames).not.toContain('adminMiddleware');
 
       // Rota de consulta individual (GET /:id) deve ter authMiddleware
-      const rotaBuscarId = rotasRegistradas.find((r: any) => r.path === '/:id' && r.methods.includes('get'));
+      const rotaBuscarId = rotasRegistradas.find((r) => r.path === '/:id' && r.methods.includes('get'));
       expect(rotaBuscarId).toBeDefined();
-      expect(rotaBuscarId.stackNames).toContain('authMiddleware');
-      expect(rotaBuscarId.stackNames).not.toContain('adminMiddleware');
+      expect(rotaBuscarId?.stackNames).toContain('authMiddleware');
+      expect(rotaBuscarId?.stackNames).not.toContain('adminMiddleware');
 
       // Rotas de criação, atualização e exclusão física devem ter authMiddleware e adminMiddleware
-      const rotaCadastrar = rotasRegistradas.find((r: any) => r.path === '/' && r.methods.includes('post'));
+      const rotaCadastrar = rotasRegistradas.find((r) => r.path === '/' && r.methods.includes('post'));
       expect(rotaCadastrar).toBeDefined();
-      expect(rotaCadastrar.stackNames).toContain('authMiddleware');
-      expect(rotaCadastrar.stackNames).toContain('adminMiddleware');
+      expect(rotaCadastrar?.stackNames).toContain('authMiddleware');
+      expect(rotaCadastrar?.stackNames).toContain('adminMiddleware');
 
-      const rotaAtualizarPatch = rotasRegistradas.find((r: any) => r.path === '/:id' && r.methods.includes('patch'));
+      const rotaAtualizarPatch = rotasRegistradas.find((r) => r.path === '/:id' && r.methods.includes('patch'));
       expect(rotaAtualizarPatch).toBeDefined();
-      expect(rotaAtualizarPatch.stackNames).toContain('authMiddleware');
-      expect(rotaAtualizarPatch.stackNames).toContain('adminMiddleware');
+      expect(rotaAtualizarPatch?.stackNames).toContain('authMiddleware');
+      expect(rotaAtualizarPatch?.stackNames).toContain('adminMiddleware');
 
-      const rotaAtualizarPut = rotasRegistradas.find((r: any) => r.path === '/:id' && r.methods.includes('put'));
+      const rotaAtualizarPut = rotasRegistradas.find((r) => r.path === '/:id' && r.methods.includes('put'));
       expect(rotaAtualizarPut).toBeDefined();
-      expect(rotaAtualizarPut.stackNames).toContain('authMiddleware');
-      expect(rotaAtualizarPut.stackNames).toContain('adminMiddleware');
+      expect(rotaAtualizarPut?.stackNames).toContain('authMiddleware');
+      expect(rotaAtualizarPut?.stackNames).toContain('adminMiddleware');
 
-      const rotaExcluir = rotasRegistradas.find((r: any) => r.path === '/:id' && r.methods.includes('delete'));
+      const rotaExcluir = rotasRegistradas.find((r) => r.path === '/:id' && r.methods.includes('delete'));
       expect(rotaExcluir).toBeDefined();
-      expect(rotaExcluir.stackNames).toContain('authMiddleware');
-      expect(rotaExcluir.stackNames).toContain('adminMiddleware');
+      expect(rotaExcluir?.stackNames).toContain('authMiddleware');
+      expect(rotaExcluir?.stackNames).toContain('adminMiddleware');
     });
   });
 });

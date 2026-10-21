@@ -48,8 +48,8 @@ export const useAuthStore = create<AuthStoreState>()(
         set({ loading: true, error: null });
         try {
           const resposta = await authService.login(payload);
-          let usuario = resposta.data?.user || resposta.user || null;
-          const tokens = resposta.data?.token || resposta.data?.tokens || resposta.token || resposta.tokens || null;
+          let usuario = resposta.data?.user || null;
+          const tokens = resposta.data?.token || null;
 
           if (!usuario && tokens?.access_token) {
             try {

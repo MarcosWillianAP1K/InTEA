@@ -150,7 +150,8 @@ export class JogoModel {
 
   private static isSupabaseAvailable(): boolean {
     if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
-      const isMock = typeof supabase?.from === 'function' && Boolean((supabase.from as any)._isMockFunction || (supabase.from as any).mock);
+      const fromObj = supabase?.from as unknown as { _isMockFunction?: boolean; mock?: unknown };
+      const isMock = typeof supabase?.from === 'function' && Boolean(fromObj?._isMockFunction || fromObj?.mock);
       return isMock;
     }
     const url = process.env.SUPABASE_URL;
@@ -196,8 +197,7 @@ export class JogoModel {
               nome: j.nome,
               descricao: j.descricao,
               versao: j.versao,
-              status_jogo: (j.status_jogo as StatusJogo) ?? 'ativo',
-              status: (j.status_jogo as StatusJogo) ?? 'ativo'
+              status_jogo: (j.status_jogo as StatusJogo) ?? 'ativo'
             })),
             total,
             page,
@@ -205,7 +205,7 @@ export class JogoModel {
             totalPages: Math.ceil(total / limit)
           };
         }
-      } catch (err) {
+      } catch {
         console.warn('[JogoModel] Falha ao consultar Supabase, utilizando dados locais de fallback.');
       }
     }
@@ -234,8 +234,7 @@ export class JogoModel {
         nome: j.nome,
         descricao: j.descricao,
         versao: j.versao,
-        status_jogo: j.status_jogo ?? 'ativo',
-        status: j.status_jogo ?? 'ativo'
+        status_jogo: j.status_jogo ?? 'ativo'
       })),
       total,
       page,
@@ -270,7 +269,7 @@ export class JogoModel {
         if (!error) {
           return data ? (data as Jogo) : undefined;
         }
-      } catch (err) {
+      } catch {
         console.warn('[JogoModel] Falha ao consultar Supabase por ID, consultando dados locais.');
       }
     }
@@ -309,8 +308,8 @@ export class JogoModel {
           console.error('[JogoModel] Erro ao inserir jogo no Supabase:', error);
           throw new Error(error.message);
         }
-      } catch (err: any) {
-        console.warn('[JogoModel] Falha ao persistir no Supabase, salvando em memória fallback:', err?.message);
+      } catch (err: unknown) {
+        console.warn('[JogoModel] Falha ao persistir no Supabase, salvando em memória fallback:', err instanceof Error ? err.message : String(err));
       }
     }
 
@@ -339,7 +338,7 @@ export class JogoModel {
   static async atualizar(id: number | string, input: AtualizarJogoInput): Promise<Jogo | null> {
     if (this.isSupabaseAvailable()) {
       try {
-        const payloadParaAtualizar: Record<string, any> = {
+        const payloadParaAtualizar: Record<string, unknown> = {
           updated_at: new Date().toISOString()
         };
 
@@ -359,8 +358,8 @@ export class JogoModel {
         if (!error && data) {
           return data as Jogo;
         }
-      } catch (err: any) {
-        console.warn('[JogoModel] Falha ao atualizar no Supabase, atualizando localmente:', err?.message);
+      } catch (err: unknown) {
+        console.warn('[JogoModel] Falha ao atualizar no Supabase, atualizando localmente:', err instanceof Error ? err.message : String(err));
       }
     }
 
@@ -408,8 +407,8 @@ export class JogoModel {
           return { sucesso: false, motivo: error.message };
         }
         return { sucesso: true };
-      } catch (err: any) {
-        return { sucesso: false, motivo: err?.message };
+      } catch (err: unknown) {
+        return { sucesso: false, motivo: err instanceof Error ? err.message : String(err) };
       }
     }
 

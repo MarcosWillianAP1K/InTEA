@@ -75,10 +75,10 @@ export const authService = {
           expires_in?: number;
         };
         const dataObj = resposta.data as unknown as RawData | undefined;
-        let tokens: AuthTokens | undefined = dataObj?.token || dataObj?.tokens || resposta.token || resposta.tokens;
+        let token: AuthTokens | undefined = dataObj?.token || dataObj?.tokens;
 
-        if (!tokens && dataObj?.access_token) {
-          tokens = {
+        if (!token && dataObj?.access_token) {
+          token = {
             access_token: dataObj.access_token,
             refresh_token: dataObj.refresh_token ?? null,
             token_type: dataObj.token_type || "Bearer",
@@ -86,31 +86,17 @@ export const authService = {
           };
         }
 
-        const user: UsuarioAutenticado | undefined = dataObj?.user || resposta.user;
-
-        if (tokens) {
-          salvarTokens(tokens);
+        if (token) {
+          salvarTokens(token);
         }
 
-        if (dataObj?.token || dataObj?.tokens) {
-          return resposta;
-        }
-
-        return {
-          ...resposta,
-          data: {
-            ...resposta.data,
-            user: user as UsuarioAutenticado,
-            tokens: tokens as AuthTokens,
-            token: tokens as AuthTokens,
-          },
-        };
+        return resposta;
       },
       async () => {
         const respostaMock = await loginMock(payload);
-        const tokens = respostaMock.data?.tokens || respostaMock.tokens;
-        if (tokens) {
-          salvarTokens(tokens);
+        const token = respostaMock.data?.token;
+        if (token) {
+          salvarTokens(token);
         }
         return respostaMock;
       },

@@ -13,7 +13,7 @@
    - [3.1 Stack Tecnológica](#31-stack-tecnológica)
    - [3.2 Estrutura de Diretórios](#32-estrutura-de-diretórios)
    - [3.3 Padrão de Arquitetura: Clean MVC + Gateway WebSocket](#33-padrão-de-arquitetura-clean-mvc--gateway-websocket)
-   - [3.4 Padronização de Payloads REST: Categorização Semântica Estrita e Responsabilidade Única (Envelope Pattern)](#34-padronização-de-payloads-rest-categorização-semântica-estrita-e-responsabilidade-única-envelope-pattern)
+   - [3.4 Padronização de Payloads REST: Sanitização, Categorização Semântica e Responsabilidade Única (Envelope Pattern)](#34-padronização-de-payloads-rest-sanitização-categorização-semântica-e-responsabilidade-única-envelope-pattern)
 4. [Front-end (Frontend) — Arquitetura Completa](#4-front-end-frontend--arquitetura-completa)
    - [4.1 Stack Tecnológica](#41-stack-tecnológica)
    - [4.2 Estrutura de Diretórios (Arquitetura Orientada a Features — `src/features/`)](#42-estrutura-de-diretórios-arquitetura-orientada-a-features--srcfeatures)
@@ -193,17 +193,21 @@ flowchart TD
 | **Model (`models/`)** | Executa consultas ao Supabase, garante `status_ativo = true` nas listagens e aplica Soft Delete (**RN05**). | Não conhece regras de transporte HTTP. |
 | **WebSocket Gateway (`core/websocket/`)** | Gerencia salas por `session_token`, retransmite telemetria em baixa latência, encaminha comandos clínicos (`pausar`, `retomar`, `ajustar_dda`, `encerrar`) e controla reconexão (60s). | Não bloqueia o event loop com relatórios síncronos a cada pacote. |
 
-### 3.4 Padronização de Payloads REST: Categorização Semântica Estrita e Responsabilidade Única (Envelope Pattern)
+### 3.4 Padronização de Payloads REST: Sanitização, Categorização Semântica e Responsabilidade Única (Envelope Pattern)
 
-A API REST do InTEA adota o **Envelope Pattern com Agrupamento Semântico por Domínio**. Toda resposta HTTP da API segue regras invioláveis de higiene, encapsulamento e responsabilidade única:
+A API REST do InTEA adota o **Envelope Pattern com Agrupamento Semântico e Sanitização Estrita**. Toda resposta HTTP da API segue regras invioláveis de higiene, encapsulamento e responsabilidade única:
 
-#### 1. Princípio da Responsabilidade Única de Retorno (Zero Poluição e Zero Vazamento)
-* **Somente e Estritamente o que a Rota Indica:** Uma rota DEVE retornar exclusivamente os dados pertinentes ao seu escopo declarado.
-  - Exemplo 1 (`POST /api/auth/login`): Sua responsabilidade é estritamente autenticar credenciais e emitir tokens. O retorno contém **apenas os tokens** (`data.token.access_token`, etc.), sendo **terminantemente proibido retornar dados do usuário**, que pertencem ao endpoint de perfil (`GET /api/auth/me`).
+#### 1. Princípio da Responsabilidade Única e Sanitização Estrita ("Nada mais, nada menos")
+* **Retorno Estrito ao Escopo da Rota:** Uma rota DEVE retornar **somente e exclusivamente o que o seu contrato indica — nada mais, nada menos**. É terminantemente proibido devolver campos ou entidades periféricas que não foram explicitamente solicitadas.
+  - Exemplo 1 (`POST /api/auth/login`): Sua responsabilidade é estritamente autenticar credenciais e emitir tokens criptográficos. O retorno contém **apenas os tokens** (`data.token.access_token`, etc.), sendo **terminantemente proibido anexar dados de perfil do usuário** (dados de perfil pertencem com exclusividade a `GET /api/auth/me`).
   - Exemplo 2 (`POST /api/anotacao`): Retorna unicamente a anotação registrada e seus metadados, nunca prontuários completos de pacientes ou listas de terceiros.
+* **Sanitização Ativa e Expurgo de Dados:**
+  - **Zero Vazamento de Infraestrutura ou Segurança:** É expressamente proibido vazar chaves de API (`SUPABASE_SERVICE_ROLE_KEY`), hashes de senha de terapeutas, tokens internos de banco ou colunas de auditoria restritas.
+  - **Zero Dados Desnecessários ou Redundantes:** Devolver apenas os campos úteis para a tela. Proibido retornar colunas nulas obsoletas, dados técnicos de log ou chaves duplicadas.
 * **Proibição de Chaves Redundantes ou Espalhadas na Raiz:** É terminantemente proibido jogar atributos primitivos soltos no primeiro nível de `data` (ex.: colocar `access_token`, `nome`, `telefone` soltos ao lado de outros objetos). Todas as propriedades devem pertencer à chave de sua respectiva categoria/entidade.
 
-#### 2. Estrutura Canônica do Envelope de Sucesso
+#### 2. Organização dos Dados por Categoria / Nome (Envelope Pattern)
+O payload de resposta NUNCA deve ser plano (*flat*). Os dados retornados dentro de `data` devem ser estruturados e agrupados por categoria/nome de entidade:
 
 ```json
 {

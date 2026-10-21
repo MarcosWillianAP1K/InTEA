@@ -4,7 +4,7 @@
 // Cobertura:
 // 1. AuditoriaModel: inserção de evento imutável, validação de campos e consulta
 // 2. AuditoriaService: validação de UUID, tratamento silencioso e regras de acesso RN04
-// 3. AuditoriaController: códigos de status HTTP (200, 400, 403, 404, 500)
+// 3. AuditoriaController: Envelope Pattern Categorizado, sanitização estrita, GET e POST
 // 4. auditoriaRoutes: integridade do roteador Express
 // ==============================================================================
 
@@ -25,7 +25,7 @@ function criarMocks(
   let statusCode = 200;
   let jsonResult: unknown = null;
 
-  const mockReq = { body, params, query, user, headers: {} } as unknown as import('express').Request;
+  const mockReq = { body, params, query, user, headers: {}, socket: { remoteAddress: '127.0.0.1' } } as unknown as import('express').Request;
   const mockRes = {
     status(code: number) {
       statusCode = code;
@@ -60,6 +60,9 @@ describe('Feature Auditoria — Rotas e Estrutura', () => {
 
   it('deve expor métodos estáticos no AuditoriaController', () => {
     expect(typeof AuditoriaController.consultarLinhaDoTempo).toBe('function');
+    expect(typeof AuditoriaController.registrarEvento).toBe('function');
+    expect(typeof AuditoriaController.sanitizarEvento).toBe('function');
+    expect(typeof AuditoriaController.sanitizarDetalhesJson).toBe('function');
   });
 });
 
@@ -109,7 +112,7 @@ describe('AuditoriaModel — Operações com Banco de Dados', () => {
     const singleMock = vi.fn().mockResolvedValue({ data: mockRetorno, error: null });
     const selectMock = vi.fn().mockReturnValue({ single: singleMock });
     const insertMock = vi.fn().mockReturnValue({ select: selectMock });
-    vi.spyOn(supabase, 'from').mockReturnValue({ insert: insertMock } as any);
+    vi.spyOn(supabase, 'from').mockReturnValue({ insert: insertMock } as unknown as ReturnType<typeof supabase.from>);
 
     const resultado = await AuditoriaModel.registrar({
       sessao_id: sessaoIdValido,
@@ -129,7 +132,7 @@ describe('AuditoriaModel — Operações com Banco de Dados', () => {
     const singleMock = vi.fn().mockResolvedValue({ data: null, error: { message: 'DB Error' } });
     const selectMock = vi.fn().mockReturnValue({ single: singleMock });
     const insertMock = vi.fn().mockReturnValue({ select: selectMock });
-    vi.spyOn(supabase, 'from').mockReturnValue({ insert: insertMock } as any);
+    vi.spyOn(supabase, 'from').mockReturnValue({ insert: insertMock } as unknown as ReturnType<typeof supabase.from>);
 
     const resultado = await AuditoriaModel.registrar({
       sessao_id: sessaoIdValido,
@@ -169,7 +172,7 @@ describe('AuditoriaModel — Operações com Banco de Dados', () => {
     const orderMock = vi.fn().mockResolvedValue({ data: mockEventos, error: null });
     const eqMock = vi.fn().mockReturnValue({ order: orderMock });
     const selectMock = vi.fn().mockReturnValue({ eq: eqMock });
-    vi.spyOn(supabase, 'from').mockReturnValue({ select: selectMock } as any);
+    vi.spyOn(supabase, 'from').mockReturnValue({ select: selectMock } as unknown as ReturnType<typeof supabase.from>);
 
     const resultado = await AuditoriaModel.buscarPorSessaoId(sessaoIdValido);
 
@@ -339,13 +342,64 @@ describe('AuditoriaService — Regras de Negócio e Segurança', () => {
         };
       }
       return {};
-    }) as any);
+    }) as unknown as typeof supabase.from);
 
     const res = await AuditoriaService.validarAcessoLinhaDoTempo(sessaoIdValido, {
       id: terapeutaIdValido,
     });
 
     expect(res.autorizado).toBe(true);
+  });
+});
+
+describe('AuditoriaController — Sanitização de Dados (LGPD / RNF06)', () => {
+  it('sanitizarDetalhesJson deve expurgar tokens, senhas e chaves sensíveis', () => {
+    const dadosBrutos = {
+      modulo: 'cognitivo',
+      pontos: 150,
+      senha: '123',
+      password_hash: '$2b$10$abc',
+      user_token: 'secret-jwt',
+      access_token: 'xyz',
+      refresh_token: 'abc',
+      service_role_key: 'super-secret',
+    };
+
+    const sanitizado = AuditoriaController.sanitizarDetalhesJson(dadosBrutos);
+
+    expect(sanitizado).toEqual({
+      modulo: 'cognitivo',
+      pontos: 150,
+    });
+    expect(sanitizado).not.toHaveProperty('senha');
+    expect(sanitizado).not.toHaveProperty('password_hash');
+    expect(sanitizado).not.toHaveProperty('user_token');
+    expect(sanitizado).not.toHaveProperty('access_token');
+    expect(sanitizado).not.toHaveProperty('refresh_token');
+    expect(sanitizado).not.toHaveProperty('service_role_key');
+  });
+
+  it('sanitizarDetalhesJson deve retornar objeto vazio se entrada for nula ou inválida', () => {
+    expect(AuditoriaController.sanitizarDetalhesJson(undefined)).toEqual({});
+  });
+
+  it('sanitizarEvento deve aplicar sanitização recursiva nos detalhes do evento', () => {
+    const eventoBruto: AuditoriaSessao = {
+      id: 'evt-1',
+      sessao_id: '11111111-1111-4111-a111-111111111111',
+      terapeuta_id: '22222222-2222-4222-a222-222222222222',
+      origem: 'terapeuta_web',
+      acao: 'intervencao_dda',
+      detalhes_json: { nivel: 'facil', token_interno: 'vazamento' },
+      ip: '127.0.0.1',
+      user_agent: 'Vitest',
+      created_at: new Date().toISOString(),
+    };
+
+    const sanitizado = AuditoriaController.sanitizarEvento(eventoBruto);
+
+    expect(sanitizado.detalhes_json).toEqual({ nivel: 'facil' });
+    expect(sanitizado.detalhes_json).not.toHaveProperty('token_interno');
   });
 });
 
@@ -357,6 +411,9 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
     vi.restoreAllMocks();
   });
 
+  // --------------------------------------------------------------------------
+  // GET /api/auditoria/sessao/:sessaoId
+  // --------------------------------------------------------------------------
   it('GET /api/auditoria/sessao/:sessaoId: deve retornar 400 se sessaoId for inválido', async () => {
     const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { sessaoId: 'invalido' });
 
@@ -396,7 +453,7 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
     expect((getJson() as { error: string }).error).toContain('RN04');
   });
 
-  it('GET /api/auditoria/sessao/:sessaoId: deve retornar 200 com os eventos da auditoria quando autorizado', async () => {
+  it('GET /api/auditoria/sessao/:sessaoId: deve retornar 200 com Envelope Pattern Categorizado', async () => {
     vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
       id: sessaoIdValido,
       terapeuta_id: terapeutaIdValido,
@@ -409,7 +466,7 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
         terapeuta_id: terapeutaIdValido,
         origem: 'dispositivo_jogo',
         acao: 'dispositivo_pareado',
-        detalhes_json: {},
+        detalhes_json: { jogo: 'foco_atencao', token_secreto: 'deve-sumir' },
         ip: '192.168.1.5',
         user_agent: 'Tablet',
         created_at: '2026-10-01T10:00:00Z',
@@ -428,9 +485,28 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
     await AuditoriaController.consultarLinhaDoTempo(mockReq, mockRes);
 
     expect(getStatus()).toBe(200);
-    const json = getJson() as { data: AuditoriaSessao[]; total: number };
-    expect(json.total).toBe(1);
-    expect(json.data[0].acao).toBe('dispositivo_pareado');
+    const json = getJson() as {
+      data: {
+        auditoria: AuditoriaSessao[];
+        registros: AuditoriaSessao[];
+        meta: { total: number };
+      };
+      message: string;
+    };
+
+    // Valida Envelope Pattern estrito
+    expect(json.message).toBe('Trilha de auditoria recuperada com sucesso.');
+    expect(json.data).toBeDefined();
+    expect(json.data.auditoria).toHaveLength(1);
+    expect(json.data.auditoria[0].acao).toBe('dispositivo_pareado');
+    expect(json.data.auditoria[0].detalhes_json).not.toHaveProperty('token_secreto');
+    expect(json.data.meta.total).toBe(1);
+    expect(json.data.registros).toHaveLength(1);
+
+    // Valida serialização JSON estrita (somente data e message nas chaves enumeráveis)
+    const jsonSerializado = JSON.parse(JSON.stringify(json));
+    expect(Object.keys(jsonSerializado).sort()).toEqual(['data', 'message'].sort());
+    expect(Object.keys(jsonSerializado.data).sort()).toEqual(['auditoria', 'meta', 'registros'].sort());
   });
 
   it('GET /api/auditoria/sessao/:sessaoId: deve retornar 500 se ocorrer exceção no serviço', async () => {
@@ -439,6 +515,159 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
     const { mockReq, mockRes, getStatus } = criarMocks({}, { sessaoId: sessaoIdValido });
 
     await AuditoriaController.consultarLinhaDoTempo(mockReq, mockRes);
+
+    expect(getStatus()).toBe(500);
+  });
+
+  // --------------------------------------------------------------------------
+  // POST /api/auditoria
+  // --------------------------------------------------------------------------
+  it('POST /api/auditoria: deve registrar evento com sucesso retornando 201 e Envelope Pattern { data: { evento }, message }', async () => {
+    vi.spyOn(AuditoriaService, 'validarAcessoLinhaDoTempo').mockResolvedValue({ autorizado: true });
+
+    const mockEventoCriado: AuditoriaSessao = {
+      id: 'novo-evt-id',
+      sessao_id: sessaoIdValido,
+      terapeuta_id: terapeutaIdValido,
+      origem: 'terapeuta_web',
+      acao: 'comando_manual',
+      detalhes_json: { comando: 'pausar' },
+      ip: '127.0.0.1',
+      user_agent: 'Chrome',
+      created_at: new Date().toISOString(),
+    };
+
+    vi.spyOn(AuditoriaService, 'registrarEvento').mockResolvedValue(mockEventoCriado);
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {
+        sessao_id: sessaoIdValido,
+        origem: 'terapeuta_web',
+        acao: 'comando_manual',
+        detalhes_json: { comando: 'pausar', auth_token: 'ocultar' },
+      },
+      {},
+      {},
+      { id: terapeutaIdValido }
+    );
+
+    await AuditoriaController.registrarEvento(mockReq, mockRes);
+
+    expect(getStatus()).toBe(201);
+    const json = getJson() as {
+      data: { evento: AuditoriaSessao };
+      message: string;
+    };
+
+    expect(json.message).toBe('Evento de auditoria registrado com sucesso.');
+    expect(json.data.evento).toBeDefined();
+    expect(json.data.evento.id).toBe('novo-evt-id');
+    expect(json.data.evento.acao).toBe('comando_manual');
+    expect(json.data.evento.detalhes_json).not.toHaveProperty('auth_token');
+
+    // Valida que a raiz contém estritamente data e message
+    const jsonSerializado = JSON.parse(JSON.stringify(json));
+    expect(Object.keys(jsonSerializado).sort()).toEqual(['data', 'message'].sort());
+    expect(Object.keys(jsonSerializado.data)).toEqual(['evento']);
+  });
+
+  it('POST /api/auditoria: deve retornar 400 se sessao_id for ausente ou inválido', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      origem: 'terapeuta_web',
+      acao: 'comando_manual',
+    });
+
+    await AuditoriaController.registrarEvento(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('sessao_id');
+  });
+
+  it('POST /api/auditoria: deve retornar 400 se origem for ausente ou vazia', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      sessao_id: sessaoIdValido,
+      origem: '',
+      acao: 'comando_manual',
+    });
+
+    await AuditoriaController.registrarEvento(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('origem');
+  });
+
+  it('POST /api/auditoria: deve retornar 400 se acao for ausente ou vazia', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({
+      sessao_id: sessaoIdValido,
+      origem: 'terapeuta_web',
+      acao: '   ',
+    });
+
+    await AuditoriaController.registrarEvento(mockReq, mockRes);
+
+    expect(getStatus()).toBe(400);
+    expect((getJson() as { error: string }).error).toContain('acao');
+  });
+
+  it('POST /api/auditoria: deve retornar 403 se tentar registrar para outro terapeuta (RF21 Anti-Spoofing)', async () => {
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {
+        sessao_id: sessaoIdValido,
+        origem: 'terapeuta_web',
+        acao: 'comando_manual',
+        terapeuta_id: 'outro-terapeuta-id',
+      },
+      {},
+      {},
+      { id: terapeutaIdValido, is_super_admin: false }
+    );
+
+    await AuditoriaController.registrarEvento(mockReq, mockRes);
+
+    expect(getStatus()).toBe(403);
+    expect((getJson() as { error: string }).error).toContain('RF21');
+  });
+
+  it('POST /api/auditoria: deve retornar 403 se o terapeuta não tiver vínculo com a sessão (RN04)', async () => {
+    vi.spyOn(AuditoriaService, 'validarAcessoLinhaDoTempo').mockResolvedValue({
+      autorizado: false,
+      statusHttp: 403,
+      motivo: 'Acesso negado: sem vínculo com o paciente (RN04)',
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {
+        sessao_id: sessaoIdValido,
+        origem: 'terapeuta_web',
+        acao: 'comando_manual',
+      },
+      {},
+      {},
+      { id: terapeutaIdValido }
+    );
+
+    await AuditoriaController.registrarEvento(mockReq, mockRes);
+
+    expect(getStatus()).toBe(403);
+    expect((getJson() as { error: string }).error).toContain('RN04');
+  });
+
+  it('POST /api/auditoria: deve retornar 500 se o service falhar ao salvar evento', async () => {
+    vi.spyOn(AuditoriaService, 'validarAcessoLinhaDoTempo').mockResolvedValue({ autorizado: true });
+    vi.spyOn(AuditoriaService, 'registrarEvento').mockResolvedValue(null);
+
+    const { mockReq, mockRes, getStatus } = criarMocks(
+      {
+        sessao_id: sessaoIdValido,
+        origem: 'terapeuta_web',
+        acao: 'comando_manual',
+      },
+      {},
+      {},
+      { id: terapeutaIdValido }
+    );
+
+    await AuditoriaController.registrarEvento(mockReq, mockRes);
 
     expect(getStatus()).toBe(500);
   });

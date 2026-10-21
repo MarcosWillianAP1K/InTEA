@@ -12,6 +12,7 @@ import {
   ResultadoPaginado,
   JogoResumo,
   ManifestoJogo,
+  MetricaManifesto,
 } from '../models/jogo.model.js';
 import { ManifestoValidator } from '../validators/manifesto.validator.js';
 import { MetricaValidator } from '../validators/metrica.validator.js';
@@ -153,11 +154,22 @@ export class JogoService {
       nome: dto.nome.trim(),
       versao: dto.versao.trim(),
       objetivo_clinico: typeof dto.objetivo_clinico === 'string' ? dto.objetivo_clinico.trim() : undefined,
-      metricas_suportadas: Array.isArray(dto.metricas_suportadas) ? (dto.metricas_suportadas as any) : [],
+      metricas_suportadas: Array.isArray(dto.metricas_suportadas) ? (dto.metricas_suportadas as unknown as MetricaManifesto[]) : [],
     };
 
     const validacao = ManifestoValidator.validar(manifesto_json);
     if (!validacao.valido) {
+      const temErroRN02 = validacao.erros.some(
+        e => e.includes('RN02') || e.includes('tipo_metrica') || e.includes('sem tipo') || e.includes('tipo \'')
+      );
+      if (temErroRN02) {
+        throw new JogoServiceError(
+          'Incompatibilidade de tipo clínico no manifesto (RN02).',
+          422,
+          validacao.erros,
+          'RN02 - Fallback de Métrica Proibido'
+        );
+      }
       throw new JogoServiceError('Manifesto clínico do jogo inválido', 400, validacao.erros);
     }
 
@@ -203,12 +215,23 @@ export class JogoService {
         objetivo_clinico:
           dto.objetivo_clinico !== undefined ? dto.objetivo_clinico : manifesto_json?.objetivo_clinico,
         metricas_suportadas: Array.isArray(dto.metricas_suportadas)
-          ? (dto.metricas_suportadas as any)
+          ? (dto.metricas_suportadas as unknown as MetricaManifesto[])
           : (manifesto_json?.metricas_suportadas ?? []),
       };
 
       const validacao = ManifestoValidator.validar(manifesto_json);
       if (!validacao.valido) {
+        const temErroRN02 = validacao.erros.some(
+          e => e.includes('RN02') || e.includes('tipo_metrica') || e.includes('sem tipo') || e.includes('tipo \'')
+        );
+        if (temErroRN02) {
+          throw new JogoServiceError(
+            'Incompatibilidade de tipo clínico no manifesto (RN02).',
+            422,
+            validacao.erros,
+            'RN02 - Fallback de Métrica Proibido'
+          );
+        }
         throw new JogoServiceError('Manifesto clínico do jogo inválido', 400, validacao.erros);
       }
     }
@@ -257,6 +280,17 @@ export class JogoService {
   static validarManifesto(manifesto: unknown): { valido: boolean; erros: string[]; manifestoValido?: unknown } {
     const resultado = ManifestoValidator.validar(manifesto);
     if (!resultado.valido) {
+      const temErroRN02 = resultado.erros.some(
+        e => e.includes('RN02') || e.includes('tipo_metrica') || e.includes('sem tipo') || e.includes('tipo \'')
+      );
+      if (temErroRN02) {
+        throw new JogoServiceError(
+          'Incompatibilidade de tipo clínico no manifesto (RN02).',
+          422,
+          resultado.erros,
+          'RN02 - Fallback de Métrica Proibido'
+        );
+      }
       throw new JogoServiceError('Manifesto do jogo inválido', 400, resultado.erros);
     }
     return {

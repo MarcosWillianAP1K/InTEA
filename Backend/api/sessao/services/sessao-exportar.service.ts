@@ -411,7 +411,10 @@ export class SessaoExportarService {
       }
 
       res.status(resultado.statusHttp).json({
-        data: resultado.dados,
+        data: {
+          laudo: resultado.dados,
+        },
+        message: 'Laudo clínico emitido com sucesso para exportação.',
       });
     } catch (error) {
       console.error('[SessaoExportarService] Erro ao exportar laudo clínico:', error);
