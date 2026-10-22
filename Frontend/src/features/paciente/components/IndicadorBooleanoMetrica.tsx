@@ -11,6 +11,44 @@ export interface IndicadorBooleanoMetricaProps {
   className?: string;
 }
 
+const MAPA_NOMES_METRICAS: Record<string, string> = {
+  tempo_resposta: "Tempo de Resposta",
+  tempo_reacao: "Tempo de Reação",
+  precisao: "Precisão de Acertos",
+  taxa_acerto: "Taxa de Acerto",
+  acertos: "Total de Acertos",
+  erros: "Total de Erros",
+  estabilidade_emocional: "Estabilidade Emocional",
+  estabilidade_foco: "Estabilidade de Foco",
+  nivel_frustracao: "Nível de Frustração",
+  tolerancia_frustracao: "Tolerância à Frustração",
+  latencia_foco_ms: "Latência de Foco",
+  engajamento: "Nível de Engajamento",
+};
+
+function formatarNomeMetricaLegivel(idOuNome?: string): string {
+  if (!idOuNome) return "Métrica";
+  const chave = idOuNome.trim().toLowerCase();
+  if (MAPA_NOMES_METRICAS[chave]) {
+    return MAPA_NOMES_METRICAS[chave];
+  }
+  if (!idOuNome.includes("_")) return idOuNome;
+  return idOuNome
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+function formatarDataPonto(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 export function IndicadorBooleanoMetrica({
   serie,
   titulo,
@@ -47,6 +85,10 @@ export function IndicadorBooleanoMetrica({
     (p) => p.valor !== null && p.valor !== undefined
   );
 
+  const nomeExibicao = formatarNomeMetricaLegivel(
+    titulo || serie.nome_metrica || serie.id_metrica
+  );
+
   // 2. Empty State
   if (pontosValidos.length === 0) {
     return (
@@ -61,7 +103,7 @@ export function IndicadorBooleanoMetrica({
           Sem Dados Booleanos Registrados
         </h4>
         <p className="text-xs text-muted-foreground max-w-sm">
-          A métrica &ldquo;{serie.nome_metrica || serie.id_metrica}&rdquo; não possui registros booleanos registrados nesta série temporal.
+          A métrica &ldquo;{nomeExibicao}&rdquo; não possui registros booleanos registrados nesta série temporal.
         </p>
       </div>
     );
@@ -81,10 +123,8 @@ export function IndicadorBooleanoMetrica({
   const padBottom = 40;
 
   const chartWidth = svgWidth - padLeft - padRight;
-  const stepX = chartWidth / Math.max(1, totalPontos - 1);
+  const stepX = totalPontos > 1 ? chartWidth / (totalPontos - 1) : chartWidth;
   const yCenter = padTop + (svgHeight - padTop - padBottom) / 2;
-
-  const nomeExibicao = titulo || serie.nome_metrica || serie.id_metrica;
 
   return (
     <div
@@ -142,20 +182,22 @@ export function IndicadorBooleanoMetrica({
 
           {/* Nós da Linha do Tempo e Hitboxes Ergonômicas */}
           {pontosValidos.map((ponto, idx) => {
-            const x = padLeft + idx * stepX;
+            const x = totalPontos === 1 ? padLeft + chartWidth / 2 : padLeft + idx * stepX;
             const isPositivo = Boolean(ponto.valor);
             const isHovered = pontoAtivo?.sessao_id === ponto.sessao_id;
+            const rotuloData =
+              ponto.rotulo || formatarDataPonto(ponto.data_hora) || `S${idx + 1}`;
 
             return (
               <g key={`bool-group-${idx}`}>
-                {/* Rótulo Eixo X */}
+                {/* Rótulo de Data no Eixo X */}
                 <text
                   x={x}
                   y={yCenter + 38}
                   textAnchor="middle"
-                  className="fill-muted-foreground text-2xs select-none"
+                  className="fill-muted-foreground text-2xs font-medium select-none"
                 >
-                  {ponto.rotulo || `S${idx + 1}`}
+                  {rotuloData}
                 </text>
 
                 {/* Marcador Visual Externo (Anel/Halo) */}
@@ -220,7 +262,7 @@ export function IndicadorBooleanoMetrica({
                   className="cursor-pointer"
                   tabIndex={0}
                   role="button"
-                  aria-label={`${ponto.rotulo || `Sessão ${idx + 1}`}: ${isPositivo ? "Sim (Verdadeiro)" : "Não (Falso)"}`}
+                  aria-label={`${ponto.rotulo || formatarDataPonto(ponto.data_hora) || `Sessão ${idx + 1}`}: ${isPositivo ? "Sim (Verdadeiro)" : "Não (Falso)"}`}
                   onMouseEnter={() => setPontoAtivo(ponto)}
                   onMouseLeave={() => setPontoAtivo(null)}
                   onFocus={() => setPontoAtivo(ponto)}
@@ -239,7 +281,7 @@ export function IndicadorBooleanoMetrica({
           >
             <div className="flex items-center gap-2">
               <span className="font-semibold text-foreground">
-                {pontoAtivo.rotulo || "Sessão selecionada"}:
+                {pontoAtivo.rotulo || formatarDataPonto(pontoAtivo.data_hora) || "Sessão selecionada"}:
               </span>
               <Badge
                 variant="outline"
@@ -252,9 +294,11 @@ export function IndicadorBooleanoMetrica({
                 {Boolean(pontoAtivo.valor) ? "Sim (Ocorreu)" : "Não (Não Ocorreu)"}
               </Badge>
             </div>
-            <span className="text-2xs text-muted-foreground">
-              {new Date(pontoAtivo.data_hora).toLocaleDateString("pt-BR")}
-            </span>
+            {pontoAtivo.data_hora && (
+              <span className="text-2xs text-muted-foreground">
+                {new Date(pontoAtivo.data_hora).toLocaleDateString("pt-BR")}
+              </span>
+            )}
           </div>
         )}
       </div>

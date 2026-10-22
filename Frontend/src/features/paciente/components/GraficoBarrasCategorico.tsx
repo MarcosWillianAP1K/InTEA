@@ -21,6 +21,44 @@ const CORES_CATEGORIAS = [
   "#06b6d4", // Ciano
 ];
 
+const MAPA_NOMES_METRICAS: Record<string, string> = {
+  tempo_resposta: "Tempo de Resposta",
+  tempo_reacao: "Tempo de Reação",
+  precisao: "Precisão de Acertos",
+  taxa_acerto: "Taxa de Acerto",
+  acertos: "Total de Acertos",
+  erros: "Total de Erros",
+  estabilidade_emocional: "Estabilidade Emocional",
+  estabilidade_foco: "Estabilidade de Foco",
+  nivel_frustracao: "Nível de Frustração",
+  tolerancia_frustracao: "Tolerância à Frustração",
+  latencia_foco_ms: "Latência de Foco",
+  engajamento: "Nível de Engajamento",
+};
+
+function formatarNomeMetricaLegivel(idOuNome?: string): string {
+  if (!idOuNome) return "Métrica";
+  const chave = idOuNome.trim().toLowerCase();
+  if (MAPA_NOMES_METRICAS[chave]) {
+    return MAPA_NOMES_METRICAS[chave];
+  }
+  if (!idOuNome.includes("_")) return idOuNome;
+  return idOuNome
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+function formatarDataPonto(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 export function GraficoBarrasCategorico({
   serie,
   titulo,
@@ -61,6 +99,10 @@ export function GraficoBarrasCategorico({
     (p) => p.valor !== null && p.valor !== undefined
   );
 
+  const nomeExibicao = formatarNomeMetricaLegivel(
+    titulo || serie.nome_metrica || serie.id_metrica
+  );
+
   // 2. Empty State
   if (pontosValidos.length === 0) {
     return (
@@ -75,7 +117,7 @@ export function GraficoBarrasCategorico({
           Sem Dados Categóricos Registrados
         </h4>
         <p className="text-xs text-muted-foreground max-w-sm">
-          A métrica &ldquo;{serie.nome_metrica || serie.id_metrica}&rdquo; ainda não possui registros para traçar a evolução categórica.
+          A métrica &ldquo;{nomeExibicao}&rdquo; ainda não possui registros para traçar a evolução categórica.
         </p>
       </div>
     );
@@ -92,11 +134,11 @@ export function GraficoBarrasCategorico({
 
   // Dimensões do SVG
   const svgWidth = 680;
-  const svgHeight = 220;
+  const svgHeight = 230;
   const padLeft = 80;
   const padRight = 30;
-  const padTop = 25;
-  const padBottom = 35;
+  const padTop = 30;
+  const padBottom = 40;
 
   const chartWidth = svgWidth - padLeft - padRight;
   const chartHeight = svgHeight - padTop - padBottom;
@@ -120,7 +162,6 @@ export function GraficoBarrasCategorico({
     return mapa;
   }, [categorias, pontosValidos]);
 
-  const nomeExibicao = titulo || serie.nome_metrica || serie.id_metrica;
   const isOrdinal = serie.tipo_metrica === "ordinal";
 
   return (
@@ -231,16 +272,29 @@ export function GraficoBarrasCategorico({
                     : "#6b7280";
 
                 const isHovered = pontoAtivo?.sessao_id === ponto.sessao_id;
+                const rotuloData =
+                  ponto.rotulo || formatarDataPonto(ponto.data_hora) || `S${idx + 1}`;
 
                 return (
                   <g key={`barra-ordinal-${idx}`}>
+                    {/* Data no Eixo X */}
                     <text
                       x={xCenter}
                       y={padTop + chartHeight + 18}
                       textAnchor="middle"
-                      className="fill-muted-foreground text-2xs select-none"
+                      className="fill-muted-foreground text-2xs font-medium select-none"
                     >
-                      {ponto.rotulo || `S${idx + 1}`}
+                      {rotuloData}
+                    </text>
+
+                    {/* Valor exibido acima da barra */}
+                    <text
+                      x={xCenter}
+                      y={y - 6}
+                      textAnchor="middle"
+                      className="fill-foreground text-[10px] font-bold select-none"
+                    >
+                      {valorStr}
                     </text>
 
                     <rect
@@ -265,7 +319,7 @@ export function GraficoBarrasCategorico({
                       className="cursor-pointer"
                       tabIndex={0}
                       role="button"
-                      aria-label={`${ponto.rotulo || `Sessão ${idx + 1}`}: ${valorStr}`}
+                      aria-label={`${ponto.rotulo || formatarDataPonto(ponto.data_hora) || `Sessão ${idx + 1}`}: ${valorStr}`}
                       onMouseEnter={() => setPontoAtivo(ponto)}
                       onMouseLeave={() => setPontoAtivo(null)}
                       onFocus={() => setPontoAtivo(ponto)}
@@ -358,7 +412,7 @@ export function GraficoBarrasCategorico({
           >
             <div>
               <span className="font-semibold text-foreground">
-                {pontoAtivo.rotulo || "Sessão selecionada"}:
+                {pontoAtivo.rotulo || formatarDataPonto(pontoAtivo.data_hora) || "Sessão selecionada"}:
               </span>{" "}
               <Badge
                 variant="outline"
@@ -367,9 +421,11 @@ export function GraficoBarrasCategorico({
                 {String(pontoAtivo.valor)}
               </Badge>
             </div>
-            <span className="text-2xs text-muted-foreground">
-              {new Date(pontoAtivo.data_hora).toLocaleDateString("pt-BR")}
-            </span>
+            {pontoAtivo.data_hora && (
+              <span className="text-2xs text-muted-foreground">
+                {new Date(pontoAtivo.data_hora).toLocaleDateString("pt-BR")}
+              </span>
+            )}
           </div>
         )}
       </div>

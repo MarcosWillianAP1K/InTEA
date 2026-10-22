@@ -1,5 +1,5 @@
 import http from "node:http";
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { Server as SocketIOServer } from "socket.io";
@@ -97,6 +97,20 @@ app.use(
   })
 );
 app.use(express.json());
+
+// Middleware de observabilidade HTTP — registra todas as requisições recebidas no terminal
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const inicio = Date.now();
+  res.on("finish", () => {
+    // Evita poluir logs com o healthcheck periódico do Docker na rota raiz "/"
+    if (req.originalUrl === "/" && req.method === "GET") return;
+    const duracaoMs = Date.now() - inicio;
+    console.log(
+      `[Backend HTTP] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${duracaoMs}ms)`
+    );
+  });
+  next();
+});
 
 // Rota raiz — health check
 app.get("/", (_req: Request, res: Response) => {

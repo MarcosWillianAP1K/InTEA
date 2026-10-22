@@ -163,7 +163,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
             onClick={handleLimparFiltros}
             disabled={isLoading}
             data-testid="btn-resetar-filtros"
-            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5 cursor-pointer min-h-11"
+            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5 cursor-pointer min-h-11 min-h-11"
           >
             <RotateCcw className="h-3 w-3" />
             <span>Restaurar Padrão (30d)</span>
@@ -189,7 +189,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
               aria-pressed={isAtivo}
               data-testid={`btn-periodo-${opcao.id}`}
               className={cn(
-                "inline-flex items-center justify-center px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer min-h-11 min-h-11 border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed",
+                "inline-flex items-center justify-center px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer min-h-11 min-h-11-w-11 border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed",
                 isAtivo
                   ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
                   : "bg-muted/30 text-foreground/80 border-border/80 hover:bg-muted/70 hover:text-foreground",
@@ -223,7 +223,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
               onChange={(e) => setDataInicioInput(e.target.value)}
               disabled={isLoading}
               data-testid="input-data-inicio"
-              className="min-h-11 px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              className="min-h-11 min-h-11 px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
             />
           </div>
 
@@ -242,7 +242,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
               onChange={(e) => setDataFimInput(e.target.value)}
               disabled={isLoading}
               data-testid="input-data-fim"
-              className="min-h-11 px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              className="min-h-11 min-h-113 py-2 rounded-xl border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
             />
           </div>
 
@@ -251,7 +251,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
             size="sm"
             disabled={isLoading || (!dataInicioInput && !dataFimInput)}
             data-testid="btn-aplicar-datas"
-            className="min-h-11 px-4 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
+            className="min-h-11 min-h-11 px-4 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
           >
             Aplicar Intervalo
           </Button>

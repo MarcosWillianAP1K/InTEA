@@ -23,6 +23,33 @@ export interface GraficoEvolucaoJogoProps {
   className?: string;
 }
 
+const MAPA_NOMES_METRICAS: Record<string, string> = {
+  tempo_resposta: "Tempo de Resposta",
+  tempo_reacao: "Tempo de Reação",
+  precisao: "Precisão de Acertos",
+  taxa_acerto: "Taxa de Acerto",
+  acertos: "Total de Acertos",
+  erros: "Total de Erros",
+  estabilidade_emocional: "Estabilidade Emocional",
+  estabilidade_foco: "Estabilidade de Foco",
+  nivel_frustracao: "Nível de Frustração",
+  tolerancia_frustracao: "Tolerância à Frustração",
+  latencia_foco_ms: "Latência de Foco",
+  engajamento: "Nível de Engajamento",
+};
+
+function formatarNomeMetricaLegivel(idOuNome?: string): string {
+  if (!idOuNome) return "Métrica";
+  const chave = idOuNome.trim().toLowerCase();
+  if (MAPA_NOMES_METRICAS[chave]) {
+    return MAPA_NOMES_METRICAS[chave];
+  }
+  if (!idOuNome.includes("_")) return idOuNome;
+  return idOuNome
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
 /**
  * ============================================================================
  * CONTAINER DE EVOLUÇÃO DAS MÉTRICAS DO JOGO (InTEA)
@@ -129,7 +156,7 @@ export function GraficoEvolucaoJogo({
                 )}
               </div>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                Evolução longitudinal das métricas homologadas do jogo ao longo das sessões clínicas
+                Evolução longitudinal das métricas homologadas do jogo por data das sessões clínicas
               </CardDescription>
             </div>
           </div>
@@ -171,6 +198,9 @@ export function GraficoEvolucaoJogo({
             </Button>
             {seriesDisponiveis.map((serie) => {
               const isAtiva = metricaSelecionadaId === serie.id_metrica;
+              const nomeLegivel = formatarNomeMetricaLegivel(
+                serie.nome_metrica || serie.id_metrica
+              );
               return (
                 <Button
                   key={`tab-metrica-${serie.id_metrica}`}
@@ -180,7 +210,7 @@ export function GraficoEvolucaoJogo({
                   className="min-h-11 px-3 text-xs rounded-xl shrink-0"
                   data-testid={`tab-metrica-${serie.id_metrica}`}
                 >
-                  {serie.nome_metrica || serie.id_metrica}
+                  {nomeLegivel}
                 </Button>
               );
             })}
@@ -194,7 +224,7 @@ export function GraficoEvolucaoJogo({
           <GraficoPolimorficoMetrica
             key={`grafico-${serie.id_metrica}`}
             serie={serie}
-            titulo={serie.nome_metrica || serie.id_metrica}
+            titulo={formatarNomeMetricaLegivel(serie.nome_metrica || serie.id_metrica)}
           />
         ))}
       </div>

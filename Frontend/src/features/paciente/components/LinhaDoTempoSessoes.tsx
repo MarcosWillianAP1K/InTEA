@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
@@ -175,8 +175,23 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
             const isFinalizada = sessao.status_sessao === "finalizada";
             const isInterrompida =
               sessao.status_sessao === "interrompida" ||
+              sessao.status_sessao === "interrompida_por_queda" ||
               sessao.status_sessao === "desistida" ||
               sessao.status_sessao === "cancelada";
+
+            const duracaoCalculada =
+              sessao.tempo_total_segundos ??
+              sessao.duracao_segundos ??
+              (sessao.data_hora_inicio && sessao.data_hora_fim
+                ? Math.max(
+                    0,
+                    Math.round(
+                      (new Date(sessao.data_hora_fim).getTime() -
+                        new Date(sessao.data_hora_inicio).getTime()) /
+                        1000,
+                    ),
+                  )
+                : undefined);
 
             return (
               <div
@@ -240,7 +255,7 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Timer className="h-3 w-3 text-primary" />
-                        <span>Duração: {formatarDuracao(sessao.tempo_total_segundos)}</span>
+                        <span>Duração: {formatarDuracao(duracaoCalculada)}</span>
                       </span>
 
                       {sessao.terapeuta_id && (
@@ -264,7 +279,7 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                       size="sm"
                       onClick={() => handleVerRelatorio(sessao.sessao_id)}
                       data-testid={`btn-ver-relatorio-${sessao.sessao_id}`}
-                      className="min-h-11 px-3.5 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer transition-all shadow-2xs select-none"
+                      className="min-h-11 min-h-11 px-3.5 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer transition-all shadow-2xs select-none"
                     >
                       <FileText className="h-3.5 w-3.5" />
                       <span>Ver Resultados</span>

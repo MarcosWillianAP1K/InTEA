@@ -100,7 +100,9 @@ export interface SessaoHistoricoItem {
   data_hora_inicio?: string;
   status_sessao: string;
   tempo_total_segundos?: number;
+  duracao_segundos?: number;
   terapeuta_id?: string;
+  jogo_id?: string;
 }
 
 /**
@@ -147,6 +149,7 @@ export interface RespostaHistoricoPaciente {
  */
 export interface FiltrosHistorico {
   jogoId?: string;
+  sessaoId?: string;
   periodo?: "7d" | "30d" | "3m" | "personalizado" | "todos";
   dataInicio?: string;
   dataFim?: string;

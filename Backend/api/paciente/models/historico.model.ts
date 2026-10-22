@@ -144,11 +144,8 @@ export class HistoricoSessaoModel {
         ['cancelada', 'interrompida_por_queda', 'expirada'].includes(s.status_sessao)
       ).length;
 
-
       // Sessões que iniciaram a execução clínica (não ficaram apenas em aguardando_pareamento)
       const totalIniciadas = totalSessoes;
-
-
 
       const baseCalculo = totalIniciadas > 0 ? totalIniciadas : totalSessoes;
       const taxaConclusao =
@@ -263,20 +260,20 @@ export class HistoricoSessaoModel {
           : row.relatorio_sessao;
 
         // RN05: Ignora relatórios com soft delete ativado
-        if (!relatorio || relatorio.soft_delete === true) {
+        if (relatorio && relatorio.soft_delete === true) {
           continue;
         }
 
         // Determina duração a partir do payload de IA ou timestamp diff
         let duracaoSegundos = 0;
-        const dadosIA = relatorio.dados_ia_json as RelatorioIAContrato | undefined;
+        const dadosIA = relatorio?.dados_ia_json as RelatorioIAContrato | undefined;
         if (dadosIA && typeof dadosIA.duracao_segundos === 'number' && dadosIA.duracao_segundos > 0) {
           duracaoSegundos = dadosIA.duracao_segundos;
         } else if (row.data_hora_inicio && row.data_hora_fim) {
           const ini = new Date(row.data_hora_inicio).getTime();
           const fim = new Date(row.data_hora_fim).getTime();
           if (!isNaN(ini) && !isNaN(fim) && fim >= ini) {
-            duracaoSegundos = Math.round((fim - ini) / 1000);
+            duracaoSegundos = Math.round((fim - inicioSegura(ini, fim)) / 1000);
           }
         }
 
@@ -290,8 +287,8 @@ export class HistoricoSessaoModel {
           data_hora_inicio: row.data_hora_inicio,
           data_hora_fim: row.data_hora_fim || row.data_hora_inicio,
           duracao_segundos: duracaoSegundos,
-          conteudo_relatorio: relatorio.conteudo ?? null,
-          dados_ia_json: relatorio.dados_ia_json ?? {},
+          conteudo_relatorio: relatorio?.conteudo ?? null,
+          dados_ia_json: relatorio?.dados_ia_json ?? {},
         });
       }
 
@@ -301,6 +298,7 @@ export class HistoricoSessaoModel {
       return null;
     }
   }
+
   /**
    * Conta o total de sessões finalizadas com relatório ativo para um paciente/jogo.
    * Utilizado para paginação precisa (RF19).
@@ -344,7 +342,6 @@ export class HistoricoSessaoModel {
       return 0;
     }
   }
-
 
   /**
    * Lista o catálogo de jogos com intervenções clínicas realizadas pelo paciente.
@@ -413,4 +410,8 @@ export class HistoricoSessaoModel {
       return null;
     }
   }
+}
+
+function inicioSegura(ini: number, _fim: number): number {
+  return ini;
 }

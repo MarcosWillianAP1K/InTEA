@@ -19,10 +19,41 @@ import {
 } from '../models/historico.model.js';
 import { JogoModel, MetricaManifesto } from '../../jogos/models/jogo.model.js';
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
+import { TelemetriaModel } from '../../telemetria/models/telemetria.model.js';
 import { PacienteServiceError } from './paciente.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 
 export const TIPOS_METRICA_VALIDOS = ['numerica', 'categorica', 'ordinal', 'booleana'] as const;
+
+const MAPA_NOMES_METRICAS: Record<string, string> = {
+  tempo_resposta: 'Tempo de Resposta',
+  tempo_reacao: 'Tempo de Reação',
+  tempo_reacao_ms: 'Tempo de Reação',
+  nivel_frustracao: 'Nível de Frustração',
+  tempo_fixacao: 'Tempo de Fixação Visual',
+  estabilidade_toque: 'Estabilidade de Toque',
+  precisao_auditiva: 'Precisão Auditiva',
+  tolerancia_sonora: 'Tolerância Sonora',
+  precisao: 'Taxa de Precisão',
+  estabilidade_atencao: 'Estabilidade de Atenção',
+  estabilidade_emocional: 'Estabilidade Emocional',
+  nivel_atencao: 'Nível de Atenção',
+  estagio_desafio: 'Estágio do Desafio',
+  concluiu_sem_ajuda: 'Conclusão sem Ajuda',
+};
+
+function obterNomeLegivelMetrica(idMetrica: string, nomeDeclarado?: string): string {
+  if (nomeDeclarado && nomeDeclarado.trim().length > 0) {
+    return nomeDeclarado.trim();
+  }
+  const chave = idMetrica.trim().toLowerCase();
+  if (MAPA_NOMES_METRICAS[chave]) {
+    return MAPA_NOMES_METRICAS[chave];
+  }
+  return idMetrica
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letra) => letra.toUpperCase());
+}
 
 export interface FiltrosHistoricoGeralInput {
   dataInicio?: string;
@@ -44,12 +75,14 @@ export interface FiltrosHistoricoInput extends FiltrosHistoricoGeralInput, Filtr
 export interface PontoSerieMetrica {
   sessao_id: string;
   data_hora: string;
+  rotulo?: string;
   valor: string | number | boolean | null;
   tendencia?: string | null;
 }
 
 export interface SerieMetricaJogo {
   id_metrica: string;
+  nome_metrica?: string;
   tipo_metrica: string;
   unidade?: string;
   valores?: string[];
@@ -317,9 +350,37 @@ export class PacienteHistoricoService {
       throw new PacienteServiceError('Falha ao consultar histórico de sessões do jogo.', 500);
     }
 
+    // Caso alguma sessão possua dados_ia_json sem metricas_agregadas (ex.: formato metricas_consolidadas),
+    // consulta os eventos de telemetria correspondentes para extrair os valores reais da sessão
+    const telemetriaPorSessao = new Map<string, Awaited<ReturnType<typeof TelemetriaModel.buscarPorSessaoId>>>();
+    for (const sessao of sessoes) {
+      const dadosIA = sessao.dados_ia_json as {
+        metricas_agregadas?: unknown[];
+        metricas_consolidadas?: Record<string, unknown>;
+      };
+      if (dadosIA && !Array.isArray(dadosIA.metricas_agregadas) && dadosIA.metricas_consolidadas) {
+        try {
+          const evts = await TelemetriaModel.buscarPorSessaoId(sessao.sessao_id);
+          if (Array.isArray(evts) && evts.length > 0) {
+            telemetriaPorSessao.set(sessao.sessao_id, evts);
+          }
+        } catch {
+          // Falha silenciosa caso telemetria não esteja disponível
+        }
+      }
+    }
+
+    // Ordena sessões cronologicamente para o gráfico (da mais antiga para a mais recente)
+    const sessoesCronologicas = [...sessoes].sort(
+      (a, b) => new Date(a.data_hora_fim).getTime() - new Date(b.data_hora_fim).getTime()
+    );
+
     // Construção das séries temporais por métrica declarada
     const seriesTemporais: SerieMetricaJogo[] = metricasSuportadas.map((metrica) => {
-      const pontos: PontoSerieMetrica[] = sessoes.map((sessao) => {
+      const metricaRaw = metrica as MetricaManifesto & { nome_metrica?: string };
+      const nomeMetrica = obterNomeLegivelMetrica(metrica.id_metrica, metricaRaw.nome_metrica);
+
+      const pontos: PontoSerieMetrica[] = sessoesCronologicas.map((sessao) => {
         let valorPonto: string | number | boolean | null = null;
         let tendenciaPonto: string | null = null;
 
@@ -329,6 +390,7 @@ export class PacienteHistoricoService {
             valor_dominante: string | number;
             tendencia?: string;
           }>;
+          metricas_consolidadas?: Record<string, unknown>;
         };
 
         if (dadosIA && Array.isArray(dadosIA.metricas_agregadas)) {
@@ -338,6 +400,43 @@ export class PacienteHistoricoService {
           if (metricaEncontrada) {
             valorPonto = metricaEncontrada.valor_dominante;
             tendenciaPonto = metricaEncontrada.tendencia || null;
+          }
+        }
+
+        // Extração de telemetria real da sessão caso metricas_agregadas não esteja presente no JSON
+        if (valorPonto === null) {
+          const evts = telemetriaPorSessao.get(sessao.sessao_id);
+          if (evts && evts.length > 0) {
+            const evtsMetrica = evts.filter(
+              (e) => e.dados?.id_metrica === metrica.id_metrica && e.dados?.valor !== undefined
+            );
+            if (evtsMetrica.length > 0) {
+              if (metrica.tipo_metrica === 'numerica') {
+                const nums = evtsMetrica
+                  .map((e) => Number(e.dados.valor))
+                  .filter((n) => !Number.isNaN(n));
+                if (nums.length > 0) {
+                  const media = nums.reduce((acc, v) => acc + v, 0) / nums.length;
+                  valorPonto = Number(media.toFixed(2));
+                }
+              } else {
+                valorPonto = evtsMetrica[evtsMetrica.length - 1].dados.valor as string | number | boolean;
+              }
+            }
+          }
+        }
+
+        // Fallback para campos equivalentes em metricas_consolidadas do relatório da sessão
+        if (valorPonto === null && dadosIA?.metricas_consolidadas) {
+          const mc = dadosIA.metricas_consolidadas;
+          if (metrica.id_metrica === 'tempo_resposta' || metrica.id_metrica === 'tempo_reacao') {
+            if (typeof mc.tempo_resposta_medio_segundos === 'number') {
+              valorPonto = mc.tempo_resposta_medio_segundos;
+            }
+          } else if (metrica.id_metrica === 'precisao' || metrica.id_metrica === 'precisao_auditiva') {
+            if (typeof mc.precisao_acertos_percentual === 'number') {
+              valorPonto = mc.precisao_acertos_percentual;
+            }
           }
         }
 
@@ -351,6 +450,7 @@ export class PacienteHistoricoService {
 
       return {
         id_metrica: metrica.id_metrica,
+        nome_metrica: nomeMetrica,
         tipo_metrica: metrica.tipo_metrica,
         unidade: metrica.unidade,
         valores: metrica.valores,

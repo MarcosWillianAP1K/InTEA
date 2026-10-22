@@ -11,6 +11,44 @@ export interface GraficoLinhaTemporalProps {
   className?: string;
 }
 
+const MAPA_NOMES_METRICAS: Record<string, string> = {
+  tempo_resposta: "Tempo de Resposta",
+  tempo_reacao: "Tempo de Reação",
+  precisao: "Precisão de Acertos",
+  taxa_acerto: "Taxa de Acerto",
+  acertos: "Total de Acertos",
+  erros: "Total de Erros",
+  estabilidade_emocional: "Estabilidade Emocional",
+  estabilidade_foco: "Estabilidade de Foco",
+  nivel_frustracao: "Nível de Frustração",
+  tolerancia_frustracao: "Tolerância à Frustração",
+  latencia_foco_ms: "Latência de Foco",
+  engajamento: "Nível de Engajamento",
+};
+
+function formatarNomeMetricaLegivel(idOuNome?: string): string {
+  if (!idOuNome) return "Métrica";
+  const chave = idOuNome.trim().toLowerCase();
+  if (MAPA_NOMES_METRICAS[chave]) {
+    return MAPA_NOMES_METRICAS[chave];
+  }
+  if (!idOuNome.includes("_")) return idOuNome;
+  return idOuNome
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+function formatarDataPonto(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 export function GraficoLinhaTemporal({
   serie,
   titulo,
@@ -46,6 +84,10 @@ export function GraficoLinhaTemporal({
     (p) => p.valor !== null && p.valor !== undefined && !isNaN(Number(p.valor))
   );
 
+  const nomeExibicao = formatarNomeMetricaLegivel(
+    titulo || serie.nome_metrica || serie.id_metrica
+  );
+
   // 2. Empty State (Sem pontos ou dados insuficientes)
   if (pontosValidos.length === 0) {
     return (
@@ -60,7 +102,7 @@ export function GraficoLinhaTemporal({
           Sem Dados Numéricos Registrados
         </h4>
         <p className="text-xs text-muted-foreground max-w-sm">
-          A métrica &ldquo;{serie.nome_metrica || serie.id_metrica}&rdquo; ainda não possui registros suficientes para gerar a curva temporal contínua.
+          A métrica &ldquo;{nomeExibicao}&rdquo; ainda não possui registros suficientes para gerar a curva temporal contínua.
         </p>
       </div>
     );
@@ -68,11 +110,11 @@ export function GraficoLinhaTemporal({
 
   // Dimensões do SVG
   const svgWidth = 680;
-  const svgHeight = 220;
+  const svgHeight = 230;
   const padLeft = 55;
-  const padRight = 30;
-  const padTop = 25;
-  const padBottom = 35;
+  const padRight = 35;
+  const padTop = 30;
+  const padBottom = 40;
 
   const chartWidth = svgWidth - padLeft - padRight;
   const chartHeight = svgHeight - padTop - padBottom;
@@ -87,21 +129,33 @@ export function GraficoLinhaTemporal({
   const maxValor = delta === 0 ? rawMax + 10 : rawMax + delta * 0.15;
   const rangeY = maxValor - minValor || 1;
 
-  const stepX = chartWidth / Math.max(1, pontosValidos.length - 1);
+  const stepX =
+    pontosValidos.length > 1
+      ? chartWidth / (pontosValidos.length - 1)
+      : chartWidth;
 
   const getCoords = (idx: number, val: number) => {
-    const x = padLeft + idx * stepX;
+    const x =
+      pontosValidos.length === 1
+        ? padLeft + chartWidth / 2
+        : padLeft + idx * stepX;
     const y = padTop + chartHeight - ((val - minValor) / rangeY) * chartHeight;
     return { x, y };
   };
 
   const coords = pontosValidos.map((p, idx) => getCoords(idx, Number(p.valor)));
 
-  const pathLine = coords
-    .map((c, idx) => `${idx === 0 ? "M" : "L"} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`)
-    .join(" ");
+  const pathLine =
+    coords.length > 1
+      ? coords
+          .map((c, idx) => `${idx === 0 ? "M" : "L"} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`)
+          .join(" ")
+      : "";
 
-  const pathArea = `${pathLine} L ${coords[coords.length - 1].x.toFixed(1)} ${padTop + chartHeight} L ${coords[0].x.toFixed(1)} ${padTop + chartHeight} Z`;
+  const pathArea =
+    coords.length > 1
+      ? `${pathLine} L ${coords[coords.length - 1].x.toFixed(1)} ${padTop + chartHeight} L ${coords[0].x.toFixed(1)} ${padTop + chartHeight} Z`
+      : "";
 
   // Linhas de Grade no Eixo Y (4 linhas)
   const ticksY = [0, 0.33, 0.66, 1].map((pct) => {
@@ -114,7 +168,6 @@ export function GraficoLinhaTemporal({
   const mediaVal = valores.reduce((acc, v) => acc + v, 0) / valores.length;
   const yMedia = padTop + chartHeight - ((mediaVal - minValor) / rangeY) * chartHeight;
 
-  const nomeExibicao = titulo || serie.nome_metrica || serie.id_metrica;
   const unidade = serie.unidade ? ` ${serie.unidade}` : "";
 
   return (
@@ -206,43 +259,58 @@ export function GraficoLinhaTemporal({
             opacity="0.75"
           />
 
-          {/* Área preenchida com gradiente */}
-          <path d={pathArea} fill={`url(#gradiente-${serie.id_metrica})`} />
-
-          {/* Linha contínua da série */}
-          <path
-            d={pathLine}
-            fill="none"
-            stroke="var(--color-primary, #3b82f6)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          {/* Área preenchida e Linha contínua apenas quando houver mais de 1 ponto */}
+          {coords.length > 1 && (
+            <>
+              <path d={pathArea} fill={`url(#gradiente-${serie.id_metrica})`} />
+              <path
+                d={pathLine}
+                fill="none"
+                stroke="var(--color-primary, #3b82f6)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </>
+          )}
 
           {/* Pontos e Hitboxes Interativas (>= 44x44px para RNF07) */}
           {coords.map((c, idx) => {
             const ponto = pontosValidos[idx];
             const isHovered = pontoAtivo?.sessao_id === ponto.sessao_id;
+            const rotuloData =
+              ponto.rotulo || formatarDataPonto(ponto.data_hora) || `S${idx + 1}`;
+            const valorFormatado = `${Number(ponto.valor).toFixed(1)}${unidade}`;
 
             return (
               <g key={`ponto-group-${idx}`}>
-                {/* Rótulo Eixo X */}
+                {/* Rótulo de Data no Eixo X */}
                 <text
                   x={c.x}
                   y={padTop + chartHeight + 18}
                   textAnchor="middle"
-                  className="fill-muted-foreground text-2xs select-none"
+                  className="fill-muted-foreground text-2xs font-medium select-none"
                 >
-                  {ponto.rotulo || `S${idx + 1}`}
+                  {rotuloData}
+                </text>
+
+                {/* Valor do dado diretamente acima do ponto */}
+                <text
+                  x={c.x}
+                  y={c.y - 10}
+                  textAnchor="middle"
+                  className="fill-foreground text-[10px] font-bold font-mono select-none"
+                >
+                  {valorFormatado}
                 </text>
 
                 {/* Círculo visual do ponto */}
                 <circle
                   cx={c.x}
                   cy={c.y}
-                  r={isHovered ? 6 : 4}
+                  r={isHovered ? 6 : coords.length === 1 ? 5.5 : 4}
                   className="fill-background stroke-primary transition-all duration-150"
-                  strokeWidth={isHovered ? 3 : 2}
+                  strokeWidth={isHovered ? 3 : 2.5}
                 />
 
                 {/* Hitbox transparente ergonômica (44x44px) */}
@@ -256,7 +324,7 @@ export function GraficoLinhaTemporal({
                   className="cursor-pointer"
                   tabIndex={0}
                   role="button"
-                  aria-label={`${ponto.rotulo || `Sessão ${idx + 1}`}: ${Number(ponto.valor).toFixed(1)}${unidade}`}
+                  aria-label={`${ponto.rotulo || formatarDataPonto(ponto.data_hora) || `Sessão ${idx + 1}`}: ${valorFormatado}`}
                   onMouseEnter={() => setPontoAtivo(ponto)}
                   onMouseLeave={() => setPontoAtivo(null)}
                   onFocus={() => setPontoAtivo(ponto)}
@@ -275,7 +343,7 @@ export function GraficoLinhaTemporal({
           >
             <div>
               <span className="font-semibold text-foreground">
-                {pontoAtivo.rotulo || "Sessão selecionada"}:
+                {pontoAtivo.rotulo || formatarDataPonto(pontoAtivo.data_hora) || "Sessão selecionada"}:
               </span>{" "}
               <span className="font-bold text-primary text-sm">
                 {Number(pontoAtivo.valor).toFixed(1)}{unidade}

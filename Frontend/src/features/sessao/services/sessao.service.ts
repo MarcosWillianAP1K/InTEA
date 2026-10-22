@@ -9,6 +9,7 @@
  */
 
 import { http, withFallback, ENDPOINTS } from "@/core/api";
+import { USE_MOCK_DATA } from "@/core/api/http-client";
 import type {
   Sessao,
   IniciarSessaoDTO,
@@ -18,6 +19,8 @@ import type {
   ResultadoSessao,
   RelatorioIAResultado,
   MetricasConsolidadas,
+  HistoricoEvolutivoResultado,
+  TentativaGraficoResultado,
   FinalizarSessaoResposta,
   BuscarResultadoResposta,
   SalvarAnotacaoPayload,
@@ -147,31 +150,46 @@ export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
     ? iaJson.metricas_consolidadas
     : {}) as Record<string, unknown>;
 
-  const metricasAgregadas = Array.isArray(iaJson.metricas_agregadas)
-    ? (iaJson.metricas_agregadas as Array<{ id_metrica: string; valor_dominante: string | number; tendencia: "crescente" | "decrescente" | "estavel" }>)
-    : [
+  let metricasAgregadas: Array<{ id_metrica: string; valor_dominante: string | number; tendencia: "crescente" | "decrescente" | "estavel" }> = [];
+
+  if (Array.isArray(iaJson.metricas_agregadas) && iaJson.metricas_agregadas.length > 0) {
+    metricasAgregadas = iaJson.metricas_agregadas as Array<{
+      id_metrica: string;
+      valor_dominante: string | number;
+      tendencia: "crescente" | "decrescente" | "estavel";
+    }>;
+  } else {
+    if (metricasConsolidadasRaw.tempo_resposta_medio_segundos !== undefined) {
+      metricasAgregadas.push({
+        id_metrica: "tempo_resposta",
+        valor_dominante: `${metricasConsolidadasRaw.tempo_resposta_medio_segundos}s`,
+        tendencia: "crescente",
+      });
+    }
+    if (metricasConsolidadasRaw.precisao_acertos_percentual !== undefined) {
+      metricasAgregadas.push({
+        id_metrica: "precisao",
+        valor_dominante: `${metricasConsolidadasRaw.precisao_acertos_percentual}%`,
+        tendencia: "estavel",
+      });
+    }
+    if (iaJson.estabilidade_emocional_score !== undefined) {
+      metricasAgregadas.push({
+        id_metrica: "estabilidade_emocional",
+        valor_dominante: `${iaJson.estabilidade_emocional_score}/10`,
+        tendencia: "estavel",
+      });
+    }
+    if (metricasAgregadas.length === 0) {
+      metricasAgregadas = [
         {
           id_metrica: "tempo_resposta",
-          valor_dominante: metricasConsolidadasRaw.tempo_resposta_medio_segundos
-            ? `${metricasConsolidadasRaw.tempo_resposta_medio_segundos}s`
-            : "2.8s",
-          tendencia: "crescente" as const,
-        },
-        {
-          id_metrica: "precisao",
-          valor_dominante: metricasConsolidadasRaw.precisao_acertos_percentual
-            ? `${metricasConsolidadasRaw.precisao_acertos_percentual}%`
-            : "89%",
-          tendencia: "estavel" as const,
-        },
-        {
-          id_metrica: "estabilidade_emocional",
-          valor_dominante: iaJson.estabilidade_emocional_score
-            ? `${iaJson.estabilidade_emocional_score}/10`
-            : "8.6/10",
-          tendencia: "estavel" as const,
+          valor_dominante: "2.8s",
+          tendencia: "crescente",
         },
       ];
+    }
+  }
 
   const dadosIa: RelatorioIAResultado = {
     token_sessao: sessionToken,
@@ -194,6 +212,22 @@ export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
     total_acertos: 45,
     total_erros: 4,
   };
+
+  // Preservar historico_evolutivo retornado pelo backend (GET /api/sessao/:id/resultado)
+  const rawHistorico = (r.historico_evolutivo || r.grafico_evolutivo) as Record<string, unknown> | undefined;
+  const historicoEvolutivo: HistoricoEvolutivoResultado | null =
+    rawHistorico && typeof rawHistorico === "object"
+      ? {
+          tipo: rawHistorico.tipo ? String(rawHistorico.tipo) : undefined,
+          tempo_medio_referencia:
+            rawHistorico.tempo_medio_referencia !== undefined
+              ? Number(rawHistorico.tempo_medio_referencia)
+              : undefined,
+          tentativas: Array.isArray(rawHistorico.tentativas)
+            ? (rawHistorico.tentativas as TentativaGraficoResultado[])
+            : [],
+        }
+      : null;
 
   const rawAnotacoes = Array.isArray(r.anotacoes) ? (r.anotacoes as Array<Record<string, unknown>>) : [];
   const anotacoes: AnotacaoClinicaResultado[] = rawAnotacoes.map((a) => ({
@@ -223,6 +257,7 @@ export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
     terapeuta,
     metricas_consolidadas: metricasConsolidadas,
     dados_ia: dadosIa,
+    historico_evolutivo: historicoEvolutivo,
     anotacoes,
   };
 }
@@ -234,25 +269,58 @@ export const sessaoService = {
   iniciarSessao: async (dto: IniciarSessaoDTO): Promise<Sessao> => {
     return await withFallback(
       async () => {
-        const resposta = await http.post<{ data: { sessao?: Sessao } | Sessao } | Sessao>(
-          ENDPOINTS.SESSAO.INICIAR,
-          dto,
-        );
+        interface TokenPareamentoPayload {
+          token?: string;
+          codigo?: string;
+          expira_em?: string;
+        }
+        const resposta = await http.post<
+          | {
+              data:
+                | ({
+                    sessao?: Sessao;
+                    token_pareamento?: TokenPareamentoPayload;
+                  } & Partial<Sessao>)
+                | Sessao;
+            }
+          | Sessao
+        >(ENDPOINTS.SESSAO.INICIAR, dto);
+
         let dados: Sessao;
+        let tokenPareamento: TokenPareamentoPayload | undefined;
+
         if ("data" in resposta && resposta.data) {
-          const dataObj = resposta.data as unknown as { sessao?: Sessao } & Sessao;
+          const dataObj = resposta.data as {
+            sessao?: Sessao;
+            token_pareamento?: TokenPareamentoPayload;
+          } & Sessao;
+          tokenPareamento = dataObj.token_pareamento;
           dados = dataObj.sessao || dataObj;
         } else {
           dados = resposta as Sessao;
         }
-        const dadosRaw = dados as unknown as { id?: string; session_id?: string };
+
+        const dadosRaw = dados as unknown as {
+          id?: string;
+          session_id?: string;
+          session_token?: string;
+          expira_em?: string;
+        };
         const idNormalizado = dadosRaw.id || dadosRaw.session_id;
-        if (idNormalizado && !dados.id) {
-          dados = {
-            ...dados,
-            id: idNormalizado,
-          };
-        }
+        const tokenNormalizado =
+          dadosRaw.session_token ||
+          tokenPareamento?.token ||
+          tokenPareamento?.codigo;
+        const expiraEmNormalizado =
+          dadosRaw.expira_em || tokenPareamento?.expira_em;
+
+        dados = {
+          ...dados,
+          ...(idNormalizado ? { id: idNormalizado } : {}),
+          ...(tokenNormalizado ? { session_token: tokenNormalizado } : {}),
+          ...(expiraEmNormalizado ? { expira_em: expiraEmNormalizado } : {}),
+        };
+
         return dados;
       },
       () => iniciarSessaoMock(dto),
@@ -311,12 +379,44 @@ export const sessaoService = {
 
     return await withFallback(
       async () => {
+        interface RawStatusEnvelope {
+          sessao?: Record<string, unknown>;
+          dispositivo?: {
+            info?: StatusSessaoDTO["dispositivo_info"];
+            presenca?: StatusSessaoDTO["presenca_dispositivo"];
+          };
+          presenca_dispositivo?: StatusSessaoDTO["presenca_dispositivo"];
+        }
         const resposta = await http.get<
-          { data: StatusSessaoDTO } | StatusSessaoDTO
+          { data: (RawStatusEnvelope & Partial<StatusSessaoDTO>) | StatusSessaoDTO } | StatusSessaoDTO
         >(ENDPOINTS.SESSAO.STATUS_BY_TOKEN(tokenOuPin));
 
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const dataObj = resposta.data as RawStatusEnvelope & StatusSessaoDTO;
+          if (dataObj.sessao && typeof dataObj.sessao === "object") {
+            const sessao = dataObj.sessao;
+            const disp = dataObj.dispositivo;
+            return {
+              id: String(sessao.id || ""),
+              session_token: String(sessao.session_token || tokenOuPin),
+              status_sessao: (sessao.status_sessao ||
+                "aguardando_pareamento") as StatusSessao,
+              modo_sessao: (sessao.modo_sessao || "sessao_clinica") as
+                | "sessao_clinica"
+                | "modo_livre",
+              dispositivo_conectado: Boolean(
+                sessao.dispositivo_conectado ?? disp?.presenca?.conectado,
+              ),
+              dispositivo_info:
+                (sessao.dispositivo_info as StatusSessaoDTO["dispositivo_info"]) ??
+                disp?.info ??
+                null,
+              expirado: Boolean(sessao.expirado ?? false),
+              presenca_dispositivo:
+                dataObj.presenca_dispositivo ?? disp?.presenca,
+            };
+          }
+          return dataObj;
         }
         return (resposta as StatusSessaoDTO) ?? null;
       },
@@ -456,12 +556,20 @@ export const sessaoService = {
         sucesso: true,
         data: resultado.data,
       };
-    } catch {
-      // Fallback gracioso para bdmock
-      const dadosMock = await exportarRelatorioSessaoMock(id);
+    } catch (err: unknown) {
+      if (USE_MOCK_DATA || import.meta.env.MODE === "test") {
+        const dadosMock = await exportarRelatorioSessaoMock(id);
+        return {
+          sucesso: true,
+          data: dadosMock,
+        };
+      }
       return {
-        sucesso: true,
-        data: dadosMock,
+        sucesso: false,
+        error:
+          err instanceof Error
+            ? err.message
+            : "Erro ao conectar com a API para exportar relatório",
       };
     }
   },
@@ -562,17 +670,22 @@ export const sessaoService = {
         sucesso: true,
         data: normalizarResultadoSessao(resultado.data),
       };
-    } catch {
-      const dadosMock = await obterResultadoSessaoMock(identificadorSessao);
-      if (dadosMock) {
-        return {
-          sucesso: true,
-          data: normalizarResultadoSessao(dadosMock),
-        };
+    } catch (err: unknown) {
+      if (USE_MOCK_DATA || import.meta.env.MODE === "test") {
+        const dadosMock = await obterResultadoSessaoMock(identificadorSessao);
+        if (dadosMock) {
+          return {
+            sucesso: true,
+            data: normalizarResultadoSessao(dadosMock),
+          };
+        }
       }
       return {
         sucesso: false,
-        error: "Erro desconhecido ao buscar resultado",
+        error:
+          err instanceof Error
+            ? err.message
+            : "Erro desconhecido ao buscar resultado",
       };
     }
   },
@@ -635,18 +748,27 @@ export const sessaoService = {
         sucesso: true,
         data: anotacao,
       };
-    } catch {
+    } catch (err: unknown) {
+      if (USE_MOCK_DATA || import.meta.env.MODE === "test") {
+        return {
+          sucesso: true,
+          data: {
+            id: payload.anotacaoId || `anot-mock-${Date.now()}`,
+            conteudo: payload.conteudo.trim(),
+            terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
+            sessao_id: payload.sessaoId,
+            paciente_id: payload.pacienteId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        };
+      }
       return {
-        sucesso: true,
-        data: {
-          id: payload.anotacaoId || `anot-mock-${Date.now()}`,
-          conteudo: payload.conteudo.trim(),
-          terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
-          sessao_id: payload.sessaoId,
-          paciente_id: payload.pacienteId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
+        sucesso: false,
+        error:
+          err instanceof Error
+            ? err.message
+            : "Erro ao conectar com a API para salvar anotação clínica",
       };
     }
   },
@@ -669,13 +791,47 @@ export const sessaoService = {
         if (filtros?.page !== undefined) params.page = String(filtros.page);
         if (filtros?.limit !== undefined) params.limit = String(filtros.limit);
 
-        const resposta = await http.get<RespostaListagemSessao<Sessao>>(
+        interface RawListarResponse {
+          data?:
+            | Sessao[]
+            | {
+                sessoes?: Sessao[];
+                meta?: RespostaListagemSessao<Sessao>["meta"];
+              };
+          meta?: RespostaListagemSessao<Sessao>["meta"];
+          message?: string;
+        }
+
+        const resposta = await http.get<RawListarResponse>(
           ENDPOINTS.SESSAO.BASE,
-          { params }
+          { params },
         );
-        return resposta;
+
+        const rawData = resposta.data;
+        const sessoesArray: Sessao[] = Array.isArray(rawData)
+          ? rawData
+          : rawData && typeof rawData === "object" && Array.isArray(rawData.sessoes)
+            ? rawData.sessoes
+            : [];
+
+        const metaObj: RespostaListagemSessao<Sessao>["meta"] =
+          resposta.meta ||
+          (rawData && !Array.isArray(rawData) && rawData.meta
+            ? rawData.meta
+            : {
+                total: sessoesArray.length,
+                page: filtros?.page ?? 1,
+                limit: filtros?.limit ?? (sessoesArray.length || 10),
+                totalPages: 1,
+              });
+
+        return {
+          data: sessoesArray,
+          meta: metaObj,
+          message: resposta.message,
+        };
       },
-      () => listarSessoesMock(filtros)
+      () => listarSessoesMock(filtros),
     );
   },
 };

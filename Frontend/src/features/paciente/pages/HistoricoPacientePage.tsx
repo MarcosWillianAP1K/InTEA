@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
+import { sessaoService } from "@/features/sessao/services/sessaoService";
+import type { Sessao } from "@/features/sessao/types/sessao.types";
 import { pacienteService } from "../services/paciente.service";
 import type { Paciente } from "../types/paciente.types";
 import type {
@@ -40,6 +42,92 @@ import { LinhaDoTempoSessoes } from "../components/LinhaDoTempoSessoes";
  * ============================================================================
  */
 
+function mapearSessoesParaLinhaDoTempo(
+  listaSessoes: Sessao[],
+  filtrosAtivos: FiltrosHistorico,
+  jogoIdFiltro?: string | null,
+): SessaoHistoricoItem[] {
+  const filtradas = listaSessoes.filter((s) => {
+    // RN01: Exclui modo livre
+    if (s.modo_sessao === "modo_livre") {
+      return false;
+    }
+    const idJogoSessao = s.jogo_id || s.jogo?.id;
+    if (jogoIdFiltro && idJogoSessao && String(idJogoSessao) !== String(jogoIdFiltro)) {
+      return false;
+    }
+    if (filtrosAtivos.periodo && filtrosAtivos.periodo !== "todos") {
+      const dataRef = s.data_hora_fim || s.data_hora_inicio;
+      if (dataRef) {
+        const ts = new Date(dataRef).getTime();
+        if (filtrosAtivos.dataInicio) {
+          const tsIni = new Date(
+            filtrosAtivos.dataInicio.includes("T")
+              ? filtrosAtivos.dataInicio
+              : `${filtrosAtivos.dataInicio}T00:00:00.000Z`,
+          ).getTime();
+          if (!Number.isNaN(tsIni) && ts < tsIni) return false;
+        }
+        if (filtrosAtivos.dataFim) {
+          const tsFim = new Date(
+            filtrosAtivos.dataFim.includes("T")
+              ? filtrosAtivos.dataFim
+              : `${filtrosAtivos.dataFim}T23:59:59.999Z`,
+          ).getTime();
+          if (!Number.isNaN(tsFim) && ts > tsFim) return false;
+        }
+      }
+    }
+    return true;
+  });
+
+  return filtradas
+    .map((s) => {
+      let duracao = s.duracao_segundos;
+      if ((duracao === undefined || duracao <= 0) && s.data_hora_inicio && s.data_hora_fim) {
+        const ini = new Date(s.data_hora_inicio).getTime();
+        const fim = new Date(s.data_hora_fim).getTime();
+        if (!Number.isNaN(ini) && !Number.isNaN(fim) && fim >= ini) {
+          duracao = Math.round((fim - ini) / 1000);
+        }
+      }
+
+      return {
+        sessao_id: s.id,
+        status_sessao: s.status_sessao,
+        data_hora_inicio: s.data_hora_inicio,
+        data_hora_fim: s.data_hora_fim || s.data_hora_inicio,
+        tempo_total_segundos: duracao,
+        duracao_segundos: duracao,
+        terapeuta_id: s.terapeuta_id,
+        jogo_id: s.jogo_id || s.jogo?.id,
+      };
+    })
+    .sort((a, b) => {
+      const ta = new Date(a.data_hora_fim || a.data_hora_inicio || 0).getTime();
+      const tb = new Date(b.data_hora_fim || b.data_hora_inicio || 0).getTime();
+      return tb - ta;
+    });
+}
+
+function mesclarSessoesSemDuplicatas(
+  ...listas: SessaoHistoricoItem[][]
+): SessaoHistoricoItem[] {
+  const mapa = new Map<string, SessaoHistoricoItem>();
+  for (const lista of listas) {
+    for (const item of lista) {
+      if (item && item.sessao_id && !mapa.has(item.sessao_id)) {
+        mapa.set(item.sessao_id, item);
+      }
+    }
+  }
+  return Array.from(mapa.values()).sort((a, b) => {
+    const ta = new Date(a.data_hora_fim || a.data_hora_inicio || 0).getTime();
+    const tb = new Date(b.data_hora_fim || b.data_hora_inicio || 0).getTime();
+    return tb - ta;
+  });
+}
+
 export function HistoricoPacientePage() {
   const { id: pacienteId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -56,9 +144,9 @@ export function HistoricoPacientePage() {
   const [historicoDetalhado, setHistoricoDetalhado] = useState<HistoricoJogoDetalhado | null>(null);
   const [sessoesLinhaDoTempo, setSessoesLinhaDoTempo] = useState<SessaoHistoricoItem[]>([]);
 
-  // Estados de filtros temporais (RF19: padrão últimos 30 dias)
+  // Estados de filtros temporais (RF19: inicia com Todo o Histórico para exibir todas as sessões do paciente)
   const [filtros, setFiltros] = useState<FiltrosHistorico>({
-    periodo: "30d",
+    periodo: "todos",
   });
 
   // Estados de controle de UI
@@ -86,24 +174,76 @@ export function HistoricoPacientePage() {
       try {
         setErroHttp(null);
 
-        // Se houver jogo selecionado, consulta histórico detalhado daquele jogo
+        // Busca sessões reais do paciente na mesma rota usada em PerfilPacientePage (/api/sessao?pacienteId=:id)
+        const promessaSessoesPaciente = sessaoService
+          .listar({ pacienteId: id, limit: 100 })
+          .then((res) => res?.data || [])
+          .catch(() => [] as Sessao[]);
+
         if (jogoId) {
-          const [resGeral, resDetalhe] = await Promise.all([
+          const [resGeral, resDetalhe, listaSessoesPaciente] = await Promise.all([
             pacienteService.buscarHistoricoGeral(id, filtrosAtivos),
             pacienteService.buscarHistoricoJogo(id, jogoId, filtrosAtivos),
+            promessaSessoesPaciente,
           ]);
 
           setEngajamento(resGeral.engajamento);
           setJogos(resGeral.jogos || []);
           setHistoricoDetalhado(resDetalhe);
-          setSessoesLinhaDoTempo(resDetalhe.sessoes || []);
+
+          const sessoesDoDetalhe = resDetalhe.sessoes || [];
+          const sessoesDaListagem = mapearSessoesParaLinhaDoTempo(
+            listaSessoesPaciente,
+            filtrosAtivos,
+            jogoId,
+          );
+          setSessoesLinhaDoTempo(
+            mesclarSessoesSemDuplicatas(sessoesDoDetalhe, sessoesDaListagem),
+          );
         } else {
-          // Visão Geral: Consulta engajamento geral e catálogo de jogos (sem dupla requisição)
-          const resGeral = await pacienteService.buscarHistoricoGeral(id, filtrosAtivos);
+          // Visão Geral: Consulta engajamento geral, catálogo de jogos e sessões do paciente
+          const [resGeral, listaSessoesPaciente] = await Promise.all([
+            pacienteService.buscarHistoricoGeral(id, filtrosAtivos),
+            promessaSessoesPaciente,
+          ]);
+
           setEngajamento(resGeral.engajamento);
           setJogos(resGeral.jogos || []);
           setHistoricoDetalhado(null);
-          setSessoesLinhaDoTempo([]);
+
+          const sessoesDaListagem = mapearSessoesParaLinhaDoTempo(
+            listaSessoesPaciente,
+            filtrosAtivos,
+            null,
+          );
+
+          // Também consulta as sessões dos jogos do catálogo caso haja jogos registrados
+          const sessoesDosJogos: SessaoHistoricoItem[] = [];
+          if ((resGeral.jogos || []).length > 0) {
+            try {
+              const detalhesJogos = await Promise.all(
+                (resGeral.jogos || []).map((j) => {
+                  const idDoJogo = j.jogo_id || String(j.id || "");
+                  return idDoJogo
+                    ? pacienteService
+                        .buscarHistoricoJogo(id, idDoJogo, filtrosAtivos)
+                        .catch(() => null)
+                    : Promise.resolve(null);
+                }),
+              );
+              for (const det of detalhesJogos) {
+                if (det && Array.isArray(det.sessoes)) {
+                  sessoesDosJogos.push(...det.sessoes);
+                }
+              }
+            } catch {
+              // Ignora falha silenciosamente
+            }
+          }
+
+          setSessoesLinhaDoTempo(
+            mesclarSessoesSemDuplicatas(sessoesDaListagem, sessoesDosJogos),
+          );
         }
       } catch (err: unknown) {
         setIsRefreshing(false);
