@@ -214,3 +214,11 @@ authRoutes.post('/refresh', AuthController.refresh);
  *               message: "Logout realizado com sucesso."
  */
 authRoutes.post('/logout', AuthController.logout);
+
+// ------------------------------------------------------------------------------
+// Gestão de Sessões Ativas e Logout Remoto (RF02)
+// ------------------------------------------------------------------------------
+authRoutes.get('/sessoes', authMiddleware, AuthController.listarSessoes);
+authRoutes.post('/logout-all', authMiddleware, AuthController.logoutAll);
+authRoutes.delete('/sessoes/:id', authMiddleware, AuthController.revogarSessao);
+

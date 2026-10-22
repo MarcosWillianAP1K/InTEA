@@ -3,6 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase/supabase.client.js';
 import type { AnotacaoClinica } from '../../api/anotacao/models/anotacao.model.js';
 import type { Sessao } from '../../api/sessao/models/sessao.model.js';
+import { SessoesAtivasService } from '../auth/sessoes-ativas.service.js';
 
 export type UsuarioAutenticado = Partial<User> & {
   id: string;
@@ -68,6 +69,15 @@ export async function authMiddleware(
       res.status(401).json({
         error: 'Token JWT inválido ou expirado.',
         detalhes: error?.message,
+      });
+      return;
+    }
+
+    // Valida se o token não foi revogado remotamente via logout-all (RF02)
+    const tokenRevogado = await SessoesAtivasService.isTokenRevogado(token);
+    if (tokenRevogado) {
+      res.status(401).json({
+        error: 'Sessão revogada remotamente. Faça login novamente.',
       });
       return;
     }

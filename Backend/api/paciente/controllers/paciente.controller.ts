@@ -9,6 +9,7 @@ import { Request, Response } from 'express';
 import { CriarPacienteDTO, AtualizarPacienteDTO, FiltrosPacienteDTO, Paciente } from '../models/paciente.model.js';
 import { PacienteService, PacienteServiceError } from '../services/paciente.service.js';
 import { PacienteHistoricoService } from '../services/paciente-historico.service.js';
+import { PacienteExportarHistoricoService } from '../services/paciente-exportar-historico.service.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { obterMensagemErro } from '../../../core/utils/formatters.js';
 import { validarUUID } from '../../../core/utils/validators.js';
@@ -739,4 +740,32 @@ export class PacienteController {
   static async buscarHistorico(req: Request, res: Response): Promise<void> {
     return PacienteController.buscarHistoricoGeral(req, res);
   }
+
+  /**
+   * Handles GET /api/paciente/:id/prontuario/exportar to export longitudinal clinical report in PDF.
+   */
+  static async exportarProntuario(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id || '').trim();
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+
+      const resultado = await PacienteExportarHistoricoService.exportarProntuario(pacienteId, usuarioLogado);
+
+      if (!resultado.sucesso) {
+        res.status(resultado.statusHttp).json({ error: resultado.erro });
+        return;
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${resultado.filename}"`);
+      res.status(200).send(resultado.pdfBuffer);
+    } catch (error: unknown) {
+      console.error('[PacienteController.exportarProntuario]', error);
+      res.status(500).json({
+        error: 'Erro interno ao exportar prontuário longitudinal do paciente.',
+        detalhes: obterMensagemErro(error),
+      });
+    }
+  }
 }
+

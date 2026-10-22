@@ -4,6 +4,7 @@ import { PacienteController } from '../controllers/paciente.controller.js';
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
+import { validarIntervaloHistorico } from '../../../core/middlewares/query-range.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/paciente
@@ -108,7 +109,7 @@ export const pacienteRoutes = Router();
  *             example:
  *               error: "Erro interno ao listar pacientes."
  */
-pacienteRoutes.get('/', authMiddleware, PacienteController.listar);
+pacienteRoutes.get('/', authMiddleware, validarIntervaloHistorico, PacienteController.listar);
 
 /**
  * @swagger
@@ -850,3 +851,45 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
  *               error: "Erro interno ao desvincular terapeuta."
  */
 pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, verificarVisibilidadePaciente, PacienteController.desvincularTerapeuta);
+
+// ------------------------------------------------------------------------------
+// 5. Exportação de Prontuário Longitudinal (RF20)
+// ------------------------------------------------------------------------------
+
+/**
+ * @swagger
+ * /api/paciente/{id}/prontuario/exportar:
+ *   get:
+ *     summary: Exporta o prontuário longitudinal do paciente em PDF formatado (RF20)
+ *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente
+ *     responses:
+ *       200:
+ *         description: Prontuário longitudinal gerado com sucesso em PDF
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: ID do paciente inválido
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Acesso proibido por regra institucional (RN04)
+ *       404:
+ *         description: Paciente não encontrado ou inativo (RN05)
+ *       500:
+ *         description: Erro interno do servidor
+ */
+pacienteRoutes.get('/:id/prontuario/exportar', authMiddleware, PacienteController.exportarProntuario);
+
