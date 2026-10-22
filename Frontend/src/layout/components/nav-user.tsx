@@ -97,7 +97,7 @@ function NavUserContent({ user, onNavigateLogin, onNavigateSettings }: NavUserCo
         <button
           type="button"
           aria-label={`Menu de perfil de ${displayName}`}
-          className="flex flex-row items-center gap-[12px] p-[4px] pr-3 rounded-full hover:bg-surface-alt transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex flex-row items-center gap-3 p-1 pr-3 rounded-full hover:bg-surface-alt transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Avatar className="h-9 w-9 rounded-full border border-primary-light">
             {displayAvatar ? (
@@ -112,7 +112,7 @@ function NavUserContent({ user, onNavigateLogin, onNavigateSettings }: NavUserCo
             <span className="text-[14px] font-semibold text-foreground-heading leading-tight">
               {displayName}
             </span>
-            <span className="text-[12px] font-medium text-foreground leading-tight max-w-[180px] truncate">
+            <span className="text-[12px] font-medium text-foreground leading-tight max-w-45 truncate">
               {displayRole}
             </span>
             <span className="sr-only">{displayEmail}</span>

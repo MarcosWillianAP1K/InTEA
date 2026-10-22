@@ -78,6 +78,8 @@ export interface GraficoEvolutivoTentativa {
   tempoFormatado: string;
   tempo_resposta_segundos: number;
   acerto: boolean;
+  data_hora?: string;
+  id_metrica?: string;
   intervencaoDda?: {
     tipoIntervencao: string;
     momentoFormatado: string;
@@ -284,8 +286,10 @@ function extrairTentativasGrafico(
     const idMetrica = evt.dados?.id_metrica || '';
     if (tipo === 'modulacao_dda' || idMetrica === 'dda' || tipo === 'intervencao_dda') {
       const seg = Math.max(0, Math.round((new Date(evt.data_hora).getTime() - inicioMs) / 1000));
+      const dadosRaw = evt.dados as Record<string, unknown> | undefined;
+      const acao = dadosRaw?.acao ? String(dadosRaw.acao).replace(/_/g, ' ') : undefined;
       ddaMap.set(seg, {
-        tipoIntervencao: String(evt.dados?.valor || 'Ajuste de Dificuldade (DDA)'),
+        tipoIntervencao: String(evt.dados?.valor || acao || 'Ajuste de Dificuldade (DDA)'),
         momentoFormatado: formatarMinutosSegundos(seg),
       });
     }
@@ -324,6 +328,8 @@ function extrairTentativasGrafico(
         tempoFormatado: formatarMinutosSegundos(segundo),
         tempo_resposta_segundos: tempoResposta > 0 ? tempoResposta : tempoMedioRef,
         acerto: isAcerto || !isErro,
+        data_hora: evt.data_hora,
+        id_metrica: idMetrica || 'tempo_resposta',
         intervencaoDda: ddaProxima,
       });
     }

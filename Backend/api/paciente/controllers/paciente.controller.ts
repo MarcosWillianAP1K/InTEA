@@ -9,8 +9,10 @@ import { Request, Response } from 'express';
 import { CriarPacienteDTO, AtualizarPacienteDTO, FiltrosPacienteDTO, Paciente } from '../models/paciente.model.js';
 import { PacienteService, PacienteServiceError } from '../services/paciente.service.js';
 import { PacienteHistoricoService } from '../services/paciente-historico.service.js';
+import { PacienteExportarHistoricoService } from '../services/paciente-exportar-historico.service.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { obterMensagemErro } from '../../../core/utils/formatters.js';
+import { validarUUID } from '../../../core/utils/validators.js';
 
 // ==============================================================================
 // Tipos de Sanitização de Saída (Zero any)
@@ -621,6 +623,19 @@ export class PacienteController {
     try {
       const pacienteId = String(req.params.id);
 
+      if (!validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O identificador do paciente deve ser um UUID válido.' });
+        return;
+      }
+
+      // Proteção contra uso indevido de jogoId nesta rota (T1-P1)
+      if (req.query.jogoId) {
+        res.status(400).json({
+          error: 'Para consultar o histórico de um jogo específico, use GET /api/paciente/:id/historico/jogo/:jogoId',
+        });
+        return;
+      }
+
       const filtros = {
         dataInicio: typeof req.query.dataInicio === 'string' && req.query.dataInicio.trim() ? req.query.dataInicio.trim() : undefined,
         dataFim: typeof req.query.dataFim === 'string' && req.query.dataFim.trim() ? req.query.dataFim.trim() : undefined,
@@ -672,6 +687,15 @@ export class PacienteController {
     try {
       const pacienteId = String(req.params.id);
       const jogoId = String(req.params.jogoId);
+      if (!validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O identificador do paciente deve ser um UUID válido.' });
+        return;
+      }
+
+      if (!validarUUID(jogoId)) {
+        res.status(400).json({ error: 'O identificador do jogo deve ser um UUID válido.' });
+        return;
+      }
 
       const filtros = {
         sessaoId: typeof req.query.sessaoId === 'string' && req.query.sessaoId.trim() ? req.query.sessaoId.trim() : undefined,
@@ -716,4 +740,32 @@ export class PacienteController {
   static async buscarHistorico(req: Request, res: Response): Promise<void> {
     return PacienteController.buscarHistoricoGeral(req, res);
   }
+
+  /**
+   * Handles GET /api/paciente/:id/prontuario/exportar to export longitudinal clinical report in PDF.
+   */
+  static async exportarProntuario(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id || '').trim();
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+
+      const resultado = await PacienteExportarHistoricoService.exportarProntuario(pacienteId, usuarioLogado);
+
+      if (!resultado.sucesso) {
+        res.status(resultado.statusHttp).json({ error: resultado.erro });
+        return;
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${resultado.filename}"`);
+      res.status(200).send(resultado.pdfBuffer);
+    } catch (error: unknown) {
+      console.error('[PacienteController.exportarProntuario]', error);
+      res.status(500).json({
+        error: 'Erro interno ao exportar prontuário longitudinal do paciente.',
+        detalhes: obterMensagemErro(error),
+      });
+    }
+  }
 }
+

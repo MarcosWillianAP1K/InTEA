@@ -15,7 +15,17 @@ import type {
   VincularTerapeutaDTO,
   PacienteRespostaApi,
   PacientesListaRespostaApi,
+  HistoricoRespostaApi,
+  HistoricoGeralRespostaApi,
+  HistoricoJogoRespostaApi,
 } from "../types/paciente.types";
+import type {
+  FiltrosHistorico,
+  RespostaHistoricoPaciente,
+  MetricasEngajamentoGeral,
+  ResumoJogoPaciente,
+  HistoricoJogoDetalhado,
+} from "../types/historico.types";
 import {
   listarPacientesMock,
   buscarPacienteMockPorId,
@@ -26,6 +36,9 @@ import {
   listarTerapeutasPacienteMock,
   vincularTerapeutaMock,
   desvincularTerapeutaMock,
+  buscarHistoricoPacienteMock,
+  buscarHistoricoGeralMock,
+  buscarHistoricoJogoMock,
 } from "../types/bdmock";
 
 /**
@@ -253,6 +266,119 @@ export const pacienteService = {
   /**
    * Unlinks a therapist from patient (RF18).
    */
+  buscarHistorico: async (
+    pacienteId: string,
+    filtros?: FiltrosHistorico,
+  ): Promise<RespostaHistoricoPaciente> => {
+    return await withFallback(
+      async () => {
+        const params = serializarFiltrosHistorico(filtros);
+        if (params && params.jogoId) {
+          delete params.jogoId;
+        }
+        const resposta = await http.get<HistoricoRespostaApi | RespostaHistoricoPaciente>(
+          ENDPOINTS.PACIENTE.HISTORICO(pacienteId),
+          { params },
+        );
+
+        if (resposta && "data" in resposta && resposta.data) {
+          const d = resposta.data;
+          if ("engajamento_geral" in d) {
+            return d as RespostaHistoricoPaciente;
+          }
+        }
+        if (resposta && "engajamento_geral" in (resposta as RespostaHistoricoPaciente)) {
+          return resposta as RespostaHistoricoPaciente;
+        }
+
+        throw new Error("Payload de historico longitudinal retornado em formato incompativel.");
+      },
+      () => buscarHistoricoPacienteMock(pacienteId, filtros),
+    );
+  },
+
+  /**
+   * Consulta o historico geral de engajamento e catalogo de jogos do paciente (RF15, RF19).
+   */
+  buscarHistoricoGeral: async (
+    pacienteId: string,
+    filtros?: FiltrosHistorico,
+  ): Promise<{
+    engajamento: MetricasEngajamentoGeral;
+    jogos: ResumoJogoPaciente[];
+    meta?: unknown;
+  }> => {
+    return await withFallback(
+      async () => {
+        const params = serializarFiltrosHistorico(filtros);
+        if (params && params.jogoId) {
+          delete params.jogoId;
+        }
+        const resposta = await http.get<HistoricoGeralRespostaApi | {
+          engajamento: MetricasEngajamentoGeral;
+          jogos: ResumoJogoPaciente[];
+          meta?: unknown;
+        }>(
+          ENDPOINTS.PACIENTE.HISTORICO(pacienteId),
+          { params },
+        );
+
+        if (resposta && "data" in resposta && resposta.data) {
+          const d = resposta.data;
+          if ("engajamento" in d && "jogos" in d) {
+            return d;
+          }
+        }
+        if (resposta && "engajamento" in resposta && "jogos" in resposta) {
+          return resposta;
+        }
+
+        throw new Error("Payload de histórico geral retornado em formato incompatível pela API.");
+      },
+      () => buscarHistoricoGeralMock(pacienteId, filtros),
+    );
+  },
+
+  /**
+   * Consulta series temporais de metricas e sessoes de um jogo especifico do paciente (RF15, RN02).
+   */
+  buscarHistoricoJogo: async (
+    pacienteId: string,
+    jogoId: string,
+    filtros?: FiltrosHistorico,
+  ): Promise<HistoricoJogoDetalhado> => {
+    return await withFallback(
+      async () => {
+        const params = serializarFiltrosHistorico(filtros);
+        if (params && params.jogoId) {
+          delete params.jogoId;
+        }
+        const resposta = await http.get<HistoricoJogoRespostaApi | HistoricoJogoDetalhado>(
+          ENDPOINTS.PACIENTE.HISTORICO_JOGO(pacienteId, jogoId),
+          { params },
+        );
+
+        if (resposta && "data" in resposta && resposta.data) {
+          const d = resposta.data as unknown as Record<string, unknown>;
+          if ("series_temporais" in d && "sessoes" in d) {
+            return {
+              tipo: "detalhado",
+              jogo: d.jogo as HistoricoJogoDetalhado["jogo"],
+              sessoes: (d.sessoes || []) as HistoricoJogoDetalhado["sessoes"],
+              series_temporais: (d.series_temporais || []) as HistoricoJogoDetalhado["series_temporais"],
+            };
+          }
+        }
+        if (resposta && "tipo" in (resposta as HistoricoJogoDetalhado) && (resposta as HistoricoJogoDetalhado).tipo === "detalhado") {
+          return resposta as HistoricoJogoDetalhado;
+        }
+
+        throw new Error("Payload de histórico do jogo retornado em formato incompatível pela API.");
+      },
+      () => buscarHistoricoJogoMock(pacienteId, jogoId, filtros),
+    );
+  },
+
   desvincularTerapeuta: async (
     pacienteId: string,
     terapeutaId: string,

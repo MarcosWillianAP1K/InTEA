@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PacienteHistoricoService } from '../services/paciente-historico.service.js';
 import { PacienteController } from '../controllers/paciente.controller.js';
 import { HistoricoSessaoModel } from '../models/historico.model.js';
-import { JogoModel } from '../../jogos/models/jogo.model.js';
+import { JogoModel, type MetricaManifesto } from '../../jogos/models/jogo.model.js';
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
 import { PacienteServiceError } from '../services/paciente.service.js';
 import { Request, Response } from 'express';
@@ -117,7 +117,7 @@ describe('PacienteHistoricoService & PacienteController (Sprint 11 - Task 2)', (
           metricas_suportadas: [
             {
               id_metrica: 'metrica_invalida',
-            } as any,
+            } as unknown as MetricaManifesto,
           ],
         },
       });
@@ -146,7 +146,7 @@ describe('PacienteHistoricoService & PacienteController (Sprint 11 - Task 2)', (
           metricas_suportadas: [
             {
               id_metrica: 'metrica_estranha',
-              tipo_metrica: 'qualquer_coisa' as any,
+              tipo_metrica: 'qualquer_coisa' as unknown as string,
             },
           ],
         },
@@ -195,6 +195,7 @@ describe('PacienteHistoricoService & PacienteController (Sprint 11 - Task 2)', (
         },
       });
 
+      vi.spyOn(HistoricoSessaoModel, 'contarHistoricoPorJogo').mockResolvedValue(1);
       const spyBuscarHistorico = vi.spyOn(HistoricoSessaoModel, 'buscarHistoricoPorJogo').mockResolvedValue([
         {
           sessao_id: sessaoIdValido,
@@ -228,6 +229,33 @@ describe('PacienteHistoricoService & PacienteController (Sprint 11 - Task 2)', (
       );
       expect(resultado.meta.sessao_referencia_id).toBe(sessaoIdValido);
       expect(resultado.series_temporais[0].pontos[0].valor).toBe(1.2);
+    });
+
+    it('deve rejeitar sessaoId se a sessão informada não estiver finalizada', async () => {
+      vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
+        id: sessaoIdValido,
+        paciente_id: pacienteIdValido,
+        jogo_id: jogoIdValido,
+        terapeuta_id: 'terapeuta-1',
+        session_token: 'token-1',
+        modo_sessao: 'sessao_clinica',
+        contexto_dda_json: {},
+        status_sessao: 'cancelada', // Não finalizada
+        data_hora_inicio: '2026-10-10T10:00:00Z',
+        data_hora_fim: null,
+        expira_em: '2026-10-10T11:00:00Z',
+        created_at: '2026-10-10T10:00:00Z',
+        updated_at: '2026-10-10T10:30:00Z',
+      });
+
+      await expect(
+        PacienteHistoricoService.buscarHistoricoJogo(pacienteIdValido, jogoIdValido, {
+          sessaoId: sessaoIdValido,
+        })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        message: expect.stringContaining('não foi finalizada'),
+      });
     });
 
     it('deve rejeitar sessaoId se ela pertencer a outro paciente', async () => {

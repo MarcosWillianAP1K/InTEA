@@ -10,6 +10,7 @@ import { SessaoExportarService } from '../services/sessao-exportar.service.js';
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 import { verificarSessaoMiddleware } from '../../../core/middlewares/sessao.middleware.js';
+import { validarIntervaloHistorico } from '../../../core/middlewares/query-range.middleware.js';
 
 export const sessaoRoutes = Router();
 
@@ -147,7 +148,7 @@ export const sessaoRoutes = Router();
  *       500:
  *         description: Erro interno ao listar sessões
  */
-sessaoRoutes.get('/', authMiddleware, SessaoController.listar);
+sessaoRoutes.get('/', authMiddleware, validarIntervaloHistorico, SessaoController.listar);
 sessaoRoutes.get('/codigo-pareamento', authMiddleware, SessaoController.gerarCodigoPareamento);
 
 /**

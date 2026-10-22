@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -346,7 +346,7 @@ export function PerfilPacientePage() {
             value={novaNota}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNovaNota(e.target.value)}
             placeholder="Digite a evolução clínica ou observação comportamental deste atendimento..."
-            className="w-full text-xs min-h-[80px] p-3 rounded-xl bg-background border border-border resize-y focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full text-xs min-h-20 p-3 rounded-xl bg-background border border-border resize-y focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <div className="flex justify-end">
             <Button
@@ -395,7 +395,18 @@ export function PerfilPacientePage() {
             <Clock className="h-4 w-4 text-primary" />
             <span>Histórico de Sessões do Paciente</span>
           </div>
-          <span className="text-xs text-muted-foreground">{sessoes.length} sessões</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">{sessoes.length} sessões</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/pacientes/${id}/historico`)}
+              data-testid="btn-analise-longitudinal-sessao"
+              className="h-8 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer min-h-9"
+            >
+              <span>Ver Análise Longitudinal Completa →</span>
+            </Button>
+          </div>
         </div>
 
         <Table>
