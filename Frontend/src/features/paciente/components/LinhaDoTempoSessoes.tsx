@@ -9,7 +9,6 @@ import {
   FileText,
   User,
   ArrowRight,
-  ExternalLink,
   Calendar,
   Timer,
 } from "lucide-react";
@@ -188,7 +187,7 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                 {/* Marcador Circular na Linha do Tempo */}
                 <div
                   className={cn(
-                    "absolute -left-[23px] sm:-left-[31px] top-3.5 h-3.5 w-3.5 rounded-full border-2 bg-background transition-transform group-hover:scale-125",
+                    "absolute -left-5.75 sm:-left-7.75 top-3.5 h-3.5 w-3.5 rounded-full border-2 bg-background transition-transform group-hover:scale-125",
                     isFinalizada
                       ? "border-emerald-500 text-emerald-500 bg-emerald-500/20"
                       : isInterrompida
@@ -265,7 +264,7 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                       size="sm"
                       onClick={() => handleVerRelatorio(sessao.sessao_id)}
                       data-testid={`btn-ver-relatorio-${sessao.sessao_id}`}
-                      className="min-h-[44px] px-3.5 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer transition-all shadow-2xs select-none"
+                      className="min-h-11 px-3.5 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer transition-all shadow-2xs select-none"
                     >
                       <FileText className="h-3.5 w-3.5" />
                       <span>Ver Resultados</span>

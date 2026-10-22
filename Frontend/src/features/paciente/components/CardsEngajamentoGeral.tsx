@@ -109,8 +109,9 @@ export function CardsEngajamentoGeral({
   }
 
   // 3. Success State (Dados de engajamento consolidados)
-  const taxaConclusao =
+  const rawTaxa =
     engajamento.taxa_conclusao_porcentagem ?? engajamento.taxa_conclusao ?? 0;
+  const taxaConclusao = Number(rawTaxa) || 0;
   const isAderenciaBoa = taxaConclusao >= 80;
 
   return (

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -415,42 +415,55 @@ export function HistoricoPacientePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {jogos.map((j) => (
-                  <div
-                    key={j.id}
-                    onClick={() => handleSelecionarJogo(String(j.id))}
-                    data-testid={`card-catalogo-jogo-${j.id}`}
-                    className="p-4 rounded-xl border border-border/70 bg-card hover:bg-muted/30 hover:border-primary/40 transition-all cursor-pointer flex flex-col justify-between gap-3 shadow-2xs group"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
-                          {j.nome}
-                        </span>
-                        {j.versao && (
-                          <span className="text-[10px] text-muted-foreground font-mono">
-                            v{j.versao}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        Última intervenção:{" "}
-                        {(j.ultima_sessao || j.data_ultima_sessao)
-                          ? new Date(j.ultima_sessao || j.data_ultima_sessao!).toLocaleDateString("pt-BR")
-                          : "Recente"}
-                      </p>
-                    </div>
+                {jogos.map((j) => {
+                  const idJogo = j.jogo_id || String(j.id);
+                  const dataUltima = j.ultima_sessao || j.data_ultima_sessao;
+                  let dataFormatada = "Recente";
+                  if (dataUltima) {
+                    try {
+                      const d = new Date(dataUltima);
+                      if (!isNaN(d.getTime())) {
+                        dataFormatada = d.toLocaleDateString("pt-BR");
+                      }
+                    } catch {
+                      dataFormatada = "Recente";
+                    }
+                  }
 
-                    <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs">
-                      <span className="font-semibold text-primary">
-                        {j.total_sessoes} {j.total_sessoes === 1 ? "sessão" : "sessões"}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground group-hover:underline">
-                        Ver Séries →
-                      </span>
+                  return (
+                    <div
+                      key={idJogo}
+                      onClick={() => handleSelecionarJogo(idJogo)}
+                      data-testid={`card-catalogo-jogo-${idJogo}`}
+                      className="p-4 rounded-xl border border-border/70 bg-card hover:bg-muted/30 hover:border-primary/40 transition-all cursor-pointer flex flex-col justify-between gap-3 shadow-2xs group"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                            {j.nome}
+                          </span>
+                          {j.versao && (
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              v{j.versao}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Última intervenção: {dataFormatada}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs">
+                        <span className="font-semibold text-primary">
+                          {j.total_sessoes} {j.total_sessoes === 1 ? "sessão" : "sessões"}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground group-hover:underline">
+                          Ver Séries →
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

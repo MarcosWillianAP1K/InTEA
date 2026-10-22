@@ -28,6 +28,9 @@ import {
   listarTerapeutasPacienteMock,
   vincularTerapeutaMock,
   desvincularTerapeutaMock,
+  buscarHistoricoPacienteMock,
+  buscarHistoricoGeralMock,
+  buscarHistoricoJogoMock,
 } from "../types/bdmock";
 
 /**

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { LayoutGrid, Gamepad2, Calendar, Trophy } from "lucide-react";
+import { LayoutGrid, Gamepad2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -82,7 +82,7 @@ export const SeletorJogoHistorico: React.FC<SeletorJogoHistoricoProps> = ({
         aria-pressed={isVisaoGeral}
         data-testid="btn-visao-geral"
         className={cn(
-          "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer min-h-[44px] min-w-[44px] border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer min-h-11 min-w-11 border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           isVisaoGeral
             ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
             : "bg-card text-foreground/80 border-border hover:bg-muted/40 hover:text-foreground",
@@ -116,14 +116,14 @@ export const SeletorJogoHistorico: React.FC<SeletorJogoHistoricoProps> = ({
             aria-pressed={isSelected}
             data-testid={`btn-jogo-${idJogo}`}
             className={cn(
-              "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer min-h-[44px] min-w-[44px] border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer min-h-11 min-w-11 border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
               isSelected
                 ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
                 : "bg-card text-foreground/80 border-border hover:bg-muted/40 hover:text-foreground",
             )}
           >
             <Gamepad2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="truncate max-w-[140px] sm:max-w-[200px]" title={jogo.nome}>
+            <span className="truncate max-w-35 sm:max-w-50" title={jogo.nome}>
               {jogo.nome}
             </span>
             <Badge
