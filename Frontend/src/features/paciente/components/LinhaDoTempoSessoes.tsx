@@ -279,7 +279,7 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                       size="sm"
                       onClick={() => handleVerRelatorio(sessao.sessao_id)}
                       data-testid={`btn-ver-relatorio-${sessao.sessao_id}`}
-                      className="min-h-11 min-h-11 px-3.5 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer transition-all shadow-2xs select-none"
+                      className="min-h-11 px-3.5 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer transition-all shadow-2xs select-none"
                     >
                       <FileText className="h-3.5 w-3.5" />
                       <span>Ver Resultados</span>

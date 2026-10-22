@@ -82,7 +82,7 @@ export const SeletorJogoHistorico: React.FC<SeletorJogoHistoricoProps> = ({
         aria-pressed={isVisaoGeral}
         data-testid="btn-visao-geral"
         className={cn(
-          "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer min-h-11 min-h-11 min-w-11 border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer min-h-11 min-w-11 border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           isVisaoGeral
             ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
             : "bg-card text-foreground/80 border-border hover:bg-muted/40 hover:text-foreground",
@@ -116,7 +116,7 @@ export const SeletorJogoHistorico: React.FC<SeletorJogoHistoricoProps> = ({
             aria-pressed={isSelected}
             data-testid={`btn-jogo-${idJogo}`}
             className={cn(
-              "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer min-h-11 min-h-11 min-w-11 border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer min-h-11 min-w-11 border select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
               isSelected
                 ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
                 : "bg-card text-foreground/80 border-border hover:bg-muted/40 hover:text-foreground",

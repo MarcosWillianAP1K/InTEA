@@ -16,7 +16,7 @@ import {
   MOCK_SERIE_INVALIDA_RN02,
   MOCK_HISTORICO_JOGO_COMPLETO,
 } from "../types/bdmock";
-import type { MetricasEngajamentoGeral, SerieMetricaJogo } from "../types/historico.types";
+import type { SerieMetricaJogo } from "../types/historico.types";
 
 describe("Sprint 11 — Componentes de Engajamento Global e Gráficos de Métricas (RF15, RN01, RN02, RNF04, RNF07)", () => {
   // ==========================================================================

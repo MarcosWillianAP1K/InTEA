@@ -138,10 +138,9 @@ export const authService = {
           ENDPOINTS.AUTH.REFRESH,
           { refresh_token: refreshToken },
         );
-        const rawData =
-          "data" in resposta && resposta.data
-            ? (resposta.data as { token?: AuthTokens; tokens?: AuthTokens } & AuthTokens)
-            : (resposta as AuthTokens);
+        const rawData = (
+          "data" in resposta && resposta.data ? resposta.data : resposta
+        ) as { token?: AuthTokens; tokens?: AuthTokens } & AuthTokens;
         const tokens: AuthTokens = rawData.token || rawData.tokens || rawData;
         salvarTokens(tokens);
         return tokens;

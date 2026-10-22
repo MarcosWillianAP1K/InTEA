@@ -19,7 +19,6 @@ import type {
 } from "./paciente.types";
 import type {
   MetricasEngajamentoGeral,
-  PontoSerieMetrica,
   SerieMetricaJogo,
   ResumoJogoPaciente,
   HistoricoJogoDetalhado,

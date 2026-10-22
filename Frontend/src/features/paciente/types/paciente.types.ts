@@ -338,7 +338,7 @@ export type {
   TipoMetricaCanonica,
 } from "./historico.types";
 
-import type { RespostaHistoricoPaciente, HistoricoJogoDetalhado, MetricasEngajamentoGeral, ResumoJogoPaciente } from "./historico.types";
+import type { RespostaHistoricoPaciente, MetricasEngajamentoGeral, ResumoJogoPaciente } from "./historico.types";
 
 export interface HistoricoRespostaApi {
   message?: string;

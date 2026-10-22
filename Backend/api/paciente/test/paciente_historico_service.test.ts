@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PacienteHistoricoService } from '../services/paciente-historico.service.js';
 import { PacienteController } from '../controllers/paciente.controller.js';
 import { HistoricoSessaoModel } from '../models/historico.model.js';
-import { JogoModel } from '../../jogos/models/jogo.model.js';
+import { JogoModel, type MetricaManifesto } from '../../jogos/models/jogo.model.js';
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
 import { PacienteServiceError } from '../services/paciente.service.js';
 import { Request, Response } from 'express';
@@ -117,7 +117,7 @@ describe('PacienteHistoricoService & PacienteController (Sprint 11 - Task 2)', (
           metricas_suportadas: [
             {
               id_metrica: 'metrica_invalida',
-            } as unknown as { id_metrica: string; tipo_metrica?: string },
+            } as unknown as MetricaManifesto,
           ],
         },
       });

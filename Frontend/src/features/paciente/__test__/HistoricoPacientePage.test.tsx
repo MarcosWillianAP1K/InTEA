@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { HistoricoPacientePage } from "../pages/HistoricoPacientePage";
@@ -11,7 +11,7 @@ import {
   MOCK_CATALOGO_JOGOS_PACIENTE,
   MOCK_HISTORICO_JOGO_COMPLETO,
 } from "../types/bdmock";
-import type { ResumoJogoPaciente, SessaoHistoricoItem } from "../types/historico.types";
+import type { SessaoHistoricoItem } from "../types/historico.types";
 
 // Mock do pacienteService para testes determinísticos
 vi.mock("../services/paciente.service", () => ({

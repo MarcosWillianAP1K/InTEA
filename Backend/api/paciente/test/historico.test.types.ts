@@ -6,11 +6,11 @@
 import type {
   MetricasEngajamentoGeral,
   ResumoJogoPaciente,
+  SessaoHistoricoItem,
 } from '../models/historico.model.js';
 
 import type {
   SerieMetricaJogo,
-  SessaoHistoricoItem,
 } from '../services/paciente-historico.service.js';
 
 /** Shape do data da Rota 1: GET /api/paciente/:id/historico */

@@ -40,7 +40,7 @@ jobs:
           cache-dependency-path: Backend/package-lock.json
 
       - name: Instalar dependências
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Typecheck (TypeScript)
         run: npm run typecheck
@@ -73,7 +73,7 @@ jobs:
           cache-dependency-path: Frontend/package-lock.json
 
       - name: Instalar dependências
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Typecheck (TypeScript)
         run: npm run typecheck

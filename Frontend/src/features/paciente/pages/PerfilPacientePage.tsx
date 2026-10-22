@@ -347,7 +347,7 @@ export function PerfilPacientePage() {
             value={novaNota}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNovaNota(e.target.value)}
             placeholder="Digite a evolução clínica ou observação comportamental deste atendimento..."
-            className="w-full text-xs min-h-[80px] p-3 rounded-xl bg-background border border-border resize-y focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full text-xs min-h-20 p-3 rounded-xl bg-background border border-border resize-y focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <div className="flex justify-end">
             <Button
@@ -403,7 +403,7 @@ export function PerfilPacientePage() {
               size="sm"
               onClick={() => navigate(`/pacientes/${id}/historico`)}
               data-testid="btn-analise-longitudinal-sessao"
-              className="h-8 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer min-h-[36px]"
+              className="h-8 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer min-h-9"
             >
               <span>Ver Análise Longitudinal Completa →</span>
             </Button>

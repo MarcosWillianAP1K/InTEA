@@ -13,7 +13,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { pacienteRoutes } from '../routes/paciente.routes.js';
-import { PacienteHistoricoService } from '../services/paciente-historico.service.js';
 import { HistoricoSessaoModel } from '../models/historico.model.js';
 import { JogoModel } from '../../jogos/models/jogo.model.js';
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
@@ -33,7 +32,6 @@ const OUTRO_PACIENTE_ID = '12222222-2222-4222-a222-222222222222';
 const CLINICA_A = '22222222-2222-4222-a222-222222222222';
 const CLINICA_B = '33333333-3333-4333-a333-333333333333';
 const TERAPEUTA_VINCULADO_ID = '44444444-4444-4444-a444-444444444444';
-const TERAPEUTA_SEM_VINCULO_ID = '55555555-5555-4555-a555-555555555555';
 const SUPER_ADMIN_ID = '66666666-6666-4666-a666-666666666666';
 const JOGO_HOMOLOGADO_ID = '77777777-7777-4777-a777-777777777777';
 const JOGO_INCONFORME_RN02_ID = '88888888-8888-4888-a888-888888888888';
@@ -378,6 +376,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
         descricao: 'Jogo com métricas corrompidas',
         versao: '1.0.0',
         manifesto_json: {
+          id_jogo: 'jogo-nao-homologado',
           nome: 'Jogo Não Homologado',
           versao: '1.0.0',
           metricas_suportadas: [
@@ -439,7 +438,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
       expect(mockHttp.getStatus()).toBe(200);
       const json = mockHttp.getJson();
       expect(json.message).toBe('Histórico geral de engajamento do paciente recuperado com sucesso.');
-      const dataGeral = (json as EnvelopeResposta<RespostaDataHistoricoGeral>).data;
+      const dataGeral = (json as unknown as EnvelopeResposta<RespostaDataHistoricoGeral>).data;
       expect(dataGeral.engajamento.taxa_conclusao_porcentagem).toBe(80.0);
       expect(dataGeral.jogos).toHaveLength(1);
     });
@@ -707,6 +706,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
         descricao: 'Treino de atenção',
         versao: '1.0.0',
         manifesto_json: {
+          id_jogo: 'aventura-espacial',
           nome: 'Aventura Espacial',
           versao: '1.0.0',
           metricas_suportadas: [
@@ -754,7 +754,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
       expect(mockHttp.getStatus()).toBe(200);
       const json = mockHttp.getJson();
       expect(json.message).toBe('Histórico do jogo para o paciente recuperado com sucesso.');
-      const data = (json as EnvelopeResposta<RespostaDataHistoricoJogo>).data;
+      const data = (json as unknown as EnvelopeResposta<RespostaDataHistoricoJogo>).data;
       expect(data.jogo.id).toBe(JOGO_HOMOLOGADO_ID);
       expect(data.series_temporais).toHaveLength(1);
       expect(data.series_temporais[0].pontos[0].valor).toBe(95);
@@ -786,7 +786,17 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
         id: SESSAO_REF_ID,
         paciente_id: OUTRO_PACIENTE_ID, // Pertence a outro paciente
         jogo_id: JOGO_HOMOLOGADO_ID,
-      } as unknown as { id: string; paciente_id: string; jogo_id: string; status_sessao: string; data_hora_fim: string });
+        terapeuta_id: TERAPEUTA_VINCULADO_ID,
+        session_token: 'token-ref-1',
+        modo_sessao: 'sessao_clinica',
+        contexto_dda_json: {},
+        status_sessao: 'finalizada',
+        data_hora_inicio: '2026-10-10T10:00:00Z',
+        data_hora_fim: '2026-10-10T10:30:00Z',
+        expira_em: '2026-10-10T11:00:00Z',
+        created_at: '2026-10-10T10:00:00Z',
+        updated_at: '2026-10-10T10:30:00Z',
+      });
 
       const handlers = obterHandlers(
         pacienteRoutes as unknown as Parameters<typeof obterHandlers>[0],
@@ -813,6 +823,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
         descricao: 'Treino de atenção',
         versao: '1.0.0',
         manifesto_json: {
+          id_jogo: 'aventura-espacial',
           nome: 'Aventura Espacial',
           versao: '1.0.0',
           metricas_suportadas: [{ id_metrica: 'pontuacao', tipo_metrica: 'numerica' }],
@@ -850,7 +861,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
       await executarPipeline(handlers, mockHttp.req, mockHttp.res);
 
       expect(mockHttp.getStatus()).toBe(200);
-      const data = (mockHttp.getJson() as EnvelopeResposta<RespostaDataHistoricoJogo>).data;
+      const data = (mockHttp.getJson() as unknown as EnvelopeResposta<RespostaDataHistoricoJogo>).data;
       expect(data.sessoes).toHaveLength(5);
       expect(data.meta.paginacao.total_registros).toBe(15);
       expect(data.meta.paginacao.page).toBe(2);
@@ -866,6 +877,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
         descricao: 'Treino de atenção',
         versao: '1.0.0',
         manifesto_json: {
+          id_jogo: 'aventura-espacial',
           nome: 'Aventura Espacial',
           versao: '1.0.0',
           metricas_suportadas: [{ id_metrica: 'pontuacao', tipo_metrica: 'numerica' }],
@@ -973,6 +985,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
         descricao: 'Treino',
         versao: '1.0.0',
         manifesto_json: {
+          id_jogo: 'aventura-espacial',
           nome: 'Aventura Espacial',
           versao: '1.0.0',
           metricas_suportadas: [{ id_metrica: 'pontuacao', tipo_metrica: 'numerica' }],
