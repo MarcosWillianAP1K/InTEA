@@ -109,7 +109,7 @@ describe("Sprint 11 — Página Mestre e Componentes do Histórico do Paciente (
       );
 
       const btnVisaoGeral = screen.getByTestId("btn-visao-geral");
-      expect(btnVisaoGeral.className).toContain("min-h-[44px]");
+      expect(btnVisaoGeral.className).toContain("min-h-11");
     });
   });
 
@@ -127,7 +127,7 @@ describe("Sprint 11 — Página Mestre e Componentes do Histórico do Paciente (
 
       const btn30d = screen.getByTestId("btn-periodo-30d");
       expect(btn30d.getAttribute("aria-pressed")).toBe("true");
-      expect(btn30d.className).toContain("min-h-[44px]");
+      expect(btn30d.className).toContain("min-h-11");
 
       const btn7d = screen.getByTestId("btn-periodo-7d");
       expect(btn7d.getAttribute("aria-pressed")).toBe("false");
@@ -226,7 +226,7 @@ describe("Sprint 11 — Página Mestre e Componentes do Histórico do Paciente (
       );
 
       const btnRelatorio = screen.getByTestId("btn-ver-relatorio-sess-abc-01");
-      expect(btnRelatorio.className).toContain("min-h-[44px]");
+      expect(btnRelatorio.className).toContain("min-h-11");
 
       fireEvent.click(btnRelatorio);
       expect(handleNav).toHaveBeenCalledWith("sess-abc-01");
