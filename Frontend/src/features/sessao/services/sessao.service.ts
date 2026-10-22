@@ -43,6 +43,11 @@ const API_BASE_URL =
   (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ||
   "http://localhost:3000/api";
 
+/**
+ * Retrieves the stored JWT access token and constructs HTTP authorization headers for session requests.
+ *
+ * @returns Headers dictionary populated with Bearer token authentication if present.
+ */
 function obterAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

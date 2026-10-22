@@ -44,13 +44,6 @@ export class SessaoController {
   }
 
   /**
-   * Handles POST /api/sessao/iniciar to start a new clinical or free-mode session.
-   *
-   * @param req - Express request containing session parameters (game ID, pairing code, patient ID, mode).
-   * @param res - Express response returning the newly initialized session.
-   * @returns Resolves when the HTTP response has been sent.
-   */
-  /**
    * Handles GET /api/sessao to list sessions with optional filters and pagination.
    * Restricts to the authenticated therapist's sessions, unless is_super_admin requests with all=true.
    *
@@ -96,6 +89,13 @@ export class SessaoController {
     }
   }
 
+  /**
+   * Handles POST /api/sessao/iniciar to start a new clinical or free-mode session.
+   *
+   * @param req - Express request containing session parameters (game ID, pairing code, patient ID, mode).
+   * @param res - Express response returning the newly initialized session.
+   * @returns Resolves when the HTTP response has been sent.
+   */
   static async iniciar(req: Request, res: Response): Promise<void> {
     try {
       // 1. Extração segura da identidade do terapeuta a partir do token JWT verificado (RF21, CA-1)

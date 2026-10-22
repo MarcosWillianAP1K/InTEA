@@ -27,6 +27,13 @@ import {
   marcarAlertaLidoMock,
 } from "../types/bdmock";
 
+/**
+ * Extracts nested arrays from HTTP responses, supporting both 'data.key' envelopes and direct array payloads.
+ *
+ * @param res - Raw API response payload.
+ * @param chave - Property key containing the target array inside the data object.
+ * @returns Strongly-typed array extracted from the response payload.
+ */
 function extrairArray<T>(res: unknown, chave: string): T[] {
   if (!res) return [];
   if (Array.isArray(res)) return res as T[];

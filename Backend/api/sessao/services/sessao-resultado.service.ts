@@ -162,6 +162,12 @@ export interface RespostaResultadoService {
 // FUNÇÕES AUXILIARES DE FORMATAÇÃO E ESTATÍSTICA (Puras e Determinísticas)
 // ==============================================================================
 
+/**
+ * Calculates a patient's age in completed years based on an ISO birth date string.
+ *
+ * @param dataNascimento - Patient birth date in ISO 8601 format.
+ * @returns Age in full completed years, or 0 if date is null or invalid.
+ */
 export function calcularIdadeAnos(dataNascimento?: string | null): number {
   if (!dataNascimento) return 0;
   const nascimento = new Date(dataNascimento);
@@ -175,6 +181,12 @@ export function calcularIdadeAnos(dataNascimento?: string | null): number {
   return Math.max(0, idade);
 }
 
+/**
+ * Formats a duration in seconds into a human-readable minutes and seconds string.
+ *
+ * @param segundos - Elapsed duration in seconds.
+ * @returns Formatted duration string (e.g., '15 min 30s' or '45s').
+ */
 export function formatarDuracao(segundos: number): string {
   if (!segundos || segundos <= 0) return '0 min';
   const minutos = Math.floor(segundos / 60);
@@ -184,12 +196,25 @@ export function formatarDuracao(segundos: number): string {
   return `${minutos} min ${segRestantes}s`;
 }
 
+/**
+ * Formats a duration in seconds into standard MM:SS clinical stopwatch representation.
+ *
+ * @param segundos - Elapsed duration in seconds.
+ * @returns Formatted MM:SS time string.
+ */
 function formatarMinutosSegundos(segundos: number): string {
   const m = Math.floor(segundos / 60);
   const s = segundos % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+/**
+ * Compiles consolidated telemetry metrics and AI report data into summary card items.
+ *
+ * @param telemetria - Consolidated session telemetry object.
+ * @param relatorio - Clinical session report record containing AI analysis payload.
+ * @returns Structured performance metrics ready for top-level UI cards.
+ */
 function compilarMetricasCards(
   telemetria: TelemetriaConsolidada,
   relatorio: { dados_ia_json: RelatorioIAContrato } | null
@@ -231,6 +256,14 @@ function compilarMetricasCards(
   };
 }
 
+/**
+ * Extracts and maps raw telemetry trial events into chronological points for the evolutionary chart.
+ *
+ * @param eventos - Array of telemetry events recorded during the game session.
+ * @param sessaoInicio - ISO timestamp marking the beginning of the session.
+ * @param tempoMedioRef - Baseline average reaction time in milliseconds for reference.
+ * @returns Array of chart attempts containing reaction time, correctness, and timestamps.
+ */
 function extrairTentativasGrafico(
   eventos: TelemetriaEvento[],
   sessaoInicio: string,
@@ -570,8 +603,8 @@ export class SessaoResultadoService {
       const gatilhosDda: string[] = Array.isArray(sessao.contexto_dda_json?.gatilhos_a_evitar)
         ? (sessao.contexto_dda_json.gatilhos_a_evitar as string[])
         : Array.isArray(dadosClinicosRes?.gatilhos_sensoriais)
-        ? (dadosClinicosRes.gatilhos_sensoriais as string[])
-        : [];
+          ? (dadosClinicosRes.gatilhos_sensoriais as string[])
+          : [];
       const nivelEstresse = Number(
         sessao.contexto_dda_json?.nivel_estresse_inicial ?? sessao.contexto_dda_json?.estresse_inicial ?? 1
       );
@@ -581,12 +614,12 @@ export class SessaoResultadoService {
 
       const pacienteEnriquecido: SessaoResultadoPaciente | null = pacienteRaw
         ? {
-            ...pacienteRaw,
-            idade_anos: idadeAnos,
-            diagnostico: diagnosticoBase,
-            gatilhos_evitar: gatilhosDda,
-            nivel_estresse_inicial: nivelEstresse,
-          }
+          ...pacienteRaw,
+          idade_anos: idadeAnos,
+          diagnostico: diagnosticoBase,
+          gatilhos_evitar: gatilhosDda,
+          nivel_estresse_inicial: nivelEstresse,
+        }
         : null;
 
       const jogoData = jogoRes.data as SessaoResultadoJogo | null;
@@ -623,35 +656,35 @@ export class SessaoResultadoService {
           cabecalho: {
             paciente: pacienteEnriquecido
               ? {
-                  id: pacienteEnriquecido.id,
-                  nome: pacienteEnriquecido.nome,
-                  data_nascimento: pacienteEnriquecido.data_nascimento || null,
-                  idade_anos: idadeAnos,
-                  diagnostico: diagnosticoBase,
-                  gatilhos_evitar: gatilhosDda,
-                  nivel_estresse_inicial: nivelEstresse,
-                }
+                id: pacienteEnriquecido.id,
+                nome: pacienteEnriquecido.nome,
+                data_nascimento: pacienteEnriquecido.data_nascimento || null,
+                idade_anos: idadeAnos,
+                diagnostico: diagnosticoBase,
+                gatilhos_evitar: gatilhosDda,
+                nivel_estresse_inicial: nivelEstresse,
+              }
               : null,
             terapeuta: terapeutaData
               ? {
-                  id: terapeutaData.id,
-                  nome: terapeutaData.nome,
-                  registro_profissional:
-                    terapeutaData.registro_profissional ||
-                    terapeutaData.crefito ||
-                    'CREFITO/CRP não informado',
-                  crefito: terapeutaData.crefito || null,
-                  especialidade: terapeutaData.especialidade || null,
-                }
+                id: terapeutaData.id,
+                nome: terapeutaData.nome,
+                registro_profissional:
+                  terapeutaData.registro_profissional ||
+                  terapeutaData.crefito ||
+                  'CREFITO/CRP não informado',
+                crefito: terapeutaData.crefito || null,
+                especialidade: terapeutaData.especialidade || null,
+              }
               : null,
             jogo: jogoData
               ? {
-                  id: jogoData.id,
-                  nome: jogoData.nome,
-                  titulo: jogoData.nome,
-                  versao: jogoData.versao,
-                  descricao: jogoData.descricao || null,
-                }
+                id: jogoData.id,
+                nome: jogoData.nome,
+                titulo: jogoData.nome,
+                versao: jogoData.versao,
+                descricao: jogoData.descricao || null,
+              }
               : null,
           },
           metricas_consolidadas: metricasCards,

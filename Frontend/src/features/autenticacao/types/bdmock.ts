@@ -129,6 +129,12 @@ export const MOCK_CREDENCIAIS_VALIDAS = [
 let usuarioLogadoAtual: UsuarioAutenticado | null = { ...MOCK_USUARIO_TERAPEUTA };
 let tokensAtuais: AuthTokens | null = { ...MOCK_AUTH_TOKENS };
 
+/**
+ * Derives a human-friendly professional display name from an email address local part.
+ *
+ * @param email - User email address.
+ * @returns Formatted professional name string (e.g., 'Dr(a). Maria Silva').
+ */
 function derivarNomeAmigavel(email: string): string {
   const localPart = email.split("@")[0] || "Terapeuta";
   const partes = localPart

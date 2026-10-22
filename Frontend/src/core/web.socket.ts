@@ -147,6 +147,11 @@ export class SessionSocketManager {
 
   private constructor() {}
 
+  /**
+   * Retrieves the singleton instance of the SessionSocketManager.
+   *
+   * @returns Shared instance of SessionSocketManager.
+   */
   public static getInstance(): SessionSocketManager {
     if (!SessionSocketManager.instance) {
       SessionSocketManager.instance = new SessionSocketManager();
@@ -164,6 +169,9 @@ export class SessionSocketManager {
     };
   };
 
+  /**
+   * Notifies all registered external listeners to trigger reactive React UI re-renders.
+   */
   private notifyStore(): void {
     this.storeListeners.forEach((listener) => {
       try {
@@ -174,6 +182,11 @@ export class SessionSocketManager {
     });
   }
 
+  /**
+   * Updates the internal connection status and notifies registered listeners.
+   *
+   * @param newStatus - New connection status of the session.
+   */
   private updateStatus(newStatus: SessionConnectionStatus): void {
     if (this.status === newStatus) return;
     this.status = newStatus;
@@ -324,6 +337,11 @@ export class SessionSocketManager {
 
 
 
+  /**
+   * Retrieves the current connection status, taking remote device pairing state into account.
+   *
+   * @returns Current session connection status ('desconectado' | 'conectando' | 'conectado' | 'aguardando_dispositivo' | 'erro').
+   */
   public getStatus(): SessionConnectionStatus {
     if (this.status === "conectado" && this.currentSessionToken) {
       return "aguardando_dispositivo";
@@ -331,18 +349,38 @@ export class SessionSocketManager {
     return this.status;
   }
 
+  /**
+   * Retrieves metadata of the remote paired device for the active session.
+   *
+   * @returns Device metadata payload, or null if no device is currently paired.
+   */
   public getDispositivo(): DispositivoConectadoPayload | null {
     return this.dispositivo;
   }
 
+  /**
+   * Retrieves the last error payload received from the WebSocket gateway.
+   *
+   * @returns Last session error object, or null if no errors have occurred.
+   */
   public getUltimoErro(): ErroSessaoPayload | null {
     return this.ultimoErro;
   }
 
+  /**
+   * Retrieves the underlying typed Socket.io client instance.
+   *
+   * @returns Active socket instance, or null if not yet connected.
+   */
   public getSocket(): TypedSocket | null {
     return this.socket;
   }
 
+  /**
+   * Retrieves the session token currently bound to this socket connection.
+   *
+   * @returns Bound clinical session token, or null if not attached to a session room.
+   */
   public getCurrentSessionToken(): string | null {
     return this.currentSessionToken;
   }

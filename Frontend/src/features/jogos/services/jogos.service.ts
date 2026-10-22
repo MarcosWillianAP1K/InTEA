@@ -26,6 +26,12 @@ import {
   obterManifestoJogoMock,
 } from "../types/bdmock";
 
+/**
+ * Serializes game catalog search and pagination filters into HTTP query parameters.
+ *
+ * @param filtros - Search query, clinical target, or pagination criteria for games.
+ * @returns Serialized key-value query parameter record, or undefined if empty.
+ */
 function serializarFiltros(
   filtros?: JogoFiltroDTO | FiltrosJogos,
 ): Record<string, string> | undefined {

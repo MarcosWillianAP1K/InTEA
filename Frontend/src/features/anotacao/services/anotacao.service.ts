@@ -28,6 +28,12 @@ import {
   deletarHardAnotacaoMock,
 } from "../types/bdmock";
 
+/**
+ * Serializes clinical annotation search filters into HTTP query parameters.
+ *
+ * @param filtros - Optional filter criteria for querying clinical notes.
+ * @returns Serialized key-value query parameter record, or undefined if no filters are present.
+ */
 function serializarFiltros(
   filtros?: FiltroAnotacaoDTO,
 ): Record<string, string> | undefined {
@@ -47,6 +53,12 @@ function serializarFiltros(
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
+/**
+ * Extracts and normalizes a single clinical annotation entity from various API response shapes.
+ *
+ * @param resposta - Raw HTTP API response or direct annotation entity.
+ * @returns Normalized clinical annotation entity, or null if invalid or absent.
+ */
 function extrairAnotacao(
   resposta: AnotacaoRespostaApi | AnotacaoClinica | { data?: unknown } | null | undefined,
 ): AnotacaoClinica | null {
@@ -61,6 +73,12 @@ function extrairAnotacao(
   return resposta as AnotacaoClinica;
 }
 
+/**
+ * Extracts an array of clinical annotations from varied API response envelopes.
+ *
+ * @param resposta - Raw response payload or direct array of clinical annotations.
+ * @returns Clean array of clinical annotation entities.
+ */
 function extrairListaAnotacoes(
   resposta: AnotacoesListaRespostaApi | AnotacaoClinica[] | { data?: unknown } | null | undefined,
 ): AnotacaoClinica[] {

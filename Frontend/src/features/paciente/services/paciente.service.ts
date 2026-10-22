@@ -53,6 +53,12 @@ function serializarFiltros(
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
+/**
+ * Extracts and normalizes patient data along with relational fields from an API response envelope.
+ *
+ * @param resposta - Raw API response payload or direct patient entity.
+ * @returns Consolidated Patient object with populated relationships, or null if invalid.
+ */
 function extrairPaciente(resposta: PacienteRespostaApi | Paciente | null | undefined): Paciente | null {
   if (!resposta) return null;
   if ("id" in resposta && typeof (resposta as Paciente).id === "string") {

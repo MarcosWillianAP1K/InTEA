@@ -243,6 +243,11 @@ export class SessaoGateway {
     }
   }
 
+  /**
+   * Configures event listeners, rate limiting middleware, and telemetry routing for a newly connected socket.
+   *
+   * @param socket - Connected client Socket.io instance.
+   */
   private configurarSocket(socket: Socket): void {
     // 0. Middleware de contenção de flood e rate limiting (Card 2.4 - RNF03)
     socket.use(([event, ...args], next) => {

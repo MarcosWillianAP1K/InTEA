@@ -27,7 +27,9 @@ const TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 
 /**
- * Utilitário seguro para persistência local de tokens no browser
+ * Persists authentication tokens securely into browser local storage.
+ *
+ * @param tokens - Authentication bundle containing access and refresh tokens.
  */
 function salvarTokens(tokens: AuthTokens): void {
   if (typeof window === "undefined") return;
@@ -41,6 +43,9 @@ function salvarTokens(tokens: AuthTokens): void {
   }
 }
 
+/**
+ * Removes all authentication tokens from local and session storage.
+ */
 function removerTokens(): void {
   if (typeof window === "undefined") return;
   try {
@@ -249,6 +254,11 @@ export interface ExemploData {
 }
 
 export const exemploService = {
+  /**
+   * Returns mock items for backwards compatibility in existing tests.
+   *
+   * @returns Array of mock example items.
+   */
   async listar(): Promise<ExemploData[]> {
     return [
       { id: "1", titulo: "Item de Exemplo 1", ativo: true },

@@ -148,6 +148,12 @@ export class JogoModel {
     }
   ];
 
+  /**
+   * Checks whether the Supabase client is configured and available in the current runtime environment.
+   * Recognizes test mocks during Vitest runs and validates environment variables in production.
+   *
+   * @returns True if Supabase is properly configured or mocked, false otherwise.
+   */
   private static isSupabaseAvailable(): boolean {
     if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
       const fromObj = supabase?.from as unknown as { _isMockFunction?: boolean; mock?: unknown };
