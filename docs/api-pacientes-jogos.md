@@ -762,6 +762,51 @@ Todas as respostas seguem formatos previsíveis:
 
 - **Respostas da Rota:**
 
+  - **Status `200 OK` (Sucesso — Sem `jogoId`: catálogo de jogos já jogados pelo paciente):**
+
+    ```json
+    {
+      "data": {
+        "paciente": {
+          "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+          "nome": "Henrique Souza",
+          "clinica_id": "c1d2e3f4-a5b6-7890-abcd-ef1234567890"
+        },
+        "engajamento_geral": {
+          "total_sessoes_iniciadas": 10,
+          "total_sessoes_finalizadas": 8,
+          "total_sessoes_interrompidas": 2,
+          "taxa_conclusao_percentual": 80.0,
+          "taxa_recusa_percentual": 20.0,
+          "tempo_total_segundos": 14400,
+          "tempo_medio_sessao_segundos": 1800,
+          "data_primeira_sessao": "2026-08-15T14:30:00.000Z",
+          "data_ultima_sessao": "2026-10-18T16:00:00.000Z"
+        },
+        "jogos_jogados": [
+          {
+            "jogo_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+            "nome_jogo": "Rastreio Visual e Foco Atenção",
+            "total_partidas": 5,
+            "data_ultima_partida": "2026-10-18T16:00:00.000Z"
+          },
+          {
+            "jogo_id": "a9b1c2d3-4e5f-6789-0abc-def123456789",
+            "nome_jogo": "Formas Calmas",
+            "total_partidas": 3,
+            "data_ultima_partida": "2026-10-10T14:00:00.000Z"
+          }
+        ]
+      },
+      "meta": {
+        "page": 1,
+        "limit": 20,
+        "total": 10,
+        "totalPages": 1
+      }
+    }
+    ```
+
   - **Status `200 OK` (Sucesso — Com `jogoId` específico fornecido):**
 
     ```json
@@ -878,8 +923,6 @@ Todas as respostas seguem formatos previsíveis:
     {
       "error": "Inconsistência técnica no manifesto do jogo: a métrica 'acuracia_toque' não possui 'tipo_metrica' explicitado no manifesto cadastrado.",
       "regraViolada": "RN02 - Fallback de Métrica Proibido / Tipagem Estrita"
-    }
-    ```
     }
     ```
 
