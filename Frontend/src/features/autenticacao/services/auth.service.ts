@@ -132,12 +132,16 @@ export const authService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.post<{ data: AuthTokens } | AuthTokens>(
+        const resposta = await http.post<
+          { data: { token?: AuthTokens; tokens?: AuthTokens } | AuthTokens } | AuthTokens
+        >(
           ENDPOINTS.AUTH.REFRESH,
           { refresh_token: refreshToken },
         );
-        const tokens =
-          "data" in resposta && resposta.data ? resposta.data : (resposta as AuthTokens);
+        const rawData = (
+          "data" in resposta && resposta.data ? resposta.data : resposta
+        ) as { token?: AuthTokens; tokens?: AuthTokens } & AuthTokens;
+        const tokens: AuthTokens = rawData.token || rawData.tokens || rawData;
         salvarTokens(tokens);
         return tokens;
       },
@@ -174,11 +178,22 @@ export const authService = {
           status_ativo?: boolean;
           created_at?: string | null;
         }
+        interface RawUser extends RawPerfil {
+          is_admin?: boolean;
+          is_super_admin?: boolean;
+          role?: string;
+          autenticado?: boolean;
+          status_ativo?: boolean;
+          created_at?: string | null;
+        }
         interface BackendResponse {
-          data: {
-            perfil?: RawPerfil;
-            metadados?: RawMetadados;
-          } | UsuarioAutenticado;
+          data:
+            | {
+                user?: RawUser;
+                perfil?: RawPerfil;
+                metadados?: RawMetadados;
+              }
+            | UsuarioAutenticado;
         }
 
         const resposta = await http.get<BackendResponse | UsuarioAutenticado>(
@@ -187,9 +202,37 @@ export const authService = {
 
         if ("data" in resposta && resposta.data) {
           const dataObj = resposta.data as {
+            user?: RawUser;
             perfil?: RawPerfil;
             metadados?: RawMetadados;
           } & Partial<UsuarioAutenticado>;
+
+          if (dataObj.user && typeof dataObj.user === "object") {
+            const u = dataObj.user;
+            const isAdmin = Boolean(u.is_super_admin ?? u.is_admin);
+            const usuario: UsuarioAutenticado = {
+              id: u.id,
+              nome: u.nome,
+              email: u.email,
+              clinica_id: u.clinica_id ?? null,
+              clinica_nome: u.clinica_nome,
+              is_super_admin: isAdmin,
+              status_ativo: u.status_ativo ?? true,
+              role:
+                u.role === "super_admin" || isAdmin
+                  ? "super_admin"
+                  : "terapeuta",
+              crefito: u.crefito ?? u.registro_profissional ?? null,
+              registro_profissional:
+                u.registro_profissional ?? u.crefito ?? null,
+              especialidade: u.especialidade ?? null,
+              telefone: u.telefone ?? null,
+              tempo_experiencia_anos: u.tempo_experiencia_anos,
+              areas_foco: (u.areas_foco as unknown[]) ?? undefined,
+              created_at: u.created_at ?? undefined,
+            };
+            return usuario;
+          }
 
           if (dataObj.perfil) {
             const perfil = dataObj.perfil;

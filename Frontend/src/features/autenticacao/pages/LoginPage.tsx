@@ -2,7 +2,7 @@
  * ============================================================================
  * TELA DE LOGIN OFICIAL — InTEA (Figma Frame: 'Login - InTEA', Node 23:108)
  * Porta de entrada principal da aplicação de Orquestração Clínica.
- * Integrada ao useAuth / useAuthStore e aos perfis mockados de demonstração.
+ * Integrada ao useAuth / useAuthStore e aos perfis de acesso rápido.
  * Conformidade: RF21 (Autenticação e Autoria), RN04 (Vínculo Institucional).
  * ============================================================================
  */
@@ -32,6 +32,12 @@ interface ContaDemonstracao {
 }
 
 const CONTAS_DEMONSTRACAO: ContaDemonstracao[] = [
+  {
+    nome: "Dr. Marcos Willian",
+    cargo: "Terapia Ocupacional • Terapeuta",
+    email: "teste@intea.com.br",
+    senha: "Senha@123",
+  },
   {
     nome: "Dr. Hermeson Alves",
     cargo: "Psicomotricidade • Terapeuta",
@@ -63,8 +69,8 @@ export function LoginPage() {
   const { login, loading, error } = useAuth();
   const setError = useAuthStore((s) => s.setError);
 
-  const [email, setEmail] = useState("hermeson.alves@intea.clinica");
-  const [senha, setSenha] = useState("Senha@123");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   const [avisoRecuperacao, setAvisoRecuperacao] = useState<string | null>(null);
@@ -149,7 +155,7 @@ export function LoginPage() {
               autoComplete="email"
               placeholder="E-mail profissional"
               aria-label="E-mail profissional"
-              // value={email}
+              value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (erroValidacao) setErroValidacao(null);
@@ -173,7 +179,7 @@ export function LoginPage() {
                 autoComplete="current-password"
                 placeholder="Senha"
                 aria-label="Senha"
-                // value={senha}
+                value={senha}
                 onChange={(e) => {
                   setSenha(e.target.value);
                   if (erroValidacao) setErroValidacao(null);

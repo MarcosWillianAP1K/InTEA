@@ -17,6 +17,26 @@ import type {
 } from "../types/auth.types";
 import { authService } from "../services/auth.service";
 
+/**
+ * Normaliza eventual estrutura aninhada `{ user: { ... } }` persistida no localStorage
+ * garantindo que `state.user` tenha sempre as propriedades na raiz (`id`, `nome`, `email`).
+ */
+function normalizarUsuarioStore(raw: unknown): UsuarioAutenticado | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  if ("user" in obj && obj.user && typeof obj.user === "object") {
+    const u = obj.user as Record<string, unknown>;
+    const isAdmin = Boolean(u.is_super_admin ?? u.is_admin);
+    return {
+      ...(u as unknown as UsuarioAutenticado),
+      is_super_admin: isAdmin,
+      role:
+        u.role === "super_admin" || isAdmin ? "super_admin" : "terapeuta",
+    };
+  }
+  return raw as UsuarioAutenticado;
+}
+
 export interface AuthStoreState {
   user: UsuarioAutenticado | null;
   tokens: AuthTokens | null;
@@ -48,12 +68,14 @@ export const useAuthStore = create<AuthStoreState>()(
         set({ loading: true, error: null });
         try {
           const resposta = await authService.login(payload);
-          let usuario = resposta.data?.user || null;
+          let usuario = normalizarUsuarioStore(resposta.data?.user || null);
           const tokens = resposta.data?.token || null;
 
           if (!usuario && tokens?.access_token) {
             try {
-              usuario = await authService.obterUsuarioAtual();
+              usuario = normalizarUsuarioStore(
+                await authService.obterUsuarioAtual(),
+              );
             } catch {
               // Mantém usuário null se falhar ao obter perfil
             }
@@ -92,7 +114,7 @@ export const useAuthStore = create<AuthStoreState>()(
           const tokens = await authService.refresh();
           set({ tokens, isAuthenticated: true });
           return tokens;
-        } catch (erro) {
+        } catch {
           get().limparSessao();
           return null;
         }
@@ -101,17 +123,20 @@ export const useAuthStore = create<AuthStoreState>()(
       carregarUsuario: async (): Promise<UsuarioAutenticado | null> => {
         set({ loading: true });
         try {
-          const usuario = await authService.obterUsuarioAtual();
+          const usuario = normalizarUsuarioStore(
+            await authService.obterUsuarioAtual(),
+          );
           set({ user: usuario, isAuthenticated: true, loading: false });
           return usuario;
-        } catch (erro) {
+        } catch {
           set({ loading: false });
           return null;
         }
       },
 
       setUser: (user: UsuarioAutenticado | null) => {
-        set({ user, isAuthenticated: !!user });
+        const normalizado = normalizarUsuarioStore(user);
+        set({ user: normalizado, isAuthenticated: !!normalizado });
       },
 
       setTokens: (tokens: AuthTokens | null) => {
@@ -139,6 +164,14 @@ export const useAuthStore = create<AuthStoreState>()(
         tokens: state.tokens,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state && state.user) {
+          const normalizado = normalizarUsuarioStore(state.user);
+          if (normalizado !== state.user) {
+            state.setUser(normalizado);
+          }
+        }
+      },
     },
   ),
 );

@@ -54,6 +54,7 @@ export interface StatusDispositivo {
 }
 
 export interface Sessao {
+  [x: string]: any;
   id: string;
   terapeuta_id: string;
   paciente_id: string | null;
@@ -113,6 +114,11 @@ export interface StatusSessaoDTO {
   dispositivo_info?: StatusDispositivo | null;
   expirado: boolean;
   tempo_restante_segundos?: number;
+  presenca_dispositivo?: {
+    conectado: boolean;
+    em_reconexao?: boolean;
+    ultimo_heartbeat?: string;
+  };
 }
 
 export interface MetricasConsolidadas {
@@ -157,6 +163,28 @@ export interface AnotacaoClinicaResultado {
   updated_at?: string;
 }
 
+export interface TentativaGraficoResultado {
+  tentativa: number;
+  segundo: number;
+  tempoFormatado: string;
+  tempo_resposta_segundos: number;
+  acerto: boolean;
+  data_hora?: string;
+  id_metrica?: string;
+  intervencaoDda?: {
+    tipoIntervencao: string;
+    momentoFormatado: string;
+    segundo?: number;
+    detalhes?: string;
+  } | null;
+}
+
+export interface HistoricoEvolutivoResultado {
+  tipo?: string;
+  tempo_medio_referencia?: number;
+  tentativas?: TentativaGraficoResultado[];
+}
+
 export interface ResultadoSessao {
   id: string;
   session_token: string;
@@ -183,6 +211,7 @@ export interface ResultadoSessao {
   } | null;
   metricas_consolidadas?: MetricasConsolidadas;
   dados_ia?: RelatorioIAResultado | null;
+  historico_evolutivo?: HistoricoEvolutivoResultado | null;
   anotacoes?: AnotacaoClinicaResultado[];
 }
 
@@ -336,6 +365,8 @@ export interface TentativaRespostaPonto {
   segundo: number;
   tempoRespostaSegundos: number;
   acerto: boolean;
+  data_hora?: string;
+  id_metrica?: string;
   intervencaoDda?: IntervencaoDdaPonto | null;
 }
 
@@ -381,4 +412,5 @@ export interface RespostaListagemSessao<T = Sessao> {
     limit: number;
     totalPages: number;
   };
+  message?: string;
 }

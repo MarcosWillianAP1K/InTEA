@@ -11,6 +11,7 @@ import { PacienteService, PacienteServiceError } from '../services/paciente.serv
 import { PacienteHistoricoService } from '../services/paciente-historico.service.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { obterMensagemErro } from '../../../core/utils/formatters.js';
+import { validarUUID } from '../../../core/utils/validators.js';
 
 // ==============================================================================
 // Tipos de Sanitização de Saída (Zero any)
@@ -621,6 +622,19 @@ export class PacienteController {
     try {
       const pacienteId = String(req.params.id);
 
+      if (!validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O identificador do paciente deve ser um UUID válido.' });
+        return;
+      }
+
+      // Proteção contra uso indevido de jogoId nesta rota (T1-P1)
+      if (req.query.jogoId) {
+        res.status(400).json({
+          error: 'Para consultar o histórico de um jogo específico, use GET /api/paciente/:id/historico/jogo/:jogoId',
+        });
+        return;
+      }
+
       const filtros = {
         dataInicio: typeof req.query.dataInicio === 'string' && req.query.dataInicio.trim() ? req.query.dataInicio.trim() : undefined,
         dataFim: typeof req.query.dataFim === 'string' && req.query.dataFim.trim() ? req.query.dataFim.trim() : undefined,
@@ -672,6 +686,15 @@ export class PacienteController {
     try {
       const pacienteId = String(req.params.id);
       const jogoId = String(req.params.jogoId);
+      if (!validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O identificador do paciente deve ser um UUID válido.' });
+        return;
+      }
+
+      if (!validarUUID(jogoId)) {
+        res.status(400).json({ error: 'O identificador do jogo deve ser um UUID válido.' });
+        return;
+      }
 
       const filtros = {
         sessaoId: typeof req.query.sessaoId === 'string' && req.query.sessaoId.trim() ? req.query.sessaoId.trim() : undefined,
