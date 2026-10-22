@@ -301,6 +301,55 @@ export class HistoricoSessaoModel {
   }
 
   /**
+   * Counts total completed sessions with active clinical report for a patient and game.
+   * Used for accurate pagination (RF19).
+   *
+   * @param pacienteId - UUID of the patient.
+   * @param jogoId - UUID of the therapeutic game.
+   * @param filtros - Optional time range filters.
+   * @returns Total number of matching sessions.
+   */
+  static async contarHistoricoPorJogo(
+    pacienteId: string,
+    jogoId: string,
+    filtros?: FiltrosHistoricoDTO
+  ): Promise<number> {
+    if (!pacienteId || !validarUUID(pacienteId) || !jogoId || !validarUUID(jogoId)) {
+      return 0;
+    }
+
+    try {
+      let query = supabase
+        .from('sessao')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', pacienteId)
+        .eq('jogo_id', jogoId)
+        .eq('modo_sessao', 'sessao_clinica')
+        .eq('status_sessao', 'finalizada')
+        .not('paciente_id', 'is', null);
+
+      if (filtros?.dataInicio) {
+        query = query.gte('data_hora_fim', filtros.dataInicio);
+      }
+      if (filtros?.dataFim) {
+        query = query.lte('data_hora_fim', filtros.dataFim);
+      }
+
+      const { count, error } = await query;
+
+      if (error || count === null) {
+        console.error('[HistoricoSessaoModel] Erro ao contar histórico por jogo:', error);
+        return 0;
+      }
+
+      return count;
+    } catch (err) {
+      console.error('[HistoricoSessaoModel] Exceção em contarHistoricoPorJogo:', err);
+      return 0;
+    }
+  }
+
+  /**
    * Lists catalog of games with clinical interventions completed by the patient.
    * Used when jogoId is omitted to populate dynamic front-end selectors.
    *

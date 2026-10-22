@@ -27,6 +27,26 @@ import {
   marcarAlertaLidoMock,
 } from "../types/bdmock";
 
+interface RawSessaoApiItem {
+  id: string;
+  paciente_id?: string | null;
+  jogo_id?: string;
+  modo_sessao?: string;
+  status_sessao?: string;
+  data_hora_inicio?: string;
+  data_hora_fim?: string | null;
+  duracao_segundos?: number;
+  paciente?: {
+    id: string;
+    nome?: string;
+  } | null;
+  jogo?: {
+    id: string;
+    nome?: string;
+    titulo?: string;
+  } | null;
+}
+
 /**
  * Extracts nested arrays from HTTP responses, supporting both 'data.key' envelopes and direct array payloads.
  *

@@ -64,6 +64,79 @@ function serializarFiltros(
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
+function normalizarDataInicioIso(data?: string): string | undefined {
+  if (!data) return undefined;
+  return data.includes("T") ? data : `${data}T00:00:00.000Z`;
+}
+
+function normalizarDataFimIso(data?: string): string | undefined {
+  if (!data) return undefined;
+  return data.includes("T") ? data : `${data}T23:59:59.999Z`;
+}
+
+function resolverPeriodoParaDatas(periodo: string): { dataInicio?: string; dataFim?: string } {
+  const agora = new Date();
+  const formatISO = (d: Date) => d.toISOString().split("T")[0];
+
+  switch (periodo) {
+    case "7d": {
+      const inicio = new Date(agora);
+      inicio.setDate(agora.getDate() - 7);
+      return {
+        dataInicio: normalizarDataInicioIso(formatISO(inicio)),
+        dataFim: normalizarDataFimIso(formatISO(agora)),
+      };
+    }
+    case "30d": {
+      const inicio = new Date(agora);
+      inicio.setDate(agora.getDate() - 30);
+      return {
+        dataInicio: normalizarDataInicioIso(formatISO(inicio)),
+        dataFim: normalizarDataFimIso(formatISO(agora)),
+      };
+    }
+    case "3m": {
+      const inicio = new Date(agora);
+      inicio.setMonth(agora.getMonth() - 3);
+      return {
+        dataInicio: normalizarDataInicioIso(formatISO(inicio)),
+        dataFim: normalizarDataFimIso(formatISO(agora)),
+      };
+    }
+    case "todos":
+    case "personalizado":
+    default:
+      return {};
+  }
+}
+
+/**
+ * Converts clinical history filter DTO into HTTP query parameter record (RF19).
+ */
+function serializarFiltrosHistorico(
+  filtros?: FiltrosHistorico,
+): Record<string, string> | undefined {
+  if (!filtros) return undefined;
+  const params: Record<string, string> = {};
+
+  if (filtros.periodo && filtros.periodo !== "personalizado" && filtros.periodo !== "todos") {
+    const { dataInicio, dataFim } = resolverPeriodoParaDatas(filtros.periodo);
+    if (dataInicio) params.dataInicio = dataInicio;
+    if (dataFim) params.dataFim = dataFim;
+  } else {
+    const inicioNorm = normalizarDataInicioIso(filtros.dataInicio);
+    const fimNorm = normalizarDataFimIso(filtros.dataFim);
+    if (inicioNorm) params.dataInicio = inicioNorm;
+    if (fimNorm) params.dataFim = fimNorm;
+  }
+
+  if (filtros.jogoId) params.jogoId = filtros.jogoId;
+  if (filtros.sessaoId) params.sessaoId = filtros.sessaoId;
+  if (filtros.page !== undefined) params.page = String(filtros.page);
+  if (filtros.limit !== undefined) params.limit = String(filtros.limit);
+  return Object.keys(params).length > 0 ? params : undefined;
+}
+
 /**
  * Extracts and normalizes patient data along with relational fields from an API response envelope.
  *
