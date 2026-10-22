@@ -46,6 +46,11 @@ const API_BASE_URL =
   (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ||
   "http://localhost:3000/api";
 
+/**
+ * Retrieves the stored JWT access token and constructs HTTP authorization headers for session requests.
+ *
+ * @returns Headers dictionary populated with Bearer token authentication if present.
+ */
 function obterAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -67,8 +72,7 @@ function obterAuthHeaders(): Record<string, string> {
 }
 
 /**
- * Normaliza o payload de resultado consolidado retornado pelo backend (GET /api/sessao/:id/resultado)
- * para a interface plana ResultadoSessao esperada pelos componentes da UI.
+ * Normalizes consolidated outcome payload from backend (GET /api/sessao/:id/resultado) into UI ResultadoSessao interface.
  */
 export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
   if (!raw || typeof raw !== "object") {
@@ -264,7 +268,7 @@ export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
 
 export const sessaoService = {
   /**
-   * Inicia uma nova sessão clínica ou em Modo Livre (RN01, RF10).
+   * Starts a new clinical session or free play session (RN01, RF10).
    */
   iniciarSessao: async (dto: IniciarSessaoDTO): Promise<Sessao> => {
     return await withFallback(
@@ -328,7 +332,7 @@ export const sessaoService = {
   },
 
   /**
-   * Consulta uma sessão por UUID.
+   * Retrieves session by UUID.
    */
   buscarPorId: async (id: string): Promise<Sessao | null> => {
     if (!id || !id.trim()) return null;
@@ -349,7 +353,7 @@ export const sessaoService = {
   },
 
   /**
-   * Consulta uma sessão pelo session_token de pareamento.
+   * Retrieves a session by pairing session_token.
    */
   buscarPorToken: async (token: string): Promise<Sessao | null> => {
     if (!token || !token.trim()) return null;
@@ -370,7 +374,7 @@ export const sessaoService = {
   },
 
   /**
-   * Consulta o status de conexão do tablet ou VR pelo PIN/Token de pareamento.
+   * Queries tablet or VR connection status via pairing PIN/Token.
    */
   consultarStatusPorPin: async (
     tokenOuPin: string,
@@ -425,7 +429,7 @@ export const sessaoService = {
   },
 
   /**
-   * Atualiza o status operacional da sessão (FSM).
+   * Updates operational status of session (FSM).
    */
   atualizarStatus: async (
     id: string,
@@ -450,7 +454,7 @@ export const sessaoService = {
   },
 
   /**
-   * Finaliza sessão clínica e sintetiza laudo IA (RF13, RF14, RF17).
+   * Finalizes clinical session and synthesizes AI outcome report (RF13, RF14, RF17).
    */
   finalizarSessao: async (
     id: string,
@@ -477,7 +481,7 @@ export const sessaoService = {
   },
 
   /**
-   * Cancela a sessão clínica em andamento.
+   * Cancels in-progress clinical session.
    */
   cancelarSessao: async (
     id: string,
@@ -500,7 +504,7 @@ export const sessaoService = {
   },
 
   /**
-   * Obtém resultados consolidados da sessão pós-intervenção (RF14).
+   * Retrieves consolidated post-intervention session outcomes (RF14).
    */
   obterResultado: async (id: string): Promise<ResultadoSessao | null> => {
     if (!id || !id.trim()) return null;
@@ -521,7 +525,7 @@ export const sessaoService = {
   },
 
   /**
-   * Exporta dados clínicos estruturados da sessão (RF20).
+   * Exports structured clinical session data (RF20).
    */
   exportarRelatorio: async (
     id: string,
@@ -579,7 +583,7 @@ export const sessaoService = {
   // ==========================================================================
 
   /**
-   * Finaliza sessão mantendo o contrato esperado pelos testes de Cockpit e sessaoService.test.ts.
+   * Finalizes session matching contract expected by Cockpit test suites.
    */
   finalizar: async (
     identificadorSessao: string,
@@ -691,7 +695,7 @@ export const sessaoService = {
   },
 
   /**
-   * Salva anotação clínica mantendo contrato consumido pelo BlocoAnotacoesClinicas.
+   * Saves clinical annotation matching contract consumed by BlocoAnotacoesClinicas.
    */
   salvarAnotacao: async (
     payload: SalvarAnotacaoPayload,
@@ -774,7 +778,7 @@ export const sessaoService = {
   },
 
   /**
-   * Lista sessões com suporte a filtros de status, data, paciente, jogo e paginação.
+   * Lists sessions supporting status, date, patient, game, and pagination filters.
    */
   listar: async (filtros?: FiltroSessaoDTO): Promise<RespostaListagemSessao<Sessao>> => {
     return await withFallback(

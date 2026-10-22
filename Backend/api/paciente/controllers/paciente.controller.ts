@@ -57,7 +57,7 @@ export interface TerapeutaSanitizado {
 }
 
 /**
- * Sanitiza o registro de paciente expurgando campos aninhados ou sensíveis.
+ * Sanitizes the patient record by removing nested or sensitive fields.
  */
 function sanitizarPaciente(paciente: unknown): PacienteSanitizado | null {
   if (!paciente || typeof paciente !== 'object') return null;
@@ -83,7 +83,7 @@ function sanitizarPaciente(paciente: unknown): PacienteSanitizado | null {
 }
 
 /**
- * Sanitiza dados do responsável vinculado ao paciente.
+ * Sanitizes data of the legal guardian linked to the patient.
  */
 function sanitizarResponsavel(r: unknown): ResponsavelSanitizado | null {
   if (!r || typeof r !== 'object') return null;
@@ -103,7 +103,7 @@ function sanitizarResponsavel(r: unknown): ResponsavelSanitizado | null {
 }
 
 /**
- * Sanitiza dados do terapeuta vinculado à equipe multidisciplinar.
+ * Sanitizes data of the therapist linked to the multidisciplinary team.
  */
 function sanitizarTerapeuta(t: unknown): TerapeutaSanitizado | null {
   if (!t || typeof t !== 'object') return null;
@@ -125,7 +125,7 @@ export class PacienteController {
   /**
    * Handles GET /api/paciente to list patients with optional filtering, search, and pagination.
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "pacientes": [ ... ],
@@ -187,7 +187,7 @@ export class PacienteController {
   /**
    * Handles GET /api/paciente/:id to retrieve a single patient by UUID with relations.
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "paciente": { ... },
@@ -239,7 +239,7 @@ export class PacienteController {
   /**
    * Handles POST /api/paciente to create a new patient with sanitized demographic data.
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "paciente": { ... },
@@ -299,7 +299,7 @@ export class PacienteController {
   /**
    * Handles PUT / PATCH /api/paciente/:id to update fields of an existing patient.
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "paciente": { ... }
@@ -350,7 +350,7 @@ export class PacienteController {
   /**
    * Handles DELETE /api/paciente/:id applying soft deletion (RN05).
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "paciente": { ... }
@@ -384,7 +384,7 @@ export class PacienteController {
   /**
    * Handles PATCH /api/paciente/:id/reativar to reactivate an inactive patient record.
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "paciente": { ... }
@@ -416,7 +416,7 @@ export class PacienteController {
   /**
    * Handles DELETE /api/paciente/:id/hard to permanently delete a patient (testing/dev).
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "paciente": { "id": string, "removido": true }
@@ -453,7 +453,7 @@ export class PacienteController {
   /**
    * Handles POST /api/paciente/:id/terapeutas to associate a therapist with a patient.
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "vinculo": { "paciente_id": string, "terapeuta_id": string }
@@ -510,7 +510,7 @@ export class PacienteController {
   /**
    * Handles DELETE /api/paciente/:id/terapeutas/:terapeutaId to unlink a therapist.
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "vinculo": { "paciente_id": string, "terapeuta_id": string, "status": "removido" }
@@ -558,7 +558,7 @@ export class PacienteController {
   /**
    * Handles GET /api/paciente/:id/terapeutas to retrieve all linked therapists.
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "terapeutas": [ ... ],
@@ -609,7 +609,7 @@ export class PacienteController {
    * Handles GET /api/paciente/:id/historico to retrieve longitudinal patient history
    * with universal engagement metrics and game-specific metric series (RF15, RF19, RN01, RN02, RN04, RN05).
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "engajamento": { ... },
@@ -671,7 +671,7 @@ export class PacienteController {
   /**
    * Handles GET /api/paciente/:id/historico/jogo/:jogoId to retrieve specific game metric series (RF15, RN02).
    *
-   * Formato Canônico:
+   * Canonical Format:
    * {
    *   "data": {
    *     "jogo": { ... },

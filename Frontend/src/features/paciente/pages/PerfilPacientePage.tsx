@@ -37,9 +37,8 @@ import { toast } from "sonner";
 
 /**
  * ============================================================================
- * TELA: PERFIL DO PACIENTE (InTEA)
- * Frame Figma: Perfil Paciente- InTEA (150:888)
- * Integração: pacienteService, anotacaoService, sessaoService
+ * PAGE: PATIENT PROFILE (InTEA)
+ * Integration: pacienteService, anotacaoService, sessaoService
  * ============================================================================
  */
 export function PerfilPacientePage() {

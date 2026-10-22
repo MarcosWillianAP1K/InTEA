@@ -1,9 +1,8 @@
 /**
  * ============================================================================
- * SERVIÇO REST DO DOMÍNIO DASHBOARD (dashboard.service.ts)
- * Consome os endpoints de métricas, sessões recentes e alertas do terapeuta
- * com fallback resiliente para bdmock.ts em caso de indisponibilidade da API.
- * Conformidade: RF19 (Painel do Terapeuta), RF20 (Relatórios Clínicos)
+ * REST SERVICE FOR DASHBOARD DOMAIN
+ * Consumes metrics, recent sessions, and therapist alert endpoints.
+ * Compliance: RF19 (Therapist Dashboard), RF20 (Clinical Reports)
  * ============================================================================
  */
 
@@ -48,6 +47,13 @@ interface RawSessaoApiItem {
   } | null;
 }
 
+/**
+ * Extracts nested arrays from HTTP responses, supporting both 'data.key' envelopes and direct array payloads.
+ *
+ * @param res - Raw API response payload.
+ * @param chave - Property key containing the target array inside the data object.
+ * @returns Strongly-typed array extracted from the response payload.
+ */
 function extrairArray<T>(res: unknown, chave: string): T[] {
   if (!res) return [];
   if (Array.isArray(res)) return res as T[];
@@ -91,7 +97,7 @@ function calcularDuracaoSegundos(sessao: RawSessaoApiItem): number {
 
 export const dashboardService = {
   /**
-   * Obtém as métricas quantitativas e qualitativas consolidadas do painel.
+   * Retrieves consolidated quantitative and qualitative dashboard metrics.
    */
   obterMetricas: async (): Promise<DashboardMetricas> => {
     return await withFallback(
@@ -169,9 +175,9 @@ export const dashboardService = {
   },
 
   /**
-   * Lista as sessões clínicas mais recentes do terapeuta logado.
+   * Lists most recent clinical sessions for the authenticated therapist.
    *
-   * @param limite Quantidade máxima de sessões a retornar (padrão: 5).
+   * @param limite - Maximum number of sessions to return (default: 5).
    */
   listarSessoesRecentes: async (
     limite = 5,
@@ -219,9 +225,9 @@ export const dashboardService = {
   },
 
   /**
-   * Lista o feed de atividades recentes no sistema.
+   * Lists recent activity feed across the system.
    *
-   * @param limite Quantidade máxima de atividades a retornar (padrão: 10).
+   * @param limite - Maximum number of activities to return (default: 10).
    */
   listarAtividadesRecentes: async (
     limite = 10,
@@ -248,9 +254,9 @@ export const dashboardService = {
   },
 
   /**
-   * Lista os alertas clínicos emitidos pela telemetria e pelo motor DDA.
+   * Lists clinical alerts issued by telemetry and DDA engine.
    *
-   * @param apenasNaoLidos Se verdadeiro, filtra apenas alertas pendentes.
+   * @param apenasNaoLidos - If true, filters only unread alerts.
    */
   listarAlertas: async (
     apenasNaoLidos = false,
@@ -277,9 +283,9 @@ export const dashboardService = {
   },
 
   /**
-   * Marca um alerta clínico específico como lido.
+   * Marks a specific clinical alert as read.
    *
-   * @param alertaId Identificador do alerta.
+   * @param alertaId - Unique identifier of the alert.
    */
   marcarAlertaLido: async (alertaId: string): Promise<boolean> => {
     if (!alertaId || !alertaId.trim()) return false;

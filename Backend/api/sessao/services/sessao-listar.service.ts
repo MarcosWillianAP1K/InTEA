@@ -8,12 +8,12 @@ import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js
 
 export class SessaoListarService {
   /**
-   * Lista sessões terapêuticas aplicando filtros clínicos e controle de visibilidade institucional (RN04).
+   * Lists therapeutic sessions applying clinical filters and institutional visibility controls (RN04).
    *
-   * @param filtros - Filtros de status, data, paciente, jogo, modo e paginação.
-   * @param usuarioLogado - Dados do usuário extraídos do token JWT verificado (RF21).
-   * @param verTodasSessoes - Se true e o usuário for super admin, lista sessões de todos os terapeutas.
-   * @returns Lista paginada de sessões e metadados de paginação.
+   * @param filtros - Status, date, patient, game, mode, and pagination filters.
+   * @param usuarioLogado - User data extracted from verified JWT token (RF21).
+   * @param verTodasSessoes - If true and user is super admin, lists sessions across all therapists.
+   * @returns Paginated list of sessions with pagination metadata.
    */
   static async listar(
     filtros: FiltrosSessaoDTO,

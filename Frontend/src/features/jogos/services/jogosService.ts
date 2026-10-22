@@ -1,6 +1,5 @@
 /**
- * Re-exporta e delega chamadas para jogos.service.ts, mantendo compatibilidade
- * retroativa com os testes e componentes existentes do projeto InTEA.
+ * Re-exports and delegates calls to jogos.service.ts for backwards compatibility.
  */
 
 import { jogosService as jogosServiceCore } from "./jogos.service";
@@ -11,14 +10,13 @@ export { JOGOS_MOCK };
 
 export const jogosService = {
   /**
-   * Lista todos os jogos disponíveis com suporte a filtros.
+   * Lists all available games supporting filter parameters.
    */
   listar: (filtros?: FiltrosJogos): Promise<Jogo[]> =>
     jogosServiceCore.listar(filtros),
 
   /**
-   * Busca jogo por identificador, retornando `undefined` se não encontrado
-   * para compatibilidade com testes legados.
+   * Retrieves game by identifier, returning `undefined` if not found.
    */
   buscarPorId: async (id: string): Promise<Jogo | undefined> => {
     const jogo = await jogosServiceCore.buscarPorId(id);
@@ -26,7 +24,7 @@ export const jogosService = {
   },
 
   /**
-   * Obtém manifesto técnico e clínico do jogo.
+   * Retrieves technical and clinical manifest of the game.
    */
   obterManifesto: (id: string): Promise<ManifestoJogo | null> =>
     jogosServiceCore.obterManifesto(id),

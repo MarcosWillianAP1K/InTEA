@@ -36,6 +36,44 @@ function findCodeFiles(dir) {
   return results;
 }
 
+function formatDescription(lines) {
+  while (lines.length > 0 && lines[0].trim() === '') lines.shift();
+  while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
+  if (lines.length === 0) return '';
+
+  const formatted = [];
+  for (let i = 0; i < lines.length; i++) {
+    const curr = lines[i].trim();
+    if (curr === '') {
+      if (formatted.length > 0 && formatted[formatted.length - 1] !== '') {
+        formatted.push('');
+      }
+      continue;
+    }
+
+    const isList = /^[-*]\s+|^\d+\.\s+/.test(curr);
+    const prev = formatted.length > 0 ? formatted[formatted.length - 1] : null;
+
+    if (isList) {
+      if (prev !== null && prev !== '' && !/^[-*]\s+|^\d+\.\s+/.test(prev)) {
+        formatted.push('');
+      }
+      formatted.push(curr);
+    } else {
+      if (prev === null || prev === '') {
+        formatted.push(curr);
+      } else if (/^[-*]\s+|^\d+\.\s+/.test(prev)) {
+        formatted.push('');
+        formatted.push(curr);
+      } else {
+        formatted[formatted.length - 1] += ' ' + curr;
+      }
+    }
+  }
+
+  return formatted.join('\n');
+}
+
 function parseDocstrings(content) {
   const blocks = [];
 
@@ -87,29 +125,43 @@ function parseDocstrings(content) {
     }
 
     // Step 3: Parse the JSDoc tags from the comment.
-    const lines = rawComment.split('\n').map((l) => l.replace(/^\s*\*\s?/, '').trim());
+    const rawLines = rawComment.split('\n').map((l) => l.replace(/^\s*\*\s?/, '').trimEnd());
     const descriptionLines = [];
     const params = [];
     let returns = null;
 
-    for (const line of lines) {
+    for (const rawLine of rawLines) {
+      const line = rawLine.trim();
       if (line.startsWith('@param')) {
-        const paramMatch = line.match(/^@param\s+([a-zA-Z0-9_$]+)\s*-\s*(.*)$/);
+        const paramMatch = line.match(/^@param\s*(?:\{[^}]*\}\s*)?(?:\[([^\]]+)\]|([a-zA-Z0-9_$]+))\s*(?:-\s*)?(.*)$/);
         if (paramMatch) {
-          params.push({ name: paramMatch[1], desc: paramMatch[2] });
+          const name = (paramMatch[1] || paramMatch[2] || '').split('=')[0].trim();
+          const desc = (paramMatch[3] || '').trim();
+          params.push({ name, desc });
         } else {
-          params.push({ name: '', desc: line.replace('@param', '').trim() });
+          const rest = line.replace(/^@param\s*/, '').trim();
+          const spaceIdx = rest.indexOf(' ');
+          if (spaceIdx !== -1) {
+            params.push({
+              name: rest.slice(0, spaceIdx).trim(),
+              desc: rest.slice(spaceIdx + 1).replace(/^-\s*/, '').trim(),
+            });
+          } else {
+            params.push({ name: rest, desc: '' });
+          }
         }
       } else if (line.startsWith('@returns') || line.startsWith('@return')) {
         returns = line.replace(/@returns?/, '').replace(/^-\s*/, '').trim();
       } else if (line.startsWith('@throws') || line.startsWith('@throw')) {
         // skip – @throws is metadata, not description
-      } else if (line.length > 0 && !line.startsWith('=')) {
-        descriptionLines.push(line);
+      } else if (line.startsWith('@') && !line.startsWith('@deprecated')) {
+        // skip other metadata tags
+      } else if (!line.startsWith('=')) {
+        descriptionLines.push(rawLine);
       }
     }
 
-    const description = descriptionLines.join(' ').trim();
+    const description = formatDescription(descriptionLines);
 
     if (description || params.length > 0 || returns) {
       blocks.push({ identifier, description, params, returns });
@@ -120,17 +172,17 @@ function parseDocstrings(content) {
 }
 
 const MODULE_INFO = {
-  anotacao: { title: 'Anotações Clínicas', category: 'Backend (Módulos Clínicos)' },
-  sessao: { title: 'Sessão e Pareamento', category: 'Backend (Módulos Clínicos)' },
-  telemetria: { title: 'Telemetria e Métricas', category: 'Backend (Módulos Clínicos)' },
-  auditoria: { title: 'Trilha de Auditoria', category: 'Backend (Módulos Clínicos)' },
-  auth: { title: 'Autenticação e Perfil', category: 'Backend (Administração)' },
-  paciente: { title: 'Gestão de Pacientes', category: 'Backend (Administração)' },
-  terapeuta: { title: 'Gestão de Terapeutas', category: 'Backend (Administração)' },
-  jogos: { title: 'Catálogo de Jogos', category: 'Backend (Administração)' },
-  exemplo: { title: 'Exemplos e Utilitários', category: 'Infraestrutura & Core' },
-  core: { title: 'Eventos e Middlewares', category: 'Infraestrutura & Core' },
-  frontend: { title: 'Hooks e Serviços React', category: 'Frontend' },
+  anotacao: { title: 'Clinical Notes', category: 'Backend (Clinical Modules)' },
+  sessao: { title: 'Session and Pairing', category: 'Backend (Clinical Modules)' },
+  telemetria: { title: 'Telemetry and Metrics', category: 'Backend (Clinical Modules)' },
+  auditoria: { title: 'Audit Trail', category: 'Backend (Clinical Modules)' },
+  auth: { title: 'Authentication and Profile', category: 'Backend (Administration)' },
+  paciente: { title: 'Patient Management', category: 'Backend (Administration)' },
+  terapeuta: { title: 'Therapist Management', category: 'Backend (Administration)' },
+  jogos: { title: 'Games Catalog', category: 'Backend (Administration)' },
+  exemplo: { title: 'Examples and Utilities', category: 'Infrastructure & Core' },
+  core: { title: 'Events and Middlewares', category: 'Infrastructure & Core' },
+  frontend: { title: 'React Hooks and Services', category: 'Frontend' },
 };
 
 function getModuleKey(relPath) {
@@ -171,18 +223,18 @@ function buildDocs() {
   }
 
   // 1. Gera página inicial simples, limpa e com cartões visuais
-  let indexMd = `# Catálogo de Funções e Métodos\n\n`;
-  indexMd += `Visão consolidada de todas as **${totalFuncoes} funções e métodos documentados** do ecossistema InTEA, divididos por área.\n\n`;
-  indexMd += `!!! info "Estatísticas da Documentação"\n`;
-  indexMd += `    * **Total de funções documentadas:** \`${totalFuncoes}\`\n`;
-  indexMd += `    * **Arquivos de código com docstrings:** \`${totalArquivos}\`\n`;
+  let indexMd = `# Function and Method Catalog\n\n`;
+  indexMd += `Consolidated overview of all **${totalFuncoes} documented functions and methods** across the InTEA ecosystem, organized by domain.\n\n`;
+  indexMd += `!!! info "Documentation Statistics"\n`;
+  indexMd += `    * **Total documented functions:** \`${totalFuncoes}\`\n`;
+  indexMd += `    * **Code files with docstrings:** \`${totalArquivos}\`\n`;
   indexMd += `---\n\n`;
-  indexMd += `### Navegação Rápida por Módulo\n\n`;
-  indexMd += `| Módulo | Área | Funções Documentadas |\n`;
+  indexMd += `### Quick Navigation by Module\n\n`;
+  indexMd += `| Module | Domain | Documented Functions |\n`;
   indexMd += `| :--- | :--- | :---: |\n`;
 
   for (const [modKey, files] of Object.entries(modules)) {
-    const info = MODULE_INFO[modKey] || { title: modKey, category: 'Geral' };
+    const info = MODULE_INFO[modKey] || { title: modKey, category: 'General' };
     const qtd = files.reduce((acc, f) => acc + f.docstrings.length, 0);
     indexMd += `| [**${info.title}**](${modKey}.md) | ${info.category} | \`${qtd}\` |\n`;
   }
@@ -191,9 +243,9 @@ function buildDocs() {
 
   // 2. Gera páginas de módulo com cartões e blocos expansíveis
   for (const [modKey, files] of Object.entries(modules)) {
-    const info = MODULE_INFO[modKey] || { title: modKey, category: 'Geral' };
+    const info = MODULE_INFO[modKey] || { title: modKey, category: 'General' };
     let modMd = `# ${info.title}\n\n`;
-    modMd += `> **Categoria:** ${info.category}\n\n`;
+    modMd += `> **Category:** ${info.category}\n\n`;
     modMd += `---\n\n`;
 
     for (const file of files) {
@@ -201,22 +253,24 @@ function buildDocs() {
 
       for (const item of file.docstrings) {
         modMd += `### \`${item.identifier}()\`\n\n`;
-        modMd += `${item.description || '*Sem descrição adicional*'}\n\n`;
+        modMd += `${item.description || '*No additional description provided.*'}\n\n`;
 
         if (item.params.length > 0) {
-          modMd += `**Parâmetros de Entrada:**\n\n`;
-          modMd += `| Parâmetro | Finalidade |\n`;
+          modMd += `**Input Parameters:**\n\n`;
+          modMd += `| Parameter | Description |\n`;
           modMd += `| :--- | :--- |\n`;
           for (const p of item.params) {
-            modMd += `| \`${p.name}\` | ${p.desc} |\n`;
+            const paramLabel = p.name ? `\`${p.name}\`` : '-';
+            const safeDesc = p.desc.replace(/\|/g, '\\|');
+            modMd += `| ${paramLabel} | ${safeDesc} |\n`;
           }
           modMd += `\n`;
         } else {
-          modMd += `*Nenhum parâmetro de entrada necessário.*\n\n`;
+          modMd += `*No input parameters required.*\n\n`;
         }
 
         if (item.returns) {
-          modMd += `**Retorno:** \`${item.returns}\`\n\n`;
+          modMd += `**Returns:** \`${item.returns}\`\n\n`;
         }
 
         modMd += `---\n\n`;
@@ -228,25 +282,25 @@ function buildDocs() {
 
   // 3. Organiza navegação em categorias claras e legíveis (em vez de 11 abas soltas)
   const groupedNav = {
-    'Visão Geral': 'index.md',
-    'Backend (Clínico)': [],
-    'Backend (Administração)': [],
-    'Infraestrutura & Core': [],
+    'Overview': 'index.md',
+    'Backend (Clinical)': [],
+    'Backend (Administration)': [],
+    'Infrastructure & Core': [],
     'Frontend': [],
   };
 
   for (const modKey of Object.keys(modules)) {
-    const info = MODULE_INFO[modKey] || { title: modKey, category: 'Geral' };
+    const info = MODULE_INFO[modKey] || { title: modKey, category: 'General' };
     const entry = { [info.title]: `${modKey}.md` };
 
-    if (info.category.includes('Clínicos')) {
-      groupedNav['Backend (Clínico)'].push(entry);
-    } else if (info.category.includes('Administração')) {
-      groupedNav['Backend (Administração)'].push(entry);
+    if (info.category.includes('Clinical')) {
+      groupedNav['Backend (Clinical)'].push(entry);
+    } else if (info.category.includes('Administration')) {
+      groupedNav['Backend (Administration)'].push(entry);
     } else if (info.category.includes('Frontend')) {
       groupedNav['Frontend'].push(entry);
     } else {
-      groupedNav['Infraestrutura & Core'].push(entry);
+      groupedNav['Infrastructure & Core'].push(entry);
     }
   }
 
@@ -269,34 +323,34 @@ function buildDocs() {
   }
 
   const mkdocsConfig = `# =============================================================================
-# InTEA: Catálogo Moderno de Funções e Docstrings (Material Theme)
+# InTEA: Modern Function and Docstrings Catalog (Material Theme)
 # =============================================================================
 
-site_name: InTEA — Funções & Docstrings
-site_description: Referência rápida e intuitiva das funções e docstrings do projeto InTEA
-site_author: Equipe InTEA
+site_name: InTEA — Functions & Docstrings
+site_description: Quick and intuitive reference for InTEA functions and docstrings
+site_author: InTEA Team
 
 docs_dir: docs_site
 site_dir: site
 
 theme:
   name: material
-  language: pt-BR
+  language: en
   palette:
-    # Modo Claro
+    # Light Mode
     - scheme: default
       primary: indigo
       accent: deep purple
       toggle:
         icon: material/brightness-7
-        name: Mudar para modo escuro
-    # Modo Escuro
+        name: Switch to dark mode
+    # Dark Mode
     - scheme: slate
       primary: indigo
       accent: deep purple
       toggle:
         icon: material/brightness-4
-        name: Mudar para modo claro
+        name: Switch to light mode
   features:
     - navigation.instant
     - navigation.sections
@@ -325,7 +379,7 @@ ${formatNavYaml(groupedNav, 2)}
 `;
 
   fs.writeFileSync(path.join(ROOT_DIR, 'mkdocs.yml'), mkdocsConfig, 'utf-8');
-  console.log(`[generate-docstrings-doc] Documentação moderna gerada com sucesso!`);
+  console.log(`[generate-docstrings-doc] Modern documentation generated successfully!`);
 }
 
 buildDocs();

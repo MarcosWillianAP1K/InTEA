@@ -1,8 +1,7 @@
 /**
  * ============================================================================
- * FIXTURES E MOCKS DO DASHBOARD CLÍNICO (bdmock.ts)
- * Indicadores agregados, histórico recente e alertas em memória.
- * Alinhado com as fixtures de Paciente, Sessão e Jogos do ecossistema InTEA.
+ * CLINICAL DASHBOARD FIXTURES AND MOCKS
+ * Consolidated indicators, recent history, and in-memory alerts.
  * ============================================================================
  */
 
@@ -202,14 +201,14 @@ let alertasEstado = [...MOCK_ALERTAS_CLINICOS];
 // ============================================================================
 
 /**
- * Retorna as métricas consolidadas do painel clínico.
+ * Returns consolidated metrics for clinical dashboard.
  */
 export async function obterMetricasDashboardMock(): Promise<DashboardMetricas> {
   return { ...MOCK_DASHBOARD_METRICAS };
 }
 
 /**
- * Retorna as sessões mais recentes com limite opcional.
+ * Returns most recent sessions with optional limit.
  */
 export async function listarSessoesRecentesMock(
   limite = 5,
@@ -218,7 +217,7 @@ export async function listarSessoesRecentesMock(
 }
 
 /**
- * Retorna o feed de atividades recentes do terapeuta logado.
+ * Returns recent activity feed of logged-in therapist.
  */
 export async function listarAtividadesRecentesMock(
   limite = 10,
@@ -227,7 +226,7 @@ export async function listarAtividadesRecentesMock(
 }
 
 /**
- * Retorna alertas clínicos em aberto ou todos os alertas.
+ * Returns pending clinical alerts or all alerts.
  */
 export async function listarAlertasClinicosMock(
   apenasNaoLidos = false,
@@ -239,7 +238,7 @@ export async function listarAlertasClinicosMock(
 }
 
 /**
- * Marca um alerta clínico como lido.
+ * Marks a clinical alert as read.
  */
 export async function marcarAlertaLidoMock(alertaId: string): Promise<boolean> {
   const alerta = alertasEstado.find((a) => a.id === alertaId);

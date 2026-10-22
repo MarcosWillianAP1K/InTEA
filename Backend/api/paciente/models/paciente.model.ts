@@ -26,7 +26,7 @@ export interface TerapeutaVinculado {
 }
 
 /**
- * Representa a entidade Paciente exatamente como mapeada no banco de dados Supabase.
+ * Represents the Patient entity mapped in Supabase database.
  */
 export interface Paciente {
   id: string;                      // UUID gerado automaticamente (gen_random_uuid())
@@ -50,7 +50,7 @@ export interface Paciente {
 }
 
 /**
- * DTO para cadastro de responsável associado ao paciente.
+ * DTO for registering a legal guardian linked to a patient.
  */
 export interface CriarResponsavelDTO {
   nome: string;
@@ -61,7 +61,7 @@ export interface CriarResponsavelDTO {
 }
 
 /**
- * DTO para criação de paciente (POST /api/paciente).
+ * DTO for patient creation (POST /api/paciente).
  */
 export interface CriarPacienteDTO {
   nome: string;
@@ -80,7 +80,7 @@ export interface CriarPacienteDTO {
 }
 
 /**
- * DTO para atualização de paciente (PUT /api/paciente/:id).
+ * DTO for patient update (PUT /api/paciente/:id).
  */
 export interface AtualizarPacienteDTO {
   nome?: string;
@@ -99,7 +99,7 @@ export interface AtualizarPacienteDTO {
 }
 
 /**
- * Parâmetros de busca, filtros e paginação de pacientes.
+ * Search, filter, and pagination parameters for patients.
  */
 export interface FiltrosPacienteDTO {
   nome?: string;
@@ -113,7 +113,7 @@ export interface FiltrosPacienteDTO {
 }
 
 /**
- * Metadados de paginação.
+ * Pagination metadata.
  */
 export interface MetaPaginacao {
   total: number;
@@ -404,7 +404,7 @@ export class PacienteModel {
   }
 
   /**
-   * Helper para reativar e atualizar os dados cadastrais de um paciente previamente inativado.
+   * Helper to reactivate and update records of a previously inactivated patient.
    */
   private static async reativarEAtualizar(
     id: string,
@@ -468,7 +468,7 @@ export class PacienteModel {
   }
 
   /**
-   * Salva ou vincula responsável prevenindo conflitos de unicidade em CPF de responsáveis existentes.
+   * Saves or links legal guardian avoiding uniqueness conflicts on existing guardian CPF.
    */
   private static async salvarOuVincularResponsavel(pacienteId: string, responsavelDTO: CriarResponsavelDTO): Promise<void> {
     try {

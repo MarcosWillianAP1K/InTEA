@@ -90,8 +90,8 @@ export interface SerieMetricaJogo {
 }
 
 /**
- * Resposta formatada para o Histórico Geral de Engajamento do Paciente.
- * Dados limpos e simplificados para cards de perfil (RF15).
+ * Formatted response for General Patient Engagement History.
+ * Clean and simplified data for profile cards (RF15).
  */
 export interface RespostaHistoricoGeral {
   engajamento: MetricasEngajamentoGeral;
@@ -103,8 +103,8 @@ export interface RespostaHistoricoGeral {
 }
 
 /**
- * Resposta formatada para o Histórico Específico de um Jogo.
- * Séries temporais das métricas homologadas no manifesto do jogo (RN02).
+ * Formatted response for Specific Game History.
+ * Time series of approved metrics from game manifest (RN02).
  */
 export interface RespostaHistoricoJogo {
   jogo: {
@@ -155,7 +155,7 @@ export interface RespostaHistoricoPaciente {
 
 export class PacienteHistoricoService {
   /**
-   * Valida parâmetros de filtros e datas para garantir consistência temporal (RF19).
+   * Validates filter parameters and dates to guarantee temporal consistency (RF19).
    */
   static validarFiltros(filtros: FiltrosHistoricoInput): void {
     if (filtros.dataInicio && filtros.dataFim) {
@@ -195,11 +195,11 @@ export class PacienteHistoricoService {
   }
 
   /**
-   * Rota 1: Histórico Geral do Paciente (Métricas universais de engajamento e catálogo de jogos).
-   * Retorna dados limpos e simples para os cards do perfil do paciente sem poluição.
+   * Route 1: General Patient History (universal engagement metrics and game catalog).
+   * Returns clean, streamlined data for patient profile cards.
    *
-   * @param pacienteId UUID do paciente
-   * @param filtros Filtros opcionais de intervalo temporal
+   * @param pacienteId - UUID of the patient.
+   * @param filtros - Optional time range filters.
    */
   static async buscarHistoricoGeral(
     pacienteId: string,
@@ -236,13 +236,13 @@ export class PacienteHistoricoService {
   }
 
   /**
-   * Rota 2: Histórico Específico por Jogo.
-   * Recupera as métricas tipadas no manifesto do jogo (RN02) e traça a série evolutiva.
-   * Se informado `sessaoId`, o histórico é delimitado estritamente até a data daquela sessão.
+   * Route 2: Specific Game History.
+   * Retrieves typed metrics from game manifest (RN02) and plots evolutionary time series.
+   * When `sessaoId` is provided, history is strictly bounded up to that session date.
    *
    * @param pacienteId UUID do paciente
-   * @param jogoId UUID do jogo terapêutico
-   * @param filtros Filtros opcionais de sessão de referência, datas e paginação
+   * @param jogoId - UUID of the therapeutic game.
+   * @param filtros - Optional filters for reference session, dates, and pagination.
    */
   static async buscarHistoricoJogo(
     pacienteId: string,
@@ -481,7 +481,7 @@ export class PacienteHistoricoService {
   }
 
   /**
-   * Método de compatibilidade reversa para consultas legadas de histórico.
+   * Backward compatibility method for legacy history queries.
    */
   static async buscarHistoricoPaciente(
     pacienteId: string,

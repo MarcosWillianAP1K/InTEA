@@ -1,8 +1,7 @@
 /**
  * ============================================================================
- * FIXTURES E MOCKS EM MEMÓRIA DO DOMÍNIO JOGOS (bdmock.ts)
- * Jogos terapêuticos do ecossistema InTEA com manifestos clínicos completos
- * e métricas estritamente tipadas (RN02).
+ * GAMES DOMAIN IN-MEMORY FIXTURES AND MOCKS
+ * Therapeutic games with clinical manifests and strictly typed metrics (RN02).
  * ============================================================================
  */
 
@@ -359,7 +358,7 @@ export function resetarJogosMock(): void {
 }
 
 /**
- * Lista jogos cadastrados aplicando filtros opcionais (busca, objetivo, paginação).
+ * Lists registered games applying optional filters (search, objective, pagination).
  */
 export async function listarJogosMock(
   filtros?: JogoFiltroDTO | FiltrosJogos,
@@ -390,7 +389,7 @@ export async function listarJogosMock(
 }
 
 /**
- * Busca um jogo por seu identificador único.
+ * Retrieves game by its unique identifier.
  */
 export async function buscarJogoMockPorId(
   id: string,
@@ -402,7 +401,7 @@ export async function buscarJogoMockPorId(
 }
 
 /**
- * Obtém o manifesto técnico e clínico de um jogo.
+ * Retrieves technical and clinical manifest of a game.
  */
 export async function obterManifestoJogoMock(
   id: string,

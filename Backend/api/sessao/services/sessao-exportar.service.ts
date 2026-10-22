@@ -110,6 +110,13 @@ export interface RespostaServicoExportar {
 
 // Funções de formatação e sanitização (RNF06 / LGPD)
 
+/**
+ * Applies LGPD-compliant masking to a Brazilian CPF string (format: ***.XXX.***-XX).
+ * Protects sensitive personal data in exported clinical documentation.
+ *
+ * @param cpf - Raw CPF string with or without punctuation.
+ * @returns Masked CPF string adhering to privacy requirements.
+ */
 export function mascararCPF(cpf?: string | null): string {
   if (!cpf) return 'Não informado';
   const limpo = cpf.replace(/\D/g, '');
@@ -117,6 +124,12 @@ export function mascararCPF(cpf?: string | null): string {
   return `***.${limpo.slice(3, 6)}.***-${limpo.slice(9, 11)}`;
 }
 
+/**
+ * Calculates a person's age in full years based on their birth date.
+ *
+ * @param dataNascimento - Birth date in ISO 8601 or YYYY-MM-DD format.
+ * @returns Age in completed years, or 0 if date is invalid or absent.
+ */
 export function calcularIdadeAnos(dataNascimento: string): number {
   if (!dataNascimento) return 0;
   const nascimento = new Date(dataNascimento);
@@ -130,6 +143,12 @@ export function calcularIdadeAnos(dataNascimento: string): number {
   return Math.max(0, idade);
 }
 
+/**
+ * Formats a duration in seconds into a human-readable minutes and seconds string.
+ *
+ * @param segundos - Elapsed duration in seconds.
+ * @returns Formatted duration string (e.g., '15 min 30s' or '45s').
+ */
 export function formatarDuracao(segundos: number): string {
   if (!segundos || segundos <= 0) return '0 min';
   const minutos = Math.floor(segundos / 60);

@@ -62,7 +62,7 @@ export class SessaoReconnectionManager {
   }
 
   /**
-   * Retorna a instância singleton do gerenciador de reconexão.
+   * Returns singleton instance of reconnection manager.
    */
   static obterInstancia(): SessaoReconnectionManager {
     if (!SessaoReconnectionManager.instance) {
@@ -72,7 +72,7 @@ export class SessaoReconnectionManager {
   }
 
   /**
-   * Permite ajustar a janela de tolerância (útil para suítes de testes determinísticos).
+   * Allows configuring tolerance window (useful for deterministic test suites).
    */
   definirJanelaTolerancia(ms: number): void {
     if (ms <= 0) {
@@ -82,14 +82,14 @@ export class SessaoReconnectionManager {
   }
 
   /**
-   * Retorna a janela de tolerância atual em milissegundos.
+   * Returns current tolerance window in milliseconds.
    */
   obterJanelaTolerancia(): number {
     return this.janelaToleranciaMs;
   }
 
   /**
-   * Registra uma conexão ativa no gerenciador.
+   * Registers an active connection in the manager.
    */
   registrarConexao(sessionToken: string): void {
     const token = this.normalizarToken(sessionToken);
@@ -103,12 +103,12 @@ export class SessaoReconnectionManager {
   }
 
   /**
-   * Registra uma desconexão transitória de sinal, abrindo a janela de tolerância de 60 segundos.
-   * Não derruba a sessão de imediato, permitindo reconexão sem perda de contexto.
+   * Registers a transient signal disconnection, opening the 60-second tolerance window.
+   * Does not immediately drop the session, allowing reconnection without losing context.
    *
-   * @param sessionToken - PIN identificador da sessão.
-   * @param motivo - Causa da perda de conexão.
-   * @param onTimeout - Callback executado caso a janela de tolerância expire sem reconexão.
+   * @param sessionToken - Session PIN code.
+   * @param motivo - Cause of disconnection.
+   * @param onTimeout - Callback executed if the tolerance window expires without reconnection.
    */
   registrarDesconexao(
     sessionToken: string,
@@ -192,10 +192,10 @@ export class SessaoReconnectionManager {
   }
 
   /**
-   * Processa a reconexão do dispositivo remoto dentro da janela de graça.
-   * Cancela o temporizador de interrupção e calcula a métrica de tempo offline.
+   * Processes remote device reconnection within the grace window.
+   * Cancels interruption timer and calculates offline time metric.
    *
-   * @param sessionToken - PIN identificador da sessão.
+   * @param sessionToken - Session PIN code.
    */
   registrarReconexao(sessionToken: string): ResultadoReconexao {
     const token = this.normalizarToken(sessionToken);
@@ -234,7 +234,7 @@ export class SessaoReconnectionManager {
   }
 
   /**
-   * Retorna o snapshot atual do estado de reconexão de uma sessão.
+   * Returns current snapshot of session reconnection state.
    */
   obterEstado(sessionToken: string): EstadoReconexaoSessao | null {
     const token = this.normalizarToken(sessionToken);
@@ -243,7 +243,7 @@ export class SessaoReconnectionManager {
   }
 
   /**
-   * Verifica se uma sessão está atualmente na janela de tolerância após queda de conexão.
+   * Checks whether session is currently in tolerance grace window after connection drop.
    */
   estaEmJanelaTolerancia(sessionToken: string): boolean {
     const token = this.normalizarToken(sessionToken);
@@ -251,7 +251,7 @@ export class SessaoReconnectionManager {
   }
 
   /**
-   * Cancela o temporizador ativo de uma sessão se houver.
+   * Cancels active timer for a session if running.
    */
   cancelarTemporizador(sessionToken: string): void {
     const token = this.normalizarToken(sessionToken);
@@ -274,7 +274,7 @@ export class SessaoReconnectionManager {
   }
 
   /**
-   * Normaliza o token alfanumérico removendo formatação.
+   * Normalizes alphanumeric token by removing formatting.
    */
   private normalizarToken(token: string): string {
     return token.trim().toUpperCase();

@@ -38,11 +38,8 @@ import { toast } from "sonner";
 
 /**
  * ============================================================================
- * TELA: HISTÓRICO DE SESSÕES (InTEA)
- * Frames Figma: Historico- InTEA (77:2190), Tabela historico (79:750),
- *               Row historico (79:679), Status historico (79:662)
- * Permissões: Terapeuta comum visualiza apenas suas sessões;
- *              SuperAdmin com ?all=true visualiza todas as sessões do sistema.
+ * PAGE: SESSION HISTORY (InTEA)
+ * Displays historical sessions list with clinical filtering and pagination.
  * ============================================================================
  */
 export function HistoricoSessoesPage() {

@@ -1,8 +1,7 @@
 /**
  * ============================================================================
- * FIXTURES E MOCKS EM MEMÓRIA DO DOMÍNIO ANOTAÇÕES CLÍNICAS (bdmock.ts)
- * Simulação de prontuário clínico e notas vinculadas a sessões,
- * garantindo conformidade com RF16, RF21, RN04 e RN05 (Soft Delete).
+ * CLINICAL NOTES DOMAIN IN-MEMORY FIXTURES AND MOCKS
+ * Compliance: RF16, RF21, RN04, RN05.
  * ============================================================================
  */
 
@@ -88,7 +87,7 @@ export function resetarAnotacoesMock(): void {
 }
 
 /**
- * Lista anotações clínicas com suporte a filtro por paciente, sessão e status (RN05).
+ * Lists clinical annotations supporting filtering by patient, session, and status (RN05).
  */
 export async function listarAnotacoesMock(
   filtroOuPacienteId?: string | FiltroAnotacaoDTO,
@@ -127,7 +126,7 @@ export async function listarAnotacoesMock(
 }
 
 /**
- * Busca anotação clínica por seu UUID.
+ * Retrieves clinical note by UUID.
  */
 export async function buscarAnotacaoMockPorId(
   id: string,
@@ -137,7 +136,7 @@ export async function buscarAnotacaoMockPorId(
 }
 
 /**
- * Cadastra nova anotação clínica respeitando a autoria do terapeuta (RF21).
+ * Creates new clinical note respecting therapist authorship (RF21).
  */
 export async function criarAnotacaoMock(
   dto: CriarAnotacaoDTO,
@@ -169,7 +168,7 @@ export async function criarAnotacaoMock(
 }
 
 /**
- * Atualiza o conteúdo textual de uma anotação clínica.
+ * Updates textual content of clinical note.
  */
 export async function atualizarAnotacaoMock(
   id: string,
@@ -197,7 +196,7 @@ export async function atualizarAnotacaoMock(
 }
 
 /**
- * Aplica exclusão lógica (soft delete) preservando o histórico clínico (RN05).
+ * Applies soft delete preserving clinical history (RN05).
  */
 export async function softDeleteAnotacaoMock(
   id: string,
@@ -206,7 +205,7 @@ export async function softDeleteAnotacaoMock(
 }
 
 /**
- * Reativa anotação clínica inativada (RN05).
+ * Reactivates inactive clinical note (RN05).
  */
 export async function reativarAnotacaoMock(
   id: string,
@@ -215,7 +214,7 @@ export async function reativarAnotacaoMock(
 }
 
 /**
- * Exclusão física permanente exclusiva para testes/SuperAdmin.
+ * Permanent physical deletion for test suites / SuperAdmin.
  */
 export async function deletarHardAnotacaoMock(id: string): Promise<boolean> {
   const index = anotacoesMockState.findIndex((a) => a.id === id);

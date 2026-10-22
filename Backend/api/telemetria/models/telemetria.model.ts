@@ -17,7 +17,7 @@ export interface TelemetriaEvento {
 
 export class TelemetriaModel {
   /**
-   * Persiste um único evento de telemetria clínica vinculado obrigatoriamente a uma sessão
+   * Persists a single clinical telemetry event associated with a session.
    */
   static async registrarEvento(evento: TelemetriaEvento): Promise<TelemetriaEvento | null> {
     try {
@@ -50,7 +50,7 @@ export class TelemetriaModel {
   }
 
   /**
-   * Persiste um lote (batch insert) de eventos de telemetria para alta vazão do WebSocket
+   * Persists a batch of telemetry events for high-throughput WebSocket streams.
    */
   static async registrarLote(eventos: TelemetriaEvento[]): Promise<TelemetriaEvento[] | null> {
     try {
@@ -85,7 +85,7 @@ export class TelemetriaModel {
   }
 
   /**
-   * Busca todo o histórico de eventos de uma sessão ordenado cronologicamente, com filtro opcional por métrica e paginação
+   * Retrieves full chronological history of session telemetry events with optional metric filter. and pagination
    */
   static async buscarPorSessaoId(
     sessaoId: string,

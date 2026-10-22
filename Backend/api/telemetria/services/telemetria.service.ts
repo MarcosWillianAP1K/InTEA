@@ -49,12 +49,12 @@ export class TelemetriaService {
   }
 
   /**
-   * Valida conformidade estrita de um evento com o manifesto clínico do jogo segundo a regra RN02.
-   * Proíbe fallback automático e exige tipo_metrica compatível (número ou categoria do domínio).
+   * Validates strict compliance of an event with the game clinical manifest according to RN02.
+   * Forbids automatic fallback and requires compatible metric types (number or domain category).
    *
-   * @param evento - Evento de telemetria recebido.
-   * @param manifesto - Manifesto clínico do jogo ativo na sessão.
-   * @returns Resultado da validação indicando se é válido ou o motivo da violação.
+   * @param evento - Received telemetry event.
+   * @param manifesto - Clinical manifest of active game in session.
+   * @returns Validation result indicating validity or violation cause.
    */
   static validarEventoRN02(
     evento: EntradaTelemetriaEvento,

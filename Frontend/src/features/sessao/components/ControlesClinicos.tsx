@@ -24,9 +24,9 @@ export interface ControlesClinicosProps {
  */
 
 /**
- * Painel de intervenção clínica imediata do terapeuta na sessão ativa (RF21).
- * Fornece botões para pausar/retomar a execução remota, sintonizar o nível DDA (1 a 5)
- * e disparar o fluxo de encerramento formal da intervenção.
+ * Immediate clinical intervention panel for the active session (RF21).
+ * Provides controls to pause/resume remote execution, tune DDA level (1 to 5),
+ * and initiate formal conclusion flow.
  */
 export function ControlesClinicos({
   isPausado,

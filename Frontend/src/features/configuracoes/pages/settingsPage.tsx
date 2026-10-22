@@ -44,10 +44,8 @@ import { toast } from "sonner";
 
 /**
  * ============================================================================
- * PÁGINA: CONFIGURAÇÕES / PERFIL TERAPEUTA (InTEA)
- * Frame Figma: Perfil Terapeuta - InTEA (200:1713)
- * Acessível via Sidebar (/configuracoes) e Menu do Usuário
- * Conformidade estrita: RF21 (Autenticação/Autoria), RN04 (Vínculo), RN05 (Soft Delete)
+ * PAGE: SETTINGS / THERAPIST PROFILE (InTEA)
+ * Compliance: RF21 (Authentication/Authorship), RN04 (Clinic Association), RN05 (Soft Delete)
  * ============================================================================
  */
 export function SettingsPage() {

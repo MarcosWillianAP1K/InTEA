@@ -1,8 +1,7 @@
 /**
  * ============================================================================
- * FIXTURES E MOCKS EM MEMÓRIA DO DOMÍNIO PACIENTE (bdmock.ts)
- * Dados clínicos e sociodemográficos realistas para desenvolvimento e testes.
- * Diagnósticos TEA com níveis de suporte 1, 2 e 3, responsáveis e gatilhos.
+ * PATIENT DOMAIN IN-MEMORY FIXTURES AND MOCKS
+ * ASD diagnostic fixtures across support levels 1, 2, and 3, guardians, and triggers.
  * ============================================================================
  */
 
@@ -353,7 +352,7 @@ export const FIXTURES_PACIENTES: Paciente[] = [
 let pacientesMock: Paciente[] = JSON.parse(JSON.stringify(FIXTURES_PACIENTES));
 
 /**
- * Reseta o repositório em memória para as fixtures iniciais.
+ * Resets in-memory repository to default initial fixtures.
  */
 export function resetarPacientesMock(): void {
   pacientesMock = JSON.parse(JSON.stringify(FIXTURES_PACIENTES));
@@ -379,7 +378,7 @@ function calcularIdade(dataNascimento: string): number {
 // ============================================================================
 
 /**
- * Lista pacientes simulados em memória aplicando filtros clínicos e de paginação.
+ * Lists mock patients in memory applying clinical and pagination filters.
  */
 export async function listarPacientesMock(
   filtros?: FiltroPacienteDTO,
@@ -423,7 +422,7 @@ export async function listarPacientesMock(
 }
 
 /**
- * Consulta um paciente por UUID no armazenamento em memória.
+ * Retrieves patient by UUID from in-memory store.
  */
 export async function buscarPacienteMockPorId(
   id: string,
@@ -433,7 +432,7 @@ export async function buscarPacienteMockPorId(
 }
 
 /**
- * Cadastra um novo paciente no mock em memória com UUID v4 gerado.
+ * Registers new patient in mock storage with generated UUID v4.
  */
 export async function criarPacienteMock(
   dto: CriarPacienteDTO,
@@ -498,7 +497,7 @@ export async function criarPacienteMock(
 }
 
 /**
- * Atualiza campos de um paciente no mock em memória.
+ * Updates patient fields in mock storage.
  */
 export async function atualizarPacienteMock(
   id: string,
@@ -533,21 +532,21 @@ export async function atualizarPacienteMock(
 }
 
 /**
- * Desativa o paciente em memória aplicando soft delete (RN05).
+ * Deactivates patient in memory applying soft delete (RN05).
  */
 export async function inativarPacienteMock(id: string): Promise<Paciente | null> {
   return atualizarPacienteMock(id, { status_ativo: false });
 }
 
 /**
- * Reativa um paciente inativo no mock em memória.
+ * Reactivates inactive patient in mock storage (RN05).
  */
 export async function reativarPacienteMock(id: string): Promise<Paciente | null> {
   return atualizarPacienteMock(id, { status_ativo: true });
 }
 
 /**
- * Lista terapeutas vinculados a um paciente no mock em memória.
+ * Lists therapists linked to patient in mock storage.
  */
 export async function listarTerapeutasPacienteMock(
   pacienteId: string,
@@ -558,7 +557,7 @@ export async function listarTerapeutasPacienteMock(
 }
 
 /**
- * Vincula um terapeuta a um paciente no mock em memória.
+ * Links therapist to patient in mock storage.
  */
 export async function vincularTerapeutaMock(
   pacienteId: string,
@@ -591,7 +590,7 @@ export async function vincularTerapeutaMock(
 }
 
 /**
- * Desvincula um terapeuta de um paciente no mock em memória.
+ * Unlinks therapist from patient in mock storage.
  */
 export async function desvincularTerapeutaMock(
   pacienteId: string,

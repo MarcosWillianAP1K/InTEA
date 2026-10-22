@@ -15,8 +15,8 @@ export interface TelemetriaChartProps {
  */
 
 /**
- * Gráfico vetorial SVG em tempo real para visualização contínua de engajamento e atenção do paciente.
- * Renderiza curvas e gradientes dinâmicos de alta performance sem bibliotecas pesadas de terceiros.
+ * Real-time vector SVG chart for continuous visualization of patient engagement and attention.
+ * Renders high-performance dynamic curves without heavy third-party dependencies.
  */
 export function TelemetriaChart({
   historico,

@@ -13,10 +13,10 @@ import { validarUUID } from '../../../core/utils/validators.js';
 
 export class AuditoriaController {
   /**
-   * Sanitiza recursivamente os detalhes JSON expurgando tokens, segredos e dados sensíveis (LGPD / RNF06).
+   * Recursively sanitizes JSON details by removing tokens, secrets, and sensitive data (LGPD / RNF06).
    *
-   * @param detalhes - Objeto de metadados brutos do evento.
-   * @returns Objeto sanitizado livre de segredos ou credenciais.
+   * @param detalhes - Raw metadata object of the event.
+   * @returns Sanitized object free of secrets or credentials.
    */
   static sanitizarDetalhesJson(detalhes?: Record<string, unknown>): Record<string, unknown> {
     if (!detalhes || typeof detalhes !== 'object') return {};
@@ -34,10 +34,10 @@ export class AuditoriaController {
   }
 
   /**
-   * Sanitiza um registro de evento de auditoria clínica expurgando potenciais dados sensíveis.
+   * Sanitizes a clinical audit event record by expunging potentially sensitive data.
    *
-   * @param evento - Instância de AuditoriaSessao recuperada do banco ou gerada.
-   * @returns Instância devidamente higienizada.
+   * @param evento - AuditoriaSessao instance retrieved from the database or generated.
+   * @returns Properly sanitized event instance.
    */
   static sanitizarEvento(evento: AuditoriaSessao): AuditoriaSessao {
     return {
@@ -55,7 +55,7 @@ export class AuditoriaController {
 
   /**
    * Handles GET /api/auditoria/sessao/:sessaoId to retrieve the audit trail and timeline of a session.
-   * Retorna os eventos em Envelope Pattern Categorizado ({ data: { auditoria: [...], registros: [...], meta: { total } }, message }).
+   * Returns events wrapped in Categorized Envelope Pattern ({ data: { auditoria: [...], registros: [...], meta: { total } }, message }).
    *
    * @param req - Express request containing session UUID in URL parameter `:sessaoId`.
    * @param res - Express response returning the array of audit events and total count.
@@ -110,7 +110,7 @@ export class AuditoriaController {
 
   /**
    * Handles POST /api/auditoria to formally record an immutable audit event for a clinical session (RF13, RNF06).
-   * Retorna o evento criado em Envelope Pattern Categorizado ({ data: { evento }, message }).
+   * Returns the created event wrapped in Categorized Envelope Pattern ({ data: { evento }, message }).
    *
    * @param req - Express request containing session UUID, origin, action, and details in body.
    * @param res - Express response returning the created audit event.

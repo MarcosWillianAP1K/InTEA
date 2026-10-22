@@ -27,8 +27,8 @@ export interface TokenRefreshResponse {
 }
 
 /**
- * Instância oficial do cliente HTTP da aplicação InTEA.
- * Configurado com base URL, timeout de 15s, CSRF e renovação resiliente de sessão.
+ * Official HTTP client instance for the InTEA application.
+ * Configured with base URL, 15s timeout, CSRF, and resilient session renewal.
  */
 export const http: HttpClient = createHttpClient({
   baseURL: API_BASE_URL,
@@ -107,13 +107,15 @@ export const USE_MOCK_DATA: boolean =
   rawMockEnv === "true" || rawMockEnv === true;
 
 /**
- * Helper tipado para chamadas à API com chaveamento estrito por ambiente (VITE_USE_MOCK_DATA).
- * - Se VITE_USE_MOCK_DATA=true: retorna exclusivamente os dados simulados (fallback), sem chamar o Backend.
- * - Se VITE_USE_MOCK_DATA=false (em execução real): chama exclusivamente a API do Backend e propaga o erro real caso falhe, sem misturar com mocks.
+ * Typed API helper with strict environment switching (VITE_USE_MOCK_DATA).
  *
- * @param requestFn Função que executa a chamada HTTP (ex: () => http.get<T>(url))
- * @param fallback Valor ou função que fornece os dados simulados
- * @param onError Callback opcional para logging/notificação de erro
+ * - If VITE_USE_MOCK_DATA=true: returns mocked data exclusively (fallback) without calling the Backend.
+ * - If VITE_USE_MOCK_DATA=false (real execution): calls the Backend API exclusively and propagates errors without mock mixing.
+ *
+ * @param requestFn - Function that executes the HTTP request (e.g. () => http.get<T>(url)).
+ * @param fallback - Mock value or function supplying fallback data.
+ * @param onError - Optional callback for error logging or notification.
+ * @returns Resolved response promise.
  */
 export async function withFallback<T>(
   requestFn: () => Promise<T>,
@@ -174,7 +176,11 @@ export async function withFallback<T>(
 }
 
 /**
- * Wrapper conveniente para requisições com suporte a chaveamento estrito de ambiente.
+ * Convenient request wrapper supporting strict environment switching.
+ *
+ * @param requestFn - Function that executes the HTTP request.
+ * @param fallback - Optional fallback value or function supplying mock data.
+ * @returns Resolved response promise.
  */
 export async function safeRequest<T>(
   requestFn: () => Promise<T>,

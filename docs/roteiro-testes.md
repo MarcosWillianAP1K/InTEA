@@ -1561,18 +1561,202 @@ Authorization: Bearer {token_terapeuta_vinculado}
 | **RF19** | Filtros, Busca Avançada e Paginação | CT-P05, CT-J02, CT-J03, CT-J04 |
 | **RF20** | Exportação e Impressão de Relatórios Clínicos | CT-S22 |
 | **RF21** | Autoria Obrigatória e Controle do Terapeuta | CT-P11, CT-S11, CT-S14, CT-S20 |
-| **RN01** | Supressão de Persistência Clínica no Modo Livre (Telemetria e Relatório) | CT-S10, CT-S16 |
-| **RN02** | Tipagem Estrita de Métricas (sem fallback) | CT-J07, CT-J08, CT-J09, CT-J10, CT-J11, CT-S08 |
-| **RN03** | Contexto DDA Pré-Sessão Entregue ao Jogo | CT-S07 |
-| **RN04** | Visibilidade por Vínculo e Isolamento Institucional | CT-P06, CT-P07, CT-P08, CT-P12, CT-S14, CT-S15, CT-S17 |
-| **RN05** | Inalterabilidade do Histórico Clínico (Soft Delete / Imutabilidade / 3FN) | CT-P04, CT-P09, CT-P10, CT-P13, CT-S14, CT-S19, CT-S21 |
-| **RNF02** | Padronização e Contratos de Dados | CT-J05, CT-J07, CT-J08, CT-J12 |
-| **RNF03** | Expiração de PIN (15 min) e Rate Limiting no WebSocket | CT-S02, CT-S03, CT-S07, CT-S09, CT-S12 |
-| **RNF04** | Heartbeat, Resiliência e Janela de Tolerância de 60s | CT-S06, CT-S11, CT-S12, CT-S13 |
-| **RNF05** | Ingestão em Tempo Real (< 100ms) e Alta Vazão | CT-S08, CT-S09 |
-| **RNF06** | Trilha de Auditoria Clínica Imutável | CT-S14 |
 
-**Total: 49 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 22 Gestão de Sessão, Pareamento, Resultados e Relatórios Clínicos (CT-S01→S22)
+---
+
+## Módulo 4 — Histórico Longitudinal e Gráficos Dinâmicos (Sprint 11)
+
+> Cobre a rota `GET /api/paciente/:id/historico` e os componentes visuais de histórico evolutivo do InTEA.
+
+---
+
+### CT-S23 — Consulta de Engajamento Geral sem `jogoId` (200 OK)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF15 — Prontúrio Longitudinal; RF19 — Filtros |
+| **Tipo** | Positivo |
+| **Precondição** | Terapeuta com JWT válido e vínculo ativo com o paciente; ao menos 8 sessões finalizadas e 2 interrompidas registradas |
+
+**Entrada — `GET /api/paciente/{uuid}/historico`**
+
+```http
+Authorization: Bearer {token}
+```
+
+#### Passos
+
+1. Autenticar terapeuta com vínculo ativo ao paciente.
+2. Executar `GET /api/paciente/{id}/historico` **sem** query params.
+3. Verificar o bloco `engajamento_geral` e o campo `jogos_jogados`.
+
+#### Resultado Esperado
+
+- HTTP **200 OK**
+- `data.engajamento_geral.total_sessoes_iniciadas ≥ 1`
+- `data.engajamento_geral.taxa_conclusao_percentual` calculado como `(finalizadas / iniciadas) * 100` (ex: 8/10 = 80.0)
+- `data.jogos_jogados[]` listando os jogos já experimentados pelo paciente com `total_partidas` e `data_ultima_partida`
+- Sessões em Modo Livre (`paciente_id = NULL`) **não aparecem** no cômputo (**RN01**)
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S24 — Troca do Seletor de Jogo Retorna Série Temporal Específica (200 OK)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF15 — Prontúrio Longitudinal; RNF04 — Visualização por Tipo de Métrica |
+| **Tipo** | Positivo |
+| **Precondição** | Paciente com pelo menos 2 sessões finalizadas do jogo `{jogoId}`; manifesto do jogo com todas as métricas tipadas |
+
+**Entrada — `GET /api/paciente/{uuid}/historico?jogoId={jogoId}`**
+
+```http
+Authorization: Bearer {token}
+```
+
+#### Passos
+
+1. Obter o `{jogoId}` de um jogo que o paciente já jogou (via CT-S23 ou banco).
+2. Executar `GET /api/paciente/{id}/historico?jogoId={jogoId}`.
+3. Verificar `historico_por_jogo.series_temporais` e `metricas_declaradas`.
+
+#### Resultado Esperado
+
+- HTTP **200 OK**
+- `data.historico_por_jogo.jogo_id` igual ao `{jogoId}` informado
+- `data.historico_por_jogo.series_temporais[]` com ao menos 2 entradas, cada uma contendo `sessao_id`, `data_hora_fim` e `valores_metricas` **somente daquele jogo**
+- `data.historico_por_jogo.metricas_declaradas[]` refletindo exatamente as métricas do manifesto do jogo
+- Sessões de outros jogos **não aparecem** na série
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S25 — Filtragem por Intervalo de Datas e Paginação (200 OK)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF19 — Filtros Avançados e Paginação |
+| **Tipo** | Positivo |
+| **Precondição** | Paciente com sessões em períodos distintos (antes e depois de `2026-10-01`) |
+
+**Entrada — `GET /api/paciente/{uuid}/historico?dataInicio=2026-10-01T00:00:00.000Z&dataFim=2026-10-22T23:59:59.999Z&page=1&limit=5`**
+
+```http
+Authorization: Bearer {token}
+```
+
+#### Passos
+
+1. Executar com intervalo de datas restrito a outubro/2026 e `limit=5`.
+2. Verificar que `series_temporais[]` contém apenas sessões dentro do intervalo informado.
+3. Verificar que `meta.limit = 5` e `meta.page = 1`.
+4. Executar com intervalo invertido (`dataInicio > dataFim`) e verificar rejeição.
+
+#### Resultado Esperado
+
+- HTTP **200 OK** (intervalo válido): `series_temporais[]` com sessões exclusivamente entre `2026-10-01` e `2026-10-22`; `meta.limit = 5`
+- HTTP **400 Bad Request** (intervalo invertido): mensagem explicando incoerência temporal
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S26 — Rejeição de Métrica sem Tipagem no Manifesto (422 — RN02)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RN02 — Tipagem Estrita sem Fallback; RNF02 |
+| **Tipo** | Negativo — regra clínica crítica |
+| **Precondição** | Jogo com ao menos uma métrica no `manifesto_json` **sem** campo `tipo_metrica` definido; paciente com sessões desse jogo |
+
+**Entrada — `GET /api/paciente/{uuid}/historico?jogoId={jogoIdManifestoIncompleto}`**
+
+```http
+Authorization: Bearer {token}
+```
+
+#### Passos
+
+1. Identificar (ou cadastrar em ambiente de teste) um jogo cujo manifesto possua métrica sem `tipo_metrica`.
+2. Executar `GET /api/paciente/{id}/historico?jogoId={jogoId}` para esse jogo.
+
+#### Resultado Esperado
+
+- HTTP **422 Unprocessable Entity**
+- Campo `error` identificando a métrica problemática pelo nome
+- Campo `regraViolada: "RN02 - Fallback de Métrica Proibido / Tipagem Estrita"`
+- **Nenhum fallback automático** para gráfico de barras ou qualquer outro tipo padrão
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S27 — Bloqueio de Acesso sem Vínculo Institucional Ativo (403 — RN04)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RN04 — Isolamento Institucional; RF21 |
+| **Tipo** | Negativo — segurança clínica |
+| **Precondição** | Terapeuta autenticado **sem** vínculo ativo com o paciente em `terapeuta_paciente` **ou** pertencente a outra clínica |
+
+**Entrada — `GET /api/paciente/{uuid-sem-vinculo}/historico`**
+
+```http
+Authorization: Bearer {token-terapeuta-sem-vinculo}
+```
+
+#### Passos
+
+1. Autenticar terapeuta que **não** possui vínculo com o paciente alvo.
+2. Executar `GET /api/paciente/{id}/historico`.
+
+#### Resultado Esperado
+
+- HTTP **403 Forbidden**
+- `error`: _"Acesso negado: terapeuta não possui vínculo ativo com este paciente ou pertence a outra clínica."_
+- `regraViolada`: _"RN04 - Visibilidade por Vínculo Institucional"_
+- Nenhum dado de sessão ou métrica do paciente exposto na resposta
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S28 — Supressão Comprovada de Sessões em Modo Livre (RN01)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RN01 — Isolamento de Modo Livre; RF15 |
+| **Tipo** | Negativo — integridade de prontúrio |
+| **Precondição** | Banco contém sessões de Modo Livre (`paciente_id = NULL`) do mesmo `jogo_id` que sessões clínicas do paciente |
+
+**Entrada — `GET /api/paciente/{uuid}/historico`**
+
+```http
+Authorization: Bearer {token}
+```
+
+#### Passos
+
+1. Verificar no banco que existem sessões com `paciente_id = NULL` para o mesmo jogo do paciente.
+2. Executar `GET /api/paciente/{id}/historico` com terapeuta vinculado.
+3. Calcular manualmente o total esperado de sessões (excluindo Modo Livre).
+4. Comparar `engajamento_geral.total_sessoes_iniciadas` com o total manual.
+
+#### Resultado Esperado
+
+- HTTP **200 OK**
+- `total_sessoes_iniciadas` corresponde **apenas** às sessões com `paciente_id = {uuid}` (Modo Livre excluído)
+- `taxa_conclusao_percentual` calculada sem contaminação de partidas anônimas
+- Nenhuma entrada de `series_temporais` possui `paciente_id = NULL`
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+> **Total atualizado: 55 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 22 Sessão/Pareamento (CT-S01→S22) · 6 Histórico Longitudinal Sprint 11 (CT-S23→S28)
 
 ---
 
@@ -1580,19 +1764,19 @@ Authorization: Bearer {token_terapeuta_vinculado}
 
 | Protocolo / Código | Semântica | Casos de Teste |
 | :---: | :--- | :--- |
-| **HTTP 200** | Sucesso em consulta, pareamento, validação aprovada, resultados ou modo livre | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12, CT-S01, CT-S02, CT-S06, CT-S10, CT-S14, CT-S15, CT-S16, CT-S22 |
+| **HTTP 200** | Sucesso em consulta, pareamento, validação aprovada, resultados ou modo livre | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12, CT-S01, CT-S02, CT-S06, CT-S10, CT-S14, CT-S15, CT-S16, CT-S22, CT-S23, CT-S24, CT-S25, CT-S28 |
 | **HTTP 201** | Recurso criado (paciente, vínculo, início de sessão, telemetria, anotação clínica) | CT-P01, CT-P11, CT-S07, CT-S08, CT-S09, CT-S20 |
-| **HTTP 400** | Parâmetros inválidos, lote excedido, transição inválida de FSM ou sessão não finalizada | CT-P02, CT-P12, CT-P13, CT-P15, CT-J08, CT-S09, CT-S14, CT-S18 |
+| **HTTP 400** | Parâmetros inválidos, lote excedido, transição inválida de FSM ou sessão não finalizada | CT-P02, CT-P12, CT-P13, CT-P15, CT-J08, CT-S09, CT-S14, CT-S18, CT-S25 |
 | **HTTP 401** | Sem autenticação / Token JWT ausente ou inválido | CT-P08 |
-| **HTTP 403** | Acesso negado por falta de vínculo clínico institucional (RN04) | CT-P07, CT-S14, CT-S17 |
+| **HTTP 403** | Acesso negado por falta de vínculo clínico institucional (RN04) | CT-P07, CT-S14, CT-S17, CT-S27 |
 | **HTTP 404** | Recurso não encontrado (paciente, jogo ou sessão inexistente) | CT-J06, CT-S04 |
 | **HTTP 409** | Conflito de integridade única ou sessão já em andamento | CT-P03, CT-S05 |
 | **HTTP 410** | Token PIN expirado (TTL 15 min) ou sessão terminal | CT-S03 |
-| **HTTP 422** | Violação de regra clínica de tipagem estrita RN02 | CT-J10, CT-J11 |
+| **HTTP 422** | Violação de regra clínica de tipagem estrita RN02 | CT-J10, CT-J11, CT-S26 |
 | **Banco / SQL** | Validação de restrições DDL 3FN e bloqueio de exclusão física | CT-S19, CT-S21 |
 | **WebSocket** | Streaming de telemetria contínua (`sessao:telemetria` < 100ms) | CT-S08, CT-S09, CT-S10 |
 | **WebSocket** | Canal bidirecional de comandos clínicos (`sessao:comando`) e Acks | CT-S11 |
 | **WebSocket** | Rate limiting e prevenção de flood (`erro_rate_limit`) | CT-S12 |
 | **WebSocket** | Presença, queda, reconexão de 60s e interrupção (`sessao:alerta_conexao`) | CT-S01, CT-S06, CT-S13 |
 | **WebSocket** | Sinalização de encerramento de sessão (`sessao_finalizada`) | CT-S14 |
-
+| **Histórico / RN01** | Supressão de Modo Livre em prontuário longitudinal | CT-S28 |
