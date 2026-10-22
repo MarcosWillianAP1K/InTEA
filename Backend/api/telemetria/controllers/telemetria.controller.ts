@@ -313,7 +313,7 @@ export class TelemetriaController {
   }
 
   /**
-   * Valida se o terapeuta pertence à mesma clinica_id e possui vínculo ativo em terapeuta_paciente (RN04)
+   * Validates that therapist belongs to clinic and holds active association with patient (RN04)
    */
   static async verificarVinculoInstitucionalRN04(
     terapeutaId?: string,

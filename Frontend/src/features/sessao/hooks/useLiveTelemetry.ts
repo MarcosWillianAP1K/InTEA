@@ -16,11 +16,11 @@ export interface UseLiveTelemetryOptions {
 }
 
 /**
- * Hook para consumo reativo e agregação em tempo real de telemetria recebida via WebSocket.
- * Processa métricas clínicas, calcula taxa de acertos e mantém janela histórica deslizante de atenção/engajamento.
+ * Hook for reactive consumption and real-time telemetry aggregation via WebSocket.
+ * Computes clinical metrics, accuracy rate, and maintains sliding attention/engagement series.
  *
- * @param options - Configurações opcionais de inicialização, limites de histórico e métricas prévias.
- * @returns Objeto contendo métricas consolidadas, série temporal de histórico e métodos de limpeza/processamento.
+ * @param options - Optional initialization settings, history limits, and initial metrics.
+ * @returns Object containing consolidated metrics, time series history, and handler methods.
  */
 export function useLiveTelemetry(options: UseLiveTelemetryOptions = {}) {
   const { habilitado = true, maxPontosHistorico = 20, initialMetricas } = options;

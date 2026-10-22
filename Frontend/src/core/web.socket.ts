@@ -3,9 +3,8 @@ import { io, Socket } from "socket.io-client";
 
 /**
  * ============================================================================
- * CONTRATOS E TIPAGENS ESTRITAS DE WEBSOCKET (SOCKET.IO) — InTEA
- * Requisitos: RF10 (Pareamento Remoto), RNF04 (Comunicação em Tempo Real)
- * Regra: TypeScript estrito sem o uso de `any`
+ * STRICT WEBSOCKET (SOCKET.IO) CONTRACTS AND TYPES — InTEA
+ * Compliance: RF10 (Remote Pairing), RNF04 (Real-Time Communication)
  * ============================================================================
  */
 
@@ -109,7 +108,7 @@ export interface ClientToServerEvents {
 export type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 /**
- * Obtém a URL do servidor WebSocket a partir das variáveis de ambiente
+ * Resolves WebSocket server URL from environment variables.
  */
 export function getSocketUrl(): string {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_WS_URL) {
@@ -123,8 +122,8 @@ export function getSocketUrl(): string {
 
 /**
  * ============================================================================
- * GERENCIADOR SINGLETON DE CONEXÃO WEBSOCKET
- * Garante reuso da instância, reconexão com backoff exponencial e listeners limpos
+ * SINGLETON WEBSOCKET CONNECTION MANAGER
+ * Handles connection reuse, exponential backoff reconnection, and clean listeners.
  * ============================================================================
  */
 export class SessionSocketManager {
@@ -201,7 +200,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Inicializa ou reaproveita o socket com reconexão resiliente e backoff exponencial
+   * Initializes or reuses socket with resilient exponential backoff reconnection.
    */
   public conectar(url?: string): TypedSocket {
     if (this.socket && this.socket.connected) {
@@ -386,7 +385,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Associa o socket a uma sala de sessão específica via session_token
+   * Associates socket with a specific session room via session_token.
    */
   public entrarSala(sessionToken: string): void {
     this.currentSessionToken = sessionToken;
@@ -399,7 +398,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Sai da sala da sessão atual
+   * Leaves current session room.
    */
   public sairSala(sessionToken?: string): void {
     const token = sessionToken || this.currentSessionToken;
@@ -416,7 +415,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Desconecta completamente o socket
+   * Completely disconnects socket.
    */
   public desconectar(): void {
     if (this.currentSessionToken) {
@@ -432,7 +431,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Registra listener para dispositivo conectado com retorno da função de desinscrição
+   * Registers listener for connected device, returning unsubscription function.
    */
   public onDispositivoConectado(
     handler: (payload: DispositivoConectadoPayload) => void
@@ -444,7 +443,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Registra listener para dispositivo desconectado com retorno de desinscrição
+   * Registers listener for disconnected device, returning unsubscription function.
    */
   public onDispositivoDesconectado(
     handler: (payload: DispositivoDesconectadoPayload) => void
@@ -456,7 +455,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Registra listener para erro de sessão com retorno de desinscrição
+   * Registers listener for session error, returning unsubscription function.
    */
   public onErroSessao(handler: (payload: ErroSessaoPayload) => void): () => void {
     this.listenersMap.erro_sessao.add(handler);
@@ -466,7 +465,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Registra listener para recepção de eventos de telemetria contínua
+   * Registers listener for continuous telemetry event reception.
    */
   public onTelemetria(handler: (payload: EventoTelemetriaPayload) => void): () => void {
     this.listenersMap.telemetria.add(handler);
@@ -476,7 +475,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Registra listener para pong de presença e latência
+   * Registers listener for presence pong and latency.
    */
   public onPongPresenca(handler: (payload: PongPresencaResposta) => void): () => void {
     this.listenersMap.pong_presenca.add(handler);
@@ -486,7 +485,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Envia comando clínico de intervenção para o jogo remoto via WebSocket
+   * Sends clinical intervention command to remote game via WebSocket.
    */
   public enviarComando(comando: ComandoClinicoPayload): boolean {
     if (!this.socket || !this.socket.connected) {
@@ -497,7 +496,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Envia ping de presença com timestamp local para medição de latência RTT
+   * Dispatches presence ping with local timestamp for RTT latency measurement.
    */
   public enviarPingPresenca(payload?: PingPresencaPayload): void {
     if (this.socket && this.socket.connected) {
@@ -506,7 +505,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Emite finalização de sessão para a sala
+   * Emits session finalization notice to room.
    */
   public finalizarSessaoRemota(token?: string): void {
     const tokenAlvo = token || this.currentSessionToken;
@@ -516,7 +515,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Notifica mudanças de status de conexão
+   * Notifies connection status changes.
    */
   public onStatusChange(listener: (status: SessionConnectionStatus) => void): () => void {
     this.statusListeners.add(listener);
@@ -526,7 +525,7 @@ export class SessionSocketManager {
   }
 
   /**
-   * Método exclusivo para reset nos testes unitários
+   * Exclusive method for resetting state in unit tests.
    */
   public static _resetInstanceForTesting(): void {
     if (SessionSocketManager.instance) {
@@ -538,8 +537,8 @@ export class SessionSocketManager {
 
 /**
  * ============================================================================
- * HOOK REATIVO: useSessionSocket
- * Utiliza useSyncExternalStore do React 19 para sincronização pura sem tearing
+ * REACTIVE HOOK: useSessionSocket
+ * Uses React 19 useSyncExternalStore for tear-free synchronization.
  * ============================================================================
  */
 export interface UseSessionSocketOptions {
@@ -563,11 +562,11 @@ export interface UseSessionSocketReturn {
 }
 
 /**
- * Hook reativo do React para integração contínua com a sessão WebSocket ativa.
- * Utiliza useSyncExternalStore do React 19 para sincronização pura sem tearing de estado.
+ * Reactive React hook for seamless integration with active WebSocket session.
+ * Uses React 19 useSyncExternalStore for tearing-free state synchronization.
  *
- * @param options - Configurações opcionais de auto-conexão e callbacks de ciclo de vida do dispositivo.
- * @returns Estado da conexão, metadados do dispositivo remoto e métodos de controle de sala.
+ * @param options - Optional autoconnect settings and device lifecycle callbacks.
+ * @returns Connection status, remote device metadata, and room control methods.
  */
 export function useSessionSocket(options: UseSessionSocketOptions = {}): UseSessionSocketReturn {
   const {

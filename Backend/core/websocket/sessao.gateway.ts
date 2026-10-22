@@ -171,7 +171,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Retorna a instância ativa do gateway ou lança erro se ainda não inicializado.
+   * Returns active gateway instance or throws error if not yet initialized.
    */
   static obterInstancia(): SessaoGateway {
     if (!SessaoGateway.instance) {
@@ -181,7 +181,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Limpa o mapa de presenças em memória (útil para suítes de testes).
+   * Clears in-memory presence map (useful for test suites).
    */
   resetarPresencas(): void {
     this.presencas.clear();
@@ -190,7 +190,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Conecta os eventos emitidos via HTTP pelo SessaoController com a sala Socket.IO da sessão.
+   * Binds HTTP-emitted events from SessaoController to session Socket.IO room.
    */
   private integrarComSessaoController(): void {
     SessaoController.registrarListenerPareamento((token, dados) => {
@@ -221,7 +221,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Configura listeners de conexão, entrada em salas, heartbeat e desconexão.
+   * Configures listeners for connection, room joining, heartbeat, and disconnection.
    */
   private configurarNamespace(): void {
     this.sessaoNamespace.on('connection', (socket: Socket) => {
@@ -235,7 +235,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Emite evento com segurança no namespace raiz '/' com verificação defensiva de suporte a .to().
+   * Safely emits event on root namespace '/' with defensive verification of .to() support.
    */
   private emitirGlobal(sala: string, event: string, ...args: unknown[]): void {
     if (this.io && typeof (this.io as { to?: unknown }).to === 'function') {
@@ -336,7 +336,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Processa a entrada de um cliente (painel web do terapeuta ou jogo remoto) na sala da sessão.
+   * Processes client joining (therapist web panel or remote game) in the session room.
    */
   private lidarEntradaSessao(socket: Socket, payload: EntrarSessaoPayload): void {
     if (!payload || !payload.session_token) {
@@ -414,7 +414,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Processa o ping de presença com cálculo de latência e sincronização de relógio (Card 2.3).
+   * Processes presence ping with latency calculation and clock synchronization (Card 2.3).
    */
   private lidarPingPresenca(socket: Socket, payload?: PingPresencaPayload): void {
     const token = socket.data.sessionToken as string | undefined;
@@ -446,7 +446,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Monitora a desconexão e emite alerta de perda de sinal se o socket era um dispositivo remoto (Card 2.3).
+   * Monitors disconnection and emits signal loss alert if socket was remote device (Card 2.3).
    */
   private lidarDesconexao(socket: Socket, motivo: string): void {
     const token = socket.data.sessionToken as string | undefined;
@@ -485,9 +485,9 @@ export class SessaoGateway {
   }
 
   /**
-   * Consulta o estado de presença e métricas do dispositivo remoto pareado à sessão (Card 2.3).
+   * Queries presence state and metrics of remote device paired to session (Card 2.3).
    *
-   * @param sessionToken - Código PIN da sessão.
+   * @param sessionToken - Session PIN code.
    */
   obterPresencaDispositivo(sessionToken: string): DispositivoPresenca | null {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -496,10 +496,10 @@ export class SessaoGateway {
   }
 
   /**
-   * Emite para a sala da sessão que o dispositivo remoto completou o pareamento.
+   * Emits to session room that remote device completed pairing.
    *
-   * @param sessionToken - Código PIN da sessão.
-   * @param dados - Metadados do pareamento e parâmetros DDA.
+   * @param sessionToken - Session PIN code.
+   * @param dados - Pairing metadata and DDA parameters.
    */
   notificarDispositivoConectado(sessionToken: string, dados: DispositivoConectadoEvento): void {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -509,10 +509,10 @@ export class SessaoGateway {
   }
 
   /**
-   * Emite para a sala que o dispositivo foi desconectado ou perdeu conectividade.
+   * Emits to session room that device disconnected or lost connectivity.
    *
-   * @param sessionToken - Código PIN da sessão.
-   * @param motivo - Causa técnica da desconexão.
+   * @param sessionToken - Session PIN code.
+   * @param motivo - Technical cause of disconnection.
    */
   notificarDispositivoDesconectado(sessionToken: string, motivo: string = 'cliente_desconectado'): void {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -537,9 +537,9 @@ export class SessaoGateway {
   }
 
   /**
-   * Emite sinal de encerramento da sessão para todos os clientes conectados na sala.
+   * Emits session termination signal to all connected clients in room.
    *
-   * @param sessionToken - Código PIN da sessão.
+   * @param sessionToken - Session PIN code.
    */
   notificarSessaoFinalizada(sessionToken: string): void {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -554,24 +554,24 @@ export class SessaoGateway {
   }
 
   /**
-   * Registra um callback para ingestão / persistência assíncrona de telemetria (integrado no Dia 4 com Card 1.2).
+   * Registers callback for asynchronous telemetry ingestion / persistence.
    */
   static registrarCallbackTelemetria(callback: TelemetriaPersistenciaCallback): void {
     SessaoGateway.telemetriaCallback = callback;
   }
 
   /**
-   * Remove o callback de persistência de telemetria registrado.
+   * Removes registered telemetry persistence callback.
    */
   static removerCallbackTelemetria(): void {
     SessaoGateway.telemetriaCallback = undefined;
   }
 
   /**
-   * Valida o schema leve do payload de telemetria conforme o Contrato 3.
+   * Validates lightweight telemetry payload schema according to Contract 3.
    *
-   * @param socket - Socket do cliente que enviou o evento.
-   * @param payloadRaw - Dados brutos recebidos via WebSocket.
+   * @param socket - Client socket sending the event.
+   * @param payloadRaw - Raw data received via WebSocket.
    */
   validarPayloadTelemetria(socket: Socket, payloadRaw: unknown): ResultadoValidacaoTelemetria {
     if (!payloadRaw || typeof payloadRaw !== 'object' || Array.isArray(payloadRaw)) {
@@ -672,8 +672,8 @@ export class SessaoGateway {
   }
 
   /**
-   * Processa o evento de telemetria recebido do jogo remoto (Card 2.1).
-   * Valida com schema leve e despacha em tempo real para a sala da sessão.
+   * Processes telemetry event received from remote game (Card 2.1).
+   * Validates against lightweight schema and broadcasts to session room in real time.
    */
   public lidarTelemetria(
     socket: Socket,
@@ -733,7 +733,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Despacha diretamente um evento de telemetria para a sala (útil para injeções ou testes).
+   * Directly dispatches telemetry event to session room (useful for testing and injection).
    */
   notificarTelemetria(sessionToken: string, evento: TelemetriaEventoNormalizado): void {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -745,10 +745,10 @@ export class SessaoGateway {
   }
 
   /**
-   * Valida o comando clínico enviado pelo terapeuta (Card 2.2 / RF13 / RF21).
+   * Validates clinical command sent by therapist (Card 2.2 / RF13 / RF21).
    *
-   * @param socket - Socket do cliente emissor.
-   * @param payloadRaw - Dados brutos do comando.
+   * @param socket - Emitting client socket.
+   * @param payloadRaw - Raw command data.
    */
   validarComandoClinico(socket: Socket, payloadRaw: unknown): ResultadoValidacaoComando {
     if (!payloadRaw || typeof payloadRaw !== 'object' || Array.isArray(payloadRaw)) {
@@ -869,11 +869,11 @@ export class SessaoGateway {
   }
 
   /**
-   * Processa o canal de comandos bidirecional do terapeuta para o jogo (Card 2.2).
+   * Processes bidirectional command channel from therapist to game (Card 2.2).
    *
-   * @param socket - Socket do cliente.
-   * @param payloadRaw - Dados do comando enviado.
-   * @param ack - Callback opcional de confirmação para o terapeuta.
+   * @param socket - Client socket.
+   * @param payloadRaw - Sent command data.
+   * @param ack - Optional confirmation callback for therapist.
    */
   public lidarComandoClinico(
     socket: Socket,
@@ -922,7 +922,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Emite programaticamente um comando para a sala da sessão.
+   * Programmatically emits a command to the session room.
    */
   notificarComando(sessionToken: string, comando: ComandoClinicoEventoNormalizado): void {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -934,22 +934,22 @@ export class SessaoGateway {
   }
 
   /**
-   * Retorna o gerenciador de reconexão de sessão.
+   * Returns session reconnection manager.
    */
   obterReconnectionManager(): SessaoReconnectionManager {
     return this.reconnectionManager;
   }
 
   /**
-   * Retorna o gerenciador de taxa de eventos (Card 2.4).
+   * Returns event rate limiter instance (Card 2.4).
    */
   obterRateLimiter(): SocketRateLimiter {
     return this.rateLimiter;
   }
 
   /**
-   * Notifica a sala da sessão que a tolerância expirou e a sessão foi interrompida (Card 2.3).
-   * Persiste o status 'interrompida_por_queda' no banco de dados e registra a trilha de auditoria.
+   * Notifies session room that tolerance window expired and session was interrupted (Card 2.3).
+   * Persists 'interrompida_por_queda' status in database and records audit trail.
    */
   async notificarSessaoInterrompidaPorQueda(sessionToken: string, evento: EventoSessaoInterrompida): Promise<void> {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -987,9 +987,9 @@ export class SessaoGateway {
   }
 
   /**
-   * Retorna os IDs dos sockets presentes na sala de uma sessão.
+   * Returns socket IDs currently present in a session room.
    *
-   * @param sessionToken - Código PIN da sessão.
+   * @param sessionToken - Session PIN code.
    */
   async obterSocketsNaSala(sessionToken: string): Promise<string[]> {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -1003,7 +1003,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Normaliza o token alfanumérico removendo formatações para manter consistência das salas.
+   * Normalizes alphanumeric token removing formatting to maintain room consistency.
    */
   private normalizarToken(token: string): string {
     return token.trim().toUpperCase();

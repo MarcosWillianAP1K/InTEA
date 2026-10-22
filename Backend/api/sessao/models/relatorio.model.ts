@@ -39,7 +39,7 @@ export interface CriarRelatorioDTO {
 
 export class RelatorioSessaoModel {
   /**
-   * Persiste o relatório e os dados consolidados da IA na tabela 'relatorio_sessao' (3FN pura).
+   * Persists session report and consolidated AI data in 'relatorio_sessao' table (strict 3NF).
    */
   static async criar(dto: CriarRelatorioDTO): Promise<RelatorioSessao | null> {
     try {
@@ -66,7 +66,7 @@ export class RelatorioSessaoModel {
   }
 
   /**
-   * Busca o relatório de uma sessão ativa pelo sessao_id.
+   * Retrieves session report for a given session by sessao_id.
    */
   static async buscarPorSessaoId(sessaoId: string): Promise<RelatorioSessao | null> {
     try {

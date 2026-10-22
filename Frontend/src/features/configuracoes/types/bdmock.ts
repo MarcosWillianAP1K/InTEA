@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- * FIXTURES E MOCKS DE CONFIGURAÇÕES (bdmock.ts)
- * Preferências do usuário e personalização do sistema em memória.
+ * SETTINGS FIXTURES AND MOCKS
+ * User preferences and system personalization in memory.
  * ============================================================================
  */
 
@@ -42,7 +42,7 @@ let configuracoesAtuais: ConfiguracoesUsuario = {
 };
 
 /**
- * Retorna as configurações do usuário atualmente autenticado.
+ * Returns settings for currently authenticated user.
  */
 export async function obterConfiguracoesMock(
   usuarioId?: string,
@@ -63,7 +63,7 @@ export async function obterConfiguracoesMock(
 }
 
 /**
- * Atualiza parcialmente as preferências e configurações do usuário.
+ * Partially updates preferences and user settings.
  */
 export async function atualizarConfiguracoesMock(
   usuarioId: string,
@@ -96,7 +96,7 @@ export async function atualizarConfiguracoesMock(
 }
 
 /**
- * Restaura as configurações do usuário para o padrão de fábrica.
+ * Restores user settings to system defaults.
  */
 export async function resetarConfiguracoesMock(
   usuarioId: string,

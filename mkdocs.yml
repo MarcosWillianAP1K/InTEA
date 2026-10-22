@@ -1,32 +1,32 @@
 # =============================================================================
-# InTEA: Catálogo Moderno de Funções e Docstrings (Material Theme)
+# InTEA: Modern Function and Docstrings Catalog (Material Theme)
 # =============================================================================
 
-site_name: InTEA — Funções & Docstrings
-site_description: Referência rápida e intuitiva das funções e docstrings do projeto InTEA
-site_author: Equipe InTEA
+site_name: InTEA — Functions & Docstrings
+site_description: Quick and intuitive reference for InTEA functions and docstrings
+site_author: InTEA Team
 
 docs_dir: docs_site
 site_dir: site
 
 theme:
   name: material
-  language: pt-BR
+  language: en
   palette:
-    # Modo Claro
+    # Light Mode
     - scheme: default
       primary: indigo
       accent: deep purple
       toggle:
         icon: material/brightness-7
-        name: Mudar para modo escuro
-    # Modo Escuro
+        name: Switch to dark mode
+    # Dark Mode
     - scheme: slate
       primary: indigo
       accent: deep purple
       toggle:
         icon: material/brightness-4
-        name: Mudar para modo claro
+        name: Switch to light mode
   features:
     - navigation.instant
     - navigation.sections
@@ -51,19 +51,19 @@ markdown_extensions:
   - attr_list
 
 nav:
-  - Visão Geral: index.md
-  - Backend (Clínico):
-      - Anotações Clínicas: anotacao.md
-      - Trilha de Auditoria: auditoria.md
-      - Sessão e Pareamento: sessao.md
-      - Telemetria e Métricas: telemetria.md
-  - Backend (Administração):
-      - Autenticação e Perfil: auth.md
-      - Catálogo de Jogos: jogos.md
-      - Gestão de Pacientes: paciente.md
-      - Gestão de Terapeutas: terapeuta.md
-  - Infraestrutura & Core:
-      - Exemplos e Utilitários: exemplo.md
-      - Eventos e Middlewares: core.md
+  - Overview: index.md
+  - Backend (Clinical):
+      - Clinical Notes: anotacao.md
+      - Audit Trail: auditoria.md
+      - Session and Pairing: sessao.md
+      - Telemetry and Metrics: telemetria.md
+  - Backend (Administration):
+      - Authentication and Profile: auth.md
+      - Games Catalog: jogos.md
+      - Patient Management: paciente.md
+      - Therapist Management: terapeuta.md
+  - Infrastructure & Core:
+      - Examples and Utilities: exemplo.md
+      - Events and Middlewares: core.md
   - Frontend:
-      - Hooks e Serviços React: frontend.md
+      - React Hooks and Services: frontend.md

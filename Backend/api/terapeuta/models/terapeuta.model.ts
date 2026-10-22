@@ -13,7 +13,7 @@ export interface AreaFoco {
 }
 
 /**
- * Representa a entidade Terapeuta mapeada no banco de dados e sincronizada com auth.users.
+ * Represents the Therapist entity mapped in database and synchronized with auth.users.
  */
 export interface Terapeuta {
   id: string;                      // UUID sincronizado com auth.users(id)
@@ -51,7 +51,7 @@ export interface CriarTerapeutaDTO {
 }
 
 /**
- * DTO para atualização parcial de dados do terapeuta.
+ * DTO for partial update of therapist profile data.
  */
 export interface AtualizarTerapeutaDTO {
   nome?: string;
@@ -66,7 +66,7 @@ export interface AtualizarTerapeutaDTO {
 }
 
 /**
- * DTO para login e obtenção de token JWT.
+ * DTO for authentication credentials and JWT issuance.
  */
 export interface LoginDTO {
   email: string;

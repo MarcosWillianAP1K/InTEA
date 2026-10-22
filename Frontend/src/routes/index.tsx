@@ -13,8 +13,8 @@ import { SettingsPage } from "@/features/configuracoes/pages/settingsPage";
 import { useAuthStore } from "@/features/autenticacao";
 
 /**
- * Guardião de rotas autenticadas (RF21 / RN04).
- * Caso o terapeuta não esteja autenticado na sessão ativa, redireciona para /login.
+ * Authenticated route guard (RF21 / RN04).
+ * Redirects unauthenticated users to /login.
  */
 export function ProtectedRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);

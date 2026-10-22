@@ -41,7 +41,7 @@ export interface CriarAuditoriaDTO {
 
 export class AuditoriaModel {
   /**
-   * Registra um novo evento imutável de auditoria na tabela 'auditoria_sessao'.
+   * Records a new immutable audit event in the 'auditoria_sessao' table.
    */
   static async registrar(dto: CriarAuditoriaDTO): Promise<AuditoriaSessao | null> {
     try {
@@ -77,8 +77,8 @@ export class AuditoriaModel {
   }
 
   /**
-   * Busca toda a trilha cronológica de auditoria de uma sessão pelo sessao_id.
-   * Retorna os eventos em ordem cronológica crescente (do mais antigo ao mais recente).
+   * Retrieves the complete chronological audit trail of a session by sessao_id.
+   * Returns events in ascending chronological order (oldest to newest).
    */
   static async buscarPorSessaoId(sessaoId: string): Promise<AuditoriaSessao[]> {
     try {

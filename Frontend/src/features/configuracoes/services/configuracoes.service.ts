@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- * SERVIÇO REST DO DOMÍNIO SETTINGS (settings.service.ts)
- * Consome os endpoints de preferências do usuário com fallback resiliente para bdmock.ts.
+ * REST SERVICE FOR SETTINGS DOMAIN
+ * Consumes user preference endpoints with resilient fallback to bdmock.ts.
  * ============================================================================
  */
 
@@ -19,7 +19,7 @@ import {
 
 export const configuracoesService = {
   /**
-   * Obtém as configurações e preferências do usuário autenticado.
+   * Retrieves settings and preferences for authenticated user.
    */
   obter: async (usuarioId?: string): Promise<ConfiguracoesUsuario> => {
     return await withFallback(
@@ -41,7 +41,7 @@ export const configuracoesService = {
   },
 
   /**
-   * Atualiza as configurações de tema, idioma, notificações e acessibilidade.
+   * Updates theme, language, notification, and accessibility settings.
    */
   atualizar: async (
     usuarioId: string,
@@ -63,7 +63,7 @@ export const configuracoesService = {
   },
 
   /**
-   * Restaura todas as preferências para os valores padrão.
+   * Restores all user preferences to default values.
    */
   resetar: async (usuarioId: string): Promise<ConfiguracoesUsuario> => {
     return await withFallback(

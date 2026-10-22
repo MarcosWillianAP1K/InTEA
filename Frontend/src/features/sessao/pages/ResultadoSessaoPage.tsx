@@ -40,10 +40,9 @@ export interface ResultadoSessaoPageProps {
 
 /**
  * ============================================================================
- * PÁGINA MESTRE: ResultadoSessaoPage (Front-end 1 — Hermeson Alves / Card 3.1)
- * Rota: /sessao/:id/resultado
- * Requisitos: RF14 (Resultados da Sessão), RF16 (Anotações), RF21 (Autoria),
- *             RN01 (Modo Livre sem Prontuário), RN04 (Vínculo), RNF07 (Layout)
+ * MASTER PAGE: ResultadoSessaoPage
+ * Route: /sessao/:id/resultado
+ * Compliance: RF14 (Session Results), RF16 (Notes), RF21 (Authorship), RN01, RN04, RNF07
  * ============================================================================
  */
 export function ResultadoSessaoPage({

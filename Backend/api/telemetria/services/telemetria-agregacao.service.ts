@@ -89,7 +89,7 @@ export interface TelemetriaConsolidada {
 // ==============================================================================
 
 /**
- * Calcula a média aritmética simples com arredondamento seguro.
+ * Calculates simple arithmetic mean with safe precision rounding.
  */
 export function calcularMedia(valores: number[], casasDecimais = 2): number {
   if (!valores || valores.length === 0) return 0;
@@ -99,7 +99,7 @@ export function calcularMedia(valores: number[], casasDecimais = 2): number {
 }
 
 /**
- * Calcula a mediana estatística de um conjunto ordenado de números.
+ * Calculates statistical median of an ordered set of numbers.
  */
 export function calcularMediana(valores: number[], casasDecimais = 2): number {
   if (!valores || valores.length === 0) return 0;
@@ -116,7 +116,7 @@ export function calcularMediana(valores: number[], casasDecimais = 2): number {
 }
 
 /**
- * Calcula o desvio padrão populacional (robustez contra tamanho 1 e divisão por zero).
+ * Calculates population standard deviation with zero-division safety.
  */
 export function calcularDesvioPadrao(valores: number[], casasDecimais = 2): number {
   if (!valores || valores.length <= 1) return 0;
@@ -127,8 +127,8 @@ export function calcularDesvioPadrao(valores: number[], casasDecimais = 2): numb
 }
 
 /**
- * Determina a tendência temporal comparando a primeira e a segunda metade das amostras cronológicas.
- * Margem mínima de variação de 5% para evitar oscilações estocásticas.
+ * Determines temporal trend by comparing chronological first and second halves.
+ * Minimum 5% variation threshold to avoid stochastic noise.
  */
 export function calcularTendenciaNumerica(valoresCronologicos: number[]): TendenciaMetrica {
   if (!valoresCronologicos || valoresCronologicos.length < 2) {
@@ -155,7 +155,7 @@ export function calcularTendenciaNumerica(valoresCronologicos: number[]): Tenden
 }
 
 /**
- * Determina a tendência de uma métrica categórica comparando a distribuição do início vs final.
+ * Determines categorical metric trend by comparing start versus end distribution.
  */
 export function calcularTendenciaCategorica(valoresCronologicos: string[]): TendenciaMetrica {
   if (!valoresCronologicos || valoresCronologicos.length < 2) {
@@ -173,7 +173,7 @@ export function calcularTendenciaCategorica(valoresCronologicos: string[]): Tend
 }
 
 /**
- * Obtém a moda (valor mais frequente) de uma lista de categorias.
+ * Computes mode (most frequent value) of a categorical dataset.
  */
 export function obterModaCategorica(valores: string[]): string {
   if (!valores || valores.length === 0) return 'indeterminado';

@@ -27,9 +27,8 @@ export interface ModalFinalizarSessaoProps {
  */
 
 /**
- * Modal de confirmação para encerramento formal de sessão clínica (RF13, RN05).
- * Exibe tempo total decorrido, permite registrar anotações clínicas preliminares e
- * aciona a persistência com geração de relatório IA.
+ * Confirmation modal for formal clinical session completion (RF13, RN05).
+ * Displays total elapsed duration, captures preliminary notes, and triggers persistence with AI report.
  */
 export function ModalFinalizarSessao({
   aberto,

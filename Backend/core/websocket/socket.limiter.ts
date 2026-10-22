@@ -37,7 +37,7 @@ export class SocketRateLimiter {
   }
 
   /**
-   * Retorna a instância singleton do rate limiter.
+   * Returns singleton instance of rate limiter.
    */
   static obterInstancia(opcoes?: SocketLimiterOpcoes): SocketRateLimiter {
     if (!SocketRateLimiter.instance) {
@@ -47,11 +47,11 @@ export class SocketRateLimiter {
   }
 
   /**
-   * Verifica se a emissão de um evento por um socket é permitida pelo controle de taxa.
-   * Utiliza algoritmo de janela deslizante (Sliding Window Log).
+   * Checks whether event emission by a socket is allowed by rate limiting.
+   * Implements sliding window log algorithm.
    *
-   * @param identificador - Identificador único da conexão (ex.: socket.id).
-   * @param evento - Nome do evento Socket.IO (opcional, para logging ou chave composta).
+   * @param identificador - Unique connection identifier (e.g. socket.id).
+   * @param evento - Optional Socket.IO event name (for logging or composite key).
    */
   verificarLimite(identificador: string, evento?: string): ResultadoRateLimit {
     const agora = Date.now();
@@ -101,7 +101,7 @@ export class SocketRateLimiter {
   }
 
   /**
-   * Remove o rastreio de um socket desconectado para evitar memory leak.
+   * Removes tracking entry for a disconnected socket to avoid memory leak.
    */
   removerIdentificador(identificador: string): void {
     for (const chave of this.registros.keys()) {
@@ -112,7 +112,7 @@ export class SocketRateLimiter {
   }
 
   /**
-   * Permite reconfigurar os limites (essencial para testes automatizados determinísticos).
+   * Allows reconfiguring rate limits (essential for deterministic test suites).
    */
   configurar(opcoes: SocketLimiterOpcoes): void {
     if (opcoes.maxEventosPorJanela !== undefined) {
@@ -130,7 +130,7 @@ export class SocketRateLimiter {
   }
 
   /**
-   * Retorna os parâmetros atuais do limitador.
+   * Returns current limiter parameters.
    */
   obterConfiguracao(): { maxEventosPorJanela: number; janelaMs: number } {
     return {
@@ -140,7 +140,7 @@ export class SocketRateLimiter {
   }
 
   /**
-   * Limpa todos os registros em memória (útil para suítes de testes).
+   * Clears all in-memory records (useful for test suites).
    */
   limparTodos(): void {
     this.registros.clear();

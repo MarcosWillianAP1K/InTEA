@@ -30,8 +30,8 @@ export interface TabletDiagnosticCardProps {
  */
 
 /**
- * Card de telemetria de conectividade e integridade física do tablet pareado (RF12, RNF04).
- * Apresenta latência de rede em milissegundos com código semafórico, nível de bateria e alertas visuais de desconexão.
+ * Connectivity and hardware integrity telemetry card for paired tablet (RF12, RNF04).
+ * Displays latency, battery level, and visual disconnection alerts.
  */
 export function TabletDiagnosticCard({
   latenciaMs = 42,

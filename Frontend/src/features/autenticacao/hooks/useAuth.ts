@@ -22,9 +22,9 @@ export interface UseAuthReturn {
 }
 
 /**
- * Hook customizado React para gerenciamento e observabilidade da sessão de autenticação.
+ * Custom React hook for managing and observing the authentication session.
  *
- * @returns Controles e observadores do estado de autenticação.
+ * @returns Authentication state controls and observers.
  */
 export function useAuth(): UseAuthReturn {
   const user = useAuthStore((s) => s.user);

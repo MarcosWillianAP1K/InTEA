@@ -1,8 +1,7 @@
 /**
  * ============================================================================
- * FIXTURES E MOCKS DE AUTENTICAÇÃO (bdmock.ts)
- * Simulação determinística de login, refresh de JWT, perfil e logout em memória.
- * Conformidade com RF21 (Autoria) e RN04 (Vínculo com Clínica).
+ * AUTHENTICATION FIXTURES AND MOCKS
+ * Deterministic in-memory simulation of login, refresh JWT, profile, and logout.
  * ============================================================================
  */
 
@@ -150,7 +149,7 @@ function derivarNomeAmigavel(email: string): string {
 // ============================================================================
 
 /**
- * Simula o processo de login verificando email e senha.
+ * Simulates login process checking email and password.
  */
 export async function loginMock(payload: LoginPayload): Promise<LoginResponse> {
   const emailNorm = payload.email.trim().toLowerCase();
@@ -241,7 +240,7 @@ export async function loginMock(payload: LoginPayload): Promise<LoginResponse> {
 }
 
 /**
- * Simula logout invalidando a sessão em memória.
+ * Simulates logout invalidating in-memory session.
  */
 export async function logoutMock(): Promise<LogoutResponse> {
   usuarioLogadoAtual = null;
@@ -253,7 +252,7 @@ export async function logoutMock(): Promise<LogoutResponse> {
 }
 
 /**
- * Simula a renovação de tokens a partir do refresh_token.
+ * Simulates token renewal from refresh_token.
  */
 export async function refreshMock(refreshToken?: string): Promise<AuthTokens> {
   if (refreshToken && refreshToken.includes("invalido")) {
@@ -272,14 +271,14 @@ export async function refreshMock(refreshToken?: string): Promise<AuthTokens> {
 }
 
 /**
- * Retorna os tokens atualmente ativos no mock em memória.
+ * Returns tokens currently active in memory mock.
  */
 export function obterTokensAtuaisMock(): AuthTokens | null {
   return tokensAtuais;
 }
 
 /**
- * Retorna os dados do usuário atualmente autenticado.
+ * Returns currently authenticated user data.
  */
 export async function obterUsuarioAtualMock(): Promise<UsuarioAutenticado> {
   if (!usuarioLogadoAtual) {
@@ -290,7 +289,7 @@ export async function obterUsuarioAtualMock(): Promise<UsuarioAutenticado> {
 }
 
 /**
- * Retorna o perfil clínico estendido do terapeuta autenticado.
+ * Returns extended clinical profile of authenticated therapist.
  */
 export async function obterPerfilTerapeutaAuthMock(
   id: string,
@@ -351,7 +350,7 @@ export async function obterPerfilTerapeutaAuthMock(
 }
 
 /**
- * Valida formato sintático de token em ambiente mock.
+ * Validates token syntax format in mock environment.
  */
 export function validarTokenMock(token: string | null | undefined): boolean {
   if (!token) return false;

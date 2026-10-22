@@ -28,9 +28,8 @@ import { toast } from "sonner";
 
 /**
  * ============================================================================
- * TELA: TODOS OS PACIENTES (InTEA)
- * Frame Figma: Lista Pacientes- InTEA (94:1176) & Row paciente completo (94:1147)
- * Permissão: Acesso irrestrito a administradores (GET /api/paciente?all=true)
+ * PAGE: ALL PATIENTS (InTEA)
+ * Permission: Unrestricted access for administrators (GET /api/paciente?all=true)
  * ============================================================================
  */
 export function TodosPacientesPage() {

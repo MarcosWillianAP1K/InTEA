@@ -94,7 +94,7 @@ function extrairListaAnotacoes(
 
 export const anotacaoService = {
   /**
-   * Lista anotações clínicas de um paciente (RF16, RN04, RN05).
+   * Lists clinical annotations for a patient (RF16, RN04, RN05).
    */
   listarPorPaciente: async (
     pacienteId: string,
@@ -116,7 +116,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Consulta uma anotação clínica por seu UUID (RF16, RN04).
+   * Retrieves a clinical annotation by UUID (RF16, RN04).
    */
   buscarPorId: async (id: string): Promise<AnotacaoClinica | null> => {
     if (!id || !id.trim()) return null;
@@ -134,7 +134,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Cria nova anotação clínica no prontuário ou vinculada a uma sessão (RF16, RF21).
+   * Creates new clinical note in medical record or linked to session (RF16, RF21).
    */
   criar: async (dto: CriarAnotacaoDTO): Promise<AnotacaoClinica> => {
     return await withFallback(
@@ -150,7 +150,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Atualiza o conteúdo textual de uma anotação clínica (RF16, RF21).
+   * Updates textual content of clinical note (RF16, RF21).
    */
   atualizar: async (
     id: string,
@@ -171,7 +171,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Inativa anotação clínica aplicando soft delete (RN05).
+   * Inactivates clinical note applying soft delete (RN05).
    */
   inativar: async (id: string): Promise<AnotacaoClinica | null> => {
     if (!id || !id.trim()) return null;
@@ -189,7 +189,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Reativa anotação clínica previamente inativada (RN05).
+   * Reactivates previously inactivated clinical note (RN05).
    */
   reativar: async (id: string): Promise<AnotacaoClinica | null> => {
     if (!id || !id.trim()) return null;
@@ -207,7 +207,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Exclusão física permanente (exclusivo para SuperAdmin e testes).
+   * Permanent physical deletion (exclusive for SuperAdmin and testing).
    */
   deletarHard: async (id: string): Promise<boolean> => {
     if (!id || !id.trim()) return false;

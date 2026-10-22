@@ -23,10 +23,10 @@ export interface DadosPersistenciaSessao {
  */
 
 /**
- * Hook de resiliência e persistência de sessão ativa contra recarregamento acidental de página (F5).
- * Salva e restaura o estado de sessão clínica via sessionStorage e intercepta o evento beforeunload.
+ * Resilience and persistence hook for active session against accidental page reload (F5).
+ * Saves and restores clinical session state via sessionStorage and intercepts beforeunload event.
  *
- * @returns Objeto com função para limpar persistência e flag indicando se há sessão em cache.
+ * @returns Object with persistence cleanup function and cached session flag.
  */
 export function useSessionPersistence() {
   const status = useSessionStore((state) => state.status);
@@ -111,7 +111,7 @@ export function useSessionPersistence() {
   }, [status]);
 
   /**
-   * Remove a sessão ativa persistida do sessionStorage (usado em encerramentos e cancelamentos).
+   * Removes persisted active session from sessionStorage upon completion or cancellation.
    */
   const limparPersistencia = useCallback(() => {
     if (typeof window !== "undefined") {

@@ -1,9 +1,7 @@
 /**
  * ============================================================================
- * SERVIÇO REST DO DOMÍNIO JOGOS (jogos.service.ts)
- * Consome os endpoints centralizados ENDPOINTS.JOGOS via http-client
- * com fallback resiliente para bdmock.ts em caso de indisponibilidade.
- * Conformidade: RF04, RF07, RN02 (Tipagem Estrita de Métricas)
+ * REST SERVICE FOR GAMES DOMAIN
+ * Compliance: RF04, RF07, RN02 (Tipagem Estrita de Métricas)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
@@ -52,8 +50,7 @@ function serializarFiltros(
 }
 
 /**
- * Normaliza campos vindos do PostgreSQL (nome, descricao, metricas_suportadas)
- * sem alterar objetos que já possuem titulo, descricaoClinica e manifesto preenchidos.
+ * Normalizes PostgreSQL fields into canonical game object format.
  */
 function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
   if (!jogo) return jogo;
@@ -134,7 +131,7 @@ function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
 
 export const jogosService = {
   /**
-   * Lista todos os jogos terapêuticos disponíveis aplicando filtros de busca e objetivo.
+   * Lists all available therapeutic games applying search and objective filters.
    */
   listar: async (filtros?: JogoFiltroDTO | FiltrosJogos): Promise<Jogo[]> => {
     return await withFallback(
@@ -177,7 +174,7 @@ export const jogosService = {
   },
 
   /**
-   * Consulta os dados detalhados de um jogo pelo seu ID ou slug canônico.
+   * Retrieves detailed game information by ID or canonical slug.
    */
   buscarPorId: async (id: string): Promise<Jogo | null> => {
     if (!id || !id.trim()) return null;
@@ -199,7 +196,7 @@ export const jogosService = {
   },
 
   /**
-   * Obtém o manifesto técnico e clínico do jogo com métricas tipadas (RN02).
+   * Retrieves technical and clinical manifest with strictly typed metrics (RN02).
    */
   obterManifesto: async (id: string): Promise<ManifestoJogo | null> => {
     if (!id || !id.trim()) return null;

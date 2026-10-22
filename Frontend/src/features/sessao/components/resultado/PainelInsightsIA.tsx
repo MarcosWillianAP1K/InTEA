@@ -28,7 +28,7 @@ export interface PainelInsightsIAProps {
 }
 
 /**
- * Utilitário de formatação de identificador de métrica snake_case -> Nome Legível.
+ * Metric identifier formatter (snake_case -> Readable Title).
  */
 export function formatarNomeMetrica(id: string): string {
   if (!id) return "";

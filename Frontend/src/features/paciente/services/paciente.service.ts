@@ -1,9 +1,7 @@
 /**
  * ============================================================================
- * SERVIÇO REST DO DOMÍNIO PACIENTE (paciente.service.ts)
- * Consome os endpoints centralizados ENDPOINTS.PACIENTE via http-client
- * com fallback resiliente para bdmock.ts em caso de indisponibilidade.
- * Conformidade: RF06, RF10, RF18, RF19, RN04, RN05
+ * REST SERVICE FOR PATIENT DOMAIN
+ * Compliance: RF06, RF10, RF18, RF19, RN04, RN05
  * ============================================================================
  */
 
@@ -31,7 +29,7 @@ import {
 } from "../types/bdmock";
 
 /**
- * Converte o DTO de filtros para Record<string, string> aceito pelo cliente HTTP.
+ * Converts filter DTO into HTTP query parameter record.
  */
 function serializarFiltros(
   filtros?: FiltroPacienteDTO,
@@ -85,7 +83,7 @@ function extrairPaciente(resposta: PacienteRespostaApi | Paciente | null | undef
 
 export const pacienteService = {
   /**
-   * Lista pacientes cadastrados aplicando filtros de busca, idade e paginação (RF19, RN05).
+   * Lists registered patients applying search, age, and pagination filters (RF19, RN05).
    */
   listar: async (filtros?: FiltroPacienteDTO): Promise<Paciente[]> => {
     return await withFallback(
@@ -113,7 +111,7 @@ export const pacienteService = {
   },
 
   /**
-   * Consulta prontuário e dados completos de um paciente por UUID (RF06, RN04).
+   * Retrieves full record and patient profile by UUID (RF06, RN04).
    */
   buscarPorId: async (id: string): Promise<Paciente | null> => {
     if (!id || !id.trim()) return null;
@@ -130,7 +128,7 @@ export const pacienteService = {
   },
 
   /**
-   * Cadastra um novo paciente e seu responsável principal (RF06, RF18).
+   * Registers a new patient along with primary guardian (RF06, RF18).
    */
   criar: async (dto: CriarPacienteDTO): Promise<Paciente> => {
     return await withFallback(
@@ -150,7 +148,7 @@ export const pacienteService = {
   },
 
   /**
-   * Atualiza dados cadastrais e clínicos do paciente (RF06, RN04).
+   * Updates demographic and clinical profile data of patient (RF06, RN04).
    */
   atualizar: async (
     id: string,
@@ -171,7 +169,7 @@ export const pacienteService = {
   },
 
   /**
-   * Desativa o paciente preservando seu prontuário clínico (Soft Delete - RN05).
+   * Deactivates patient preserving clinical medical record (Soft Delete - RN05).
    */
   inativar: async (id: string): Promise<Paciente | null> => {
     if (!id || !id.trim()) return null;
@@ -188,7 +186,7 @@ export const pacienteService = {
   },
 
   /**
-   * Reativa um paciente previamente desativado (RN05).
+   * Reactivates a previously deactivated patient (RN05).
    */
   reativar: async (id: string): Promise<Paciente | null> => {
     if (!id || !id.trim()) return null;
@@ -205,7 +203,7 @@ export const pacienteService = {
   },
 
   /**
-   * Lista terapeutas da equipe multidisciplinar vinculados ao paciente (RF18, RN04).
+   * Lists multidisciplinary team therapists associated with patient (RF18, RN04).
    */
   listarTerapeutas: async (id: string): Promise<TerapeutaPaciente[]> => {
     if (!id || !id.trim()) return [];
@@ -235,7 +233,7 @@ export const pacienteService = {
   },
 
   /**
-   * Vincula um terapeuta da mesma clínica ao paciente (RF18, RF21).
+   * Associates a therapist from same clinic with patient (RF18, RF21).
    */
   vincularTerapeuta: async (
     pacienteId: string,
@@ -253,7 +251,7 @@ export const pacienteService = {
   },
 
   /**
-   * Desvincula um terapeuta do paciente (RF18).
+   * Unlinks a therapist from patient (RF18).
    */
   desvincularTerapeuta: async (
     pacienteId: string,

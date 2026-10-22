@@ -1,9 +1,7 @@
 /**
  * ============================================================================
- * SERVIÇO REST DO DOMÍNIO AUTH (auth.service.ts)
- * Consome os endpoints centralizados ENDPOINTS.AUTH via http-client
- * com fallback resiliente para bdmock.ts em caso de indisponibilidade da API.
- * Conformidade: RF21 (Autenticação e Autoria), RN04 (Vínculo e Clínica)
+ * REST SERVICE FOR AUTHENTICATION DOMAIN
+ * Compliance: RF21, RN04
  * ============================================================================
  */
 
@@ -60,8 +58,8 @@ function removerTokens(): void {
 
 export const authService = {
   /**
-   * Realiza login autenticando credenciais do terapeuta ou super admin (RF21).
-   * Persiste os tokens no localStorage automaticamente.
+   * Performs login authenticating therapist or super admin credentials (RF21).
+   * Persists tokens in local storage automatically.
    */
   login: async (payload: LoginPayload): Promise<LoginResponse> => {
     return await withFallback(
@@ -109,7 +107,7 @@ export const authService = {
   },
 
   /**
-   * Encerra a sessão ativa e revoga tokens locais e remotos.
+   * Ends active session and clears local and remote tokens.
    */
   logout: async (): Promise<void> => {
     try {
@@ -127,7 +125,7 @@ export const authService = {
   },
 
   /**
-   * Renova o token de acesso (access_token) utilizando o refresh_token armazenado.
+   * Renews access token using stored refresh token.
    */
   refresh: async (): Promise<AuthTokens> => {
     const refreshToken =
@@ -155,7 +153,7 @@ export const authService = {
   },
 
   /**
-   * Obtém os dados cadastrais e perfil clínico do usuário atualmente autenticado (RF21, RN04).
+   * Retrieves profile and clinical metadata of currently authenticated user (RF21, RN04).
    */
   obterUsuarioAtual: async (): Promise<UsuarioAutenticado> => {
     return await withFallback(
@@ -228,7 +226,7 @@ export const authService = {
   },
 
   /**
-   * Altera a senha do usuário autenticado no sistema.
+   * Updates password of authenticated user.
    */
   alterarSenha: async (novaSenha: string): Promise<{ message: string }> => {
     return await http.patch<{ message: string }>(ENDPOINTS.AUTH.ALTERAR_SENHA, { novaSenha });
@@ -245,7 +243,7 @@ export const authService = {
 };
 
 /**
- * Retrocompatibilidade para testes existentes e código legado
+ * Backwards compatibility for existing test suites
  */
 export interface ExemploData {
   id: string;

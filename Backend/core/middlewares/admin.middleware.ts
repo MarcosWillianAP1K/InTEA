@@ -3,17 +3,17 @@ import { supabase } from '../supabase/supabase.client.js';
 import { AuthenticatedRequest } from './auth.middleware.js';
 
 /**
- * Middleware de autorização para restringir endpoints exclusivamente a administradores (Super Admins).
+ * Authorization middleware to restrict endpoints exclusively to Super Administrators.
  * 
- * Fluxo de verificação:
- * 1. Exige que a requisição tenha passado previamente pelo authMiddleware (req.user preenchido).
- * 2. Verifica se a conta do terapeuta está ativa (status_ativo = true).
- * 3. Valida se o usuário possui privilégios de super admin (via user_metadata ou tabela terapeuta).
- * 4. Retorna 403 Forbidden caso o usuário não seja administrador ou esteja inativo.
+ * Verification flow:
+ * 1. Requires request to have passed authMiddleware (req.user populated).
+ * 2. Verifies therapist account is active (status_ativo = true).
+ * 3. Validates user has super admin privileges (via user_metadata or terapeuta table).
+ * 4. Returns 403 Forbidden if user is not administrator or is inactive.
  *
- * @param req - Requisição Express autenticada contendo o objeto `req.user`.
- * @param res - Resposta Express.
- * @param next - Avança o pipeline de execução caso autorizado.
+ * @param req - Authenticated Express request containing `req.user`.
+ * @param res - Express response.
+ * @param next - Advances pipeline execution if authorized.
  */
 export async function adminMiddleware(
   req: AuthenticatedRequest,

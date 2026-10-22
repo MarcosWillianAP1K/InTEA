@@ -9,7 +9,7 @@ import { EventEmitter } from 'node:events';
 import type { Sessao } from '../../api/sessao/models/sessao.model.js';
 
 /**
- * Catálogo formal e estritamente tipado de eventos do ecossistema InTEA.
+ * Formal, strictly typed domain event catalog for the InTEA ecosystem.
  */
 export interface EventosDoSistema {
   'sessao:finalizada': {
@@ -103,6 +103,6 @@ export class InTeaEventBus extends EventEmitter {
 }
 
 /**
- * Instância singleton global do Barramento de Eventos da aplicação.
+ * Global singleton instance of the application Domain Event Bus.
  */
 export const eventBus = new InTeaEventBus();

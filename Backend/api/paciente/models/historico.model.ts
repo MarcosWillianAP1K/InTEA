@@ -14,8 +14,7 @@ import { validarUUID } from '../../../core/utils/validators.js';
 import { RelatorioIAContrato } from '../../sessao/models/relatorio.model.js';
 
 /**
- * Métricas universais consolidadas de engajamento do paciente.
- * Compartilhadas transversalmente por todos os jogos terapêuticos.
+ * Consolidated universal patient engagement metrics shared across all therapeutic games.
  */
 export interface MetricasEngajamentoGeral {
   total_sessoes: number;
@@ -29,7 +28,7 @@ export interface MetricasEngajamentoGeral {
 }
 
 /**
- * Parâmetros de filtro e paginação para consultas de histórico clínico (RF19).
+ * Filter and pagination parameters for clinical history queries (RF19).
  */
 export interface FiltrosHistoricoDTO {
   dataInicio?: string;
@@ -40,7 +39,7 @@ export interface FiltrosHistoricoDTO {
 }
 
 /**
- * Item individual de histórico com parecer técnico e dados analíticos da IA.
+ * Individual history record with technical report and AI analytical insights.
  */
 export interface SessaoHistoricoItem {
   sessao_id: string;
@@ -57,7 +56,7 @@ export interface SessaoHistoricoItem {
 }
 
 /**
- * Resumo de catálogo de jogos já jogados pelo paciente.
+ * Catalog summary of therapeutic games previously played by the patient.
  */
 export interface ResumoJogoPaciente {
   jogo_id: string;
@@ -101,12 +100,13 @@ interface SessaoComJogoRow {
 
 export class HistoricoSessaoModel {
   /**
-   * Calcula as métricas transversais de engajamento clínico e assiduidade do paciente.
-   * Utiliza o índice parcial `idx_sessao_paciente_engajamento` no PostgreSQL.
-   * Exclui rigorosamente partidas em modo livre (RN01: paciente_id = NULL).
+   * Calculates transversal metrics of clinical engagement and patient attendance.
+   * Uses PostgreSQL partial index `idx_sessao_paciente_engajamento`.
+   * Strictly excludes free play sessions (RN01: paciente_id = NULL).
    *
-   * @param pacienteId UUID do paciente
-   * @param filtros Filtros opcionais de intervalo temporal (dataInicio, dataFim)
+   * @param pacienteId - UUID of the patient.
+   * @param filtros - Optional time range filters (dataInicio, dataFim).
+   * @returns Consolidated patient engagement metrics.
    */
   static async buscarMetricasEngajamentoGeral(
     pacienteId: string,
@@ -187,15 +187,16 @@ export class HistoricoSessaoModel {
   }
 
   /**
-   * Recupera o histórico longitudinal detalhado de sessões concluídas de um jogo específico.
-   * Utiliza o índice parcial composto `idx_sessao_paciente_jogo_fim` e relaciona com `relatorio_sessao`.
-   * Garante expurgo de modo livre (RN01) e ignora relatórios inativados com soft_delete = true (RN05).
+   * Retrieves detailed longitudinal history of completed sessions for a specific game.
+   * Uses compound partial index `idx_sessao_paciente_jogo_fim` and joins with `relatorio_sessao`.
+   * Strictly excludes free play mode (RN01) and ignores soft-deleted reports (RN05).
    *
-   * @param pacienteId UUID do paciente
-   * @param jogoId UUID do jogo terapêutico
-   * @param limit Limite máximo de registros (paginação)
-   * @param offset Deslocamento para paginação
-   * @param filtros Filtros opcionais de intervalo temporal
+   * @param pacienteId - UUID of the patient.
+   * @param jogoId - UUID of the therapeutic game.
+   * @param limit - Maximum record limit for pagination.
+   * @param offset - Offset for pagination.
+   * @param filtros - Optional time range filters.
+   * @returns Array of individual session history items.
    */
   static async buscarHistoricoPorJogo(
     pacienteId: string,
@@ -302,10 +303,11 @@ export class HistoricoSessaoModel {
   }
 
   /**
-   * Lista o catálogo de jogos com intervenções clínicas realizadas pelo paciente.
-   * Utilizado quando jogoId é omitido para alimentar seletores dinâmicos no front-end.
+   * Lists catalog of games with clinical interventions completed by the patient.
+   * Used when jogoId is omitted to populate dynamic front-end selectors.
    *
-   * @param pacienteId UUID do paciente
+   * @param pacienteId - UUID of the patient.
+   * @returns List of played games with session counts.
    */
   static async listarJogosDoPaciente(pacienteId: string): Promise<ResumoJogoPaciente[] | null> {
     if (!pacienteId || !validarUUID(pacienteId)) {
