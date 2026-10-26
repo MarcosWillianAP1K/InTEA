@@ -26,6 +26,8 @@ Os relatórios acadêmicos e retrospectivas detalhadas de cada Sprint residem em
 | **Sprint 9** | 01/10 a 08/10/2026 | Gestão de Sessão Ativa, Telemetria Contínua e Cockpit | RF12, RF13, RF17, RF21, RN01, RNF05 | [task_sprint_9.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_9.md) | [sprint-9.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-9.md) | ✅ Concluída |
 | **Sprint 10** | 08/10 a 15/10/2026 | Tela de Resultados, Relatório Analítico da IA e Exportação | RF14, RF16, RF20, RN01, RN04, RN05, RNF02 | [task_sprint_10.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_10.md) | [sprint-10.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-10.md) | ✅ Concluída |
 | **Sprint 11** | 15/10 a 22/10/2026 | Histórico Evolutivo, Prontuário Longitudinal e Gráficos Dinâmicos | RF15, RNF04, RF19, RN01, RN02, RN04, RN05 | [task_sprint_11.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_11.md) | [sprint-11.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-11.md) | 🚀 Em Andamento |
+| **Sprint 12** | 22/10 a 29/10/2026 | Anotações Clínicas Longitudinais e Injeção de Contexto DDA Pré-Sessão | RF12, RF16, RF17, RF19, RF21, RN01, RN03, RN04, RN05 | [task_sprint_12.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_12.md) | `sprint-12.md` *(Em Breve)* | 📋 Planejada |
+| **Sprint 13** | 29/10 a 05/11/2026 | Regras Multi-terapeuta, Visibilidade Compartilhada e Concorrência | RF18, RF21, RN04, RN05, RNF06 | [task_sprint_13.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_13.md) | `sprint-13.md` *(Em Breve)* | 📋 Planejada |
 
 ---
 
@@ -55,6 +57,14 @@ Os relatórios acadêmicos e retrospectivas detalhadas de cada Sprint residem em
 * **Arquivo Detalhado:** [task_sprint_11.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_11.md)
 * **Escopo:** Prontuário longitudinal do paciente (**RF15**) estruturado em dois níveis clínicos: métricas universais de engajamento e aderência (taxa de conclusão de sessões %, tempo jogado e interrupções/desistências) e séries históricas especializadas segmentadas por jogo (**RNF04**). Renderizador polimórfico em SVG nativo, proibição de fallback (**RN02**), seletor de jogos do catálogo (**RF19**), tela mestre de histórico (**Figura 13** do PDF), endpoint com validação de vínculo (**RN04**) e supressão de modo livre (**RN01**).
 * **Documento da Sprint:** [sprint-11.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-11.md)
+
+### 3.6. Sprint 12 — Anotações Clínicas e Injeção de Contexto DDA Pré-Sessão (Execução Técnica Solo + Docs)
+* **Arquivo Detalhado:** [task_sprint_12.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_12.md)
+* **Escopo:** Enriquecimento de anotações clínicas com `JOIN` do autor (`nome_completo`, `registro_conselho`, `especialidade` — **RF21**), filtros combinados longitudinais (`terapeutaId`, `dataInicio`, `dataFim`, `busca` — **RF19**), rota de reativação lógica (`PATCH /api/anotacao/:id/reativar` — **RN05**), Timeline Longitudinal no Prontuário sem UUIDs crus, e injeção dinâmica de contexto clínico pré-sessão (**RF12**, **RF17**, **RN03** — **Contrato 2**) pré-carregando gatilhos sensoriais do prontuário do paciente e suportando padrão clínico parametrizado quando pulado (**Figura 5** do PDF).
+
+### 3.7. Sprint 13 — Regras Multi-terapeuta, Visibilidade Compartilhada e Concorrência
+* **Arquivo Detalhado:** [task_sprint_13.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_13.md)
+* **Escopo:** Governança completa de equipes multidisciplinares (**RF18**, **RN04**, **RF21**): correção da listagem compartilhada de sessões para terapeutas co-vinculados (`SessaoListarService`), proteção contra órfãos de prontuário (`409 Conflict` ao desvincular o último terapeuta ativo), bloqueio de sessões clínicas concorrentes para o mesmo paciente (`409 Conflict`), Modo Observador em tempo real no WebSocket (`role: 'observador_equipe'` somente leitura), consolidação multi-profissional por especialidade e Gestão de Equipe Multidisciplinar na UI (nomenclatura oficial da **Seção 7.7** do PDF).
 
 ---
 
