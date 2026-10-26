@@ -18,7 +18,6 @@ import type { EventoAuditoria, EstatisticasAuditoria } from "../types/admin.type
 import { TabelaAuditoria } from "../components/TabelaAuditoria";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
-import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { toast } from "sonner";
 
 /**
@@ -33,7 +32,6 @@ import { toast } from "sonner";
  */
 export function AuditoriaAdminPage() {
   const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
 
   const [eventos, setEventos] = useState<EventoAuditoria[]>([]);
   const [estatisticas, setEstatisticas] = useState<EstatisticasAuditoria>({

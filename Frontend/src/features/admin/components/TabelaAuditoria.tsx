@@ -12,18 +12,15 @@ import {
   Activity,
   CheckCircle2,
   Clock,
-  User,
   Info,
   Copy,
   Check,
-  Calendar,
   X,
 } from "lucide-react";
 import type { EventoAuditoria } from "../types/admin.types";
 import { auditoriaAdminService } from "../services/auditoriaAdmin.service";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
-import { Badge } from "@/shared/components/ui/badge";
 import {
   Table,
   TableBody,
