@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -412,13 +412,14 @@ export function PerfilPacientePage() {
             <span>Histórico de Sessões do Paciente</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs text-muted-foreground">{sessoes.length} sessões</span>
             <Button
               variant="outline"
               size="sm"
               disabled={sessoesSelecionadas.length !== 2}
               onClick={() => setModalCompararAberto(true)}
-              className="h-9 px-3.5 text-xs font-bold gap-2 rounded-xl border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50 cursor-pointer min-h-[44px]"
+              className="h-8 px-3 text-xs font-semibold gap-1.5 rounded-xl border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50 cursor-pointer min-h-9"
               data-testid="botao-comparar-sessoes"
             >
               <GitCompare className="h-4 w-4" />
@@ -426,9 +427,6 @@ export function PerfilPacientePage() {
                 Comparar Sessões {sessoesSelecionadas.length > 0 ? `(${sessoesSelecionadas.length}/2)` : ""}
               </span>
             </Button>
-            <span className="text-xs text-muted-foreground">{sessoes.length} sessões</span>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{sessoes.length} sessões</span>
             <Button
               variant="outline"
               size="sm"

@@ -1,4 +1,4 @@
-﻿import { Navigate, Outlet, Route, Routes as RouterRoutes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes as RouterRoutes } from "react-router-dom";
 import { SidebarLayout, FocusLayout } from "@/layout";
 import { LoginPage } from "@/features/autenticacao";
 import { CadastroPage } from "@/features/autenticacao/pages/CadastroPage";
