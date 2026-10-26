@@ -40,12 +40,12 @@ export class AuthController {
 
       // Rastreia a nova sessão ativa do terapeuta (RF02)
       try {
-        const xForwardedFor = req.headers['x-forwarded-for'];
+        const xForwardedFor = req.headers?.['x-forwarded-for'];
         const ip =
           typeof xForwardedFor === 'string'
             ? xForwardedFor.split(',')[0]?.trim()
-            : req.ip || req.socket.remoteAddress || null;
-        const userAgent = (req.headers['user-agent'] as string) || null;
+            : req.ip || req.socket?.remoteAddress || null;
+        const userAgent = (req.headers?.['user-agent'] as string) || null;
 
         await SessoesAtivasService.registrarSessao({
           usuarioId: resultado.user.id,

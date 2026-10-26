@@ -8,7 +8,7 @@
 
 import { useCallback } from "react";
 import { useAuthStore } from "../store/authStore";
-import type { LoginPayload, LoginResponse, UsuarioAutenticado } from "../types/auth.types";
+import type { LoginPayload, LoginResponse, UsuarioAutenticado, AuthTokens } from "../types/auth.types";
 
 export interface UseAuthReturn {
   user: UsuarioAutenticado | null;
@@ -18,6 +18,7 @@ export interface UseAuthReturn {
   login: (usernameOrEmail: string, password: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
   carregarUsuario: () => Promise<UsuarioAutenticado | null>;
+  refresh: () => Promise<AuthTokens | null>;
   limparSessao: () => void;
 }
 
@@ -36,6 +37,7 @@ export function useAuth(): UseAuthReturn {
   const storeLogout = useAuthStore((s) => s.logout);
   const storeCarregarUsuario = useAuthStore((s) => s.carregarUsuario);
   const limparSessao = useAuthStore((s) => s.limparSessao);
+  const storeRefresh = useAuthStore((s) => s.refresh);
 
   /**
    * Realiza login autenticando credenciais do terapeuta contra a API ou fallback mock.
@@ -59,6 +61,10 @@ export function useAuth(): UseAuthReturn {
     return await storeCarregarUsuario();
   }, [storeCarregarUsuario]);
 
+  const refresh = useCallback(async (): Promise<AuthTokens | null> => {
+    return await storeRefresh();
+  }, [storeRefresh]);
+
   return {
     user,
     isAuthenticated,
@@ -68,6 +74,7 @@ export function useAuth(): UseAuthReturn {
     logout,
     carregarUsuario,
     limparSessao,
+    refresh,
   };
 }
 

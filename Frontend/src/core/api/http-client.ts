@@ -85,6 +85,19 @@ export const http: HttpClient = createHttpClient({
       if (newRefreshToken) {
         localStorage.setItem("refresh_token", newRefreshToken);
       }
+
+      // Sincroniza a store em memória (caso esteja carregada no navegador)
+      try {
+        const { useAuthStore } = await import("@/features/autenticacao/store/authStore");
+        useAuthStore.getState().setTokens({
+          access_token: newAccessToken,
+          refresh_token: newRefreshToken ?? null,
+          token_type: "Bearer",
+          expires_in: payload.data?.token?.expires_in || 3600,
+        });
+      } catch {
+        // Ignora em ambientes headless ou testes sem store inicializada
+      }
     },
     onAuthFailure: () => {
       if (typeof window !== "undefined") {
@@ -93,6 +106,13 @@ export const http: HttpClient = createHttpClient({
         localStorage.removeItem("token");
         localStorage.removeItem("intea:auth-store");
         sessionStorage.removeItem("token");
+        try {
+          import("@/features/autenticacao/store/authStore").then(({ useAuthStore }) => {
+            useAuthStore.getState().limparSessao();
+          }).catch(() => {});
+        } catch {
+          // Ignora caso a store não esteja carregada
+        }
         if (window.location.pathname !== "/login") {
           window.location.href = "/login";
         }
