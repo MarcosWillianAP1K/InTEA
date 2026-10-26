@@ -61,13 +61,15 @@ export const anotacaoRoutes = Router();
  *           application/json:
  *             example:
  *               data:
- *                 id: "33333333-3333-3333-3333-333333333333"
- *                 terapeuta_id: "44444444-4444-4444-4444-444444444444"
- *                 paciente_id: "22222222-2222-2222-2222-222222222222"
- *                 sessao_id: "11111111-1111-1111-1111-111111111111"
- *                 conteudo: "Paciente demonstrou excelente autorregulação sensorial durante a atividade."
- *                 created_at: "2026-10-15T18:00:00Z"
- *                 updated_at: "2026-10-15T18:00:00Z"
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                   paciente_id: "22222222-2222-2222-2222-222222222222"
+ *                   sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                   conteudo: "Paciente demonstrou excelente autorregulação sensorial durante a atividade."
+ *                   created_at: "2026-10-15T18:00:00Z"
+ *                   updated_at: "2026-10-15T18:00:00Z"
+ *               message: "Anotação clínica registrada com sucesso."
  *       400:
  *         description: Dados obrigatórios ausentes ou inválidos
  *       401:
@@ -115,13 +117,15 @@ anotacaoRoutes.post(
  *           application/json:
  *             example:
  *               data:
- *                 id: "33333333-3333-3333-3333-333333333333"
- *                 terapeuta_id: "44444444-4444-4444-4444-444444444444"
- *                 paciente_id: "22222222-2222-2222-2222-222222222222"
- *                 sessao_id: null
- *                 conteudo: "Paciente demonstrou excelente autorregulação sensorial."
- *                 created_at: "2026-10-15T18:00:00Z"
- *                 updated_at: "2026-10-15T18:00:00Z"
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                   paciente_id: "22222222-2222-2222-2222-222222222222"
+ *                   sessao_id: null
+ *                   conteudo: "Paciente demonstrou excelente autorregulação sensorial."
+ *                   created_at: "2026-10-15T18:00:00Z"
+ *                   updated_at: "2026-10-15T18:00:00Z"
+ *               message: "Anotação clínica consultada com sucesso."
  *       400:
  *         description: ID inválido
  *       401:
@@ -177,9 +181,11 @@ anotacaoRoutes.get(
  *           application/json:
  *             example:
  *               data:
- *                 id: "33333333-3333-3333-3333-333333333333"
- *                 conteudo: "Conteúdo clínico revisado com novas observações."
- *                 updated_at: "2026-10-15T18:05:00Z"
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   conteudo: "Conteúdo clínico revisado com novas observações."
+ *                   updated_at: "2026-10-15T18:05:00Z"
+ *               message: "Anotação clínica atualizada com sucesso."
  *       400:
  *         description: Conteúdo vazio ou inválido
  *       401:
@@ -255,8 +261,17 @@ anotacaoRoutes.delete(
  *           format: uuid
  *         description: UUID da anotação clínica
  *     responses:
- *       204:
- *         description: Anotação clínica desativada com sucesso
+ *       200:
+ *         description: Anotação clínica desativada com sucesso (soft delete aplicado)
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   soft_delete: true
+ *                   updated_at: "2026-10-15T18:05:00Z"
+ *               message: "Anotação clínica desativada com sucesso (soft delete aplicado)."
  *       400:
  *         description: ID inválido
  *       401:
@@ -313,13 +328,15 @@ anotacaoRoutes.delete(
  *           application/json:
  *             example:
  *               data:
- *                 id: "33333333-3333-3333-3333-333333333333"
- *                 terapeuta_id: "44444444-4444-4444-4444-444444444444"
- *                 paciente_id: "11111111-1111-1111-1111-111111111111"
- *                 sessao_id: null
- *                 conteudo: "Paciente demonstrou excelente autorregulação emocional durante o atendimento."
- *                 created_at: "2026-10-15T18:00:00Z"
- *                 updated_at: "2026-10-15T18:00:00Z"
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                   paciente_id: "11111111-1111-1111-1111-111111111111"
+ *                   sessao_id: null
+ *                   conteudo: "Paciente demonstrou excelente autorregulação emocional durante o atendimento."
+ *                   created_at: "2026-10-15T18:00:00Z"
+ *                   updated_at: "2026-10-15T18:00:00Z"
+ *               message: "Anotação clínica registrada com sucesso."
  *       400:
  *         description: Campos obrigatórios ausentes ou inválidos
  *       401:
@@ -359,13 +376,19 @@ anotacaoRoutes.post(
  *           application/json:
  *             example:
  *               data:
- *                 - id: "33333333-3333-3333-3333-333333333333"
- *                   terapeuta_id: "44444444-4444-4444-4444-444444444444"
- *                   paciente_id: "11111111-1111-1111-1111-111111111111"
- *                   sessao_id: null
- *                   conteudo: "Paciente demonstrou excelente autorregulação emocional."
- *                   created_at: "2026-10-15T18:00:00Z"
- *                   updated_at: "2026-10-15T18:00:00Z"
+ *                 anotacoes:
+ *                   - id: "33333333-3333-3333-3333-333333333333"
+ *                     terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                     paciente_id: "11111111-1111-1111-1111-111111111111"
+ *                     sessao_id: null
+ *                     conteudo: "Paciente demonstrou excelente autorregulação emocional."
+ *                     created_at: "2026-10-15T18:00:00Z"
+ *                     updated_at: "2026-10-15T18:00:00Z"
+ *                 meta:
+ *                   total: 1
+ *                   pagina: 1
+ *                   limite: 10
+ *               message: "Anotações clínicas do paciente listadas com sucesso."
  *       401:
  *         description: Não autorizado
  *       403:
@@ -416,9 +439,11 @@ anotacaoRoutes.get(
  *           application/json:
  *             example:
  *               data:
- *                 id: "33333333-3333-3333-3333-333333333333"
- *                 conteudo: "Texto clínico atualizado."
- *                 updated_at: "2026-10-15T18:05:00Z"
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   conteudo: "Texto clínico atualizado."
+ *                   updated_at: "2026-10-15T18:05:00Z"
+ *               message: "Anotação clínica atualizada com sucesso."
  *       400:
  *         description: Conteúdo vazio ou inválido
  *       401:
@@ -454,8 +479,17 @@ anotacaoRoutes.patch(
  *           format: uuid
  *         description: UUID da anotação
  *     responses:
- *       204:
- *         description: Anotação desativada com sucesso (sem corpo de resposta)
+ *       200:
+ *         description: Anotação desativada com sucesso (soft delete aplicado)
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   soft_delete: true
+ *                   updated_at: "2026-10-15T18:05:00Z"
+ *               message: "Anotação clínica desativada com sucesso (soft delete aplicado)."
  *       401:
  *         description: Não autorizado
  *       403:
@@ -542,13 +576,15 @@ anotacaoRoutes.delete(
  *           application/json:
  *             example:
  *               data:
- *                 id: "33333333-3333-3333-3333-333333333333"
- *                 terapeuta_id: "44444444-4444-4444-4444-444444444444"
- *                 paciente_id: "22222222-2222-2222-2222-222222222222"
- *                 sessao_id: "11111111-1111-1111-1111-111111111111"
- *                 conteudo: "Excelente foco atencional nos primeiros 10 minutos de partida."
- *                 created_at: "2026-10-15T18:00:00Z"
- *                 updated_at: "2026-10-15T18:00:00Z"
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                   paciente_id: "22222222-2222-2222-2222-222222222222"
+ *                   sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                   conteudo: "Excelente foco atencional nos primeiros 10 minutos de partida."
+ *                   created_at: "2026-10-15T18:00:00Z"
+ *                   updated_at: "2026-10-15T18:00:00Z"
+ *               message: "Anotação clínica da sessão registrada com sucesso."
  *       400:
  *         description: Sessão cancelada, modo livre ou dados inválidos
  *       401:
@@ -589,13 +625,19 @@ anotacaoRoutes.post(
  *           application/json:
  *             example:
  *               data:
- *                 - id: "33333333-3333-3333-3333-333333333333"
- *                   terapeuta_id: "44444444-4444-4444-4444-444444444444"
- *                   paciente_id: "22222222-2222-2222-2222-222222222222"
- *                   sessao_id: "11111111-1111-1111-1111-111111111111"
- *                   conteudo: "Excelente foco atencional nos primeiros 10 minutos."
- *                   created_at: "2026-10-15T18:00:00Z"
- *                   updated_at: "2026-10-15T18:00:00Z"
+ *                 anotacoes:
+ *                   - id: "33333333-3333-3333-3333-333333333333"
+ *                     terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                     paciente_id: "22222222-2222-2222-2222-222222222222"
+ *                     sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                     conteudo: "Excelente foco atencional nos primeiros 10 minutos."
+ *                     created_at: "2026-10-15T18:00:00Z"
+ *                     updated_at: "2026-10-15T18:00:00Z"
+ *                 meta:
+ *                   total: 1
+ *                   pagina: 1
+ *                   limite: 10
+ *               message: "Anotações clínicas da sessão listadas com sucesso."
  *       401:
  *         description: Não autorizado
  *       403:
@@ -645,9 +687,11 @@ anotacaoRoutes.get(
  *           application/json:
  *             example:
  *               data:
- *                 id: "33333333-3333-3333-3333-333333333333"
- *                 conteudo: "Anotação de sessão atualizada."
- *                 updated_at: "2026-10-15T18:05:00Z"
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   conteudo: "Anotação de sessão atualizada."
+ *                   updated_at: "2026-10-15T18:05:00Z"
+ *               message: "Anotação clínica da sessão atualizada com sucesso."
  *       400:
  *         description: Conteúdo vazio ou inválido
  *       401:
@@ -681,8 +725,17 @@ anotacaoRoutes.patch(
  *           type: string
  *           format: uuid
  *     responses:
- *       204:
- *         description: Anotação desativada com sucesso
+ *       200:
+ *         description: Anotação desativada com sucesso (soft delete aplicado)
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   soft_delete: true
+ *                   updated_at: "2026-10-15T18:05:00Z"
+ *               message: "Anotação clínica da sessão desativada com sucesso (soft delete aplicado)."
  *       401:
  *         description: Não autorizado
  *       403:

@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes as RouterRoutes } from "react-router-dom";
+﻿import { Navigate, Outlet, Route, Routes as RouterRoutes } from "react-router-dom";
 import { SidebarLayout, FocusLayout } from "@/layout";
 import { LoginPage } from "@/features/autenticacao";
 import { CadastroPage } from "@/features/autenticacao/pages/CadastroPage";
@@ -6,6 +6,7 @@ import { PainelPage } from "@/features/painel";
 import { PacientesPage } from "@/features/paciente";
 import { TodosPacientesPage } from "@/features/paciente/pages/TodosPacientesPage";
 import { PerfilPacientePage } from "@/features/paciente/pages/PerfilPacientePage";
+import { HistoricoPacientePage } from "@/features/paciente";
 import { BibliotecaJogosPage } from "@/features/jogos";
 import { CockpitSessaoPage, ResultadoSessaoPage } from "@/features/sessao";
 import { HistoricoSessoesPage } from "@/features/sessao/pages/HistoricoSessoesPage";
@@ -15,8 +16,8 @@ import { SuperAdminGuard } from "./admin.routes";
 import { useAuthStore } from "@/features/autenticacao";
 
 /**
- * Guardião de rotas autenticadas (RF21 / RN04).
- * Caso o terapeuta não esteja autenticado na sessão ativa, redireciona para /login.
+ * Authenticated route guard (RF21 / RN04).
+ * Redirects unauthenticated users to /login.
  */
 export function ProtectedRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -45,6 +46,7 @@ export function Routes() {
           <Route path="/patients" element={<PacientesPage />} />
           <Route path="/pacientes/todos" element={<TodosPacientesPage />} />
           <Route path="/pacientes/:id" element={<PerfilPacientePage />} />
+          <Route path="/pacientes/:id/historico" element={<HistoricoPacientePage />} />
           <Route path="/jogos" element={<BibliotecaJogosPage />} />
           <Route path="/games" element={<BibliotecaJogosPage />} />
           <Route path="/historico" element={<HistoricoSessoesPage />} />

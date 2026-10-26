@@ -174,18 +174,39 @@ export interface VincularTerapeutaDTO {
 }
 
 export interface PacienteRespostaApi {
-  data: Paciente;
+  data:
+    | Paciente
+    | {
+        paciente: Paciente;
+        responsaveis?: Responsavel[];
+        dados_clinicos?: DadosClinicos;
+        responsavel?: Responsavel | null;
+      };
   message?: string;
 }
 
 export interface PacientesListaRespostaApi {
-  data: Paciente[];
+  data:
+    | Paciente[]
+    | {
+        pacientes: Paciente[];
+        meta?: {
+          total: number;
+          pagina?: number;
+          limite?: number;
+          total_paginas?: number;
+          page?: number;
+          limit?: number;
+          totalPages?: number;
+        };
+      };
   meta?: {
     total: number;
     page: number;
     limit: number;
     totalPages: number;
   };
+  message?: string;
 }
 
 // ============================================================================
@@ -295,3 +316,67 @@ export function pacienteToPatient(paciente: Paciente): Patient {
   };
 }
 
+
+/**
+ * ============================================================================
+ * DTOs DE HISTORICO LONGITUDINAL E ENGAJAMENTO (RF15, RF19)
+ * Reexportacoes canonicas e envelopes REST da API
+ * ============================================================================
+ */
+export type {
+  MetricasEngajamentoGeral,
+  PontoSerieMetrica,
+  SerieMetricaJogo,
+  MetricaManifestoJogo,
+  ResumoJogoPaciente,
+  SessaoHistoricoItem,
+  HistoricoJogoDetalhado,
+  HistoricoJogoCatalogo,
+  HistoricoPorJogo,
+  RespostaHistoricoPaciente,
+  FiltrosHistorico,
+  TipoMetricaCanonica,
+} from "./historico.types";
+
+import type { RespostaHistoricoPaciente, MetricasEngajamentoGeral, ResumoJogoPaciente } from "./historico.types";
+
+export interface HistoricoRespostaApi {
+  message?: string;
+  data: RespostaHistoricoPaciente;
+}
+
+export interface HistoricoGeralRespostaApi {
+  message?: string;
+  data: {
+    engajamento: MetricasEngajamentoGeral;
+    jogos: ResumoJogoPaciente[];
+    meta?: {
+      total_jogos: number;
+      periodo_analisado_dias: number;
+      data_inicio?: string;
+      data_fim?: string;
+    };
+  };
+}
+
+export interface HistoricoJogoRespostaApi {
+  message?: string;
+  data: {
+    jogo: {
+      id: string | number;
+      nome: string;
+      versao: string;
+      slug?: string;
+    };
+    metricas_declaradas: Array<{
+      id_metrica: string;
+      tipo_metrica: string;
+      unidade?: string;
+      valores?: string[];
+      nome?: string;
+    }>;
+    series_temporais: Array<unknown>;
+    sessoes: Array<unknown>;
+    meta?: Record<string, unknown>;
+  };
+}

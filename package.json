@@ -1,6 +1,7 @@
 {
   "name": "intea",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "description": "InTEA: Interface do Terapeuta para Orquestração do Ecossistema de Games Terapêuticos",
   "scripts": {
@@ -19,7 +20,10 @@
     "docker:down": "docker compose down",
     "docker:backend": "docker compose up --build backend",
     "docker:frontend": "docker compose up --build frontend",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+    "docs:extract": "node scripts/generate-docstrings-doc.js",
+    "docs:build": "node scripts/generate-docstrings-doc.js && mkdocs build",
+    "docs:serve": "node scripts/generate-docstrings-doc.js && mkdocs serve"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

@@ -16,7 +16,8 @@ export const telemetriaRoutes = Router();
  *     description: |
  *       Recebe um evento de telemetria emitido pelo tablet ou jogo durante a sessão.
  *       Se a sessão estiver em Modo Livre (RN01), o evento é processado apenas em memória
- *       sem persistência no prontuário clínico.
+ *       sem persistência no prontuário clínico. Métricas não homologadas no manifesto
+ *       ou com tipo incompatível são rejeitadas com 422 Unprocessable Entity (RN02).
  *     tags: [Telemetria]
  *     requestBody:
  *       required: true
@@ -65,23 +66,29 @@ export const telemetriaRoutes = Router();
  *         content:
  *           application/json:
  *             example:
- *               message: "Evento de telemetria registrado com sucesso"
  *               data:
- *                 id: "99999999-9999-9999-9999-999999999999"
- *                 sessao_id: "11111111-1111-1111-1111-111111111111"
- *                 tipo_evento: "interacao_paciente"
- *                 dados:
- *                   id_metrica: "tempo_resposta"
- *                   valor: 3.5
- *                 data_hora: "2026-09-01T15:30:22Z"
- *               persistido: true
+ *                 telemetria:
+ *                   id: "99999999-9999-9999-9999-999999999999"
+ *                   sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                   tipo_evento: "interacao_paciente"
+ *                   dados:
+ *                     id_metrica: "tempo_resposta"
+ *                     valor: 3.5
+ *                   data_hora: "2026-09-01T15:30:22Z"
+ *                 meta:
+ *                   persistido: true
+ *               message: "Evento de telemetria registrado com sucesso"
  *       200:
  *         description: Evento processado em memória (Modo Livre não persiste telemetria - RN01)
  *         content:
  *           application/json:
  *             example:
+ *               data:
+ *                 telemetria: null
+ *                 meta:
+ *                   persistido: false
+ *                   modo_sessao: "modo_livre"
  *               message: "Evento processado em memória (Modo Livre não persiste telemetria - RN01)"
- *               persistido: false
  *       400:
  *         description: Dados incompletos ou payload inválido
  *         content:
@@ -93,7 +100,7 @@ export const telemetriaRoutes = Router();
  *         content:
  *           application/json:
  *             example:
- *               error: "Sessão não encontrada"
+ *               error: "Sessão não encontrada para associação de telemetria"
  *       409:
  *         description: Conflito — a sessão não está em andamento (status finalizada, cancelada ou aguardando)
  *         content:
@@ -101,7 +108,12 @@ export const telemetriaRoutes = Router();
  *             example:
  *               error: "Não é possível registrar telemetria para uma sessão que não está em andamento."
  *               detalhes: "sessao_inativa"
- *               persistido: false
+ *       422:
+ *         description: Violação de tipagem clínica ou métrica não declarada no manifesto (RN02)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Métrica 'tempo_resposta' não declarada no manifesto do jogo (RN02 - proibido fallback)."
  *       500:
  *         description: Erro interno ao registrar evento de telemetria
  *         content:
@@ -163,25 +175,31 @@ telemetriaRoutes.post('/', TelemetriaController.registrar);
  *         content:
  *           application/json:
  *             example:
- *               message: "Lote de telemetria registrado com sucesso"
- *               total: 2
  *               data:
- *                 - id: "99999999-9999-9999-9999-999999999999"
- *                   sessao_id: "11111111-1111-1111-1111-111111111111"
- *                   tipo_evento: "interacao_paciente"
- *                   dados:
- *                     id_metrica: "tempo_resposta"
- *                     valor: 2.8
- *                   data_hora: "2026-09-01T15:30:25Z"
- *               persistido: true
+ *                 telemetria:
+ *                   - id: "99999999-9999-9999-9999-999999999999"
+ *                     sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                     tipo_evento: "interacao_paciente"
+ *                     dados:
+ *                       id_metrica: "tempo_resposta"
+ *                       valor: 2.8
+ *                     data_hora: "2026-09-01T15:30:25Z"
+ *                 meta:
+ *                   total_processados: 1
+ *                   persistido: true
+ *               message: "Lote de telemetria registrado com sucesso"
  *       200:
  *         description: Lote processado em memória (Modo Livre - RN01)
  *         content:
  *           application/json:
  *             example:
+ *               data:
+ *                 telemetria: []
+ *                 meta:
+ *                   total_processados: 2
+ *                   persistido: false
+ *                   modo_sessao: "modo_livre"
  *               message: "Lote processado em memória (Modo Livre não persiste telemetria - RN01)"
- *               total: 2
- *               persistido: false
  *       400:
  *         description: Parâmetros inválidos, elemento do lote malformado ou limite de 500 excedido
  *         content:
@@ -193,7 +211,7 @@ telemetriaRoutes.post('/', TelemetriaController.registrar);
  *         content:
  *           application/json:
  *             example:
- *               error: "Sessão não encontrada"
+ *               error: "Sessão não encontrada para associação de telemetria em lote"
  *       409:
  *         description: Conflito — a sessão não está em andamento (status finalizada, cancelada ou aguardando)
  *         content:
@@ -201,8 +219,12 @@ telemetriaRoutes.post('/', TelemetriaController.registrar);
  *             example:
  *               error: "Não é possível registrar telemetria para uma sessão que não está em andamento."
  *               detalhes: "sessao_inativa"
- *               total: 2
- *               persistido: false
+ *       422:
+ *         description: Violação de tipagem clínica ou métrica não declarada no manifesto (RN02)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Métrica 'tempo_resposta' não declarada no manifesto do jogo (RN02 - proibido fallback)."
  *       500:
  *         description: Erro interno ao registrar lote
  *         content:
@@ -257,20 +279,19 @@ telemetriaRoutes.post('/lote', TelemetriaController.registrarLote);
  *           application/json:
  *             example:
  *               data:
- *                 - id: "99999999-9999-9999-9999-999999999999"
- *                   sessao_id: "11111111-1111-1111-1111-111111111111"
- *                   tipo_evento: "interacao_paciente"
- *                   dados:
- *                     id_metrica: "tempo_resposta"
- *                     valor: 2.5
- *                   data_hora: "2026-09-01T15:30:22Z"
- *               meta:
- *                 pagina: 1
- *                 limite: 10
- *                 total_pagina: 1
- *               pagina: 1
- *               limite: 10
- *               total_pagina: 1
+ *                 telemetria:
+ *                   - id: "99999999-9999-9999-9999-999999999999"
+ *                     sessao_id: "11111111-1111-1111-1111-111111111111"
+ *                     tipo_evento: "interacao_paciente"
+ *                     dados:
+ *                       id_metrica: "tempo_resposta"
+ *                       valor: 2.5
+ *                     data_hora: "2026-09-01T15:30:22Z"
+ *                 meta:
+ *                   pagina: 1
+ *                   limite: 10
+ *                   total_pagina: 1
+ *               message: "Eventos de telemetria listados com sucesso"
  *       400:
  *         description: Parâmetro sessaoId ausente ou não é um UUID válido
  *         content:
@@ -331,16 +352,24 @@ telemetriaRoutes.get('/sessao/:sessaoId', authMiddleware, TelemetriaController.l
  *           application/json:
  *             example:
  *               data:
- *                 sessao_id: "11111111-1111-1111-1111-111111111111"
- *                 total_eventos: 42
- *                 metricas_consolidadas:
+ *                 agregacao:
+ *                   total_eventos: 42
+ *                   duracao_estimada_segundos: 600
+ *                   precisao:
+ *                     total_toques: 42
+ *                     total_acertos: 38
+ *                     total_erros: 4
+ *                     taxa_precisao_percentual: 90.48
  *                   tempo_resposta:
- *                     tipo: "numerica"
  *                     media: 2.45
  *                     mediana: 2.3
  *                     minimo: 1.2
  *                     maximo: 4.5
  *                     total_amostras: 42
+ *                 meta:
+ *                   total_eventos: 42
+ *                   duracao_estimada_segundos: 600
+ *               message: "Estatísticas agregadas de telemetria consultadas com sucesso"
  *       400:
  *         description: Parâmetro sessaoId ausente ou não é um UUID válido
  *         content:
@@ -373,4 +402,3 @@ telemetriaRoutes.get('/sessao/:sessaoId', authMiddleware, TelemetriaController.l
  *               error: "Erro interno ao agregar telemetria da sessão"
  */
 telemetriaRoutes.get('/sessao/:sessaoId/agregada', authMiddleware, TelemetriaController.obterEstatisticasSessao);
-

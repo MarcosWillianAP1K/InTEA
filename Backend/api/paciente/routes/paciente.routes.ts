@@ -4,6 +4,7 @@ import { PacienteController } from '../controllers/paciente.controller.js';
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
+import { validarIntervaloHistorico } from '../../../core/middlewares/query-range.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/paciente
@@ -108,7 +109,7 @@ export const pacienteRoutes = Router();
  *             example:
  *               error: "Erro interno ao listar pacientes."
  */
-pacienteRoutes.get('/', authMiddleware, PacienteController.listar);
+pacienteRoutes.get('/', authMiddleware, validarIntervaloHistorico, PacienteController.listar);
 
 /**
  * @swagger
@@ -187,6 +188,163 @@ pacienteRoutes.get('/', authMiddleware, PacienteController.listar);
  *               error: "Erro interno ao buscar paciente."
  */
 pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarPorId);
+
+/**
+ * @swagger
+ * /api/paciente/{id}/historico:
+ *   get:
+ *     summary: Recupera prontuário longitudinal com engajamento geral e séries por jogo (RF15, RF19, RN01, RN02, RN04, RN05)
+ *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente
+ *       - in: query
+ *         name: jogoId
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do jogo para extração detalhada de métricas. Se omitido, retorna catálogo de jogos jogados.
+ *       - in: query
+ *         name: dataInicio
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Data inicial do filtro de sessões
+ *       - in: query
+ *         name: dataFim
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Data final do filtro de sessões
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Página de paginação para as sessões do jogo
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Quantidade máxima de sessões por página
+ *     responses:
+ *       200:
+ *         description: Prontuário longitudinal e séries recuperados com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 paciente_id: "123e4567-e89b-12d3-a456-426614174000"
+ *                 engajamento_geral:
+ *                   total_sessoes: 10
+ *                   total_iniciadas: 10
+ *                   sessoes_finalizadas: 8
+ *                   sessoes_interrompidas: 2
+ *                   taxa_conclusao_porcentagem: 80
+ *                   tempo_total_segundos: 4800
+ *                   tempo_medio_segundos: 600
+ *                 historico_por_jogo:
+ *                   tipo: "detalhado"
+ *                   series_temporais: []
+ *       400:
+ *         description: Erro de validação nos filtros ou UUID inválido
+ *       401:
+ *         description: Não autorizado (token ausente ou expirado)
+ *       403:
+ *         description: Proibido por ausência de vínculo clínico institucional (RN04)
+ *       404:
+ *         description: Paciente ou jogo não encontrado
+ *       422:
+ *         description: Violação de tipagem estrita de métricas no manifesto (RN02)
+ *       500:
+ *         description: Erro interno no servidor
+ */
+/**
+ * Rota 1: Histórico Geral de Engajamento do Paciente (RF15).
+ * Retorna dados limpos e simples de engajamento e catálogo de jogos para cards de perfil.
+ */
+pacienteRoutes.get('/:id/historico', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarHistoricoGeral);
+
+/**
+ * @swagger
+ * /api/paciente/{id}/historico/jogo/{jogoId}:
+ *   get:
+ *     summary: Recupera séries evolutivas de um jogo específico para o paciente (RF15, RN02, RN04, RN05)
+ *     description: Retorna as métricas homologadas do jogo. Se informado sessaoId, limita o histórico até a data da sessão.
+ *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente
+ *       - in: path
+ *         name: jogoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do jogo terapêutico
+ *       - in: query
+ *         name: sessaoId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da sessão de referência para delimitar o histórico até sua conclusão
+ *       - in: query
+ *         name: dataInicio
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: dataFim
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Histórico evolutivo do jogo retornado com sucesso
+ *       400:
+ *         description: Parâmetros inválidos ou sessão não pertencente ao paciente/jogo
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Vínculo clínico não autorizado (RN04)
+ *       404:
+ *         description: Paciente, jogo ou sessão de referência não encontrado
+ *       422:
+ *         description: Violação de tipagem estrita de métricas no manifesto (RN02)
+ *       500:
+ *         description: Erro interno no servidor
+ */
+pacienteRoutes.get('/:id/historico/jogo/:jogoId', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarHistoricoJogo);
 
 // ------------------------------------------------------------------------------
 // 2. Persistência (Criação e Atualização de Pacientes)
@@ -325,6 +483,7 @@ pacienteRoutes.post('/', authMiddleware, PacienteController.criar);
  *               error: "Erro interno ao atualizar paciente."
  */
 pacienteRoutes.put('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.atualizar);
+pacienteRoutes.patch('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.atualizar);
 
 // ------------------------------------------------------------------------------
 // 3. Exclusão e Reativação (Soft Delete e Hard Delete)
@@ -692,3 +851,45 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
  *               error: "Erro interno ao desvincular terapeuta."
  */
 pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, verificarVisibilidadePaciente, PacienteController.desvincularTerapeuta);
+
+// ------------------------------------------------------------------------------
+// 5. Exportação de Prontuário Longitudinal (RF20)
+// ------------------------------------------------------------------------------
+
+/**
+ * @swagger
+ * /api/paciente/{id}/prontuario/exportar:
+ *   get:
+ *     summary: Exporta o prontuário longitudinal do paciente em PDF formatado (RF20)
+ *     tags: [Paciente]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente
+ *     responses:
+ *       200:
+ *         description: Prontuário longitudinal gerado com sucesso em PDF
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: ID do paciente inválido
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Acesso proibido por regra institucional (RN04)
+ *       404:
+ *         description: Paciente não encontrado ou inativo (RN05)
+ *       500:
+ *         description: Erro interno do servidor
+ */
+pacienteRoutes.get('/:id/prontuario/exportar', authMiddleware, PacienteController.exportarProntuario);
+

@@ -54,11 +54,8 @@ function SafeNavigateHandler({ to }: { to: string | null }) {
 
 /**
  * ============================================================================
- * MODAL DE PRÉ-SESSÃO E PAREAMENTO REMOTO (InTEA — Sprint 8 / 12)
- * Requisitos: RF09 (Catálogo de Jogos), RF10 (Pareamento Remoto), RF12 (Ciclo),
- *              RN01 (Sessão Clínica exige paciente vinculado)
- * Padrão: Shadcn / Radix UI fiel ao design system clínico e Figma oficial
- * TypeScript Estrito: Sem uso de `any`
+ * PRE-SESSION AND REMOTE PAIRING MODAL (InTEA)
+ * Compliance: RF09 (Game Catalog), RF10 (Remote Pairing), RF12 (Lifecycle), RN01 (Patient Required)
  * ============================================================================
  */
 
@@ -186,7 +183,7 @@ export function ModalPreSessao() {
   const nivelEstresse = config?.nivelEstresseInicial ?? 1;
   const gatilhosAtivos = config?.gatilhosEvitar ?? ["Som Alto", "Luz Intensa"];
 
-  /** Alterna inclusão/remoção de gatilho sensorial nos parâmetros da sessão ativa */
+  /** Toggles sensory trigger inclusion in active session parameters. */
   function handleToggleGatilho(gatilho: string) {
     const novos = gatilhosAtivos.includes(gatilho)
       ? gatilhosAtivos.filter((g) => g !== gatilho)
@@ -195,12 +192,12 @@ export function ModalPreSessao() {
     configurarParametros({ gatilhosEvitar: novos });
   }
 
-  /** Atualiza o nível inicial de estresse DDA (1 a 5) antes do início do jogo */
+  /** Updates baseline DDA stress level (1 to 5) before game start. */
   function handleNivelEstresseChange(novoNivel: number) {
     configurarParametros({ nivelEstresseInicial: novoNivel });
   }
 
-  /** Copia o PIN de pareamento da sessão para a área de transferência com feedback sonner */
+  /** Copies session pairing PIN to clipboard with toast notification */
   async function handleCopiarPIN() {
     if (!pinExibido) return;
 
@@ -214,7 +211,7 @@ export function ModalPreSessao() {
     }
   }
 
-  /** Simula conexão remota do tablet clínico */
+  /** Simulates remote connection of clinical tablet */
   function handleSimularConexao() {
     if (!pareamento) {
       iniciarPareamento({
@@ -232,7 +229,7 @@ export function ModalPreSessao() {
     toast.success("Dispositivo pareado com sucesso (Simulação)!");
   }
 
-  /** Dispara a intervenção clínica após handshake confirmado do dispositivo remoto (RF12) */
+  /** Initiates clinical intervention after confirmed remote device handshake (RF12) */
   function handleIniciarJogo() {
     // Garante que o paciente esteja selecionado antes de iniciar intervenção
     if (!config?.pacienteId) {
@@ -255,7 +252,7 @@ export function ModalPreSessao() {
     );
   }
 
-  /** Cancela o fluxo pré-sessão e libera recursos associados */
+  /** Cancels pre-session flow and releases allocated resources */
   function handleCancelar() {
     cancelarSessao("Sessão cancelada pelo terapeuta");
     toast.info("Configuração de sessão cancelada.");

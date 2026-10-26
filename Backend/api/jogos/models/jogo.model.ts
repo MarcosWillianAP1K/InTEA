@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { supabase } from '../../../core/supabase/supabase.client.js';
+import { ManifestoValidator } from '../validators/manifesto.validator.js';
 
 export type StatusJogo = 'ativo' | 'desativado' | 'manutencao' | 'em_breve';
 
@@ -32,6 +33,15 @@ export interface ManifestoJogo {
   versao: string;
   objetivo_clinico?: string;
   metricas_suportadas: MetricaManifesto[];
+  mecanicas?: string[];
+  modo_jogo?: string;
+  foco_pedagogico?: string;
+  cooperativo?: boolean;
+  adaptativo?: boolean;
+  competitivo?: boolean;
+  ranking?: boolean;
+  eliminatorio?: boolean;
+  punitivo?: boolean;
 }
 
 export interface Jogo {
@@ -56,6 +66,9 @@ export interface JogoResumo {
 export interface FiltrosJogo {
   objetivo?: string;
   status?: StatusJogo | 'todos' | 'all';
+  foco?: string;
+  adaptativo?: boolean;
+  cooperativo?: boolean;
   page?: number;
   limit?: number;
 }
@@ -69,7 +82,7 @@ export interface ResultadoPaginado<T> {
 }
 
 export class JogoModel {
-  // Base de dados em memória para fallback/testes/desenvolvimento local
+  // Base de dados em memória para fallback/testes/desenvolvimento local com foco em estímulos positivos e adaptativos
   private static fallbackJogos: Jogo[] = [
     {
       id: 1,
@@ -82,6 +95,10 @@ export class JogoModel {
         nome: 'Aventura das Cores',
         versao: '1.2.0',
         objetivo_clinico: 'foco_atencional',
+        foco_pedagogico: 'foco_atencional',
+        cooperativo: true,
+        adaptativo: true,
+        mecanicas: ['estimulo_positivo', 'adaptativo', 'cooperacao'],
         metricas_suportadas: [
           {
             id_metrica: 'tempo_resposta',
@@ -107,6 +124,10 @@ export class JogoModel {
         nome: 'Formas Calmas',
         versao: '2.0.0',
         objetivo_clinico: 'regulacao_emocional',
+        foco_pedagogico: 'autorregulacao',
+        cooperativo: true,
+        adaptativo: true,
+        mecanicas: ['regulacao_sensorial', 'estimulo_positivo', 'adaptativo'],
         metricas_suportadas: [
           {
             id_metrica: 'tempo_fixacao',
@@ -132,6 +153,10 @@ export class JogoModel {
         nome: 'Som dos Animais',
         versao: '1.0.0',
         objetivo_clinico: 'desenvolvimento_linguagem',
+        foco_pedagogico: 'desenvolvimento_linguagem',
+        cooperativo: true,
+        adaptativo: true,
+        mecanicas: ['discriminacao_auditiva', 'estimulo_positivo', 'adaptativo'],
         metricas_suportadas: [
           {
             id_metrica: 'precisao_auditiva',
@@ -148,9 +173,16 @@ export class JogoModel {
     }
   ];
 
+  /**
+   * Checks whether the Supabase client is configured and available in the current runtime environment.
+   * Recognizes test mocks during Vitest runs and validates environment variables in production.
+   *
+   * @returns True if Supabase is properly configured or mocked, false otherwise.
+   */
   private static isSupabaseAvailable(): boolean {
     if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
-      const isMock = typeof supabase?.from === 'function' && Boolean((supabase.from as any)._isMockFunction || (supabase.from as any).mock);
+      const fromObj = supabase?.from as unknown as { _isMockFunction?: boolean; mock?: unknown };
+      const isMock = typeof supabase?.from === 'function' && Boolean(fromObj?._isMockFunction || fromObj?.mock);
       return isMock;
     }
     const url = process.env.SUPABASE_URL;
@@ -158,10 +190,10 @@ export class JogoModel {
   }
 
   /**
-   * Lists available games with optional filtering by clinical objective and pagination (RF19).
-   * Queries Supabase if configured, otherwise falls back to local in-memory catalog.
+   * Lists available games with optional filtering by clinical objective, positive/adaptive stimuli, and pagination (RF19).
+   * Strictly enforces the Clinical Non-Competitiveness Guideline, purging any non-compliant entries.
    *
-   * @param filtros - Search, filter, and pagination options (objetivo, page, limit).
+   * @param filtros - Search, filter, and pagination options (objetivo, foco, adaptativo, page, limit).
    * @returns Paginated result containing game summary items and pagination metadata.
    */
   static async listar(filtros: FiltrosJogo = {}): Promise<ResultadoPaginado<JogoResumo>> {
@@ -189,15 +221,20 @@ export class JogoModel {
         const { data, error, count } = await query.range(from, to);
 
         if (!error && data) {
-          const total = count ?? data.length;
+          // Defesa em profundidade: assegurar catálogo 100% alinhado com estímulos adaptativos e não-competitivos
+          const jogosConformes = data.filter(j => {
+            const conf = ManifestoValidator.verificarConformidadeNaoCompetitividade(j.manifesto_json);
+            return conf.conforme;
+          });
+
+          const total = count ?? jogosConformes.length;
           return {
-            data: data.map(j => ({
+            data: jogosConformes.map(j => ({
               id: j.id,
               nome: j.nome,
               descricao: j.descricao,
               versao: j.versao,
-              status_jogo: (j.status_jogo as StatusJogo) ?? 'ativo',
-              status: (j.status_jogo as StatusJogo) ?? 'ativo'
+              status_jogo: (j.status_jogo as StatusJogo) ?? 'ativo'
             })),
             total,
             page,
@@ -205,18 +242,35 @@ export class JogoModel {
             totalPages: Math.ceil(total / limit)
           };
         }
-      } catch (err) {
+      } catch {
         console.warn('[JogoModel] Falha ao consultar Supabase, utilizando dados locais de fallback.');
       }
     }
 
-    // Fallback local com suporte a filtro e paginação em memória
-    let lista = this.fallbackJogos;
+    // Fallback local: filtro sanitizador de não-competitividade para assegurar catálogo positivo e adaptativo
+    let lista = this.fallbackJogos.filter(j => {
+      const conf = ManifestoValidator.verificarConformidadeNaoCompetitividade(j.manifesto_json);
+      return conf.conforme;
+    });
 
     if (filtros.objetivo && filtros.objetivo !== 'todos' && filtros.objetivo !== 'all') {
       lista = lista.filter(
         j => j.manifesto_json?.objetivo_clinico === filtros.objetivo
       );
+    }
+
+    if (filtros.foco && filtros.foco !== 'todos' && filtros.foco !== 'all') {
+      lista = lista.filter(
+        j => j.manifesto_json?.foco_pedagogico === filtros.foco || j.manifesto_json?.objetivo_clinico === filtros.foco
+      );
+    }
+
+    if (filtros.adaptativo !== undefined) {
+      lista = lista.filter(j => (j.manifesto_json?.adaptativo ?? true) === filtros.adaptativo);
+    }
+
+    if (filtros.cooperativo !== undefined) {
+      lista = lista.filter(j => (j.manifesto_json?.cooperativo ?? true) === filtros.cooperativo);
     }
 
     if (filtros.status && filtros.status !== 'todos' && filtros.status !== 'all') {
@@ -234,8 +288,7 @@ export class JogoModel {
         nome: j.nome,
         descricao: j.descricao,
         versao: j.versao,
-        status_jogo: j.status_jogo ?? 'ativo',
-        status: j.status_jogo ?? 'ativo'
+        status_jogo: j.status_jogo ?? 'ativo'
       })),
       total,
       page,
@@ -247,13 +300,16 @@ export class JogoModel {
   /**
    * Retrieves full details of a specific therapeutic game including its manifest JSON.
    * Supports lookup by database UUID, numeric ID, or technical slug (id_jogo).
+   * Verifies clinical non-competitiveness compliance, hiding non-compliant games.
    *
    * @param id - Game identifier (numeric ID, UUID, or technical slug).
-   * @returns The full game object if found, or undefined otherwise.
+   * @returns The full game object if found and compliant, or undefined otherwise.
    */
   static async buscarPorId(id: number | string): Promise<Jogo | undefined> {
     const idStr = String(id).trim();
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idStr);
+
+    let jogoEncontrado: Jogo | undefined;
 
     if (this.isSupabaseAvailable()) {
       try {
@@ -267,27 +323,45 @@ export class JogoModel {
 
         const { data, error } = await query.maybeSingle();
 
-        if (!error) {
-          return data ? (data as Jogo) : undefined;
+        if (!error && data) {
+          jogoEncontrado = data as Jogo;
         }
-      } catch (err) {
+      } catch {
         console.warn('[JogoModel] Falha ao consultar Supabase por ID, consultando dados locais.');
       }
     }
 
-    return this.fallbackJogos.find(
-      j => String(j.id) === idStr || j.manifesto_json?.id_jogo === idStr
-    );
+    if (!jogoEncontrado) {
+      jogoEncontrado = this.fallbackJogos.find(
+        j => String(j.id) === idStr || j.manifesto_json?.id_jogo === idStr
+      );
+    }
+
+    if (jogoEncontrado) {
+      const conf = ManifestoValidator.verificarConformidadeNaoCompetitividade(jogoEncontrado.manifesto_json);
+      if (!conf.conforme) {
+        console.warn(`[JogoModel] Jogo '${idStr}' ocultado do catálogo clínico por violar a Diretriz de Não-Competitividade:`, conf.violacoes);
+        return undefined;
+      }
+    }
+
+    return jogoEncontrado;
   }
 
   /**
    * Registers a new therapeutic game in the catalog.
    * Inserts into Supabase if available, otherwise appends to local in-memory fallback.
+   * Rejects games declaring competitive, punitive or leaderboard mechanics.
    *
    * @param input - Attributes for the new game including validated manifest JSON.
    * @returns The created game record.
    */
   static async criar(input: CriarJogoInput): Promise<Jogo> {
+    const conf = ManifestoValidator.verificarConformidadeNaoCompetitividade(input.manifesto_json);
+    if (!conf.conforme) {
+      throw new Error(`Jogo rejeitado pela Diretriz Clínica de Não-Competitividade: ${conf.violacoes.join('; ')}`);
+    }
+
     if (this.isSupabaseAvailable()) {
       try {
         const { data, error } = await supabase
@@ -309,8 +383,8 @@ export class JogoModel {
           console.error('[JogoModel] Erro ao inserir jogo no Supabase:', error);
           throw new Error(error.message);
         }
-      } catch (err: any) {
-        console.warn('[JogoModel] Falha ao persistir no Supabase, salvando em memória fallback:', err?.message);
+      } catch (err: unknown) {
+        console.warn('[JogoModel] Falha ao persistir no Supabase, salvando em memória fallback:', err instanceof Error ? err.message : String(err));
       }
     }
 
@@ -331,15 +405,23 @@ export class JogoModel {
 
   /**
    * Updates an existing therapeutic game in the catalog.
+   * Rejects updates introducing competitive, punitive or leaderboard mechanics.
    *
    * @param id - Game identifier (numeric or string ID).
    * @param input - Attributes to update.
    * @returns The updated game record or null if not found.
    */
   static async atualizar(id: number | string, input: AtualizarJogoInput): Promise<Jogo | null> {
+    if (input.manifesto_json) {
+      const conf = ManifestoValidator.verificarConformidadeNaoCompetitividade(input.manifesto_json);
+      if (!conf.conforme) {
+        throw new Error(`Atualização rejeitada pela Diretriz Clínica de Não-Competitividade: ${conf.violacoes.join('; ')}`);
+      }
+    }
+
     if (this.isSupabaseAvailable()) {
       try {
-        const payloadParaAtualizar: Record<string, any> = {
+        const payloadParaAtualizar: Record<string, unknown> = {
           updated_at: new Date().toISOString()
         };
 
@@ -359,8 +441,8 @@ export class JogoModel {
         if (!error && data) {
           return data as Jogo;
         }
-      } catch (err: any) {
-        console.warn('[JogoModel] Falha ao atualizar no Supabase, atualizando localmente:', err?.message);
+      } catch (err: unknown) {
+        console.warn('[JogoModel] Falha ao atualizar no Supabase, atualizando localmente:', err instanceof Error ? err.message : String(err));
       }
     }
 
@@ -408,8 +490,8 @@ export class JogoModel {
           return { sucesso: false, motivo: error.message };
         }
         return { sucesso: true };
-      } catch (err: any) {
-        return { sucesso: false, motivo: err?.message };
+      } catch (err: unknown) {
+        return { sucesso: false, motivo: err instanceof Error ? err.message : String(err) };
       }
     }
 

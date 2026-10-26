@@ -78,6 +78,8 @@ export interface GraficoEvolutivoTentativa {
   tempoFormatado: string;
   tempo_resposta_segundos: number;
   acerto: boolean;
+  data_hora?: string;
+  id_metrica?: string;
   intervencaoDda?: {
     tipoIntervencao: string;
     momentoFormatado: string;
@@ -130,7 +132,7 @@ export interface SessaoResultadoConsolidado {
     dispositivo_info?: Record<string, unknown> | null;
   };
 
-  // 2. Chaves na raiz para retrocompatibilidade direta com suítes de testes e front-end
+  // 2. Categorias canônicas sem propriedades primitivas soltas na raiz
   jogo: SessaoResultadoJogo | null;
   terapeuta: SessaoResultadoTerapeuta | null;
   paciente: SessaoResultadoPaciente | null;
@@ -140,21 +142,15 @@ export interface SessaoResultadoConsolidado {
   } | null;
   anotacoes: SessaoResultadoAnotacaoItem[];
 
-  // Aliases na raiz para consumo flexível da interface web
-  id?: string;
-  session_token?: string;
-  status_sessao?: string;
-  data_hora_inicio?: string;
-  data_hora_fim?: string | null;
-  duracao_segundos?: number;
-  is_modo_livre?: boolean;
-  dados_ia?: RelatorioIAContrato | null;
-
-  // 3. Novos blocos consolidados ricos (RF14 e Laudo pós-sessão)
+  // 3. Blocos consolidados ricos (RF14, Contrato 4 e Laudo pós-sessão)
   cabecalho: CabecalhoResultadoConsolidado;
-  metricas_cards: MetricasCardsResultado;
+  metricas_consolidadas: MetricasCardsResultado;
   insights_ia: RelatorioIAContrato | null;
-  grafico_evolutivo: GraficoEvolutivoResultado;
+  historico_evolutivo: GraficoEvolutivoResultado;
+
+  // Aliases para retrocompatibilidade opcional durante testes/transição
+  metricas_cards?: MetricasCardsResultado;
+  grafico_evolutivo?: GraficoEvolutivoResultado;
 }
 
 export interface RespostaResultadoService {
@@ -168,6 +164,12 @@ export interface RespostaResultadoService {
 // FUNÇÕES AUXILIARES DE FORMATAÇÃO E ESTATÍSTICA (Puras e Determinísticas)
 // ==============================================================================
 
+/**
+ * Calculates a patient's age in completed years based on an ISO birth date string.
+ *
+ * @param dataNascimento - Patient birth date in ISO 8601 format.
+ * @returns Age in full completed years, or 0 if date is null or invalid.
+ */
 export function calcularIdadeAnos(dataNascimento?: string | null): number {
   if (!dataNascimento) return 0;
   const nascimento = new Date(dataNascimento);
@@ -181,6 +183,12 @@ export function calcularIdadeAnos(dataNascimento?: string | null): number {
   return Math.max(0, idade);
 }
 
+/**
+ * Formats a duration in seconds into a human-readable minutes and seconds string.
+ *
+ * @param segundos - Elapsed duration in seconds.
+ * @returns Formatted duration string (e.g., '15 min 30s' or '45s').
+ */
 export function formatarDuracao(segundos: number): string {
   if (!segundos || segundos <= 0) return '0 min';
   const minutos = Math.floor(segundos / 60);
@@ -190,12 +198,25 @@ export function formatarDuracao(segundos: number): string {
   return `${minutos} min ${segRestantes}s`;
 }
 
+/**
+ * Formats a duration in seconds into standard MM:SS clinical stopwatch representation.
+ *
+ * @param segundos - Elapsed duration in seconds.
+ * @returns Formatted MM:SS time string.
+ */
 function formatarMinutosSegundos(segundos: number): string {
   const m = Math.floor(segundos / 60);
   const s = segundos % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+/**
+ * Compiles consolidated telemetry metrics and AI report data into summary card items.
+ *
+ * @param telemetria - Consolidated session telemetry object.
+ * @param relatorio - Clinical session report record containing AI analysis payload.
+ * @returns Structured performance metrics ready for top-level UI cards.
+ */
 function compilarMetricasCards(
   telemetria: TelemetriaConsolidada,
   relatorio: { dados_ia_json: RelatorioIAContrato } | null
@@ -237,6 +258,14 @@ function compilarMetricasCards(
   };
 }
 
+/**
+ * Extracts and maps raw telemetry trial events into chronological points for the evolutionary chart.
+ *
+ * @param eventos - Array of telemetry events recorded during the game session.
+ * @param sessaoInicio - ISO timestamp marking the beginning of the session.
+ * @param tempoMedioRef - Baseline average reaction time in milliseconds for reference.
+ * @returns Array of chart attempts containing reaction time, correctness, and timestamps.
+ */
 function extrairTentativasGrafico(
   eventos: TelemetriaEvento[],
   sessaoInicio: string,
@@ -257,8 +286,10 @@ function extrairTentativasGrafico(
     const idMetrica = evt.dados?.id_metrica || '';
     if (tipo === 'modulacao_dda' || idMetrica === 'dda' || tipo === 'intervencao_dda') {
       const seg = Math.max(0, Math.round((new Date(evt.data_hora).getTime() - inicioMs) / 1000));
+      const dadosRaw = evt.dados as Record<string, unknown> | undefined;
+      const acao = dadosRaw?.acao ? String(dadosRaw.acao).replace(/_/g, ' ') : undefined;
       ddaMap.set(seg, {
-        tipoIntervencao: String(evt.dados?.valor || 'Ajuste de Dificuldade (DDA)'),
+        tipoIntervencao: String(evt.dados?.valor || acao || 'Ajuste de Dificuldade (DDA)'),
         momentoFormatado: formatarMinutosSegundos(seg),
       });
     }
@@ -297,6 +328,8 @@ function extrairTentativasGrafico(
         tempoFormatado: formatarMinutosSegundos(segundo),
         tempo_resposta_segundos: tempoResposta > 0 ? tempoResposta : tempoMedioRef,
         acerto: isAcerto || !isErro,
+        data_hora: evt.data_hora,
+        id_metrica: idMetrica || 'tempo_resposta',
         intervencaoDda: ddaProxima,
       });
     }
@@ -468,18 +501,10 @@ export class SessaoResultadoService {
               duracao_formatada: duracaoFormatada,
               dispositivo_info: (sessao.dispositivo_info as Record<string, unknown>) || null,
             },
-            id: sessao.id,
-            session_token: sessao.session_token,
-            status_sessao: sessao.status_sessao,
-            duracao_segundos: duracaoSegundos,
-            data_hora_inicio: sessao.data_hora_inicio,
-            data_hora_fim: sessao.data_hora_fim,
-            is_modo_livre: true,
             jogo: jogoLivre ? { ...jogoLivre, titulo: jogoLivre.nome } : null,
             terapeuta: terapeutaLivre,
             paciente: null, // Conforme RN01
             relatorio: null, // Conforme RN01
-            dados_ia: null, // Conforme RN01
             anotacoes: [], // Conforme RN01
             cabecalho: {
               paciente: null, // Conforme RN01
@@ -498,8 +523,14 @@ export class SessaoResultadoService {
                 descricao: jogoLivre.descricao || null,
               } : null,
             },
+            metricas_consolidadas: metricasLivre,
             metricas_cards: metricasLivre,
             insights_ia: null, // Conforme RN01
+            historico_evolutivo: {
+              tipo: 'intra_sessao',
+              tempo_medio_referencia: telemetriaLivre.tempo_resposta.media,
+              tentativas: tentativasLivre,
+            },
             grafico_evolutivo: {
               tipo: 'intra_sessao',
               tempo_medio_referencia: telemetriaLivre.tempo_resposta.media,
@@ -578,8 +609,8 @@ export class SessaoResultadoService {
       const gatilhosDda: string[] = Array.isArray(sessao.contexto_dda_json?.gatilhos_a_evitar)
         ? (sessao.contexto_dda_json.gatilhos_a_evitar as string[])
         : Array.isArray(dadosClinicosRes?.gatilhos_sensoriais)
-        ? (dadosClinicosRes.gatilhos_sensoriais as string[])
-        : [];
+          ? (dadosClinicosRes.gatilhos_sensoriais as string[])
+          : [];
       const nivelEstresse = Number(
         sessao.contexto_dda_json?.nivel_estresse_inicial ?? sessao.contexto_dda_json?.estresse_inicial ?? 1
       );
@@ -589,12 +620,12 @@ export class SessaoResultadoService {
 
       const pacienteEnriquecido: SessaoResultadoPaciente | null = pacienteRaw
         ? {
-            ...pacienteRaw,
-            idade_anos: idadeAnos,
-            diagnostico: diagnosticoBase,
-            gatilhos_evitar: gatilhosDda,
-            nivel_estresse_inicial: nivelEstresse,
-          }
+          ...pacienteRaw,
+          idade_anos: idadeAnos,
+          diagnostico: diagnosticoBase,
+          gatilhos_evitar: gatilhosDda,
+          nivel_estresse_inicial: nivelEstresse,
+        }
         : null;
 
       const jogoData = jogoRes.data as SessaoResultadoJogo | null;
@@ -623,55 +654,53 @@ export class SessaoResultadoService {
             duracao_formatada: duracaoFormatada,
             dispositivo_info: (sessao.dispositivo_info as Record<string, unknown>) || null,
           },
-          id: sessao.id,
-          session_token: sessao.session_token,
-          status_sessao: sessao.status_sessao,
-          duracao_segundos: duracaoSegundos,
-          data_hora_inicio: sessao.data_hora_inicio,
-          data_hora_fim: sessao.data_hora_fim,
-          is_modo_livre: false,
           jogo: jogoData ? { ...jogoData, titulo: jogoData.nome } : null,
           terapeuta: terapeutaData,
           paciente: pacienteEnriquecido,
           relatorio: relatorioConsolidado,
-          dados_ia: relatorioConsolidado?.dados_ia_json || null,
           anotacoes: anotacoesMapeadas,
           cabecalho: {
             paciente: pacienteEnriquecido
               ? {
-                  id: pacienteEnriquecido.id,
-                  nome: pacienteEnriquecido.nome,
-                  data_nascimento: pacienteEnriquecido.data_nascimento || null,
-                  idade_anos: idadeAnos,
-                  diagnostico: diagnosticoBase,
-                  gatilhos_evitar: gatilhosDda,
-                  nivel_estresse_inicial: nivelEstresse,
-                }
+                id: pacienteEnriquecido.id,
+                nome: pacienteEnriquecido.nome,
+                data_nascimento: pacienteEnriquecido.data_nascimento || null,
+                idade_anos: idadeAnos,
+                diagnostico: diagnosticoBase,
+                gatilhos_evitar: gatilhosDda,
+                nivel_estresse_inicial: nivelEstresse,
+              }
               : null,
             terapeuta: terapeutaData
               ? {
-                  id: terapeutaData.id,
-                  nome: terapeutaData.nome,
-                  registro_profissional:
-                    terapeutaData.registro_profissional ||
-                    terapeutaData.crefito ||
-                    'CREFITO/CRP não informado',
-                  crefito: terapeutaData.crefito || null,
-                  especialidade: terapeutaData.especialidade || null,
-                }
+                id: terapeutaData.id,
+                nome: terapeutaData.nome,
+                registro_profissional:
+                  terapeutaData.registro_profissional ||
+                  terapeutaData.crefito ||
+                  'CREFITO/CRP não informado',
+                crefito: terapeutaData.crefito || null,
+                especialidade: terapeutaData.especialidade || null,
+              }
               : null,
             jogo: jogoData
               ? {
-                  id: jogoData.id,
-                  nome: jogoData.nome,
-                  titulo: jogoData.nome,
-                  versao: jogoData.versao,
-                  descricao: jogoData.descricao || null,
-                }
+                id: jogoData.id,
+                nome: jogoData.nome,
+                titulo: jogoData.nome,
+                versao: jogoData.versao,
+                descricao: jogoData.descricao || null,
+              }
               : null,
           },
+          metricas_consolidadas: metricasCards,
           metricas_cards: metricasCards,
           insights_ia: relatorioConsolidado?.dados_ia_json || null,
+          historico_evolutivo: {
+            tipo: 'intra_sessao',
+            tempo_medio_referencia: telemetriaConsolidada.tempo_resposta.media,
+            tentativas,
+          },
           grafico_evolutivo: {
             tipo: 'intra_sessao',
             tempo_medio_referencia: telemetriaConsolidada.tempo_resposta.media,

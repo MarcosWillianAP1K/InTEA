@@ -22,9 +22,9 @@ import {
 
 /**
  * ============================================================================
- * PÁGINA: CockpitSessaoPage (Front-end 1 — Hermeson Alves / Card 3.1)
- * Rota: /sessao/:id/monitoramento
- * Requisitos: RF12 (Gestão de Sessão), RF13 (Ciclo), RF17 (Contexto DDA), RF21
+ * PAGE: CockpitSessaoPage (Clinical Session Monitoring)
+ * Route: /sessao/:id/monitoramento
+ * Compliance: RF12 (Session Management), RF13 (Lifecycle), RF17 (DDA Context), RF21
  * ============================================================================
  */
 export function CockpitSessaoPage() {
@@ -66,7 +66,7 @@ export function CockpitSessaoPage() {
   // Handlers de intervenção clínica imediata
 
 
-  /** Envia comando de pausa ao store e ao jogo remoto via WebSocket (RF21 — Intervenção Manual) */
+  /** Dispatches pause command to store and remote game via WebSocket (RF21 — Manual Intervention). */
   const handlePausar = () => {
     pausarSessao();
     SessionSocketManager.getInstance().enviarComando({
@@ -86,7 +86,7 @@ export function CockpitSessaoPage() {
     toast.success("Intervenção retomada no dispositivo.");
   };
 
-  /** Ajusta o nível DDA no store e propaga o comando ao dispositivo remoto (RF17, RN03) */
+  /** Adjusts DDA level in store and broadcasts command to remote device (RF17, RN03). */
   const handleAjustarDda = (nivel: number) => {
     ajustarDda(nivel);
     SessionSocketManager.getInstance().enviarComando({
@@ -98,10 +98,7 @@ export function CockpitSessaoPage() {
   };
 
   /**
-   * Confirma o encerramento formal da sessão:
-   * 1. Transiciona o store para 'finalizada'
-   * 2. Notifica o tablet via WebSocket (sessao_finalizada)
-   * 3. Persiste no backend via REST (máquina de estados, IA e auditoria — RF13, RF17, RNF06)
+   * Confirms formal session conclusion, persisting state machine, AI, and audit trail in backend via REST.
    */
   const handleConfirmarFinalizacao = async (anotacoes: string) => {
     setIsSubmittingFinalizar(true);

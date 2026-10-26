@@ -22,6 +22,7 @@ import {
 export interface GraficoEvolutivoResultadoProps {
   tentativas?: TentativaRespostaPonto[];
   tempoMedioReferencia?: number; // em segundos (ex: 2.5)
+  nomeMetrica?: string;
   titulo?: string;
   subtitulo?: string;
   isLoading?: boolean;
@@ -29,9 +30,48 @@ export interface GraficoEvolutivoResultadoProps {
   className?: string;
 }
 
+const MAPA_NOMES_METRICAS: Record<string, string> = {
+  tempo_resposta: "Tempo de Resposta",
+  tempo_reacao: "Tempo de Reação",
+  precisao: "Precisão de Acertos",
+  taxa_acerto: "Taxa de Acerto",
+  estabilidade_emocional: "Estabilidade Emocional",
+  estabilidade_foco: "Estabilidade de Foco",
+  nivel_frustracao: "Nível de Frustração",
+  latencia_foco_ms: "Latência de Foco",
+};
+
+function obterNomeLegivel(idOuNome?: string): string {
+  if (!idOuNome) return "Tempo de Resposta";
+  const chave = idOuNome.trim().toLowerCase();
+  if (MAPA_NOMES_METRICAS[chave]) {
+    return MAPA_NOMES_METRICAS[chave];
+  }
+  if (!idOuNome.includes("_")) return idOuNome;
+  return idOuNome
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+function formatarDataTentativa(iso?: string, fallbackRotulo?: string): string {
+  if (iso) {
+    const d = new Date(iso);
+    if (!Number.isNaN(d.getTime())) {
+      const dataStr = d.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      return fallbackRotulo ? `${dataStr} (${fallbackRotulo})` : dataStr;
+    }
+  }
+  return fallbackRotulo || "";
+}
+
 export function GraficoEvolutivoResultado({
   tentativas = [],
   tempoMedioReferencia,
+  nomeMetrica,
   titulo = "Evolução do Tempo de Resposta e Modulações DDA",
   subtitulo = "Curva contínua de reação do paciente por tentativa com marcadores de intervenção dinâmica",
   isLoading = false,
@@ -92,13 +132,17 @@ export function GraficoEvolutivoResultado({
     );
   }
 
+  const nomeMetricaExibicao = obterNomeLegivel(
+    nomeMetrica || tentativas[0]?.id_metrica || "tempo_resposta"
+  );
+
   // Dimensões do SVG
   const svgWidth = 760;
-  const svgHeight = 250;
-  const padLeft = 50;
-  const padRight = 30;
-  const padTop = 25;
-  const padBottom = 40;
+  const svgHeight = 255;
+  const padLeft = 55;
+  const padRight = 35;
+  const padTop = 30;
+  const padBottom = 42;
 
   const chartWidth = svgWidth - padLeft - padRight;
   const chartHeight = svgHeight - padTop - padBottom;
@@ -118,22 +162,34 @@ export function GraficoEvolutivoResultado({
 
   const tempoReferenciaFinal = tempoMedioReferencia ?? mediaTempoReal;
 
-  // Função de mapeamento de coordenadas
-  const stepX = chartWidth / Math.max(1, tentativas.length - 1);
+  // Função de mapeamento de coordenadas (centraliza quando há apenas 1 ponto)
+  const stepX = tentativas.length > 1 ? chartWidth / (tentativas.length - 1) : chartWidth;
   const getCoords = (tentativaIdx: number, tempoResposta: number) => {
-    const x = padLeft + tentativaIdx * stepX;
-    const y = padTop + chartHeight - ((tempoResposta - minTempo) / (maxTempo - minTempo)) * chartHeight;
+    const x =
+      tentativas.length === 1
+        ? padLeft + chartWidth / 2
+        : padLeft + tentativaIdx * stepX;
+    const y =
+      padTop +
+      chartHeight -
+      ((tempoResposta - minTempo) / (maxTempo - minTempo || 1)) * chartHeight;
     return { x, y };
   };
 
-  // Construção do caminho SVG da curva
+  // Construção do caminho SVG da curva (somente quando há mais de 1 ponto)
   const pontosCoords = tentativas.map((t, idx) => getCoords(idx, t.tempoRespostaSegundos));
-  const pathD = pontosCoords
-    .map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
-    .join(" ");
+  const pathD =
+    pontosCoords.length > 1
+      ? pontosCoords
+          .map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+          .join(" ")
+      : "";
 
   // Área preenchida sob a curva
-  const areaD = `${pathD} L ${pontosCoords[pontosCoords.length - 1].x.toFixed(1)} ${padTop + chartHeight} L ${pontosCoords[0].x.toFixed(1)} ${padTop + chartHeight} Z`;
+  const areaD =
+    pontosCoords.length > 1
+      ? `${pathD} L ${pontosCoords[pontosCoords.length - 1].x.toFixed(1)} ${padTop + chartHeight} L ${pontosCoords[0].x.toFixed(1)} ${padTop + chartHeight} Z`
+      : "";
 
   // Linha horizontal de média de referência
   const yReferencia = getCoords(0, tempoReferenciaFinal).y;
@@ -163,6 +219,13 @@ export function GraficoEvolutivoResultado({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              variant="outline"
+              className="text-2xs font-semibold bg-primary/10 text-primary border-primary/20"
+            >
+              {nomeMetricaExibicao}
+            </Badge>
+
             <Badge
               variant="outline"
               className="text-2xs font-medium bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 flex items-center gap-1"
@@ -203,8 +266,8 @@ export function GraficoEvolutivoResultado({
             <defs>
               {/* Gradiente sob a curva */}
               <linearGradient id="gradiente-tempo-resposta" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.28" />
-                <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="var(--color-primary, #2563eb)" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="var(--color-primary, #2563eb)" stopOpacity="0.0" />
               </linearGradient>
 
               {/* Padrão de halo para intervenções de DDA */}
@@ -258,19 +321,21 @@ export function GraficoEvolutivoResultado({
               Média ({tempoReferenciaFinal.toFixed(2)}s)
             </text>
 
-            {/* Área Gradiente sob a Curva */}
-            <path d={areaD} fill="url(#gradiente-tempo-resposta)" />
-
-            {/* Linha Principal da Curva */}
-            <path
-              d={pathD}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-primary"
-            />
+            {/* Área Gradiente e Linha Principal apenas se houver mais de 1 ponto */}
+            {pontosCoords.length > 1 && (
+              <>
+                <path d={areaD} fill="url(#gradiente-tempo-resposta)" />
+                <path
+                  d={pathD}
+                  fill="none"
+                  stroke="var(--color-primary, #2563eb)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-primary"
+                />
+              </>
+            )}
 
             {/* Marcadores de Intervenção DDA (Linhas Verticais e Halos) */}
             {!isModoLivre &&
@@ -311,6 +376,7 @@ export function GraficoEvolutivoResultado({
               const { x, y } = pontosCoords[idx];
               const isDda = !isModoLivre && Boolean(t.intervencaoDda);
               const isHovered = pontoAtivo?.tentativa === t.tentativa;
+              const rotuloEixoX = formatarDataTentativa(t.data_hora, t.tempoFormatado);
 
               return (
                 <g
@@ -321,16 +387,26 @@ export function GraficoEvolutivoResultado({
                   onMouseLeave={() => setPontoAtivo(null)}
                   onClick={() => setPontoAtivo(pontoAtivo?.tentativa === t.tentativa ? null : t)}
                 >
+                  {/* Valor exibido acima do ponto */}
+                  <text
+                    x={x}
+                    y={y - 10}
+                    textAnchor="middle"
+                    className="fill-foreground text-[9px] font-bold font-mono select-none"
+                  >
+                    {`${t.tempoRespostaSegundos.toFixed(1)}s`}
+                  </text>
+
                   <circle
                     cx={x}
                     cy={y}
-                    r={isHovered ? 6 : isDda ? 4.5 : 3.5}
+                    r={isHovered ? 6 : tentativas.length === 1 ? 5.5 : isDda ? 4.5 : 3.5}
                     fill={t.acerto ? "#10b981" : "#f43f5e"}
                     stroke="#ffffff"
                     strokeWidth={isHovered ? 2.5 : 1.5}
                     className="transition-all duration-150"
                   />
-                  {/* Rótulo de tempo no Eixo X */}
+                  {/* Rótulo de data/tempo no Eixo X */}
                   {(idx === 0 ||
                     idx === tentativas.length - 1 ||
                     idx % Math.ceil(tentativas.length / 6) === 0) && (
@@ -340,7 +416,7 @@ export function GraficoEvolutivoResultado({
                       textAnchor="middle"
                       className="fill-muted-foreground text-[10px] font-mono select-none"
                     >
-                      {t.tempoFormatado}
+                      {rotuloEixoX}
                     </text>
                   )}
                 </g>
@@ -371,10 +447,10 @@ export function GraficoEvolutivoResultado({
               </div>
               <div>
                 <span className="font-semibold text-foreground">
-                  Tentativa #{pontoAtivo.tentativa} ({pontoAtivo.tempoFormatado})
+                  Tentativa #{pontoAtivo.tentativa} ({formatarDataTentativa(pontoAtivo.data_hora, pontoAtivo.tempoFormatado)})
                 </span>
                 <span className="text-muted-foreground ml-2">
-                  Tempo de Reação:{" "}
+                  {nomeMetricaExibicao}:{" "}
                   <strong className="text-foreground font-mono">
                     {pontoAtivo.tempoRespostaSegundos.toFixed(2)}s
                   </strong>

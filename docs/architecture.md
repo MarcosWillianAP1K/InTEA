@@ -10,6 +10,10 @@
 1. [Visão Geral da Arquitetura](#1-visão-geral-da-arquitetura)
 2. [Banco de Dados (Database)](#2-banco-de-dados-database)
 3. [Back-end (Backend)](#3-back-end-backend)
+   - [3.1 Stack Tecnológica](#31-stack-tecnológica)
+   - [3.2 Estrutura de Diretórios](#32-estrutura-de-diretórios)
+   - [3.3 Padrão de Arquitetura: Clean MVC + Gateway WebSocket](#33-padrão-de-arquitetura-clean-mvc--gateway-websocket)
+   - [3.4 Padronização de Payloads REST: Sanitização, Categorização Semântica e Responsabilidade Única (Envelope Pattern)](#34-padronização-de-payloads-rest-sanitização-categorização-semântica-e-responsabilidade-única-envelope-pattern)
 4. [Front-end (Frontend) — Arquitetura Completa](#4-front-end-frontend--arquitetura-completa)
    - [4.1 Stack Tecnológica](#41-stack-tecnológica)
    - [4.2 Estrutura de Diretórios (Arquitetura Orientada a Features — `src/features/`)](#42-estrutura-de-diretórios-arquitetura-orientada-a-features--srcfeatures)
@@ -188,6 +192,117 @@ flowchart TD
 | **Service (`services/`)** | Executa regras de domínio (**RN01 a RN05**), validações cruzadas de clínica (**RN04**), agregações estatísticas e síntese analítica. | Não manipula objetos HTTP (`req`/`res`). |
 | **Model (`models/`)** | Executa consultas ao Supabase, garante `status_ativo = true` nas listagens e aplica Soft Delete (**RN05**). | Não conhece regras de transporte HTTP. |
 | **WebSocket Gateway (`core/websocket/`)** | Gerencia salas por `session_token`, retransmite telemetria em baixa latência, encaminha comandos clínicos (`pausar`, `retomar`, `ajustar_dda`, `encerrar`) e controla reconexão (60s). | Não bloqueia o event loop com relatórios síncronos a cada pacote. |
+
+### 3.4 Padronização de Payloads REST: Sanitização, Categorização Semântica e Responsabilidade Única (Envelope Pattern)
+
+A API REST do InTEA adota o **Envelope Pattern com Agrupamento Semântico e Sanitização Estrita**. Toda resposta HTTP da API segue regras invioláveis de higiene, encapsulamento e responsabilidade única:
+
+#### 1. Princípio da Responsabilidade Única e Sanitização Estrita ("Nada mais, nada menos")
+* **Retorno Estrito ao Escopo da Rota:** Uma rota DEVE retornar **somente e exclusivamente o que o seu contrato indica — nada mais, nada menos**. É terminantemente proibido devolver campos ou entidades periféricas que não foram explicitamente solicitadas.
+  - Exemplo 1 (`POST /api/auth/login`): Sua responsabilidade é estritamente autenticar credenciais e emitir tokens criptográficos. O retorno contém **apenas os tokens** (`data.token.access_token`, etc.), sendo **terminantemente proibido anexar dados de perfil do usuário** (dados de perfil pertencem com exclusividade a `GET /api/auth/me`).
+  - Exemplo 2 (`POST /api/anotacao`): Retorna unicamente a anotação registrada e seus metadados, nunca prontuários completos de pacientes ou listas de terceiros.
+* **Sanitização Ativa e Expurgo de Dados:**
+  - **Zero Vazamento de Infraestrutura ou Segurança:** É expressamente proibido vazar chaves de API (`SUPABASE_SERVICE_ROLE_KEY`), hashes de senha de terapeutas, tokens internos de banco ou colunas de auditoria restritas.
+  - **Zero Dados Desnecessários ou Redundantes:** Devolver apenas os campos úteis para a tela. Proibido retornar colunas nulas obsoletas, dados técnicos de log ou chaves duplicadas.
+* **Proibição de Chaves Redundantes ou Espalhadas na Raiz:** É terminantemente proibido jogar atributos primitivos soltos no primeiro nível de `data` (ex.: colocar `access_token`, `nome`, `telefone` soltos ao lado de outros objetos). Todas as propriedades devem pertencer à chave de sua respectiva categoria/entidade.
+
+#### 2. Organização dos Dados por Categoria / Nome (Envelope Pattern)
+O payload de resposta NUNCA deve ser plano (*flat*). Os dados retornados dentro de `data` devem ser estruturados e agrupados por categoria/nome de entidade:
+
+```json
+{
+  "data": {
+    "<entidade_principal>": { ... },
+    "<entidade_secundaria>": [ ... ],
+    "meta": { ... }
+  },
+  "message": "Mensagem informativa amigável."
+}
+```
+
+#### 3. Exemplos Canônicos de Referência
+
+* **Prontuário / Detalhes do Paciente (`GET /api/paciente/:id`):**
+  ```json
+  {
+    "data": {
+      "paciente": {
+        "id": "a9849163-613f-4492-90cf-89985902d16e",
+        "nome": "Enzo Gabriel da Silva",
+        "data_nascimento": "2018-05-14",
+        "clinica_id": "f28b49b7-7f91-4e78-8384-25010629ec0b",
+        "status_ativo": true
+      },
+      "responsaveis": [
+        {
+          "id": "0e16bed1-a27a-41d3-bf0d-4e43ac5139ff",
+          "nome": "Mariana da Silva",
+          "parentesco": "Mãe",
+          "telefone": "+55 (11) 98765-4321",
+          "is_principal": true
+        }
+      ],
+      "dados_clinicos": {
+        "perfil_sensorial": "Hipersensibilidade auditiva e busca proprioceptiva",
+        "reforcadores": "Músicas calmas, estímulos táteis suaves",
+        "gatilhos": ["sons_altos", "luzes_estroboscopicas"]
+      },
+      "meta": {
+        "total_responsaveis": 1,
+        "ultima_atualizacao": "2026-10-21T14:30:00Z"
+      }
+    },
+    "message": "Paciente recuperado com sucesso."
+  }
+  ```
+
+* **Autenticação (`POST /api/auth/login`):**
+  ```json
+  {
+    "data": {
+      "token": {
+        "access_token": "eyJhbGciOi...",
+        "refresh_token": "mx4zrs...",
+        "token_type": "Bearer",
+        "expires_in": 3600
+      }
+    },
+    "message": "Login realizado com sucesso."
+  }
+  ```
+
+* **Histórico Longitudinal e Séries de Engajamento (`GET /api/paciente/:id/historico`):**
+  ```json
+  {
+    "data": {
+      "engajamento_geral": {
+        "total_sessoes": 12,
+        "tempo_total_segundos": 14400,
+        "score_medio_engajamento": 84.5
+      },
+      "jogos_disponiveis": [
+        { "id": "uuid-jogo-1", "titulo": "Aventura Espacial" }
+      ],
+      "serie_jogo": {
+        "jogo_id": "uuid-jogo-1",
+        "metricas": [ ... ]
+      },
+      "meta": {
+        "filtro_data_inicio": "2026-09-01",
+        "filtro_data_fim": "2026-10-21",
+        "pagina": 1,
+        "limite": 10
+      }
+    },
+    "message": "Histórico do paciente carregado com sucesso."
+  }
+  ```
+
+#### 4. Anti-padrões Vetados no Quality Gate
+1. **Payload Flat com Mistura de Domínios:** Colocar propriedades de entidades distintas misturadas diretamente na raiz de `data` (ex.: `{ data: { id, nome, email, token, parentesco } }`).
+2. **Duplicação de Campos (Redundância Desnecessária):** Retornar o mesmo token ou campo solto na raiz e aninhado em um objeto (`data.access_token` e `data.token.access_token`).
+3. **Over-fetching por Preguiça de Endpoint:** Fazer uma rota de comando ou mutação simples devolver árvores inteiras de entidades alheias ao propósito da rota.
+4. **Vazamento de Identidade ou Perfil em Rotas de Credenciais:** Retornar dados de perfil em rotas cujo único propósito é emitir tokens criptográficos.
 
 ---
 
@@ -486,6 +601,7 @@ flowchart TD
 | **Tabelas e Colunas SQL / Payloads REST** | **`snake_case`** | `terapeuta_paciente`, `data_nascimento`, `session_id` | `TerapeutaPaciente`, `dataNascimento` |
 | **Endpoints REST (Recursos Base)** | **Singular** | `/api/paciente`, `/api/terapeuta`, `/api/sessao`, `/api/jogos` | `/api/pacientes`, `/api/sessoes` |
 | **Sub-rotas de Ação REST** | **Ação semântica no final** | `PATCH /api/sessao/:id/finalizar`, `PATCH /api/paciente/:id/reativar` | `/api/sessao/finalizar/:id` |
+| **Payload de Retorno REST (Envelope)** | **Categorizado por Entidade** | `{ data: { paciente, responsaveis, meta }, message }` | Chaves soltas ou redundantes na raiz de `data` |
 
 ---
 

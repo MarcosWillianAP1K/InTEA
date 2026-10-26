@@ -14,7 +14,7 @@ export const jogosRoutes = Router();
  * /api/jogos:
  *   get:
  *     summary: Lista o catálogo de jogos com suporte a filtros e paginação
- *     description: Retorna a biblioteca de jogos terapêuticos com suporte a filtro por objetivo clínico, status operacional e paginação de resultados. Rota aberta ao público / cockpit.
+ *     description: Retorna a biblioteca de jogos terapêuticos com suporte a filtro por objetivo clínico, status operacional e paginação de resultados.
  *     tags: [Jogos]
  *     parameters:
  *       - in: query
@@ -42,22 +42,23 @@ export const jogosRoutes = Router();
  *         description: Quantidade máxima de registros por página
  *     responses:
  *       200:
- *         description: Catálogo de jogos retornado com sucesso
+ *         description: Catálogo de jogos retornado com sucesso no Envelope Pattern
  *         content:
  *           application/json:
  *             example:
  *               data:
- *                 - id: "1"
- *                   nome: "Aventura das Cores"
- *                   descricao: "Estimula atenção compartilhada e reconhecimento facial."
- *                   versao: "1.2.0"
- *                   status: "ativo"
- *                   status_jogo: "ativo"
- *               meta:
- *                 total: 3
- *                 page: 1
- *                 limit: 10
- *                 totalPages: 1
+ *                 jogos:
+ *                   - id: "1"
+ *                     nome: "Aventura das Cores"
+ *                     descricao: "Estimula atenção compartilhada e reconhecimento facial."
+ *                     versao: "1.2.0"
+ *                     status_jogo: "ativo"
+ *                 meta:
+ *                   total: 3
+ *                   pagina: 1
+ *                   limite: 10
+ *                   total_paginas: 1
+ *               message: "Catálogo de jogos recuperado com sucesso."
  *       400:
  *         description: Parâmetro de busca ou status inválido
  *       500:
@@ -131,23 +132,27 @@ jogosRoutes.get('/', JogoController.listar);
  *         content:
  *           application/json:
  *             example:
- *               message: "Jogo cadastrado com sucesso"
  *               data:
- *                 id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
- *                 id_jogo: "super-memoria-musical"
- *                 nome: "Super Memória Musical"
- *                 descricao: "Estimula memória de trabalho e discriminação auditiva."
- *                 versao: "1.0.0"
- *                 status: "ativo"
- *                 status_jogo: "ativo"
- *                 objetivo_clinico: "desenvolvimento_linguagem"
- *                 metricas_suportadas:
- *                   - id_metrica: "tempo_memorizacao"
- *                     tipo_metrica: "numerica"
- *                     unidade: "segundos"
- *               validacao:
- *                 valido: true
- *                 erros: []
+ *                 jogo:
+ *                   id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *                   id_jogo: "super-memoria-musical"
+ *                   nome: "Super Memória Musical"
+ *                   descricao: "Estimula memória de trabalho e discriminação auditiva."
+ *                   versao: "1.0.0"
+ *                   status_jogo: "ativo"
+ *                 manifesto:
+ *                   id_jogo: "super-memoria-musical"
+ *                   nome: "Super Memória Musical"
+ *                   versao: "1.0.0"
+ *                   objetivo_clinico: "desenvolvimento_linguagem"
+ *                   metricas_suportadas:
+ *                     - id_metrica: "tempo_memorizacao"
+ *                       tipo_metrica: "numerica"
+ *                       unidade: "segundos"
+ *                   validacao:
+ *                     valido: true
+ *                     erros: []
+ *               message: "Jogo cadastrado com sucesso."
  *       400:
  *         description: Dados incompletos, status ou manifesto inválido
  *       401:
@@ -156,6 +161,8 @@ jogosRoutes.get('/', JogoController.listar);
  *         description: Acesso negado (requer privilégios de administrador)
  *       409:
  *         description: Conflito (já existe jogo cadastrado com o mesmo slug)
+ *       422:
+ *         description: Incompatibilidade de tipo clínico no manifesto (RN02)
  *       500:
  *         description: Erro interno ao cadastrar jogo
  */
@@ -223,33 +230,39 @@ jogosRoutes.post('/', authMiddleware, adminMiddleware, JogoController.cadastrar)
  *         content:
  *           application/json:
  *             example:
- *               valido: true
  *               data:
- *                 id_jogo: "aventura-das-cores"
- *                 nome: "Aventura das Cores"
- *                 versao: "1.2.0"
- *                 objetivo_clinico: "foco_atencional"
- *                 metricas_suportadas:
- *                   - id_metrica: "tempo_resposta"
- *                     tipo_metrica: "numerica"
- *                     unidade: "segundos"
+ *                 manifesto:
+ *                   id_jogo: "aventura-das-cores"
+ *                   nome: "Aventura das Cores"
+ *                   versao: "1.2.0"
+ *                   objetivo_clinico: "foco_atencional"
+ *                   metricas_suportadas:
+ *                     - id_metrica: "tempo_resposta"
+ *                       tipo_metrica: "numerica"
+ *                       unidade: "segundos"
+ *                 validacao:
+ *                   valido: true
+ *                   erros: []
+ *               message: "Manifesto clínico do jogo validado com sucesso."
  *       400:
- *         description: Manifesto inválido ou com campos faltantes
+ *         description: Manifesto inválido ou com campos estruturais faltantes
  *         content:
  *           application/json:
  *             example:
- *               valido: false
  *               error: "Manifesto do jogo inválido"
  *               erros:
- *                 - "Campo 'nome' é obrigatório"
+ *                 - "O campo 'nome' é obrigatório e deve ser uma string não vazia."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
- *       500:
- *         description: Erro interno ao processar validação
+ *       422:
+ *         description: Incompatibilidade de tipo clínico no manifesto (RN02)
  *         content:
  *           application/json:
  *             example:
- *               error: "Erro interno ao validar manifesto"
+ *               error: "Incompatibilidade de tipo clínico no manifesto (RN02)."
+ *               regraViolada: "RN02 - Fallback de Métrica Proibido"
+ *       500:
+ *         description: Erro interno ao processar validação
  */
 jogosRoutes.post('/validar-manifesto', authMiddleware, JogoController.validarManifesto);
 
@@ -276,24 +289,29 @@ jogosRoutes.post('/validar-manifesto', authMiddleware, JogoController.validarMan
  *           application/json:
  *             example:
  *               data:
- *                 id: 1
- *                 id_jogo: "aventura-das-cores"
- *                 nome: "Aventura das Cores"
- *                 descricao: "Estimula atenção compartilhada e reconhecimento facial através de interação cromática."
- *                 versao: "1.2.0"
- *                 status: "ativo"
- *                 status_jogo: "ativo"
- *                 objetivo_clinico: "foco_atencional"
- *                 metricas_suportadas:
- *                   - id_metrica: "tempo_resposta"
- *                     tipo_metrica: "numerica"
- *                     unidade: "segundos"
- *                   - id_metrica: "nivel_frustracao"
- *                     tipo_metrica: "categorica"
- *                     valores: ["baixo", "medio", "alto"]
- *               validacao:
- *                 valido: true
- *                 erros: []
+ *                 jogo:
+ *                   id: 1
+ *                   id_jogo: "aventura-das-cores"
+ *                   nome: "Aventura das Cores"
+ *                   descricao: "Estimula atenção compartilhada e reconhecimento facial através de interação cromática."
+ *                   versao: "1.2.0"
+ *                   status_jogo: "ativo"
+ *                 manifesto:
+ *                   id_jogo: "aventura-das-cores"
+ *                   nome: "Aventura das Cores"
+ *                   versao: "1.2.0"
+ *                   objetivo_clinico: "foco_atencional"
+ *                   metricas_suportadas:
+ *                     - id_metrica: "tempo_resposta"
+ *                       tipo_metrica: "numerica"
+ *                       unidade: "segundos"
+ *                     - id_metrica: "nivel_frustracao"
+ *                       tipo_metrica: "categorica"
+ *                       valores: ["baixo", "medio", "alto"]
+ *                   validacao:
+ *                     valido: true
+ *                     erros: []
+ *               message: "Detalhes do jogo e manifesto clínico recuperados com sucesso."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
  *       404:
@@ -304,10 +322,6 @@ jogosRoutes.post('/validar-manifesto', authMiddleware, JogoController.validarMan
  *               error: "Jogo não encontrado"
  *       500:
  *         description: Erro interno ao buscar detalhes do jogo
- *         content:
- *           application/json:
- *             example:
- *               error: "Erro ao buscar detalhes do jogo"
  */
 jogosRoutes.get('/:id', authMiddleware, JogoController.buscarPorId);
 
@@ -353,18 +367,22 @@ jogosRoutes.get('/:id', authMiddleware, JogoController.buscarPorId);
  *         content:
  *           application/json:
  *             example:
- *               message: "Jogo atualizado com sucesso"
  *               data:
- *                 id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
- *                 id_jogo: "aventura-das-cores"
- *                 nome: "Aventura das Cores Remaster"
- *                 descricao: "Versão aprimorada com novas fases cromáticas."
- *                 versao: "1.3.0"
- *                 status: "manutencao"
- *                 status_jogo: "manutencao"
- *               validacao:
- *                 valido: true
- *                 erros: []
+ *                 jogo:
+ *                   id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *                   id_jogo: "aventura-das-cores"
+ *                   nome: "Aventura das Cores Remaster"
+ *                   descricao: "Versão aprimorada com novas fases cromáticas."
+ *                   versao: "1.3.0"
+ *                   status_jogo: "manutencao"
+ *                 manifesto:
+ *                   id_jogo: "aventura-das-cores"
+ *                   nome: "Aventura das Cores Remaster"
+ *                   versao: "1.3.0"
+ *                   validacao:
+ *                     valido: true
+ *                     erros: []
+ *               message: "Jogo atualizado com sucesso."
  *       400:
  *         description: Status ou dados inválidos
  *       401:
@@ -373,6 +391,8 @@ jogosRoutes.get('/:id', authMiddleware, JogoController.buscarPorId);
  *         description: Acesso negado (requer privilégios de administrador)
  *       404:
  *         description: Jogo não encontrado
+ *       422:
+ *         description: Incompatibilidade de tipo clínico no manifesto (RN02)
  *       500:
  *         description: Erro interno ao atualizar jogo
  *   put:
@@ -420,8 +440,10 @@ jogosRoutes.get('/:id', authMiddleware, JogoController.buscarPorId);
  *         content:
  *           application/json:
  *             example:
- *               message: "Jogo excluído com sucesso"
- *               id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *               data:
+ *                 jogo:
+ *                   id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *               message: "Jogo excluído com sucesso."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
  *       403:
@@ -498,13 +520,15 @@ jogosRoutes.delete('/:id', authMiddleware, adminMiddleware, JogoController.exclu
  *         content:
  *           application/json:
  *             example:
- *               podeGravar: true
- *               tipoDetectado: "numerica"
- *               metricaHomologada: true
  *               data:
- *                 podeGravar: true
- *                 tipoDetectado: "numerica"
- *                 metricaHomologada: true
+ *                 validacao:
+ *                   pode_gravar: true
+ *                   tipo_detectado: "numerica"
+ *                 metrica:
+ *                   id_metrica: "tempo_resposta"
+ *                   tipo_metrica: "numerica"
+ *                   unidade: "segundos"
+ *               message: "Evento de telemetria homologado para gravação clínica no prontuário."
  *       404:
  *         description: Jogo não encontrado
  *         content:
@@ -516,14 +540,9 @@ jogosRoutes.delete('/:id', authMiddleware, adminMiddleware, JogoController.exclu
  *         content:
  *           application/json:
  *             example:
- *               podeGravar: false
  *               error: "Valor da métrica 'tempo_resposta' deve ser numérico"
  *               regraViolada: "RN02 - Fallback de Métrica Proibido"
  *       500:
  *         description: Erro interno ao processar validação de telemetria
- *         content:
- *           application/json:
- *             example:
- *               error: "Erro interno ao processar validação de telemetria"
  */
 jogosRoutes.post('/:id/validar-telemetria', JogoController.validarTelemetria);

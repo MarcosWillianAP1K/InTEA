@@ -1,8 +1,7 @@
 /**
  * ============================================================================
- * FIXTURES E MOCKS EM MEMÓRIA DO DOMÍNIO PACIENTE (bdmock.ts)
- * Dados clínicos e sociodemográficos realistas para desenvolvimento e testes.
- * Diagnósticos TEA com níveis de suporte 1, 2 e 3, responsáveis e gatilhos.
+ * PATIENT DOMAIN IN-MEMORY FIXTURES AND MOCKS
+ * ASD diagnostic fixtures across support levels 1, 2, and 3, guardians, and triggers.
  * ============================================================================
  */
 
@@ -17,6 +16,14 @@ import type {
   FiltroPacienteDTO,
   Patient,
 } from "./paciente.types";
+import type {
+  MetricasEngajamentoGeral,
+  SerieMetricaJogo,
+  ResumoJogoPaciente,
+  HistoricoJogoDetalhado,
+  RespostaHistoricoPaciente,
+  FiltrosHistorico,
+} from "./historico.types";
 import { MOCK_CLINICA, MOCK_TERAPEUTA_LOGADO } from "@/shared/types";
 
 // ============================================================================
@@ -345,7 +352,7 @@ export const FIXTURES_PACIENTES: Paciente[] = [
 let pacientesMock: Paciente[] = JSON.parse(JSON.stringify(FIXTURES_PACIENTES));
 
 /**
- * Reseta o repositório em memória para as fixtures iniciais.
+ * Resets in-memory repository to default initial fixtures.
  */
 export function resetarPacientesMock(): void {
   pacientesMock = JSON.parse(JSON.stringify(FIXTURES_PACIENTES));
@@ -371,7 +378,7 @@ function calcularIdade(dataNascimento: string): number {
 // ============================================================================
 
 /**
- * Lista pacientes simulados em memória aplicando filtros clínicos e de paginação.
+ * Lists mock patients in memory applying clinical and pagination filters.
  */
 export async function listarPacientesMock(
   filtros?: FiltroPacienteDTO,
@@ -415,7 +422,7 @@ export async function listarPacientesMock(
 }
 
 /**
- * Consulta um paciente por UUID no armazenamento em memória.
+ * Retrieves patient by UUID from in-memory store.
  */
 export async function buscarPacienteMockPorId(
   id: string,
@@ -425,7 +432,7 @@ export async function buscarPacienteMockPorId(
 }
 
 /**
- * Cadastra um novo paciente no mock em memória com UUID v4 gerado.
+ * Registers new patient in mock storage with generated UUID v4.
  */
 export async function criarPacienteMock(
   dto: CriarPacienteDTO,
@@ -490,7 +497,7 @@ export async function criarPacienteMock(
 }
 
 /**
- * Atualiza campos de um paciente no mock em memória.
+ * Updates patient fields in mock storage.
  */
 export async function atualizarPacienteMock(
   id: string,
@@ -525,21 +532,21 @@ export async function atualizarPacienteMock(
 }
 
 /**
- * Desativa o paciente em memória aplicando soft delete (RN05).
+ * Deactivates patient in memory applying soft delete (RN05).
  */
 export async function inativarPacienteMock(id: string): Promise<Paciente | null> {
   return atualizarPacienteMock(id, { status_ativo: false });
 }
 
 /**
- * Reativa um paciente inativo no mock em memória.
+ * Reactivates inactive patient in mock storage (RN05).
  */
 export async function reativarPacienteMock(id: string): Promise<Paciente | null> {
   return atualizarPacienteMock(id, { status_ativo: true });
 }
 
 /**
- * Lista terapeutas vinculados a um paciente no mock em memória.
+ * Lists therapists linked to patient in mock storage.
  */
 export async function listarTerapeutasPacienteMock(
   pacienteId: string,
@@ -550,7 +557,7 @@ export async function listarTerapeutasPacienteMock(
 }
 
 /**
- * Vincula um terapeuta a um paciente no mock em memória.
+ * Links therapist to patient in mock storage.
  */
 export async function vincularTerapeutaMock(
   pacienteId: string,
@@ -583,7 +590,7 @@ export async function vincularTerapeutaMock(
 }
 
 /**
- * Desvincula um terapeuta de um paciente no mock em memória.
+ * Unlinks therapist from patient in mock storage.
  */
 export async function desvincularTerapeutaMock(
   pacienteId: string,
@@ -801,3 +808,395 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
   },
 };
 
+// ============================================================================
+// FIXTURES DE HISTÓRICO LONGITUDINAL E ENGAJAMENTO (Sprint 11)
+// RF15, RF19, RN01, RN02, RN04, RN05
+// ============================================================================
+
+export const MOCK_HISTORICO_ENGAJAMENTO_GERAL: MetricasEngajamentoGeral = {
+  total_sessoes: 12,
+  total_iniciadas: 12,
+  sessoes_finalizadas: 10,
+  sessoes_interrompidas: 2,
+  taxa_conclusao_porcentagem: 83.3,
+  taxa_conclusao: 83.3,
+  tempo_total_segundos: 16200, // 4 horas e 30 minutos
+  tempo_medio_segundos: 1350, // 22 minutos e 30 segundos
+};
+
+export const MOCK_HISTORICO_ENGAJAMENTO_BAIXA_ADESAO: MetricasEngajamentoGeral = {
+  total_sessoes: 10,
+  total_iniciadas: 10,
+  sessoes_finalizadas: 6,
+  sessoes_interrompidas: 4,
+  taxa_conclusao_porcentagem: 60.0,
+  taxa_conclusao: 60.0,
+  tempo_total_segundos: 7200, // 2 horas
+  tempo_medio_segundos: 720, // 12 minutos
+};
+
+export const MOCK_SERIE_NUMERICA: SerieMetricaJogo = {
+  id_metrica: "tempo_reacao_ms",
+  nome_metrica: "Tempo de Reação Motora",
+  tipo_metrica: "numerica",
+  unidade: "ms",
+  descricao: "Tempo médio de resposta motora aos estímulos visuais na tela",
+  meta: {
+    valor_min: 200,
+    valor_max: 1200,
+    valor_alvo: 450,
+    inverter_escala: true,
+  },
+  pontos: [
+    {
+      sessao_id: "sess-01",
+      data_hora: "2026-10-01T14:30:00Z",
+      valor: 850,
+      tendencia: "queda",
+      rotulo: "Sessão 1",
+    },
+    {
+      sessao_id: "sess-02",
+      data_hora: "2026-10-05T14:30:00Z",
+      valor: 720,
+      tendencia: "queda",
+      rotulo: "Sessão 2",
+    },
+    {
+      sessao_id: "sess-03",
+      data_hora: "2026-10-09T14:30:00Z",
+      valor: 680,
+      tendencia: "estavel",
+      rotulo: "Sessão 3",
+    },
+    {
+      sessao_id: "sess-04",
+      data_hora: "2026-10-14T14:30:00Z",
+      valor: 540,
+      tendencia: "queda",
+      rotulo: "Sessão 4",
+    },
+    {
+      sessao_id: "sess-05",
+      data_hora: "2026-10-18T14:30:00Z",
+      valor: 460,
+      tendencia: "queda",
+      rotulo: "Sessão 5",
+    },
+  ],
+};
+
+export const MOCK_SERIE_CATEGORICA: SerieMetricaJogo = {
+  id_metrica: "nivel_atencao",
+  nome_metrica: "Nível de Atenção Sustentada",
+  tipo_metrica: "categorica",
+  valores: ["Disperso", "Parcial", "Focado"],
+  descricao: "Classificação da estabilidade atencional durante a partida",
+  pontos: [
+    {
+      sessao_id: "sess-01",
+      data_hora: "2026-10-01T14:30:00Z",
+      valor: "Disperso",
+      rotulo: "Sessão 1",
+    },
+    {
+      sessao_id: "sess-02",
+      data_hora: "2026-10-05T14:30:00Z",
+      valor: "Parcial",
+      rotulo: "Sessão 2",
+    },
+    {
+      sessao_id: "sess-03",
+      data_hora: "2026-10-09T14:30:00Z",
+      valor: "Parcial",
+      rotulo: "Sessão 3",
+    },
+    {
+      sessao_id: "sess-04",
+      data_hora: "2026-10-14T14:30:00Z",
+      valor: "Focado",
+      rotulo: "Sessão 4",
+    },
+    {
+      sessao_id: "sess-05",
+      data_hora: "2026-10-18T14:30:00Z",
+      valor: "Focado",
+      rotulo: "Sessão 5",
+    },
+  ],
+};
+
+export const MOCK_SERIE_ORDINAL: SerieMetricaJogo = {
+  id_metrica: "estagio_desafio",
+  nome_metrica: "Estágio de Desafio Alcançado",
+  tipo_metrica: "ordinal",
+  valores: ["Fase 1", "Fase 2", "Fase 3", "Fase 4"],
+  descricao: "Grau de progressão conquistado nas fases do jogo terapêutico",
+  pontos: [
+    {
+      sessao_id: "sess-01",
+      data_hora: "2026-10-01T14:30:00Z",
+      valor: "Fase 1",
+      rotulo: "Sessão 1",
+    },
+    {
+      sessao_id: "sess-02",
+      data_hora: "2026-10-05T14:30:00Z",
+      valor: "Fase 2",
+      rotulo: "Sessão 2",
+    },
+    {
+      sessao_id: "sess-03",
+      data_hora: "2026-10-09T14:30:00Z",
+      valor: "Fase 2",
+      rotulo: "Sessão 3",
+    },
+    {
+      sessao_id: "sess-04",
+      data_hora: "2026-10-14T14:30:00Z",
+      valor: "Fase 3",
+      rotulo: "Sessão 4",
+    },
+    {
+      sessao_id: "sess-05",
+      data_hora: "2026-10-18T14:30:00Z",
+      valor: "Fase 4",
+      rotulo: "Sessão 5",
+    },
+  ],
+};
+
+export const MOCK_SERIE_BOOLEANA: SerieMetricaJogo = {
+  id_metrica: "concluiu_sem_ajuda",
+  nome_metrica: "Autonomia na Resolução",
+  tipo_metrica: "booleana",
+  descricao: "Indica se o paciente completou o desafio sem intervenção física ou verbal do terapeuta",
+  pontos: [
+    {
+      sessao_id: "sess-01",
+      data_hora: "2026-10-01T14:30:00Z",
+      valor: false,
+      rotulo: "Sessão 1",
+    },
+    {
+      sessao_id: "sess-02",
+      data_hora: "2026-10-05T14:30:00Z",
+      valor: false,
+      rotulo: "Sessão 2",
+    },
+    {
+      sessao_id: "sess-03",
+      data_hora: "2026-10-09T14:30:00Z",
+      valor: true,
+      rotulo: "Sessão 3",
+    },
+    {
+      sessao_id: "sess-04",
+      data_hora: "2026-10-14T14:30:00Z",
+      valor: true,
+      rotulo: "Sessão 4",
+    },
+    {
+      sessao_id: "sess-05",
+      data_hora: "2026-10-18T14:30:00Z",
+      valor: true,
+      rotulo: "Sessão 5",
+    },
+  ],
+};
+
+/**
+ * Fixture de teste para validar violação estrita da RN02:
+ * Métrica sem tipo ou com tipo não homologado no manifesto.
+ */
+export const MOCK_SERIE_INVALIDA_RN02: SerieMetricaJogo = {
+  id_metrica: "metrica_sem_tipo_rn02",
+  nome_metrica: "Métrica Inconforme Sem Tipo",
+  tipo_metrica: "tipo_inexistente_nao_homologado",
+  pontos: [
+    {
+      sessao_id: "sess-01",
+      data_hora: "2026-10-01T14:30:00Z",
+      valor: 999,
+      rotulo: "Sessão 1",
+    },
+  ],
+};
+
+export const MOCK_CATALOGO_JOGOS_PACIENTE: ResumoJogoPaciente[] = [
+  {
+    jogo_id: "jogo-floresta-01",
+    id: "jogo-floresta-01",
+    nome: "Aventuras na Floresta",
+    versao: "1.2.0",
+    total_sessoes: 5,
+    ultima_sessao: "2026-10-18T14:30:00Z",
+    data_ultima_sessao: "2026-10-18T14:30:00Z",
+    icone: "Gamepad2",
+  },
+  {
+    jogo_id: "jogo-ritmos-02",
+    id: "jogo-ritmos-02",
+    nome: "Cores e Ritmos",
+    versao: "2.0.1",
+    total_sessoes: 5,
+    ultima_sessao: "2026-10-15T10:15:00Z",
+    data_ultima_sessao: "2026-10-15T10:15:00Z",
+    icone: "Sparkles",
+  },
+];
+
+export const MOCK_HISTORICO_JOGO_COMPLETO: HistoricoJogoDetalhado = {
+  tipo: "detalhado",
+  jogo: {
+    id: "jogo-floresta-01",
+    nome: "Aventuras na Floresta",
+    versao: "1.2.0",
+    metricas_suportadas: [
+      {
+        id_metrica: "tempo_reacao_ms",
+        tipo_metrica: "numerica",
+        unidade: "ms",
+        nome: "Tempo de Reação Motora",
+      },
+      {
+        id_metrica: "nivel_atencao",
+        tipo_metrica: "categorica",
+        valores: ["Disperso", "Parcial", "Focado"],
+        nome: "Nível de Atenção Sustentada",
+      },
+      {
+        id_metrica: "estagio_desafio",
+        tipo_metrica: "ordinal",
+        valores: ["Fase 1", "Fase 2", "Fase 3", "Fase 4"],
+        nome: "Estágio de Desafio Alcançado",
+      },
+      {
+        id_metrica: "concluiu_sem_ajuda",
+        tipo_metrica: "booleana",
+        nome: "Autonomia na Resolução",
+      },
+    ],
+  },
+  sessoes: [
+    {
+      sessao_id: "sess-01",
+      status_sessao: "finalizada",
+      data_hora_fim: "2026-10-01T15:00:00Z",
+      tempo_total_segundos: 1200,
+    },
+    {
+      sessao_id: "sess-02",
+      status_sessao: "finalizada",
+      data_hora_fim: "2026-10-05T15:00:00Z",
+      tempo_total_segundos: 1350,
+    },
+    {
+      sessao_id: "sess-03",
+      status_sessao: "finalizada",
+      data_hora_fim: "2026-10-09T15:00:00Z",
+      tempo_total_segundos: 1400,
+    },
+    {
+      sessao_id: "sess-04",
+      status_sessao: "finalizada",
+      data_hora_fim: "2026-10-14T15:00:00Z",
+      tempo_total_segundos: 1100,
+    },
+    {
+      sessao_id: "sess-05",
+      status_sessao: "finalizada",
+      data_hora_fim: "2026-10-18T15:00:00Z",
+      tempo_total_segundos: 1500,
+    },
+  ],
+  series_temporais: [
+    MOCK_SERIE_NUMERICA,
+    MOCK_SERIE_CATEGORICA,
+    MOCK_SERIE_ORDINAL,
+    MOCK_SERIE_BOOLEANA,
+  ],
+  paginacao: {
+    page: 1,
+    limit: 10,
+    total_registros: 5,
+  },
+};
+
+export const MOCK_HISTORICO_CATALOGO = {
+  tipo: "catalogo" as const,
+  jogos: MOCK_CATALOGO_JOGOS_PACIENTE,
+};
+
+export const MOCK_RESPOSTA_HISTORICO_CATALOGO: RespostaHistoricoPaciente = {
+  paciente_id: "pac-001",
+  engajamento_geral: MOCK_HISTORICO_ENGAJAMENTO_GERAL,
+  historico_por_jogo: MOCK_HISTORICO_CATALOGO,
+};
+
+export const MOCK_RESPOSTA_HISTORICO_DETALHADO: RespostaHistoricoPaciente = {
+  paciente_id: "pac-001",
+  engajamento_geral: MOCK_HISTORICO_ENGAJAMENTO_GERAL,
+  historico_por_jogo: MOCK_HISTORICO_JOGO_COMPLETO,
+};
+
+export const MOCK_RESPOSTA_HISTORICO_PACIENTE: RespostaHistoricoPaciente = MOCK_RESPOSTA_HISTORICO_CATALOGO;
+
+
+
+/**
+ * ============================================================================
+ * FUNÇÕES MOCK PARA HISTÓRICO LONGITUDINAL (RF15, RF19)
+ * Fallback resiliente para paciente.service.ts
+ * ============================================================================
+ */
+export function buscarHistoricoPacienteMock(
+  pacienteId: string,
+  filtros?: FiltrosHistorico,
+): RespostaHistoricoPaciente {
+  if (filtros?.jogoId) {
+    return {
+      paciente_id: pacienteId,
+      engajamento_geral: MOCK_HISTORICO_ENGAJAMENTO_GERAL,
+      historico_por_jogo: MOCK_HISTORICO_JOGO_COMPLETO,
+    };
+  }
+
+  return {
+    paciente_id: pacienteId,
+    engajamento_geral: MOCK_HISTORICO_ENGAJAMENTO_GERAL,
+    historico_por_jogo: {
+      tipo: "catalogo",
+      jogos: MOCK_CATALOGO_JOGOS_PACIENTE,
+    },
+  };
+}
+
+export function buscarHistoricoGeralMock(
+  _pacienteId: string,
+  _filtros?: FiltrosHistorico,
+): {
+  engajamento: MetricasEngajamentoGeral;
+  jogos: ResumoJogoPaciente[];
+  meta: {
+    total_jogos: number;
+    periodo_analisado_dias: number;
+  };
+} {
+  return {
+    engajamento: MOCK_HISTORICO_ENGAJAMENTO_GERAL,
+    jogos: MOCK_CATALOGO_JOGOS_PACIENTE,
+    meta: {
+      total_jogos: MOCK_CATALOGO_JOGOS_PACIENTE.length,
+      periodo_analisado_dias: 30,
+    },
+  };
+}
+
+export function buscarHistoricoJogoMock(
+  _pacienteId: string,
+  _jogoId: string,
+  _filtros?: FiltrosHistorico,
+): HistoricoJogoDetalhado {
+  return MOCK_HISTORICO_JOGO_COMPLETO;
+}

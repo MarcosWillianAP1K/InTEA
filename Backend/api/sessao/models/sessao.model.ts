@@ -60,7 +60,7 @@ export interface Sessao {
 
 export class SessaoModel {
   /**
-   * Persiste uma nova sessão no banco de dados Supabase
+   * Persists a new session in the Supabase database.
    */
   static async criar(dados: CriarSessaoDTO): Promise<Sessao | null> {
     try {
@@ -97,7 +97,7 @@ export class SessaoModel {
   }
 
   /**
-   * Busca uma sessão pelo seu ID primário (UUID)
+   * Retrieves a session by its primary ID (UUID).
    */
   static async buscarPorId(id: string): Promise<Sessao | null> {
     try {
@@ -116,7 +116,7 @@ export class SessaoModel {
   }
 
   /**
-   * Busca sessão ativa pelo código/token de pareamento único (suporta formatos com ou sem hífen)
+   * Retrieves active session by unique pairing token (supports hyphenated or non-hyphenated formats).
    */
   static async buscarPorToken(token: string): Promise<Sessao | null> {
     try {
@@ -159,8 +159,8 @@ export class SessaoModel {
   }
 
   /**
-   * Efetiva o pareamento remoto, registrando os metadados do dispositivo
-   * e alterando o status da sessão para 'em_andamento'.
+   * Executes remote pairing, saving device metadata
+   * and changing session status to 'em_andamento'.
    */
   static async parearDispositivo(id: string, dispositivoInfo?: DispositivoInfoDTO): Promise<Sessao | null> {
     try {
@@ -183,7 +183,7 @@ export class SessaoModel {
   }
 
   /**
-   * Atualiza a máquina de estados da sessão
+   * Updates the session state machine.
    */
   static async atualizarStatus(id: string, status: StatusSessao): Promise<Sessao | null> {
     try {
@@ -203,8 +203,8 @@ export class SessaoModel {
   }
 
   /**
-   * Finaliza formalmente uma sessão clínica, atualizando o status para 'finalizada'
-   * e gravando o timestamp exato de encerramento em data_hora_fim.
+   * Formally concludes a clinical session, updating status to 'finalizada'
+   * and persisting completion timestamp in data_hora_fim.
    */
   static async finalizarSessao(id: string): Promise<Sessao | null> {
     try {
@@ -228,8 +228,8 @@ export class SessaoModel {
   }
 
   /**
-   * Lista sessões com filtros clínicos, busca temporal, status e paginação.
-   * Suporta visão restrita por terapeuta e visão global para administradores.
+   * Lists sessions with clinical filters, date range, status, and pagination.
+   * Supports therapist-scoped views and global administrative views.
    */
   static async listar(filtros: FiltrosSessaoDTO = {}): Promise<RespostaListagemSessao<Sessao>> {
     try {

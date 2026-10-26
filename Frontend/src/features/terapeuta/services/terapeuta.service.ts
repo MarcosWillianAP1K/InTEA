@@ -1,9 +1,8 @@
 /**
  * ============================================================================
- * SERVIÇO REST DO DOMÍNIO TERAPEUTA (terapeuta.service.ts)
- * Consome os endpoints centralizados ENDPOINTS.TERAPEUTA via http-client
- * com fallback resiliente para bdmock.ts em caso de indisponibilidade.
- * Conformidade: RF21 (Autoria), RN04 (Vínculo e Clínica), RN05 (Soft Delete)
+ * REST SERVICE FOR THERAPIST DOMAIN
+ * Consumes therapist endpoints with resilient fallback.
+ * Compliance: RF21, RN04, RN05
  * ============================================================================
  */
 
@@ -26,9 +25,9 @@ import {
 
 export const terapeutaService = {
   /**
-   * Lista terapeutas cadastrados na clínica (RF21, RN04, RN05).
+   * Lists therapists registered in the clinic (RF21, RN04, RN05).
    *
-   * @param incluirInativos Se verdadeiro, traz também contas desativadas.
+   * @param incluirInativos - If true, includes deactivated accounts.
    */
   listar: async (incluirInativos = false): Promise<Terapeuta[]> => {
     return await withFallback(
@@ -37,59 +36,49 @@ export const terapeutaService = {
           ? { incluirInativos: "true" }
           : undefined;
         const resposta = await http.get<
-          TerapeutasListaRespostaApi | Terapeuta[]
+          TerapeutasListaRespostaApi
         >(ENDPOINTS.TERAPEUTA.BASE, { params });
-
-        if (Array.isArray(resposta)) {
-          return resposta;
-        }
-        return resposta.data ?? [];
+        return resposta.data?.terapeutas ?? [];
       },
       () => listarTerapeutasMock(incluirInativos),
     );
   },
 
   /**
-   * Consulta os detalhes de um terapeuta por UUID.
+   * Retrieves therapist details by UUID.
    */
   buscarPorId: async (id: string): Promise<Terapeuta | null> => {
     if (!id || !id.trim()) return null;
 
     return await withFallback(
       async () => {
-        const resposta = await http.get<TerapeutaRespostaApi | Terapeuta>(
+        const resposta = await http.get<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.BY_ID(id),
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Terapeuta) ?? null;
+        return resposta.data?.terapeuta ?? null;
       },
       () => buscarTerapeutaMockPorId(id),
     );
   },
 
   /**
-   * Cadastra novo terapeuta e gera credenciais no Supabase Auth.
+   * Registers new therapist and provisions credentials in Supabase Auth.
    */
   criar: async (dto: CriarTerapeutaDTO): Promise<Terapeuta> => {
     return await withFallback(
       async () => {
-        const resposta = await http.post<TerapeutaRespostaApi | Terapeuta>(
+        const resposta = await http.post<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.BASE,
           dto,
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return resposta as Terapeuta;
+        return resposta.data.terapeuta;
       },
       () => criarTerapeutaMock(dto),
     );
   },
 
   /**
-   * Atualiza dados profissionais e cadastrais de um terapeuta.
+   * Updates professional and profile data of a therapist.
    */
   atualizar: async (
     id: string,
@@ -99,54 +88,45 @@ export const terapeutaService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.put<TerapeutaRespostaApi | Terapeuta>(
+        const resposta = await http.put<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.BY_ID(id),
           dto,
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Terapeuta) ?? null;
+        return resposta.data?.terapeuta ?? null;
       },
       () => atualizarTerapeutaMock(id, dto),
     );
   },
 
   /**
-   * Desativa o terapeuta no sistema (Soft Delete - RN05).
+   * Deactivates therapist in the system (Soft Delete - RN05).
    */
   inativar: async (id: string): Promise<Terapeuta | null> => {
     if (!id || !id.trim()) return null;
 
     return await withFallback(
       async () => {
-        const resposta = await http.delete<TerapeutaRespostaApi | Terapeuta>(
+        const resposta = await http.delete<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.BY_ID(id),
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Terapeuta) ?? null;
+        return resposta.data?.terapeuta ?? null;
       },
       () => inativarTerapeutaMock(id),
     );
   },
 
   /**
-   * Reativa a conta de um terapeuta previamente desativado (RN05).
+   * Reactivates account of previously deactivated therapist (RN05).
    */
   reativar: async (id: string): Promise<Terapeuta | null> => {
     if (!id || !id.trim()) return null;
 
     return await withFallback(
       async () => {
-        const resposta = await http.patch<TerapeutaRespostaApi | Terapeuta>(
+        const resposta = await http.patch<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.REATIVAR(id),
         );
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as Terapeuta) ?? null;
+        return resposta.data?.terapeuta ?? null;
       },
       () => reativarTerapeutaMock(id),
     );

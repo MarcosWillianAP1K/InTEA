@@ -247,7 +247,7 @@ export function resetarSessoesMock(): void {
 }
 
 /**
- * Cria ou inicializa uma nova sessão em memória.
+ * Creates or initializes a new session in memory.
  */
 export async function iniciarSessaoMock(
   dto: IniciarSessaoDTO,
@@ -293,7 +293,7 @@ export async function iniciarSessaoMock(
 }
 
 /**
- * Busca uma sessão por seu UUID.
+ * Retrieves session by UUID.
  */
 export async function buscarSessaoMockPorId(
   id: string,
@@ -303,7 +303,7 @@ export async function buscarSessaoMockPorId(
 }
 
 /**
- * Busca uma sessão pelo token/PIN de pareamento.
+ * Retrieves a session by pairing token/PIN.
  */
 export async function buscarSessaoMockPorToken(
   token: string,
@@ -315,7 +315,7 @@ export async function buscarSessaoMockPorToken(
 }
 
 /**
- * Consulta status de conexão e pareamento de uma sessão.
+ * Queries connection and pairing status of a session.
  */
 export async function consultarStatusMock(
   idOuToken: string,
@@ -342,7 +342,7 @@ export async function consultarStatusMock(
 }
 
 /**
- * Atualiza status da máquina de estados da sessão.
+ * Updates session state machine status.
  */
 export async function atualizarStatusSessaoMock(
   id: string,
@@ -364,7 +364,7 @@ export async function atualizarStatusSessaoMock(
 }
 
 /**
- * Finaliza sessão clínica e gera resultado consolidado com IA (RF13, RF14).
+ * Concludes clinical session and generates consolidated AI outcome (RF13, RF14).
  */
 export async function finalizarSessaoMock(
   id: string,
@@ -424,7 +424,7 @@ export async function finalizarSessaoMock(
 }
 
 /**
- * Cancela a sessão em andamento ou aguardando pareamento.
+ * Cancels session in progress or awaiting pairing.
  */
 export async function cancelarSessaoMock(
   id: string,
@@ -434,7 +434,7 @@ export async function cancelarSessaoMock(
 }
 
 /**
- * Retorna os resultados consolidados de uma sessão pós-execução.
+ * Returns consolidated outcomes of a completed session.
  */
 export async function obterResultadoSessaoMock(
   id: string,
@@ -463,7 +463,7 @@ export async function obterResultadoSessaoMock(
 }
 
 /**
- * Exporta o relatório clínico em formato estruturado (RF20).
+ * Exports clinical report in structured format (RF20).
  */
 export async function exportarRelatorioSessaoMock(
   id: string,
@@ -487,7 +487,7 @@ export async function exportarRelatorioSessaoMock(
 }
 
 /**
- * Lista sessões simuladas em memória aplicando filtros clínicos e paginação.
+ * Lists mock sessions in memory applying clinical and pagination filters.
  */
 export async function listarSessoesMock(
   filtros?: FiltroSessaoDTO,

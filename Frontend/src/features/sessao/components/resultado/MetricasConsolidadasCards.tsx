@@ -19,7 +19,7 @@ export interface MetricasConsolidadasCardsProps {
 }
 
 /**
- * Utilitário de formatação clínica de duração (segundos -> formato legível).
+ * Clinical duration formatting utility (seconds -> readable string).
  */
 export function formatarDuracaoClinica(segundos: number): string {
   if (!segundos || segundos <= 0) return "00m 00s";

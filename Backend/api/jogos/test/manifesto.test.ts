@@ -107,9 +107,9 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
   });
 
   describe('JogoController: Endpoints de Validação e Leitura de Manifesto', () => {
-    it('validarManifesto: deve responder 200 OK com { valido: true } para payload válido', async () => {
+    it('validarManifesto: deve responder 200 OK no Envelope Pattern para payload válido', async () => {
       let statusCode = 200;
-      let responseJson: any = null;
+      let responseJson: Record<string, any> = {};
 
       const req = {
         body: manifestoValido
@@ -120,7 +120,7 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseJson = data;
           return this;
         }
@@ -129,13 +129,15 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
       await JogoController.validarManifesto(req, res);
 
       expect(statusCode).toBe(200);
-      expect(responseJson.valido).toBe(true);
-      expect(responseJson.data.id_jogo).toBe('game-core-01');
+      expect(responseJson).toHaveProperty('data');
+      expect(responseJson).toHaveProperty('message');
+      expect(responseJson.data.validacao.valido).toBe(true);
+      expect(responseJson.data.manifesto.id_jogo).toBe('game-core-01');
     });
 
-    it('validarManifesto: deve responder 400 Bad Request com lista detalhada de erros para payload inválido', async () => {
+    it('validarManifesto: deve responder 400 Bad Request com lista detalhada de erros para payload incompleto', async () => {
       let statusCode = 200;
-      let responseJson: any = null;
+      let responseJson: Record<string, any> = {};
 
       const req = {
         body: { id_jogo: 'incompleto' }
@@ -146,7 +148,7 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseJson = data;
           return this;
         }
@@ -155,15 +157,46 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
       await JogoController.validarManifesto(req, res);
 
       expect(statusCode).toBe(400);
-      expect(responseJson.valido).toBe(false);
       expect(responseJson.error).toBe('Manifesto do jogo inválido');
       expect(Array.isArray(responseJson.erros)).toBe(true);
       expect(responseJson.erros.length).toBeGreaterThan(0);
     });
 
-    it('buscarPorId: deve retornar o manifesto do jogo e status de validação 200', async () => {
+    it('validarManifesto: deve responder 422 Unprocessable Entity quando métricas violarem tipagem estrita RN02', async () => {
       let statusCode = 200;
-      let responseJson: any = null;
+      let responseJson: Record<string, any> = {};
+
+      const req = {
+        body: {
+          ...manifestoValido,
+          metricas_suportadas: [
+            { id_metrica: 'metrica_sem_tipo' }
+          ]
+        }
+      } as unknown as Request;
+
+      const res = {
+        status(code: number) {
+          statusCode = code;
+          return this;
+        },
+        json(data: Record<string, any>) {
+          responseJson = data;
+          return this;
+        }
+      } as unknown as Response;
+
+      await JogoController.validarManifesto(req, res);
+
+      expect(statusCode).toBe(422);
+      expect(responseJson.error).toContain('RN02');
+      expect(responseJson.regraViolada).toBe('RN02 - Fallback de Métrica Proibido');
+      expect(Array.isArray(responseJson.erros)).toBe(true);
+    });
+
+    it('buscarPorId: deve retornar o manifesto do jogo e status de validação 200 no Envelope Pattern', async () => {
+      let statusCode = 200;
+      let responseJson: Record<string, any> = {};
 
       const req = {
         params: { id: '1' }
@@ -174,7 +207,7 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseJson = data;
           return this;
         }
@@ -184,13 +217,16 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
 
       expect(statusCode).toBe(200);
       expect(responseJson.data).toBeDefined();
-      expect(responseJson.validacao.valido).toBe(true);
-      expect(responseJson.validacao.erros).toHaveLength(0);
+      expect(responseJson.data.jogo).toBeDefined();
+      expect(responseJson.data.manifesto).toBeDefined();
+      expect(responseJson.data.manifesto.validacao.valido).toBe(true);
+      expect(responseJson.data.manifesto.validacao.erros).toHaveLength(0);
+      expect(responseJson.message).toBeDefined();
     });
 
     it('buscarPorId: deve responder 404 quando o jogo não existe', async () => {
       let statusCode = 200;
-      let responseJson: any = null;
+      let responseJson: Record<string, any> = {};
 
       const req = {
         params: { id: '99999' }
@@ -201,7 +237,7 @@ describe('Leitura e Validação do Manifesto de Jogos (RNF02)', () => {
           statusCode = code;
           return this;
         },
-        json(data: any) {
+        json(data: Record<string, any>) {
           responseJson = data;
           return this;
         }

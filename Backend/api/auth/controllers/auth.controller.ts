@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthModel, LoginDTO, RecuperarSenhaDTO } from '../models/auth.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { SessoesAtivasService } from '../../../core/auth/sessoes-ativas.service.js';
 
 // ==============================================================================
 // CONTROLLER: AuthController
@@ -11,7 +12,7 @@ export class AuthController {
    * Handles POST /api/auth/login to authenticate a user and generate a JWT access token.
    *
    * @param req - Express request containing email and password in body.
-   * @param res - Express response returning authentication tokens and user profile.
+   * @param res - Express response returning authentication tokens categorized strictly under data.token.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async login(req: Request, res: Response): Promise<void> {
@@ -37,39 +38,28 @@ export class AuthController {
         expires_in: resultado.session.expires_in,
       };
 
-      const user = resultado.perfil
-        ? {
-            id: resultado.perfil.id,
-            nome: resultado.perfil.nome,
-            email: resultado.perfil.email,
-            clinica_id: resultado.perfil.clinica_id ?? null,
-            is_super_admin: Boolean(resultado.perfil.is_super_admin ?? false),
-            status_ativo: Boolean(resultado.perfil.status_ativo),
-            role: (resultado.perfil.is_super_admin ? 'super_admin' : 'terapeuta') as 'terapeuta' | 'super_admin',
-            crefito: resultado.perfil.crefito ?? resultado.perfil.registro_profissional ?? null,
-            registro_profissional: resultado.perfil.registro_profissional ?? resultado.perfil.crefito ?? null,
-            especialidade: resultado.perfil.especialidade ?? null,
-            created_at: resultado.perfil.created_at ?? resultado.user?.created_at,
-          }
-        : {
-            id: resultado.user.id,
-            nome: (resultado.user.user_metadata?.nome as string) || resultado.user.email || 'Usuário',
-            email: resultado.user.email || '',
-            clinica_id: null,
-            is_super_admin: Boolean(resultado.user.user_metadata?.is_super_admin ?? false),
-            status_ativo: true,
-            role: (resultado.user.user_metadata?.is_super_admin ? 'super_admin' : 'terapeuta') as 'terapeuta' | 'super_admin',
-            created_at: resultado.user.created_at,
-          };
+      // Rastreia a nova sessão ativa do terapeuta (RF02)
+      try {
+        const xForwardedFor = req.headers['x-forwarded-for'];
+        const ip =
+          typeof xForwardedFor === 'string'
+            ? xForwardedFor.split(',')[0]?.trim()
+            : req.ip || req.socket.remoteAddress || null;
+        const userAgent = (req.headers['user-agent'] as string) || null;
+
+        await SessoesAtivasService.registrarSessao({
+          usuarioId: resultado.user.id,
+          token: resultado.access_token,
+          ip: ip ?? null,
+          userAgent,
+        });
+      } catch (errSession) {
+        console.warn('[AuthController.login] Falha ao registrar sessão ativa:', errSession);
+      }
 
       res.status(200).json({
         data: {
-          access_token: resultado.access_token,
-          refresh_token: resultado.session.refresh_token ?? null,
-          token_type: 'Bearer',
-          expires_in: resultado.session.expires_in,
-          tokens,
-          user,
+          token: tokens,
         },
         message: 'Login realizado com sucesso.',
       });
@@ -88,7 +78,7 @@ export class AuthController {
    * Handles POST /api/auth/refresh to renew an expired access token using a refresh token.
    *
    * @param req - Express request containing `refresh_token` in body.
-   * @param res - Express response returning the refreshed access token and expiration.
+   * @param res - Express response returning the refreshed tokens categorized under data.token.
    */
   static async refresh(req: Request, res: Response): Promise<void> {
     try {
@@ -102,7 +92,9 @@ export class AuthController {
       const tokens = await AuthModel.refreshSession(refresh_token);
 
       res.status(200).json({
-        data: tokens,
+        data: {
+          token: tokens,
+        },
         message: 'Token renovado com sucesso.',
       });
     } catch (error: unknown) {
@@ -116,15 +108,21 @@ export class AuthController {
    * Handles POST /api/auth/logout to invalidate user session.
    *
    * @param _req - Express request.
-   * @param res - Express response acknowledging logout.
+   * @param res - Express response acknowledging logout with data: null and message.
    */
   static async logout(_req: Request, res: Response): Promise<void> {
     try {
-      const resultado = await AuthModel.logout();
-      res.status(200).json(resultado);
+      await AuthModel.logout();
+      res.status(200).json({
+        data: null,
+        message: 'Logout realizado com sucesso.',
+      });
     } catch (error: unknown) {
       console.error('[AuthController.logout]', error);
-      res.status(200).json({ success: true, message: 'Logout realizado com sucesso.' });
+      res.status(200).json({
+        data: null,
+        message: 'Logout realizado com sucesso.',
+      });
     }
   }
 
@@ -132,7 +130,7 @@ export class AuthController {
    * Handles POST /api/auth/recuperar-senha to dispatch password reset instructions to the given email.
    *
    * @param req - Express request containing email address in body.
-   * @param res - Express response acknowledging password recovery request.
+   * @param res - Express response acknowledging password recovery request in Envelope Pattern.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async recuperarSenha(req: Request, res: Response): Promise<void> {
@@ -146,7 +144,15 @@ export class AuthController {
 
       const resultado = await AuthModel.recuperarSenha(dto.email);
 
-      res.status(200).json(resultado);
+      res.status(200).json({
+        data: {
+          recuperacao: {
+            email: dto.email,
+            solicitado: true,
+          },
+        },
+        message: resultado.message,
+      });
     } catch (error: unknown) {
       console.error('[AuthController.recuperarSenha]', error);
       const detalhes = error instanceof Error ? error.message : undefined;
@@ -154,13 +160,6 @@ export class AuthController {
     }
   }
 
-  /**
-   * Handles GET /api/auth/me to return organized profile and session metadata for the authenticated caller.
-   *
-   * @param req - Authenticated Express request containing user credentials in `req.user`.
-   * @param res - Express response returning the therapist profile and structured metadata.
-   * @returns Resolves when the HTTP response has been sent.
-   */
   /**
    * Handles PATCH /api/auth/alterar-senha to update password for authenticated user.
    */
@@ -177,7 +176,10 @@ export class AuthController {
         return;
       }
       const resultado = await AuthModel.alterarSenha(usuarioLogado.id, novaSenha.trim());
-      res.status(200).json(resultado);
+      res.status(200).json({
+        data: null,
+        message: resultado.message,
+      });
     } catch (error: unknown) {
       console.error('[AuthController.alterarSenha]', error);
       const detalhes = error instanceof Error ? error.message : undefined;
@@ -185,6 +187,13 @@ export class AuthController {
     }
   }
 
+  /**
+   * Handles GET /api/auth/me to return organized profile and session metadata for the authenticated caller.
+   *
+   * @param req - Authenticated Express request containing user credentials in `req.user`.
+   * @param res - Express response returning user profile categorized strictly under data.user.
+   * @returns Resolves when the HTTP response has been sent.
+   */
   static async me(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const user = req.user;
@@ -212,8 +221,8 @@ export class AuthController {
           })
         : [];
 
-      // 1. Dados cadastrais completos do perfil
-      const dadosPerfil = {
+      // Dados cadastrais e metadados consolidados na categoria semântica user
+      const userData = {
         id: perfil.id,
         nome: perfil.nome,
         email: perfil.email,
@@ -224,15 +233,16 @@ export class AuthController {
         tempo_experiencia_anos: perfil.tempo_experiencia_anos ?? 0,
         clinica_id: perfil.clinica_id ?? null,
         areas_foco: areasFocoNormalizadas,
-      };
-
-      // 2. Metadados de sessão, autenticação e auditoria
-      const metadados = {
         is_admin: Boolean(perfil.is_super_admin ?? user?.user_metadata?.is_super_admin ?? false),
-        autenticado: user?.role === 'authenticated' || Boolean(user?.id),
-        email_confirmado: Boolean(user?.email_confirmed_at || user?.confirmed_at || user?.user_metadata?.email_verified),
-        telefone_confirmado: Boolean(user?.phone_confirmed_at),
+        role: Boolean(perfil.is_super_admin ?? user?.user_metadata?.is_super_admin ?? false)
+          ? 'super_admin'
+          : 'terapeuta',
         status_ativo: Boolean(perfil.status_ativo),
+        autenticado: user?.role === 'authenticated' || Boolean(user?.id),
+        email_confirmado: Boolean(
+          user?.email_confirmed_at || user?.confirmed_at || user?.user_metadata?.email_verified
+        ),
+        telefone_confirmado: Boolean(user?.phone_confirmed_at),
         last_sign_in_at: user?.last_sign_in_at ?? null,
         created_at: perfil.created_at ?? user?.created_at ?? null,
         updated_at: perfil.updated_at ?? user?.updated_at ?? null,
@@ -240,9 +250,9 @@ export class AuthController {
 
       res.status(200).json({
         data: {
-          perfil: dadosPerfil,
-          metadados,
+          user: userData,
         },
+        message: 'Dados do perfil do usuário autenticado recuperados com sucesso.',
       });
     } catch (error: unknown) {
       console.error('[AuthController.me]', error);
@@ -250,4 +260,96 @@ export class AuthController {
       res.status(500).json({ error: 'Erro interno ao recuperar perfil.', detalhes });
     }
   }
+
+  /**
+   * Handles GET /api/auth/sessoes to list all active sessions for authenticated therapist (RF02).
+   */
+  static async listarSessoes(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      if (!usuarioLogado || !usuarioLogado.id) {
+        res.status(401).json({ error: 'Usuário não autenticado.' });
+        return;
+      }
+
+      const authHeader = req.headers.authorization;
+      const tokenAtual = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+
+      const sessoes = await SessoesAtivasService.listarSessoes(usuarioLogado.id, tokenAtual);
+
+      res.status(200).json({
+        data: sessoes,
+        total: sessoes.length,
+      });
+    } catch (error: unknown) {
+      console.error('[AuthController.listarSessoes]', error);
+      res.status(500).json({ error: 'Erro interno ao listar sessões ativas.' });
+    }
+  }
+
+  /**
+   * Handles POST /api/auth/logout-all to remotely disconnect all other active sessions (RF02).
+   */
+  static async logoutAll(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      if (!usuarioLogado || !usuarioLogado.id) {
+        res.status(401).json({ error: 'Usuário não autenticado.' });
+        return;
+      }
+
+      const authHeader = req.headers.authorization;
+      const tokenAtual = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+
+      if (!tokenAtual) {
+        res.status(400).json({ error: 'Token JWT não fornecido no cabeçalho Authorization.' });
+        return;
+      }
+
+      const resultado = await SessoesAtivasService.revogarOutrasSessoes(usuarioLogado.id, tokenAtual);
+
+      res.status(200).json({
+        data: null,
+        message: 'Todas as outras sessões ativas foram desconectadas com sucesso.',
+        sessoesRevogadas: resultado.revogadas,
+      });
+    } catch (error: unknown) {
+      console.error('[AuthController.logoutAll]', error);
+      res.status(500).json({ error: 'Erro interno ao desconectar outras sessões ativas.' });
+    }
+  }
+
+  /**
+   * Handles DELETE /api/auth/sessoes/:id to revoke a specific remote active session by UUID.
+   */
+  static async revogarSessao(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      if (!usuarioLogado || !usuarioLogado.id) {
+        res.status(401).json({ error: 'Usuário não autenticado.' });
+        return;
+      }
+
+      const sessaoId = String(req.params.id || '').trim();
+      if (!sessaoId || sessaoId.length < 10) {
+        res.status(400).json({ error: 'Identificador de sessão inválido.' });
+        return;
+      }
+
+      const revogado = await SessoesAtivasService.revogarSessaoPorId(usuarioLogado.id, sessaoId);
+      if (!revogado) {
+        res.status(404).json({ error: 'Sessão ativa não encontrada ou já revogada.' });
+        return;
+      }
+
+      res.status(200).json({
+        data: null,
+        message: 'Sessão revogada com sucesso.',
+      });
+    } catch (error: unknown) {
+      console.error('[AuthController.revogarSessao]', error);
+      res.status(500).json({ error: 'Erro interno ao revogar sessão remota.' });
+    }
+  }
 }
+

@@ -510,10 +510,19 @@ describe('Card 2.1 — TelemetriaController.obterEstatisticasSessao (Endpoint RE
     await TelemetriaController.obterEstatisticasSessao(mockReq, mockRes);
 
     expect(getStatus()).toBe(200);
-    const json = getJson() as { data: TelemetriaConsolidada };
+    const json = getJson() as {
+      data: {
+        agregacao: TelemetriaConsolidada;
+        meta: { total_eventos: number; duracao_estimada_segundos: number };
+      };
+      message: string;
+    };
     expect(json.data).toBeDefined();
-    expect(json.data.precisao.taxa_precisao_percentual).toBe(80);
-    expect(json.data.tempo_resposta.media).toBe(2.5);
+    expect(json.data.agregacao).toBeDefined();
+    expect(json.data.agregacao.precisao.taxa_precisao_percentual).toBe(80);
+    expect(json.data.agregacao.tempo_resposta.media).toBe(2.5);
+    expect(json.data.meta.total_eventos).toBe(10);
+    expect(json.message).toContain('consultadas com sucesso');
   });
 });
 

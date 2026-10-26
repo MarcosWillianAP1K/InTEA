@@ -44,13 +44,6 @@ export class SessaoController {
   }
 
   /**
-   * Handles POST /api/sessao/iniciar to start a new clinical or free-mode session.
-   *
-   * @param req - Express request containing session parameters (game ID, pairing code, patient ID, mode).
-   * @param res - Express response returning the newly initialized session.
-   * @returns Resolves when the HTTP response has been sent.
-   */
-  /**
    * Handles GET /api/sessao to list sessions with optional filters and pagination.
    * Restricts to the authenticated therapist's sessions, unless is_super_admin requests with all=true.
    *
@@ -81,8 +74,11 @@ export class SessaoController {
       const resultado = await SessaoListarService.listar(filtros, usuarioLogado, verTodasSessoes);
 
       res.status(200).json({
-        data: resultado.data,
-        meta: resultado.meta,
+        data: {
+          sessoes: resultado.data,
+          meta: resultado.meta,
+        },
+        message: 'Sessões listadas com sucesso.',
       });
     } catch (error: unknown) {
       console.error('[SessaoController.listar]', error);
@@ -93,6 +89,13 @@ export class SessaoController {
     }
   }
 
+  /**
+   * Handles POST /api/sessao/iniciar to start a new clinical or free-mode session.
+   *
+   * @param req - Express request containing session parameters (game ID, pairing code, patient ID, mode).
+   * @param res - Express response returning the newly initialized session.
+   * @returns Resolves when the HTTP response has been sent.
+   */
   static async iniciar(req: Request, res: Response): Promise<void> {
     try {
       // 1. Extração segura da identidade do terapeuta a partir do token JWT verificado (RF21, CA-1)
@@ -174,16 +177,25 @@ export class SessaoController {
         return;
       }
 
-      // Retorno explícito com os campos exigidos pelo Card 538 (critério de aceite)
       res.status(201).json({
         data: {
-          session_id: novaSessao.id,
-          session_token: novaSessao.session_token,
-          status_sessao: novaSessao.status_sessao,
-          modo_sessao: novaSessao.modo_sessao,
-          paciente_id: novaSessao.paciente_id,
-          expira_em: novaSessao.expira_em,
+          sessao: {
+            id: novaSessao.id,
+            status_sessao: novaSessao.status_sessao,
+            modo_sessao: novaSessao.modo_sessao,
+            paciente_id: novaSessao.paciente_id,
+            terapeuta_id: novaSessao.terapeuta_id,
+            jogo_id: novaSessao.jogo_id,
+            data_hora_inicio: novaSessao.data_hora_inicio,
+            contexto_dda_json: novaSessao.contexto_dda_json,
+          },
+          token_pareamento: {
+            token: novaSessao.session_token,
+            codigo: novaSessao.session_token,
+            expira_em: novaSessao.expira_em,
+          },
         },
+        message: 'Sessão iniciada com sucesso.',
       });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao iniciar sessão' });
@@ -206,7 +218,12 @@ export class SessaoController {
         res.status(404).json({ error: 'Sessão não encontrada' });
         return;
       }
-      res.json({ data: sessao });
+      res.status(200).json({
+        data: {
+          sessao,
+        },
+        message: 'Sessão localizada com sucesso.',
+      });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao buscar sessão' });
     }
@@ -228,7 +245,12 @@ export class SessaoController {
         res.status(404).json({ error: 'Código de sessão inválido ou expirado' });
         return;
       }
-      res.json({ data: sessao });
+      res.status(200).json({
+        data: {
+          sessao,
+        },
+        message: 'Sessão localizada com sucesso.',
+      });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao buscar sessão por token' });
     }
@@ -327,7 +349,13 @@ export class SessaoController {
       // 3. Conformidade com RN01 (Modo Livre sem Persistência Clínica / Sem IA)
       // Partidas em modo livre não gravam telemetria em prontuário, não acionam IA e paciente_id = NULL
       if (sessaoAtualizada.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessaoAtualizada.paciente_id) {
-        res.status(200).json({ data: sessaoAtualizada });
+        res.status(200).json({
+          data: {
+            sessao: sessaoAtualizada,
+            relatorio: null,
+          },
+          message: 'Sessão finalizada com sucesso.',
+        });
         return;
       }
 
@@ -357,8 +385,8 @@ export class SessaoController {
       // 5. Retorna a sessão finalizada contendo o relatório da IA para exibição imediata no front
       res.status(200).json({
         data: {
-          ...sessaoAtualizada,
-          relatorio: relatorioIA || undefined,
+          sessao: sessaoAtualizada,
+          relatorio: relatorioIA || null,
         },
         message: 'Sessão finalizada com sucesso.',
       });
@@ -420,8 +448,10 @@ export class SessaoController {
         userAgent: (req.headers?.['user-agent'] as string) || null,
       });
 
-      res.json({
-        data: sessaoCancelada,
+      res.status(200).json({
+        data: {
+          sessao: sessaoCancelada,
+        },
         message: 'Sessão cancelada com sucesso.',
       });
     } catch (error) {
@@ -566,12 +596,26 @@ export class SessaoController {
       });
 
       res.status(200).json({
-        message: 'Dispositivo pareado com sucesso',
         data: {
-          ...respostaPayload,
-          session_id: sessaoAtualizada.id,
-          contexto_dda_json: sessaoAtualizada.contexto_dda_json,
+          sessao: {
+            id: sessaoAtualizada.id,
+            session_token: sessaoAtualizada.session_token,
+            status_sessao: sessaoAtualizada.status_sessao,
+            modo_sessao: sessaoAtualizada.modo_sessao,
+            jogo_id: sessaoAtualizada.jogo_id,
+            paciente_id: sessaoAtualizada.paciente_id,
+            terapeuta_id: sessaoAtualizada.terapeuta_id,
+            data_hora_inicio: sessaoAtualizada.data_hora_inicio,
+            dispositivo_info: sessaoAtualizada.dispositivo_info || null,
+            contexto_dda: sessaoAtualizada.contexto_dda_json || {},
+          },
+          conexao: {
+            url: wsUrl,
+            canal: `session_${sessaoAtualizada.session_token}`,
+            pareado_em: sessaoAtualizada.data_hora_inicio,
+          },
         },
+        message: 'Dispositivo pareado com sucesso.',
       });
     } catch (error) {
       console.error('[SessaoController] Erro no handshake de pareamento:', error);
@@ -629,15 +673,21 @@ export class SessaoController {
 
       res.status(200).json({
         data: {
-          id: sessao.id,
-          session_token: sessao.session_token,
-          status_sessao: sessao.status_sessao,
-          modo_sessao: sessao.modo_sessao,
-          dispositivo_info: sessao.dispositivo_info || null,
+          sessao: {
+            id: sessao.id,
+            session_token: sessao.session_token,
+            status_sessao: sessao.status_sessao,
+            modo_sessao: sessao.modo_sessao,
+            data_hora_inicio: sessao.data_hora_inicio,
+            expira_em: sessao.expira_em,
+          },
+          dispositivo: {
+            info: sessao.dispositivo_info || null,
+            presenca: presenca || null,
+          },
           presenca_dispositivo: presenca || null,
-          expira_em: sessao.expira_em,
-          data_hora_inicio: sessao.data_hora_inicio,
         },
+        message: 'Status da sessão consultado com sucesso.',
       });
     } catch (error) {
       console.error('[SessaoController] Erro ao consultar status da sessão:', error);
@@ -672,9 +722,13 @@ export class SessaoController {
         return;
       }
 
-      res.json({
-        data: { codigo },
-        codigo,
+      res.status(200).json({
+        data: {
+          token_pareamento: {
+            codigo,
+          },
+        },
+        message: 'Código de pareamento gerado com sucesso.',
       });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao gerar código de pareamento' });
@@ -732,7 +786,12 @@ export class SessaoController {
         return;
       }
 
-      res.status(200).json({ data: sessaoAtualizada });
+      res.status(200).json({
+        data: {
+          sessao: sessaoAtualizada,
+        },
+        message: 'Status da sessão atualizado com sucesso.',
+      });
     } catch (error) {
       res.status(500).json({ error: 'Erro interno ao atualizar status da sessão' });
     }
@@ -766,12 +825,26 @@ export class SessaoController {
         isSuperAdmin
       );
 
-      if (!resultado.sucesso) {
+      if (!resultado.sucesso || !resultado.dados) {
         res.status(resultado.status).json({ error: resultado.erro });
         return;
       }
 
-      res.status(200).json({ data: resultado.dados });
+      res.status(200).json({
+        data: {
+          sessao: resultado.dados.sessao,
+          metricas_consolidadas: resultado.dados.metricas_consolidadas,
+          insights_ia: resultado.dados.insights_ia,
+          historico_evolutivo: resultado.dados.historico_evolutivo,
+          jogo: resultado.dados.jogo,
+          terapeuta: resultado.dados.terapeuta,
+          paciente: resultado.dados.paciente,
+          relatorio: resultado.dados.relatorio,
+          anotacoes: resultado.dados.anotacoes,
+          cabecalho: resultado.dados.cabecalho,
+        },
+        message: 'Resultado consolidado da sessão obtido com sucesso.',
+      });
     } catch (error) {
       console.error('[SessaoController.consultarResultado] Erro inesperado:', error);
       res.status(500).json({ error: 'Erro interno ao consultar resultado consolidado da sessão.' });

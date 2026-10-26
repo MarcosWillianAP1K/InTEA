@@ -28,6 +28,12 @@ import {
   deletarHardAnotacaoMock,
 } from "../types/bdmock";
 
+/**
+ * Serializes clinical annotation search filters into HTTP query parameters.
+ *
+ * @param filtros - Optional filter criteria for querying clinical notes.
+ * @returns Serialized key-value query parameter record, or undefined if no filters are present.
+ */
 function serializarFiltros(
   filtros?: FiltroAnotacaoDTO,
 ): Record<string, string> | undefined {
@@ -47,9 +53,48 @@ function serializarFiltros(
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
+/**
+ * Extracts and normalizes a single clinical annotation entity from various API response shapes.
+ *
+ * @param resposta - Raw HTTP API response or direct annotation entity.
+ * @returns Normalized clinical annotation entity, or null if invalid or absent.
+ */
+function extrairAnotacao(
+  resposta: AnotacaoRespostaApi | AnotacaoClinica | { data?: unknown } | null | undefined,
+): AnotacaoClinica | null {
+  if (!resposta) return null;
+  if ("data" in resposta && resposta.data) {
+    const d = resposta.data as Record<string, unknown>;
+    if ("anotacao" in d && d.anotacao) {
+      return d.anotacao as AnotacaoClinica;
+    }
+    return resposta.data as AnotacaoClinica;
+  }
+  return resposta as AnotacaoClinica;
+}
+
+/**
+ * Extracts an array of clinical annotations from varied API response envelopes.
+ *
+ * @param resposta - Raw response payload or direct array of clinical annotations.
+ * @returns Clean array of clinical annotation entities.
+ */
+function extrairListaAnotacoes(
+  resposta: AnotacoesListaRespostaApi | AnotacaoClinica[] | { data?: unknown } | null | undefined,
+): AnotacaoClinica[] {
+  if (!resposta) return [];
+  if (Array.isArray(resposta)) return resposta;
+  if ("data" in resposta && resposta.data) {
+    if (Array.isArray(resposta.data)) return resposta.data;
+    const d = resposta.data as Record<string, unknown>;
+    if (Array.isArray(d.anotacoes)) return d.anotacoes as AnotacaoClinica[];
+  }
+  return [];
+}
+
 export const anotacaoService = {
   /**
-   * Lista anotações clínicas de um paciente (RF16, RN04, RN05).
+   * Lists clinical annotations for a patient (RF16, RN04, RN05).
    */
   listarPorPaciente: async (
     pacienteId: string,
@@ -64,17 +109,14 @@ export const anotacaoService = {
           AnotacoesListaRespostaApi | AnotacaoClinica[]
         >(ENDPOINTS.ANOTACAO.POR_PACIENTE(pacienteId), { params });
 
-        if (Array.isArray(resposta)) {
-          return resposta;
-        }
-        return resposta.data ?? [];
+        return extrairListaAnotacoes(resposta);
       },
       () => listarAnotacoesMock({ paciente_id: pacienteId, ...filtro }),
     );
   },
 
   /**
-   * Consulta uma anotação clínica por seu UUID (RF16, RN04).
+   * Retrieves a clinical annotation by UUID (RF16, RN04).
    */
   buscarPorId: async (id: string): Promise<AnotacaoClinica | null> => {
     if (!id || !id.trim()) return null;
@@ -85,17 +127,14 @@ export const anotacaoService = {
           AnotacaoRespostaApi | AnotacaoClinica
         >(ENDPOINTS.ANOTACAO.BY_ID(id));
 
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as AnotacaoClinica) ?? null;
+        return extrairAnotacao(resposta);
       },
       () => buscarAnotacaoMockPorId(id),
     );
   },
 
   /**
-   * Cria nova anotação clínica no prontuário ou vinculada a uma sessão (RF16, RF21).
+   * Creates new clinical note in medical record or linked to session (RF16, RF21).
    */
   criar: async (dto: CriarAnotacaoDTO): Promise<AnotacaoClinica> => {
     return await withFallback(
@@ -104,17 +143,14 @@ export const anotacaoService = {
           AnotacaoRespostaApi | AnotacaoClinica
         >(ENDPOINTS.ANOTACAO.BASE, dto);
 
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return resposta as AnotacaoClinica;
+        return extrairAnotacao(resposta) as AnotacaoClinica;
       },
       () => criarAnotacaoMock(dto),
     );
   },
 
   /**
-   * Atualiza o conteúdo textual de uma anotação clínica (RF16, RF21).
+   * Updates textual content of clinical note (RF16, RF21).
    */
   atualizar: async (
     id: string,
@@ -128,17 +164,14 @@ export const anotacaoService = {
           AnotacaoRespostaApi | AnotacaoClinica
         >(ENDPOINTS.ANOTACAO.BY_ID(id), dto);
 
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as AnotacaoClinica) ?? null;
+        return extrairAnotacao(resposta);
       },
       () => atualizarAnotacaoMock(id, dto),
     );
   },
 
   /**
-   * Inativa anotação clínica aplicando soft delete (RN05).
+   * Inactivates clinical note applying soft delete (RN05).
    */
   inativar: async (id: string): Promise<AnotacaoClinica | null> => {
     if (!id || !id.trim()) return null;
@@ -149,17 +182,14 @@ export const anotacaoService = {
           AnotacaoRespostaApi | AnotacaoClinica
         >(ENDPOINTS.ANOTACAO.BY_ID(id));
 
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as AnotacaoClinica) ?? null;
+        return extrairAnotacao(resposta);
       },
       () => softDeleteAnotacaoMock(id),
     );
   },
 
   /**
-   * Reativa anotação clínica previamente inativada (RN05).
+   * Reactivates previously inactivated clinical note (RN05).
    */
   reativar: async (id: string): Promise<AnotacaoClinica | null> => {
     if (!id || !id.trim()) return null;
@@ -170,17 +200,14 @@ export const anotacaoService = {
           AnotacaoRespostaApi | AnotacaoClinica
         >(ENDPOINTS.ANOTACAO.REATIVAR(id));
 
-        if ("data" in resposta && resposta.data) {
-          return resposta.data;
-        }
-        return (resposta as AnotacaoClinica) ?? null;
+        return extrairAnotacao(resposta);
       },
       () => reativarAnotacaoMock(id),
     );
   },
 
   /**
-   * Exclusão física permanente (exclusivo para SuperAdmin e testes).
+   * Permanent physical deletion (exclusive for SuperAdmin and testing).
    */
   deletarHard: async (id: string): Promise<boolean> => {
     if (!id || !id.trim()) return false;

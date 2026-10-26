@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- * FIXTURES E MOCKS EM MEMÓRIA DO DOMÍNIO TERAPEUTA (bdmock.ts)
- * Terapeutas modelo vinculados à Clínica Escola UFPI e perfil SuperAdmin.
+ * THERAPIST DOMAIN IN-MEMORY FIXTURES AND MOCKS
+ * Sample therapists associated with Clinic and SuperAdmin profile.
  * ============================================================================
  */
 
@@ -146,7 +146,7 @@ let terapeutasMock: Terapeuta[] = JSON.parse(
 );
 
 /**
- * Restaura as fixtures originais de terapeutas em memória.
+ * Restores initial in-memory therapist fixtures.
  */
 export function resetarTerapeutasMock(): void {
   terapeutasMock = JSON.parse(JSON.stringify(FIXTURES_TERAPEUTAS));
@@ -157,7 +157,7 @@ export function resetarTerapeutasMock(): void {
 // ============================================================================
 
 /**
- * Lista terapeutas cadastrados em memória (filtra inativos por padrão, RN05).
+ * Lists in-memory therapists (filters inactive accounts by default, RN05).
  */
 export async function listarTerapeutasMock(
   incluirInativos = false,
@@ -170,7 +170,7 @@ export async function listarTerapeutasMock(
 }
 
 /**
- * Busca terapeuta por UUID em memória.
+ * Retrieves therapist by UUID in memory.
  */
 export async function buscarTerapeutaMockPorId(
   id: string,
@@ -180,7 +180,7 @@ export async function buscarTerapeutaMockPorId(
 }
 
 /**
- * Cadastra novo terapeuta em memória.
+ * Registers new therapist in memory.
  */
 export async function criarTerapeutaMock(
   dto: CriarTerapeutaDTO,
@@ -218,7 +218,7 @@ export async function criarTerapeutaMock(
 }
 
 /**
- * Atualiza campos de um terapeuta em memória.
+ * Updates therapist fields in memory.
  */
 export async function atualizarTerapeutaMock(
   id: string,
@@ -259,7 +259,7 @@ export async function atualizarTerapeutaMock(
 }
 
 /**
- * Desativa terapeuta em memória aplicando soft delete (RN05).
+ * Deactivates therapist in memory applying soft delete (RN05).
  */
 export async function inativarTerapeutaMock(
   id: string,
@@ -268,7 +268,7 @@ export async function inativarTerapeutaMock(
 }
 
 /**
- * Reativa terapeuta desativado em memória (RN05).
+ * Reactivates deactivated therapist in memory (RN05).
  */
 export async function reativarTerapeutaMock(
   id: string,

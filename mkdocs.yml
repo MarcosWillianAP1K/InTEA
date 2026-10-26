@@ -1,0 +1,69 @@
+# =============================================================================
+# InTEA: Modern Function and Docstrings Catalog (Material Theme)
+# =============================================================================
+
+site_name: InTEA — Functions & Docstrings
+site_description: Quick and intuitive reference for InTEA functions and docstrings
+site_author: InTEA Team
+
+docs_dir: docs_site
+site_dir: site
+
+theme:
+  name: material
+  language: en
+  palette:
+    # Light Mode
+    - scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark Mode
+    - scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+  - tables
+  - attr_list
+
+nav:
+  - Overview: index.md
+  - Backend (Clinical):
+      - Clinical Notes: anotacao.md
+      - Audit Trail: auditoria.md
+      - Session and Pairing: sessao.md
+      - Telemetry and Metrics: telemetria.md
+  - Backend (Administration):
+      - Authentication and Profile: auth.md
+      - Games Catalog: jogos.md
+      - Patient Management: paciente.md
+      - Therapist Management: terapeuta.md
+  - Infrastructure & Core:
+      - Examples and Utilities: exemplo.md
+      - Events and Middlewares: core.md
+  - Frontend:
+      - React Hooks and Services: frontend.md

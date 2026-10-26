@@ -1,9 +1,7 @@
 /**
  * ============================================================================
- * SERVIÇO REST DO DOMÍNIO JOGOS (jogos.service.ts)
- * Consome os endpoints centralizados ENDPOINTS.JOGOS via http-client
- * com fallback resiliente para bdmock.ts em caso de indisponibilidade.
- * Conformidade: RF04, RF07, RN02 (Tipagem Estrita de Métricas)
+ * REST SERVICE FOR GAMES DOMAIN
+ * Compliance: RF04, RF07, RN02 (Tipagem Estrita de Métricas)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
@@ -26,6 +24,12 @@ import {
   obterManifestoJogoMock,
 } from "../types/bdmock";
 
+/**
+ * Serializes game catalog search and pagination filters into HTTP query parameters.
+ *
+ * @param filtros - Search query, clinical target, or pagination criteria for games.
+ * @returns Serialized key-value query parameter record, or undefined if empty.
+ */
 function serializarFiltros(
   filtros?: JogoFiltroDTO | FiltrosJogos,
 ): Record<string, string> | undefined {
@@ -46,8 +50,7 @@ function serializarFiltros(
 }
 
 /**
- * Normaliza campos vindos do PostgreSQL (nome, descricao, metricas_suportadas)
- * sem alterar objetos que já possuem titulo, descricaoClinica e manifesto preenchidos.
+ * Normalizes PostgreSQL fields into canonical game object format.
  */
 function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
   if (!jogo) return jogo;
@@ -96,7 +99,7 @@ function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
     raw.manifesto_json?.metricas_suportadas ||
     [];
 
-  const metricasSuportadas: MetricaSuportada[] = metricasRaw.map((m: any) => ({
+  const metricasSuportadas: MetricaSuportada[] = metricasRaw.map((m: { id_metrica: string; tipo_metrica?: string; tipo?: string; nome?: string; descricao?: string }) => ({
     id_metrica: m.id_metrica,
     nome: m.nome || m.id_metrica,
     tipo: (m.tipo_metrica || m.tipo) as TipoMetrica,
@@ -128,7 +131,7 @@ function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
 
 export const jogosService = {
   /**
-   * Lista todos os jogos terapêuticos disponíveis aplicando filtros de busca e objetivo.
+   * Lists all available therapeutic games applying search and objective filters.
    */
   listar: async (filtros?: JogoFiltroDTO | FiltrosJogos): Promise<Jogo[]> => {
     return await withFallback(
@@ -138,7 +141,20 @@ export const jogosService = {
           JogosListaRespostaApi | Jogo[]
         >(ENDPOINTS.JOGOS.BASE, { params });
 
-        const lista = Array.isArray(resposta) ? resposta : (resposta.data ?? []);
+        let lista: Jogo[] = [];
+        if (Array.isArray(resposta)) {
+          lista = resposta;
+        } else if ("data" in resposta && resposta.data) {
+          if (Array.isArray(resposta.data)) {
+            lista = resposta.data;
+          } else if (
+            typeof resposta.data === "object" &&
+            "jogos" in (resposta.data as Record<string, unknown>) &&
+            Array.isArray((resposta.data as { jogos?: Jogo[] }).jogos)
+          ) {
+            lista = (resposta.data as { jogos: Jogo[] }).jogos;
+          }
+        }
         let normalizados = lista.map(normalizarJogoSeNecessario);
 
         if (filtros?.busca && filtros.busca.trim()) {
@@ -158,7 +174,7 @@ export const jogosService = {
   },
 
   /**
-   * Consulta os dados detalhados de um jogo pelo seu ID ou slug canônico.
+   * Retrieves detailed game information by ID or canonical slug.
    */
   buscarPorId: async (id: string): Promise<Jogo | null> => {
     if (!id || !id.trim()) return null;
@@ -169,7 +185,9 @@ export const jogosService = {
           ENDPOINTS.JOGOS.BY_ID(id),
         );
         if ("data" in resposta && resposta.data) {
-          return normalizarJogoSeNecessario(resposta.data);
+          const rawData = resposta.data as unknown as { jogo?: Jogo } & Jogo;
+          const jogo = rawData.jogo || rawData;
+          return normalizarJogoSeNecessario(jogo);
         }
         return resposta ? normalizarJogoSeNecessario(resposta as Jogo) : null;
       },
@@ -178,7 +196,7 @@ export const jogosService = {
   },
 
   /**
-   * Obtém o manifesto técnico e clínico do jogo com métricas tipadas (RN02).
+   * Retrieves technical and clinical manifest with strictly typed metrics (RN02).
    */
   obterManifesto: async (id: string): Promise<ManifestoJogo | null> => {
     if (!id || !id.trim()) return null;
@@ -190,7 +208,8 @@ export const jogosService = {
         >(ENDPOINTS.JOGOS.MANIFESTO(id));
 
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const rawData = resposta.data as unknown as { manifesto?: ManifestoJogo } & ManifestoJogo;
+          return rawData.manifesto || rawData;
         }
         return (resposta as ManifestoJogo) ?? null;
       },

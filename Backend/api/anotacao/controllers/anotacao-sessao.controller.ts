@@ -4,7 +4,7 @@
 // Responsabilidade Única (Thin Controller):
 // - Validação de JWT e parâmetros básicos
 // - Delegação da regra de negócio para AnotacaoService
-// - Mapeamento das respostas HTTP
+// - Mapeamento das respostas HTTP seguindo o Envelope Pattern Categorizado
 // ==============================================================================
 
 import { Response } from 'express';
@@ -57,7 +57,12 @@ export class AnotacaoSessaoController {
         return;
       }
 
-      res.status(201).json({ data: resultado.dados });
+      res.status(201).json({
+        data: {
+          anotacao: resultado.dados,
+        },
+        message: 'Anotação clínica da sessão registrada com sucesso.',
+      });
     } catch (error) {
       console.error('[AnotacaoSessaoController.criar]', error);
       res.status(500).json({ error: 'Erro interno ao criar anotação clínica de sessão.' });
@@ -68,15 +73,40 @@ export class AnotacaoSessaoController {
    * Handles GET /api/anotacao/sessao/:sessaoId to list clinical notes associated with a specific session.
    *
    * @param req - Authenticated Express request containing session UUID in URL parameter `:sessaoId`.
-   * @param res - Express response returning the list of clinical notes for the session.
+   * @param res - Express response returning categorized list of clinical notes with metadata.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async listarPorSessao(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const sessaoId = String(req.params.sessaoId || '');
+      const sessaoId = String(req.params?.sessaoId || '');
       const resultado = await AnotacaoService.listarAnotacoesSessao(sessaoId);
 
-      res.status(200).json({ data: resultado.dados });
+      if (!resultado.sucesso) {
+        res.status(resultado.status).json({ error: resultado.erro });
+        return;
+      }
+
+      const todos = resultado.dados ?? [];
+      const total = todos.length;
+      const query = req.query || {};
+      const pagina = Number(query.pagina || query.page) || 1;
+      const temPaginacao = query.limite !== undefined || query.limit !== undefined;
+      const limite = temPaginacao ? Number(query.limite || query.limit) : total;
+
+      const inicio = (pagina - 1) * limite;
+      const anotacoes = temPaginacao ? todos.slice(inicio, inicio + limite) : todos;
+
+      res.status(200).json({
+        data: {
+          anotacoes,
+          meta: {
+            total,
+            pagina,
+            limite,
+          },
+        },
+        message: 'Anotações clínicas da sessão listadas com sucesso.',
+      });
     } catch (error) {
       console.error('[AnotacaoSessaoController.listarPorSessao]', error);
       res.status(500).json({ error: 'Erro interno ao consultar anotações da sessão.' });
@@ -87,7 +117,7 @@ export class AnotacaoSessaoController {
    * Handles PATCH /api/anotacao/sessao/:id to update the content of an existing session note.
    *
    * @param req - Authenticated Express request containing note ID and new content in body.
-   * @param res - Express response returning the updated clinical note record.
+   * @param res - Express response returning the updated clinical note record categorized in data.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async atualizar(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -120,7 +150,12 @@ export class AnotacaoSessaoController {
         return;
       }
 
-      res.status(200).json({ data: resultado.dados });
+      res.status(200).json({
+        data: {
+          anotacao: resultado.dados,
+        },
+        message: 'Anotação clínica da sessão atualizada com sucesso.',
+      });
     } catch (error) {
       console.error('[AnotacaoSessaoController.atualizar]', error);
       res.status(500).json({ error: 'Erro interno ao atualizar anotação de sessão.' });
@@ -129,9 +164,10 @@ export class AnotacaoSessaoController {
 
   /**
    * Handles DELETE /api/anotacao/sessao/:id to logically delete (soft delete) a session note.
+   * Preserves clinical history (RN05) and returns the updated deactivated record.
    *
    * @param req - Authenticated Express request containing note ID in URL parameter `:id`.
-   * @param res - Express response returning status 204 on successful deactivation.
+   * @param res - Express response returning status 200 with deactivated note payload.
    * @returns Resolves when the HTTP response has been sent.
    */
   static async deletar(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -157,7 +193,12 @@ export class AnotacaoSessaoController {
         return;
       }
 
-      res.status(204).send();
+      res.status(200).json({
+        data: {
+          anotacao: resultado.dados,
+        },
+        message: 'Anotação clínica da sessão desativada com sucesso (soft delete aplicado).',
+      });
     } catch (error) {
       console.error('[AnotacaoSessaoController.deletar]', error);
       res.status(500).json({ error: 'Erro interno ao excluir anotação de sessão.' });
@@ -173,7 +214,7 @@ export class AnotacaoSessaoController {
    */
   static async deletarHard(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const id = String(req.params.id || '');
+      const id = String(req.params?.id || '');
       const resultado = await AnotacaoService.hardDeleteDev(id);
 
       if (!resultado.sucesso) {

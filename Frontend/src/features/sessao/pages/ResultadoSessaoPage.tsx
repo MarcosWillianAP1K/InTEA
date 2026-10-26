@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { http, ENDPOINTS } from "@/core/api";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import {
   sessaoService,
   type DadosResultadoSessao,
 } from "@/features/sessao/services/sessaoService";
+import type { SerieMetricaJogo } from "@/features/paciente/types/historico.types";
 import { BlocoAnotacoesClinicas } from "@/features/sessao/components/resultado/BlocoAnotacoesClinicas";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
@@ -26,7 +28,11 @@ import {
   RefreshCw,
   Award,
   Zap,
+  Activity,
 } from "lucide-react";
+
+const REGEX_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface ResultadoSessaoPageProps {
   sessaoId?: string;
@@ -38,12 +44,151 @@ export interface ResultadoSessaoPageProps {
   initialData?: DadosResultadoSessao | null;
 }
 
+const NOMES_METRICAS_MAP: Record<string, string> = {
+  tempo_resposta: "Tempo de Resposta",
+  tempo_reacao: "Tempo de Reação",
+  tempo_reacao_ms: "Tempo de Reação",
+  tempo_resposta_ms: "Tempo de Resposta",
+  tempo_fixacao: "Tempo de Fixação Visual",
+  precisao: "Precisão de Acertos",
+  precisao_acertos: "Precisão de Acertos",
+  precisao_auditiva: "Precisão Auditiva",
+  taxa_acerto: "Taxa de Acerto",
+  acertos: "Total de Acertos",
+  erros: "Total de Erros",
+  estabilidade_emocional: "Estabilidade Emocional",
+  estabilidade_atencao: "Estabilidade de Atenção",
+  estabilidade_foco: "Estabilidade de Foco",
+  estabilidade_toque: "Estabilidade de Toque",
+  nivel_frustracao: "Nível de Frustração",
+  tolerancia_frustracao: "Tolerância à Frustração",
+  tolerancia_sonora: "Tolerância Sonora",
+  latencia_foco_ms: "Latência de Foco",
+  engajamento: "Nível de Engajamento",
+  taxa_conclusao: "Taxa de Conclusão",
+};
+
+function formatarNomeMetrica(idMetrica?: string, nomeDeclarado?: string): string {
+  if (nomeDeclarado && nomeDeclarado.trim().length > 0) {
+    return nomeDeclarado.trim();
+  }
+  if (!idMetrica) return "Tempo de Resposta";
+  const chave = idMetrica.trim().toLowerCase();
+  if (NOMES_METRICAS_MAP[chave]) {
+    return NOMES_METRICAS_MAP[chave];
+  }
+  return idMetrica
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+function obterUnidadeMetrica(
+  idMetrica: string,
+  valorExemplo?: string | number | boolean | null,
+  unidadeDeclarada?: string,
+): string {
+  if (unidadeDeclarada && unidadeDeclarada.trim().length > 0) {
+    return unidadeDeclarada.trim();
+  }
+  const chave = idMetrica.toLowerCase();
+  const valStr = valorExemplo !== undefined && valorExemplo !== null ? String(valorExemplo) : "";
+  if (chave.endsWith("_ms") || valStr.endsWith("ms")) return "Milissegundos (ms)";
+  if (chave.includes("tempo") || valStr.endsWith("s")) return "Segundos (s)";
+  if (chave.includes("precisao") || chave.includes("taxa") || valStr.endsWith("%")) return "Percentual (%)";
+  if (valStr.includes("/10")) return "Escala (0-10)";
+  return "Valor Registrado";
+}
+
+function formatarDataBr(isoDate?: string | null): string {
+  if (!isoDate) return new Date().toLocaleDateString("pt-BR");
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return String(isoDate);
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function formatarHoraBr(isoDate?: string | null): string {
+  if (!isoDate) return "";
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function extrairValorNumerico(valor: string | number | boolean | null | undefined): number {
+  if (typeof valor === "number") return valor;
+  if (typeof valor === "boolean") return valor ? 1 : 0;
+  if (valor === null || valor === undefined) return 0;
+  const limpo = String(valor).replace(",", ".").match(/-?\d+(\.\d+)?/);
+  if (limpo) {
+    return Number(limpo[0]);
+  }
+  const mapaCategorico: Record<string, number> = {
+    baixo: 1,
+    baixa: 1,
+    medio: 2,
+    media: 2,
+    médio: 2,
+    média: 2,
+    alto: 3,
+    alta: 3,
+    sim: 1,
+    nao: 0,
+    não: 0,
+  };
+  return mapaCategorico[String(valor).trim().toLowerCase()] ?? 1;
+}
+
+function formatarValorExibicao(
+  valor: string | number | boolean | null | undefined,
+  unidade?: string,
+): string {
+  if (valor === null || valor === undefined) return "—";
+  if (typeof valor === "boolean") return valor ? "Sim" : "Não";
+  const valStr = String(valor);
+  if (
+    unidade &&
+    typeof valor === "number" &&
+    !valStr.includes(unidade) &&
+    ["ms", "s", "%"].includes(unidade.trim())
+  ) {
+    return `${valor}${unidade.trim()}`;
+  }
+  return valStr;
+}
+
+interface PontoGraficoSessao {
+  id: string;
+  dataRotulo: string;
+  subRotulo?: string;
+  nomeMetrica: string;
+  valorNumerico: number;
+  valorExibicao: string;
+  acerto?: boolean;
+  intervencaoDda?: {
+    tipoIntervencao: string;
+    momentoFormatado: string;
+  } | null;
+}
+
+interface GraficoMetricaConstruido {
+  idMetrica: string;
+  nomeMetrica: string;
+  unidadeMetrica: string;
+  tendencia?: string;
+  pontos: PontoGraficoSessao[];
+}
+
 /**
  * ============================================================================
- * PÁGINA MESTRE: ResultadoSessaoPage (Front-end 1 — Hermeson Alves / Card 3.1)
- * Rota: /sessao/:id/resultado
- * Requisitos: RF14 (Resultados da Sessão), RF16 (Anotações), RF21 (Autoria),
- *             RN01 (Modo Livre sem Prontuário), RN04 (Vínculo), RNF07 (Layout)
+ * MASTER PAGE: ResultadoSessaoPage
+ * Route: /sessao/:id/resultado
+ * Compliance: RF14 (Session Results), RF16 (Notes), RF21 (Authorship), RN01, RN04, RNF07
  * ============================================================================
  */
 export function ResultadoSessaoPage({
@@ -70,6 +215,8 @@ export function ResultadoSessaoPage({
   const [dados, setDados] = useState<DadosResultadoSessao | null>(
     initialData || null
   );
+  const [seriesHistoricoJogo, setSeriesHistoricoJogo] = useState<SerieMetricaJogo[]>([]);
+  const [metricaFiltroId, setMetricaFiltroId] = useState<string>("todas");
 
   const carregarDados = useCallback(async () => {
     if (!identificadorSessao && !initialData) {
@@ -139,11 +286,6 @@ export function ResultadoSessaoPage({
                   valor_dominante: "1.4s",
                   tendencia: "crescente",
                 },
-                {
-                  id_metrica: "estabilidade_atencao",
-                  valor_dominante: "Alta",
-                  tendencia: "estavel",
-                },
               ],
             },
             anotacoes: storeAnotacoes
@@ -181,6 +323,55 @@ export function ResultadoSessaoPage({
       carregarDados();
     }
   }, [carregarDados, initialData]);
+
+  // Busca as séries históricas das sessões anteriores do paciente para o mesmo jogo
+  useEffect(() => {
+    if (initialData) return;
+    const pacId = dados?.paciente?.id ? String(dados.paciente.id) : "";
+    const jogId = dados?.jogo?.id ? String(dados.jogo.id) : "";
+    const isLivre = Boolean(dados?.is_modo_livre || !pacId);
+
+    if (
+      !pacId ||
+      !jogId ||
+      isLivre ||
+      !REGEX_UUID.test(pacId) ||
+      !REGEX_UUID.test(jogId)
+    ) {
+      setSeriesHistoricoJogo([]);
+      return;
+    }
+
+    let cancelado = false;
+    async function buscarComparativoSessoesAnteriores() {
+      try {
+        const params: Record<string, string> = {};
+        if (dados?.id && REGEX_UUID.test(String(dados.id))) {
+          params.sessaoId = String(dados.id);
+        }
+        const resposta = await http.get<{
+          data?: { series_temporais?: SerieMetricaJogo[] };
+          series_temporais?: SerieMetricaJogo[];
+        }>(ENDPOINTS.PACIENTE.HISTORICO_JOGO(pacId, jogId), { params });
+
+        if (cancelado) return;
+        const series =
+          resposta?.data?.series_temporais ||
+          resposta?.series_temporais ||
+          [];
+        if (Array.isArray(series) && series.length > 0) {
+          setSeriesHistoricoJogo(series);
+        }
+      } catch {
+        // Silencioso caso offline ou em ambiente de teste sem servidor
+      }
+    }
+
+    void buscarComparativoSessoesAnteriores();
+    return () => {
+      cancelado = true;
+    };
+  }, [dados?.id, dados?.paciente?.id, dados?.jogo?.id, dados?.is_modo_livre, initialData]);
 
   // Formatação amigável de duração
   const formatarDuracao = (segundos?: number) => {
@@ -362,6 +553,175 @@ export function ResultadoSessaoPage({
     dados.anotacoes?.[0]?.conteudo || storeAnotacoes || "";
   const anotacaoId = dados.anotacoes?.[0]?.id;
 
+  // ==========================================================================
+  // CONSTRUÇÃO DOS GRÁFICOS PARA TODAS AS MÉTRICAS DO JOGO (COMPARATIVO POR DATA)
+  // ==========================================================================
+  const metricasAgregadasLista = dados.dados_ia?.metricas_agregadas || [];
+  const tentativasBrutas = dados.historico_evolutivo?.tentativas || [];
+  const dataBaseSessao = dados.data_hora_fim || dados.data_hora_inicio || new Date().toISOString();
+  const dataFormatadaSessao = formatarDataBr(dataBaseSessao);
+
+  const mapaMetricasAgregadas = new Map(
+    metricasAgregadasLista.map((m) => [m.id_metrica, m]),
+  );
+
+  // União ordenada de todas as métricas do jogo (séries do manifesto + métricas agregadas da sessão)
+  const idsMetricasUnicas: string[] = [];
+  for (const s of seriesHistoricoJogo) {
+    if (s.id_metrica && !idsMetricasUnicas.includes(s.id_metrica)) {
+      idsMetricasUnicas.push(s.id_metrica);
+    }
+  }
+  for (const m of metricasAgregadasLista) {
+    if (m.id_metrica && !idsMetricasUnicas.includes(m.id_metrica)) {
+      idsMetricasUnicas.push(m.id_metrica);
+    }
+  }
+  if (idsMetricasUnicas.length === 0) {
+    idsMetricasUnicas.push(tentativasBrutas[0]?.id_metrica || "tempo_resposta");
+  }
+
+  const todosGraficosMetricas: GraficoMetricaConstruido[] = idsMetricasUnicas.map(
+    (idMetrica) => {
+      const serieHist = seriesHistoricoJogo.find((s) => s.id_metrica === idMetrica);
+      const metricaAg = mapaMetricasAgregadas.get(idMetrica);
+      const nomeMetrica = formatarNomeMetrica(idMetrica, serieHist?.nome_metrica);
+      const unidadeMetrica = obterUnidadeMetrica(
+        idMetrica,
+        metricaAg?.valor_dominante ?? serieHist?.pontos?.[0]?.valor,
+        serieHist?.unidade,
+      );
+
+      // 1. Se houver pontos históricos de sessões do paciente para esta métrica
+      const pontosValidosSerie = (serieHist?.pontos || []).filter(
+        (p) => p.valor !== null && p.valor !== undefined,
+      );
+
+      if (pontosValidosSerie.length > 0) {
+        const pontosOrdenados = [...pontosValidosSerie].sort((a, b) => {
+          const ta = new Date(a.data_hora || 0).getTime();
+          const tb = new Date(b.data_hora || 0).getTime();
+          return ta - tb;
+        });
+
+        // Garante que a sessão atual esteja presente caso ainda não tenha entrado na série
+        const sessaoAtualPresente = pontosOrdenados.some(
+          (p) => p.sessao_id === dados.id,
+        );
+        if (!sessaoAtualPresente && metricaAg) {
+          pontosOrdenados.push({
+            sessao_id: dados.id,
+            data_hora: dataBaseSessao,
+            valor: metricaAg.valor_dominante,
+            tendencia: metricaAg.tendencia,
+          });
+        }
+
+        const pontosMapeados: PontoGraficoSessao[] = pontosOrdenados.map((p, idx) => {
+          const dataPt = formatarDataBr(p.data_hora || dataBaseSessao);
+          const horaPt = formatarHoraBr(p.data_hora);
+          const isSessaoAtual = p.sessao_id === dados.id;
+          return {
+            id: `sessao-${idMetrica}-${p.sessao_id || idx + 1}`,
+            dataRotulo: dataPt,
+            subRotulo: isSessaoAtual
+              ? "Sessão Atual"
+              : pontosOrdenados.length > 1 && horaPt
+                ? horaPt
+                : undefined,
+            nomeMetrica,
+            valorNumerico: extrairValorNumerico(p.valor),
+            valorExibicao: formatarValorExibicao(p.valor, serieHist?.unidade),
+            acerto: true,
+            intervencaoDda: null,
+          };
+        });
+
+        return {
+          idMetrica,
+          nomeMetrica,
+          unidadeMetrica,
+          tendencia: metricaAg?.tendencia,
+          pontos: pontosMapeados,
+        };
+      }
+
+      // 2. Caso contrário, verifica tentativas da sessão para esta métrica
+      const isMetricaTempo =
+        idMetrica.includes("tempo") || idMetrica.includes("latencia");
+      const tentativasDaMetrica = tentativasBrutas.filter(
+        (t) =>
+          (t.id_metrica && t.id_metrica === idMetrica) ||
+          (!t.id_metrica && isMetricaTempo && idsMetricasUnicas[0] === idMetrica),
+      );
+
+      if (tentativasDaMetrica.length > 0) {
+        return {
+          idMetrica,
+          nomeMetrica,
+          unidadeMetrica,
+          tendencia: metricaAg?.tendencia,
+          pontos: tentativasDaMetrica.map((t, idx) => {
+            const dataIso = t.data_hora || dataBaseSessao;
+            const dataPt = formatarDataBr(dataIso);
+            const horaPt = formatarHoraBr(dataIso) || t.tempoFormatado;
+            return {
+              id: `tentativa-${t.tentativa ?? idx + 1}`,
+              dataRotulo: dataPt,
+              subRotulo:
+                tentativasDaMetrica.length > 1 && horaPt ? horaPt : undefined,
+              nomeMetrica,
+              valorNumerico: Number(t.tempo_resposta_segundos),
+              valorExibicao: `${Number(t.tempo_resposta_segundos).toFixed(1)}s`,
+              acerto: t.acerto,
+              intervencaoDda: !isModoLivre ? t.intervencaoDda : null,
+            };
+          }),
+        };
+      }
+
+      // 3. Fallback: Ponto único com o valor mediano/dominante da sessão atual na data da sessão
+      const valorDominante = metricaAg?.valor_dominante ?? "2.5s";
+      return {
+        idMetrica,
+        nomeMetrica,
+        unidadeMetrica,
+        tendencia: metricaAg?.tendencia,
+        pontos: [
+          {
+            id: `consolidado-${idMetrica}`,
+            dataRotulo: dataFormatadaSessao,
+            nomeMetrica,
+            valorNumerico: extrairValorNumerico(valorDominante),
+            valorExibicao: formatarValorExibicao(valorDominante, serieHist?.unidade),
+            acerto: true,
+            intervencaoDda: null,
+          },
+        ],
+      };
+    },
+  );
+
+  const graficosParaRenderizar =
+    metricaFiltroId === "todas"
+      ? todosGraficosMetricas
+      : todosGraficosMetricas.filter((g) => g.idMetrica === metricaFiltroId);
+
+  const listaFinalGraficos =
+    graficosParaRenderizar.length > 0 ? graficosParaRenderizar : todosGraficosMetricas;
+
+  const primeiroGrafico = listaFinalGraficos[0];
+
+  // Dimensões base do SVG para cada gráfico de métrica
+  const svgWidth = 520;
+  const svgHeight = 185;
+  const padLeft = 65;
+  const padRight = 65;
+  const padTop = 36;
+  const padBottom = 50;
+  const plotW = svgWidth - padLeft - padRight;
+  const plotH = svgHeight - padTop - padBottom;
+
   return (
     <main
       data-testid="resultado-sessao-page"
@@ -445,11 +805,7 @@ export function ResultadoSessaoPage({
               </span>
               <span className="flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
-                <span>
-                  {dados.data_hora_fim
-                    ? new Date(dados.data_hora_fim).toLocaleDateString("pt-BR")
-                    : new Date().toLocaleDateString("pt-BR")}
-                </span>
+                <span>{dataFormatadaSessao}</span>
               </span>
             </div>
           </div>
@@ -472,187 +828,405 @@ export function ResultadoSessaoPage({
         </div>
       </header>
 
-      {/* SLOT 1: Cards de Métricas Consolidadas */}
-      <section aria-labelledby="titulo-metricas-consolidadas">
+      {/* SLOT 1: Cards de Métricas Consolidadas (Dados Brutos Medianos da Sessão) */}
+      <section aria-labelledby="titulo-metricas-consolidadas" className="space-y-4">
         <h2 id="titulo-metricas-consolidadas" className="sr-only">Métricas Consolidadas</h2>
         {metricasSlot ? (
           metricasSlot
         ) : (
-          <div
-            data-testid="slot-metricas-default"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-          >
-            {/* Card 1: Duração */}
-            <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between gap-3 shadow-2xs">
-              <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-                <span>Tempo de Atividade</span>
-                <Clock className="h-4 w-4 text-primary" />
+          <div data-testid="slot-metricas-default" className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Card 1: Duração */}
+              <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between gap-3 shadow-2xs">
+                <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
+                  <span>Tempo de Atividade</span>
+                  <Clock className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-2xl font-bold font-mono text-foreground">
+                  {duracaoFormatada}
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Tempo total de engajamento ativo
+                </span>
               </div>
-              <span className="text-2xl font-bold font-mono text-foreground">
-                {duracaoFormatada}
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Tempo total de engajamento ativo
-              </span>
+
+              {/* Card 2: Conclusão */}
+              <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between gap-3 shadow-2xs">
+                <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
+                  <span>Taxa de Conclusão</span>
+                  <Award className="h-4 w-4 text-emerald-500" />
+                </div>
+                <span className="text-2xl font-bold font-mono text-foreground">
+                  {taxaConclusao.toFixed(1)}%
+                </span>
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                  Desempenho satisfatório
+                </span>
+              </div>
+
+              {/* Card 3: Intervenções DDA */}
+              <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between gap-3 shadow-2xs">
+                <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
+                  <span>Intervenções DDA</span>
+                  <Zap className="h-4 w-4 text-amber-500" />
+                </div>
+                <span className="text-2xl font-bold font-mono text-foreground">
+                  {intervencoesDda}
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Ajustes dinâmicos de dificuldade
+                </span>
+              </div>
+
+              {/* Card 4: Foco & Estabilidade */}
+              <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between gap-3 shadow-2xs">
+                <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
+                  <span>Estabilidade de Foco</span>
+                  <Brain className="h-4 w-4 text-purple-500" />
+                </div>
+                <span className="text-2xl font-bold font-mono text-foreground">
+                  Alta (84%)
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Regulação atencional sustentada
+                </span>
+              </div>
             </div>
 
-            {/* Card 2: Conclusão */}
-            <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between gap-3 shadow-2xs">
-              <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-                <span>Taxa de Conclusão</span>
-                <Award className="h-4 w-4 text-emerald-500" />
+            {/* Cards de Dados Brutos Medianos das Métricas do Jogo nesta Sessão */}
+            {metricasAgregadasLista.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {metricasAgregadasLista.map((m) => (
+                  <div
+                    key={`card-bruto-${m.id_metrica}`}
+                    className="rounded-xl border border-border/80 bg-card/70 px-4 py-3.5 flex items-center justify-between gap-3 shadow-2xs"
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                        <Activity className="h-3.5 w-3.5 text-primary" />
+                        <span>{formatarNomeMetrica(m.id_metrica)} (Mediana da Sessão)</span>
+                      </span>
+                      <span className="text-lg font-bold font-mono text-foreground">
+                        {m.valor_dominante}
+                      </span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] font-semibold capitalize">
+                      {m.tendencia || "estável"}
+                    </Badge>
+                  </div>
+                ))}
               </div>
-              <span className="text-2xl font-bold font-mono text-foreground">
-                {taxaConclusao.toFixed(1)}%
-              </span>
-              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                Desempenho satisfatório
-              </span>
-            </div>
-
-            {/* Card 3: Intervenções DDA */}
-            <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between gap-3 shadow-2xs">
-              <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-                <span>Intervenções DDA</span>
-                <Zap className="h-4 w-4 text-amber-500" />
-              </div>
-              <span className="text-2xl font-bold font-mono text-foreground">
-                {intervencoesDda}
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Ajustes dinâmicos de dificuldade
-              </span>
-            </div>
-
-            {/* Card 4: Foco & Estabilidade */}
-            <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between gap-3 shadow-2xs">
-              <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-                <span>Estabilidade de Foco</span>
-                <Brain className="h-4 w-4 text-purple-500" />
-              </div>
-              <span className="text-2xl font-bold font-mono text-foreground">
-                Alta (84%)
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Regulação atencional sustentada
-              </span>
-            </div>
+            )}
           </div>
         )}
       </section>
 
-      {/* Grid Central: SLOT 2 (Gráfico Evolutivo) + SLOT 3 (Insights da IA) */}
+      {/* Grid Central: SLOT 2 (Gráficos de Todas as Métricas Comparando Sessões) + SLOT 3 (Insights da IA) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Gráfico Evolutivo de Desempenho Temporal */}
+        {/* Gráficos Evolutivos por Data e por Métrica do Jogo */}
         <section
           aria-labelledby="titulo-grafico-desempenho"
           className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col gap-4 text-card-foreground"
         >
-          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
             <div>
               <h2 id="titulo-grafico-desempenho" className="text-base font-bold text-foreground tracking-tight">
-                Curva de Desempenho & Tempo de Reação
+                {listaFinalGraficos.length === 1
+                  ? `Gráfico por Data — ${primeiroGrafico.nomeMetrica}`
+                  : `Gráficos Evolutivos por Data — Métricas do Jogo (${listaFinalGraficos.length})`}
               </h2>
               <p className="text-xs text-muted-foreground">
-                Tempo de resposta por tentativa ao longo da sessão com marcadores DDA
+                {listaFinalGraficos.length === 1
+                  ? `Métrica: ${primeiroGrafico.nomeMetrica} • ${primeiroGrafico.pontos.length} ${
+                      primeiroGrafico.pontos.length === 1 ? "registro na data" : "registros por data"
+                    }`
+                  : "Comparativo das métricas do jogo com as sessões anteriores do paciente por data"}
               </p>
             </div>
-            <Badge variant="outline" className="text-[11px] font-mono">
-              Milissegundos (ms)
-            </Badge>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="text-[11px] font-semibold bg-primary/10 text-primary border-primary/20">
+                {listaFinalGraficos.length === 1
+                  ? primeiroGrafico.nomeMetrica
+                  : `${listaFinalGraficos.length} Métricas`}
+              </Badge>
+              {listaFinalGraficos.length === 1 && (
+                <Badge variant="outline" className="text-[11px] font-mono">
+                  {primeiroGrafico.unidadeMetrica}
+                </Badge>
+              )}
+            </div>
           </div>
+
+          {/* Filtro rápido quando há múltiplas métricas do jogo */}
+          {todosGraficosMetricas.length > 1 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-semibold text-muted-foreground">
+                Exibir métricas:
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant={metricaFiltroId === "todas" ? "default" : "outline"}
+                onClick={() => setMetricaFiltroId("todas")}
+                className="h-7 px-2.5 text-xs rounded-lg cursor-pointer"
+              >
+                Todas ({todosGraficosMetricas.length})
+              </Button>
+              {todosGraficosMetricas.map((g) => (
+                <Button
+                  key={g.idMetrica}
+                  type="button"
+                  size="sm"
+                  variant={metricaFiltroId === g.idMetrica ? "default" : "outline"}
+                  onClick={() => setMetricaFiltroId(g.idMetrica)}
+                  className="h-7 px-2.5 text-xs rounded-lg cursor-pointer"
+                >
+                  {g.nomeMetrica}
+                </Button>
+              ))}
+            </div>
+          )}
 
           {graficoSlot ? (
             graficoSlot
           ) : (
             <div
               data-testid="slot-grafico-default"
-              className="w-full h-64 flex flex-col items-center justify-center p-4 bg-muted/20 rounded-xl border border-border/60"
+              className="w-full flex flex-col gap-5"
             >
-              {/* Gráfico Vetorial SVG responsivo com marcadores DDA */}
-              <svg
-                viewBox="0 0 500 160"
-                className="w-full h-full max-h-56 overflow-visible"
-                aria-label="Gráfico de curva de desempenho temporal"
-              >
-                {/* Linhas de grade sutis */}
-                <line
-                  x1="30"
-                  y1="20"
-                  x2="480"
-                  y2="20"
-                  stroke="currentColor"
-                  strokeOpacity="0.1"
-                  strokeDasharray="4 4"
-                />
-                <line
-                  x1="30"
-                  y1="70"
-                  x2="480"
-                  y2="70"
-                  stroke="currentColor"
-                  strokeOpacity="0.1"
-                  strokeDasharray="4 4"
-                />
-                <line
-                  x1="30"
-                  y1="120"
-                  x2="480"
-                  y2="120"
-                  stroke="currentColor"
-                  strokeOpacity="0.1"
-                  strokeDasharray="4 4"
-                />
+              {listaFinalGraficos.map((grafico) => {
+                const pontosGrafico = grafico.pontos;
+                const valoresNumericos = pontosGrafico.map((p) => p.valorNumerico);
+                const minValRaw = Math.min(...valoresNumericos);
+                const maxValRaw = Math.max(...valoresNumericos);
+                const deltaVal = maxValRaw - minValRaw;
+                const minEixoY =
+                  deltaVal === 0
+                    ? Math.max(0, minValRaw * 0.7)
+                    : Math.max(0, minValRaw - deltaVal * 0.2);
+                const maxEixoY =
+                  deltaVal === 0
+                    ? Math.max(1, maxValRaw * 1.3)
+                    : maxValRaw + deltaVal * 0.2;
+                const intervaloY = maxEixoY - minEixoY || 1;
 
-                {/* Curva de tempo de resposta */}
-                <path
-                  d="M 30,110 Q 90,80 150,95 T 270,60 T 380,45 T 480,40"
-                  fill="none"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
+                const pontosCoordenadas = pontosGrafico.map((ponto, idx) => {
+                  const x =
+                    pontosGrafico.length === 1
+                      ? padLeft + plotW / 2
+                      : padLeft + (idx * plotW) / (pontosGrafico.length - 1);
+                  const y =
+                    pontosGrafico.length === 1
+                      ? padTop + plotH / 2
+                      : padTop +
+                        plotH -
+                        ((ponto.valorNumerico - minEixoY) / intervaloY) * plotH;
+                  return { ...ponto, x, y };
+                });
 
-                {/* Pontos de dados */}
-                <circle cx="30" cy="110" r="4" fill="hsl(var(--primary))" />
-                <circle cx="150" cy="95" r="4" fill="hsl(var(--primary))" />
-                <circle cx="270" cy="60" r="4" fill="hsl(var(--primary))" />
-                <circle cx="380" cy="45" r="4" fill="hsl(var(--primary))" />
-                <circle cx="480" cy="40" r="4" fill="hsl(var(--primary))" />
+                const caminhoLinhaSvg =
+                  pontosCoordenadas.length > 1
+                    ? pontosCoordenadas
+                        .map(
+                          (pt, i) =>
+                            `${i === 0 ? "M" : "L"} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`,
+                        )
+                        .join(" ")
+                    : "";
 
-                {/* Marcadores DDA (Intervenções da IA) */}
-                <g className="text-amber-500">
-                  <circle
-                    cx="270"
-                    cy="60"
-                    r="8"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeDasharray="2 2"
-                  />
-                  <text
-                    x="270"
-                    y="45"
-                    fontSize="9"
-                    textAnchor="middle"
-                    fill="currentColor"
-                    fontWeight="bold"
+                const caminhoAreaSvg =
+                  pontosCoordenadas.length > 1
+                    ? `${caminhoLinhaSvg} L ${pontosCoordenadas[pontosCoordenadas.length - 1].x.toFixed(1)} ${padTop + plotH} L ${pontosCoordenadas[0].x.toFixed(1)} ${padTop + plotH} Z`
+                    : "";
+
+                const possuiAlgumaIntervencaoNoGrafico = pontosCoordenadas.some(
+                  (pt) => Boolean(pt.intervencaoDda),
+                );
+
+                const gradientId = `gradiente-curva-${grafico.idMetrica}`;
+
+                return (
+                  <div
+                    key={grafico.idMetrica}
+                    data-testid={`grafico-metrica-${grafico.idMetrica}`}
+                    className="w-full min-h-64 flex flex-col items-center justify-between p-4 bg-muted/20 rounded-xl border border-border/60"
                   >
-                    DDA Modulado
-                  </text>
-                </g>
-              </svg>
-              <div className="flex items-center gap-6 text-[11px] text-muted-foreground mt-2">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-                  Curva de Reação (ms)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                  Ajuste Contextual DDA
-                </span>
-              </div>
+                    {/* Cabeçalho individual da métrica quando há múltiplos gráficos */}
+                    {listaFinalGraficos.length > 1 && (
+                      <div className="w-full flex items-center justify-between gap-2 pb-2 mb-2 border-b border-border/40">
+                        <span className="text-xs font-bold text-foreground">
+                          {`Gráfico por Data — ${grafico.nomeMetrica}`}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] font-mono">
+                          {grafico.unidadeMetrica}
+                        </Badge>
+                      </div>
+                    )}
+
+                    <svg
+                      viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                      className="w-full h-full max-h-56 overflow-visible"
+                      aria-label={`Gráfico de ${grafico.nomeMetrica} por data`}
+                    >
+                      <defs>
+                        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#2563eb" stopOpacity="0.22" />
+                          <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Linhas de grade sutis no fundo */}
+                      <line
+                        x1={padLeft}
+                        y1={padTop}
+                        x2={svgWidth - padRight}
+                        y2={padTop}
+                        stroke="currentColor"
+                        strokeOpacity="0.1"
+                        strokeDasharray="4 4"
+                      />
+                      <line
+                        x1={padLeft}
+                        y1={padTop + plotH / 2}
+                        x2={svgWidth - padRight}
+                        y2={padTop + plotH / 2}
+                        stroke="currentColor"
+                        strokeOpacity="0.12"
+                        strokeDasharray="4 4"
+                      />
+                      <line
+                        x1={padLeft}
+                        y1={padTop + plotH}
+                        x2={svgWidth - padRight}
+                        y2={padTop + plotH}
+                        stroke="currentColor"
+                        strokeOpacity="0.2"
+                      />
+
+                      {/* Área e Linha apenas quando houver mais de 1 ponto */}
+                      {pontosCoordenadas.length > 1 && (
+                        <>
+                          <path d={caminhoAreaSvg} fill={`url(#${gradientId})`} />
+                          <path
+                            d={caminhoLinhaSvg}
+                            fill="none"
+                            stroke="#2563eb"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </>
+                      )}
+
+                      {/* Renderiza EXATAMENTE a quantidade de pontos existentes nos dados */}
+                      {pontosCoordenadas.map((pt) => (
+                        <g key={pt.id} data-testid={`ponto-grafico-${pt.id}`}>
+                          <line
+                            x1={pt.x}
+                            y1={pt.y}
+                            x2={pt.x}
+                            y2={padTop + plotH}
+                            stroke="#2563eb"
+                            strokeOpacity="0.2"
+                            strokeDasharray="2 2"
+                          />
+
+                          {pt.intervencaoDda && (
+                            <g className="text-amber-500">
+                              <circle
+                                cx={pt.x}
+                                cy={pt.y}
+                                r="11"
+                                fill="none"
+                                stroke="#f59e0b"
+                                strokeWidth="2"
+                                strokeDasharray="2 2"
+                              />
+                              <text
+                                x={pt.x}
+                                y={pt.y - 24}
+                                fontSize="9"
+                                textAnchor="middle"
+                                fill="#d97706"
+                                fontWeight="bold"
+                              >
+                                DDA Modulado
+                              </text>
+                            </g>
+                          )}
+
+                          <circle
+                            cx={pt.x}
+                            cy={pt.y}
+                            r={pontosCoordenadas.length === 1 ? 6 : 5}
+                            fill="#2563eb"
+                            stroke="#ffffff"
+                            strokeWidth="2"
+                          />
+
+                          {/* Valor do dado exibido diretamente acima do ponto */}
+                          <text
+                            x={pt.x}
+                            y={pt.y - 11}
+                            fontSize="11"
+                            textAnchor="middle"
+                            fill="currentColor"
+                            fontWeight="bold"
+                            className="font-mono"
+                          >
+                            {pt.valorExibicao}
+                          </text>
+
+                          {/* Data no Eixo X */}
+                          <text
+                            x={pt.x}
+                            y={padTop + plotH + 18}
+                            fontSize="10"
+                            textAnchor="middle"
+                            fill="currentColor"
+                            fontWeight="600"
+                          >
+                            {pt.dataRotulo}
+                          </text>
+
+                          {/* Sub-rótulo ou nome da métrica */}
+                          <text
+                            x={pt.x}
+                            y={padTop + plotH + 31}
+                            fontSize="9"
+                            textAnchor="middle"
+                            fill="currentColor"
+                            opacity="0.7"
+                          >
+                            {pt.subRotulo ? pt.subRotulo : pt.nomeMetrica}
+                          </text>
+                        </g>
+                      ))}
+                    </svg>
+
+                    <div className="flex flex-wrap items-center justify-between w-full gap-4 text-[11px] text-muted-foreground mt-2 pt-2 border-t border-border/40">
+                      <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+                          <span>
+                            <strong>{grafico.nomeMetrica}</strong> ({grafico.unidadeMetrica})
+                          </span>
+                        </span>
+                        {possuiAlgumaIntervencaoNoGrafico && (
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+                            <span>Ajuste Contextual DDA</span>
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-mono text-[11px]">
+                        Data: {dataFormatadaSessao} • {pontosCoordenadas.length}{" "}
+                        {pontosCoordenadas.length === 1 ? "ponto registrado" : "pontos registrados"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
@@ -701,8 +1275,8 @@ export function ResultadoSessaoPage({
                         {m.tendencia === "estavel" && (
                           <Minus className="h-3 w-3 text-blue-500" />
                         )}
-                        <span className="capitalize">
-                          {m.id_metrica.replace(/_/g, " ")}:
+                        <span>
+                          {formatarNomeMetrica(m.id_metrica)}:
                         </span>
                         <strong className="font-semibold">
                           {m.valor_dominante}

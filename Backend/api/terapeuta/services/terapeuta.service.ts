@@ -134,6 +134,100 @@ export class TerapeutaService {
   }
 
   /**
+   * Retrieves full profile of the authenticated therapist with clinic details and normalized focus areas.
+   *
+   * @param usuarioLogado - Authenticated user info.
+   * @returns Object containing therapist data, clinic data, and focus areas.
+   */
+  static async obterPerfil(usuarioLogado?: UsuarioAutenticado): Promise<{
+    terapeuta: Omit<Terapeuta, 'areas_foco'>;
+    clinica: { id: string; nome: string; cnpj: string | null } | null;
+    areas_foco: AreaFoco[];
+  }> {
+    if (!usuarioLogado || !usuarioLogado.id) {
+      throw new TerapeutaServiceError('Usuário autenticado obrigatório para consultar o perfil.', 401);
+    }
+
+    const terapeuta = await TerapeutaModel.buscarPorId(usuarioLogado.id);
+    if (!terapeuta) {
+      throw new TerapeutaServiceError('Perfil de terapeuta não encontrado.', 404);
+    }
+
+    let clinica: { id: string; nome: string; cnpj: string | null } | null = null;
+    if (terapeuta.clinica_id) {
+      clinica = await TerapeutaModel.buscarClinicaPorId(terapeuta.clinica_id);
+    }
+
+    const areasNormalizadas = TerapeutaService.normalizarAreasFoco(terapeuta.areas_foco);
+    const { areas_foco, ...terapeutaSemAreas } = terapeuta;
+
+    return {
+      terapeuta: terapeutaSemAreas,
+      clinica,
+      areas_foco: areasNormalizadas,
+    };
+  }
+
+  /**
+   * Lists patients linked to a therapist (terapeuta_paciente), enforcing clinic boundaries (RN04).
+   *
+   * @param terapeutaId - Target therapist UUID.
+   * @param usuarioLogado - Authenticated user performing the request.
+   * @returns Array of links containing patient details.
+   */
+  static async listarPacientesVinculados(
+    terapeutaId: string,
+    usuarioLogado?: UsuarioAutenticado
+  ): Promise<Array<{
+    terapeuta_id: string;
+    paciente_id: string;
+    created_at: string;
+    paciente?: unknown;
+  }>> {
+    if (!terapeutaId || terapeutaId === 'undefined') {
+      throw new TerapeutaServiceError('O parâmetro ID é obrigatório.', 400);
+    }
+
+    if (!validarUUID(terapeutaId)) {
+      throw new TerapeutaServiceError('Identificador de terapeuta inválido: deve ser um UUID válido.', 400);
+    }
+
+    const terapeuta = await TerapeutaModel.buscarPorId(terapeutaId);
+    if (!terapeuta) {
+      throw new TerapeutaServiceError('Terapeuta não encontrado.', 404);
+    }
+
+    if (usuarioLogado) {
+      const isSuperAdmin =
+        usuarioLogado.is_super_admin === true ||
+        usuarioLogado.user_metadata?.is_super_admin === true;
+
+      const isProprio = usuarioLogado.id === terapeutaId;
+
+      if (!isSuperAdmin && !isProprio) {
+        let solicitanteClinicaId = usuarioLogado.clinica_id;
+        if (solicitanteClinicaId === undefined) {
+          const solicitante = await TerapeutaModel.buscarPorId(usuarioLogado.id);
+          solicitanteClinicaId = solicitante?.clinica_id;
+        }
+
+        if (
+          !solicitanteClinicaId ||
+          !terapeuta.clinica_id ||
+          solicitanteClinicaId !== terapeuta.clinica_id
+        ) {
+          throw new TerapeutaServiceError(
+            'Acesso negado: o terapeuta pertence a uma instituição clínica diferente.',
+            403
+          );
+        }
+      }
+    }
+
+    return await TerapeutaModel.listarPacientesVinculados(terapeutaId);
+  }
+
+  /**
    * Creates a new therapist and provisions Auth credentials.
    *
    * @param dto - Therapist payload.

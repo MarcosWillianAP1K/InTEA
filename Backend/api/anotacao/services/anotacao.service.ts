@@ -167,12 +167,12 @@ export class AnotacaoService {
    *
    * @param alvo - Existing clinical note record or its UUID.
    * @param usuarioLogadoId - UUID of the authenticated user.
-   * @returns Service response with HTTP status 204 on success.
+   * @returns Service response with HTTP status 200 and deactivated clinical note on success.
    */
   static async softDelete(
     alvo: string | AnotacaoClinica,
     usuarioLogadoId: string
-  ): Promise<RespostaServico<void>> {
+  ): Promise<RespostaServico<AnotacaoClinica>> {
     let anotacao: AnotacaoClinica | null = null;
 
     if (typeof alvo === 'string') {
@@ -200,7 +200,13 @@ export class AnotacaoService {
       return { sucesso: false, status: 500, erro: 'Erro ao aplicar soft delete na anotação clínica.' };
     }
 
-    return { sucesso: true, status: 204 };
+    const anotacaoDesativada: AnotacaoClinica = {
+      ...anotacao,
+      soft_delete: true,
+      updated_at: new Date().toISOString(),
+    };
+
+    return { sucesso: true, status: 200, dados: anotacaoDesativada };
   }
 
   /**

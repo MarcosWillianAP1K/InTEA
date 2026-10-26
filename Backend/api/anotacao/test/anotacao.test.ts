@@ -434,14 +434,15 @@ describe('AnotacaoService - Regras de Negócio e Autoria (RF16, RF21, RN05)', ()
     expect(res.status).toBe(403);
   });
 
-  it('softDelete deve aplicar exclusão lógica com status 204 para o autor', async () => {
+  it('softDelete deve aplicar exclusão lógica com status 200 para o autor', async () => {
     const { AnotacaoService } = await import('../services/anotacao.service.js');
     vi.spyOn(AnotacaoClinicaModel, 'softDelete').mockResolvedValue(true);
 
     const res = await AnotacaoService.softDelete(mockAnotacaoBase, autorId);
 
     expect(res.sucesso).toBe(true);
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(200);
+    expect(res.dados?.soft_delete).toBe(true);
   });
 
   it('buscarPorId deve retornar 400 se UUID for inválido', async () => {
@@ -470,14 +471,15 @@ describe('AnotacaoService - Regras de Negócio e Autoria (RF16, RF21, RN05)', ()
     expect(res.dados?.id).toBe(mockAnotacaoBase.id);
   });
 
-  it('softDelete com string ID deve buscar anotação e aplicar soft delete para o autor (204)', async () => {
+  it('softDelete com string ID deve buscar anotação e aplicar soft delete para o autor (200)', async () => {
     const { AnotacaoService } = await import('../services/anotacao.service.js');
     vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacaoBase);
     vi.spyOn(AnotacaoClinicaModel, 'softDelete').mockResolvedValue(true);
 
     const res = await AnotacaoService.softDelete(mockAnotacaoBase.id, autorId);
     expect(res.sucesso).toBe(true);
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(200);
+    expect(res.dados?.soft_delete).toBe(true);
   });
 
   it('softDelete com string ID deve bloquear com 403 e mensagem canônica se não for autor', async () => {
@@ -1559,7 +1561,8 @@ describe('Controllers de Anotações Clínicas - Autoria JWT e Códigos HTTP', (
     await AnotacaoPacienteController.criar(req, res);
 
     expect(getStatus()).toBe(201);
-    expect(getJson().data.id).toBe(anotacaoId);
+    expect(getJson().data.anotacao.id).toBe(anotacaoId);
+    expect(getJson().message).toContain('registrada com sucesso');
   });
 
   it('AnotacaoPacienteController.atualizar: deve rejeitar com 400 se campo conteudo estiver ausente', async () => {
@@ -1597,21 +1600,32 @@ describe('Controllers de Anotações Clínicas - Autoria JWT e Códigos HTTP', (
     expect(getStatus()).toBe(200);
   });
 
-  it('AnotacaoPacienteController.deletar: deve retornar 204 ao executar soft delete pelo autor', async () => {
+  it('AnotacaoPacienteController.deletar: deve retornar 200 ao executar soft delete pelo autor', async () => {
     const { AnotacaoPacienteController } = await import('../controllers/anotacao-paciente.controller.js');
     const { AnotacaoService } = await import('../services/anotacao.service.js');
     vi.spyOn(AnotacaoService, 'softDelete').mockResolvedValue({
       sucesso: true,
-      status: 204,
+      status: 200,
+      dados: {
+        id: anotacaoId,
+        terapeuta_id: autorId,
+        paciente_id: pacienteId,
+        sessao_id: null,
+        conteudo: 'Anotação geral',
+        soft_delete: true,
+        created_at: '',
+        updated_at: '',
+      },
     });
 
     const mockAnotacao = { id: anotacaoId, terapeuta_id: autorId };
-    const { req, res, getStatus, isSent } = criarMockHttp({}, { id: anotacaoId }, { id: autorId }, mockAnotacao);
+    const { req, res, getStatus, getJson } = criarMockHttp({}, { id: anotacaoId }, { id: autorId }, mockAnotacao);
 
     await AnotacaoPacienteController.deletar(req, res);
 
-    expect(getStatus()).toBe(204);
-    expect(isSent()).toBe(true);
+    expect(getStatus()).toBe(200);
+    expect(getJson().data.anotacao.soft_delete).toBe(true);
+    expect(getJson().message).toContain('desativada com sucesso');
   });
 
   it('AnotacaoSessaoController.criar: deve retornar 201 ao registrar anotação para sessão', async () => {
@@ -1643,27 +1657,39 @@ describe('Controllers de Anotações Clínicas - Autoria JWT e Códigos HTTP', (
     await AnotacaoSessaoController.criar(req, res);
 
     expect(getStatus()).toBe(201);
-    expect(getJson().data.sessao_id).toBe(sessaoId);
+    expect(getJson().data.anotacao.sessao_id).toBe(sessaoId);
+    expect(getJson().message).toContain('registrada com sucesso');
   });
 
-  it('AnotacaoSessaoController.deletar: deve retornar 204 ao executar soft delete da anotação de sessão', async () => {
+  it('AnotacaoSessaoController.deletar: deve retornar 200 ao executar soft delete da anotação de sessão', async () => {
     const { AnotacaoSessaoController } = await import('../controllers/anotacao-sessao.controller.js');
     const { AnotacaoService } = await import('../services/anotacao.service.js');
     vi.spyOn(AnotacaoService, 'softDelete').mockResolvedValue({
       sucesso: true,
-      status: 204,
+      status: 200,
+      dados: {
+        id: anotacaoId,
+        terapeuta_id: autorId,
+        paciente_id: pacienteId,
+        sessao_id: sessaoId,
+        conteudo: 'Parecer pós-sessão',
+        soft_delete: true,
+        created_at: '',
+        updated_at: '',
+      },
     });
 
     const mockAnotacao = { id: anotacaoId, terapeuta_id: autorId, sessao_id: sessaoId };
-    const { req, res, getStatus, isSent } = criarMockHttp({}, { id: anotacaoId }, { id: autorId }, mockAnotacao);
+    const { req, res, getStatus, getJson } = criarMockHttp({}, { id: anotacaoId }, { id: autorId }, mockAnotacao);
 
     await AnotacaoSessaoController.deletar(req, res);
 
-    expect(getStatus()).toBe(204);
-    expect(isSent()).toBe(true);
+    expect(getStatus()).toBe(200);
+    expect(getJson().data.anotacao.soft_delete).toBe(true);
+    expect(getJson().message).toContain('desativada com sucesso');
   });
 
-  it('AnotacaoPacienteController.listarPorPaciente: deve retornar 200 com array de anotações', async () => {
+  it('AnotacaoPacienteController.listarPorPaciente: deve retornar 200 com array de anotações e meta', async () => {
     const { AnotacaoPacienteController } = await import('../controllers/anotacao-paciente.controller.js');
     const { AnotacaoService } = await import('../services/anotacao.service.js');
     vi.spyOn(AnotacaoService, 'listarAnotacoesPaciente').mockResolvedValue({
@@ -1677,7 +1703,13 @@ describe('Controllers de Anotações Clínicas - Autoria JWT e Códigos HTTP', (
     await AnotacaoPacienteController.listarPorPaciente(req, res);
 
     expect(getStatus()).toBe(200);
-    expect(getJson().data).toEqual([]);
+    expect(getJson().data.anotacoes).toEqual([]);
+    expect(getJson().data.meta).toEqual({
+      total: 0,
+      pagina: 1,
+      limite: 0,
+    });
+    expect(getJson().message).toContain('listadas com sucesso');
   });
 
   it('AnotacaoPacienteController.listarPorPaciente: deve retornar 500 se service falhar', async () => {
@@ -1864,7 +1896,7 @@ describe('Controllers de Anotações Clínicas - Autoria JWT e Códigos HTTP', (
     expect(getStatus()).toBe(500);
   });
 
-  it('AnotacaoSessaoController.listarPorSessao: deve retornar 200 com array de anotações', async () => {
+  it('AnotacaoSessaoController.listarPorSessao: deve retornar 200 com array de anotações e meta', async () => {
     const { AnotacaoSessaoController } = await import('../controllers/anotacao-sessao.controller.js');
     const { AnotacaoService } = await import('../services/anotacao.service.js');
     vi.spyOn(AnotacaoService, 'listarAnotacoesSessao').mockResolvedValue({
@@ -1878,7 +1910,13 @@ describe('Controllers de Anotações Clínicas - Autoria JWT e Códigos HTTP', (
     await AnotacaoSessaoController.listarPorSessao(req, res);
 
     expect(getStatus()).toBe(200);
-    expect(getJson().data).toEqual([]);
+    expect(getJson().data.anotacoes).toEqual([]);
+    expect(getJson().data.meta).toEqual({
+      total: 0,
+      pagina: 1,
+      limite: 0,
+    });
+    expect(getJson().message).toContain('listadas com sucesso');
   });
 
   it('AnotacaoSessaoController.listarPorSessao: deve retornar 500 se service falhar', async () => {
@@ -2261,8 +2299,9 @@ describe('Rotas Canônicas Unificadas (/api/anotacao/:id) — Integração de Mi
       await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
 
       expect(mockHttp.getStatus()).toBe(200);
-      expect(mockHttp.getJson().data.id).toBe(anotacaoId);
-      expect(mockHttp.getJson().data.conteudo).toBe(mockAnotacao.conteudo);
+      expect(mockHttp.getJson().data.anotacao.id).toBe(anotacaoId);
+      expect(mockHttp.getJson().data.anotacao.conteudo).toBe(mockAnotacao.conteudo);
+      expect(mockHttp.getJson().message).toContain('consultada com sucesso');
     });
 
     it('deve retornar 404 Not Found se anotação clínica for inexistente no banco', async () => {
@@ -2354,7 +2393,7 @@ describe('Rotas Canônicas Unificadas (/api/anotacao/:id) — Integração de Mi
   // 2. DELETE /api/anotacao/:id (Soft Delete)
   // ----------------------------------------------------------------------------
   describe('DELETE /api/anotacao/:id', () => {
-    it('deve retornar 204 No Content quando executado pelo próprio autor com vínculo ativo (RF21 e RN04)', async () => {
+    it('deve retornar 200 OK com anotação desativada quando executado pelo próprio autor com vínculo ativo (RF21 e RN04)', async () => {
       const { anotacaoRoutes } = await import('../routes/anotacao.routes.js');
       const handlers = obterHandlersAnotacao(anotacaoRoutes, '/:id', 'delete');
 
@@ -2414,8 +2453,10 @@ describe('Rotas Canônicas Unificadas (/api/anotacao/:id) — Integração de Mi
 
       await executarPipelineAnotacao(handlers, mockHttp.req, mockHttp.res);
 
-      expect(mockHttp.getStatus()).toBe(204);
-      expect(mockHttp.isSent()).toBe(true);
+      expect(mockHttp.getStatus()).toBe(200);
+      expect(mockHttp.getJson().data.anotacao.id).toBe(anotacaoId);
+      expect(mockHttp.getJson().data.anotacao.soft_delete).toBe(true);
+      expect(mockHttp.getJson().message).toContain('desativada com sucesso');
     });
 
     it('deve retornar 403 Forbidden quando executado por outro terapeuta que não seja o autor (RF21)', async () => {
@@ -2670,3 +2711,149 @@ describe('Rotas Canônicas Unificadas (/api/anotacao/:id) — Integração de Mi
 });
 
 
+describe('Envelope Pattern Categorizado e Sanitização Estrita de Anotações Clínicas', () => {
+  const autorId = '11111111-1111-4111-a111-111111111111';
+  const pacienteId = '44444444-4444-4444-a444-444444444444';
+  const sessaoId = '77777777-7777-4777-a777-777777777777';
+  const anotacaoId = '55555555-5555-4555-a555-555555555555';
+
+  const mockNotas = [
+    {
+      id: 'aaaa1111-1111-4111-a111-111111111111',
+      terapeuta_id: autorId,
+      paciente_id: pacienteId,
+      sessao_id: null,
+      conteudo: 'Nota 1',
+      soft_delete: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 'bbbb2222-2222-4222-a222-222222222222',
+      terapeuta_id: autorId,
+      paciente_id: pacienteId,
+      sessao_id: null,
+      conteudo: 'Nota 2',
+      soft_delete: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 'cccc3333-3333-4333-a333-333333333333',
+      terapeuta_id: autorId,
+      paciente_id: pacienteId,
+      sessao_id: null,
+      conteudo: 'Nota 3',
+      soft_delete: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ];
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('AnotacaoPacienteController.listarPorPaciente deve respeitar paginação com pagina e limite no meta', async () => {
+    const { AnotacaoPacienteController } = await import('../controllers/anotacao-paciente.controller.js');
+    const { AnotacaoService } = await import('../services/anotacao.service.js');
+    vi.spyOn(AnotacaoService, 'listarAnotacoesPaciente').mockResolvedValue({
+      sucesso: true,
+      status: 200,
+      dados: mockNotas,
+    });
+
+    const req: any = {
+      params: { pacienteId },
+      query: { pagina: '2', limite: '2' },
+      user: { id: autorId },
+    };
+    let statusCode = 0;
+    let jsonResult: any = null;
+    const res: any = {
+      status(c: number) { statusCode = c; return this; },
+      json(d: any) { jsonResult = d; return this; },
+    };
+
+    await AnotacaoPacienteController.listarPorPaciente(req, res);
+
+    expect(statusCode).toBe(200);
+    expect(jsonResult.data.anotacoes).toHaveLength(1);
+    expect(jsonResult.data.anotacoes[0].id).toBe('cccc3333-3333-4333-a333-333333333333');
+    expect(jsonResult.data.meta).toEqual({
+      total: 3,
+      pagina: 2,
+      limite: 2,
+    });
+    expect(jsonResult.message).toBe('Anotações clínicas do paciente listadas com sucesso.');
+    expect(Object.keys(jsonResult)).toEqual(['data', 'message']);
+    expect(Object.keys(jsonResult.data)).toEqual(['anotacoes', 'meta']);
+  });
+
+  it('AnotacaoSessaoController.listarPorSessao deve respeitar paginação com page e limit no meta', async () => {
+    const { AnotacaoSessaoController } = await import('../controllers/anotacao-sessao.controller.js');
+    const { AnotacaoService } = await import('../services/anotacao.service.js');
+    vi.spyOn(AnotacaoService, 'listarAnotacoesSessao').mockResolvedValue({
+      sucesso: true,
+      status: 200,
+      dados: mockNotas,
+    });
+
+    const req: any = {
+      params: { sessaoId },
+      query: { page: '1', limit: '2' },
+      user: { id: autorId },
+    };
+    let statusCode = 0;
+    let jsonResult: any = null;
+    const res: any = {
+      status(c: number) { statusCode = c; return this; },
+      json(d: any) { jsonResult = d; return this; },
+    };
+
+    await AnotacaoSessaoController.listarPorSessao(req, res);
+
+    expect(statusCode).toBe(200);
+    expect(jsonResult.data.anotacoes).toHaveLength(2);
+    expect(jsonResult.data.meta).toEqual({
+      total: 3,
+      pagina: 1,
+      limite: 2,
+    });
+    expect(jsonResult.message).toBe('Anotações clínicas da sessão listadas com sucesso.');
+    expect(Object.keys(jsonResult)).toEqual(['data', 'message']);
+    expect(Object.keys(jsonResult.data)).toEqual(['anotacoes', 'meta']);
+  });
+
+  it('AnotacaoPacienteController.atualizar deve retornar envelope categorizado { data: { anotacao }, message }', async () => {
+    const { AnotacaoPacienteController } = await import('../controllers/anotacao-paciente.controller.js');
+    const { AnotacaoService } = await import('../services/anotacao.service.js');
+    const notaAtualizada = { ...mockNotas[0], conteudo: 'Conteúdo atualizado' };
+    vi.spyOn(AnotacaoService, 'atualizarConteudo').mockResolvedValue({
+      sucesso: true,
+      status: 200,
+      dados: notaAtualizada,
+    });
+
+    const req: any = {
+      params: { id: anotacaoId },
+      body: { conteudo: 'Conteúdo atualizado' },
+      user: { id: autorId },
+      contextoAnotacao: mockNotas[0],
+    };
+    let statusCode = 0;
+    let jsonResult: any = null;
+    const res: any = {
+      status(c: number) { statusCode = c; return this; },
+      json(d: any) { jsonResult = d; return this; },
+    };
+
+    await AnotacaoPacienteController.atualizar(req, res);
+
+    expect(statusCode).toBe(200);
+    expect(jsonResult.data.anotacao.conteudo).toBe('Conteúdo atualizado');
+    expect(jsonResult.message).toBe('Anotação clínica atualizada com sucesso.');
+    expect(Object.keys(jsonResult)).toEqual(['data', 'message']);
+    expect(Object.keys(jsonResult.data)).toEqual(['anotacao']);
+  });
+});

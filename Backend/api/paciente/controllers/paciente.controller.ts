@@ -2,20 +2,137 @@
 // InTEA: Controller de Pacientes (Camada HTTP / Thin Controller)
 // ==============================================================================
 // Conformidade: RF10, RN04 (Visibilidade), RN05 (Soft Delete)
+// Padrão Arquitetural: Envelope Pattern Categorizado e Sanitização Estrita
 // ==============================================================================
 
 import { Request, Response } from 'express';
-import { CriarPacienteDTO, AtualizarPacienteDTO, FiltrosPacienteDTO } from '../models/paciente.model.js';
+import { CriarPacienteDTO, AtualizarPacienteDTO, FiltrosPacienteDTO, Paciente } from '../models/paciente.model.js';
 import { PacienteService, PacienteServiceError } from '../services/paciente.service.js';
+import { PacienteHistoricoService } from '../services/paciente-historico.service.js';
+import { PacienteExportarHistoricoService } from '../services/paciente-exportar-historico.service.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { obterMensagemErro } from '../../../core/utils/formatters.js';
+import { validarUUID } from '../../../core/utils/validators.js';
+
+// ==============================================================================
+// Tipos de Sanitização de Saída (Zero any)
+// ==============================================================================
+
+export interface PacienteSanitizado {
+  id: string;
+  nome: string;
+  data_nascimento: string;
+  cpf: string | null;
+  telefone: string | null;
+  cep: string | null;
+  cidade: string | null;
+  estado: string | null;
+  endereco: string | null;
+  bairro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  clinica_id: string | null;
+  status_ativo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ResponsavelSanitizado {
+  id?: string;
+  nome: string;
+  cpf: string | null;
+  telefone: string | null;
+  email: string | null;
+  parentesco: string | null;
+  principal?: boolean;
+}
+
+export interface TerapeutaSanitizado {
+  id: string;
+  nome: string;
+  email: string | null;
+  telefone?: string | null;
+  registro_profissional?: string | null;
+  especialidade?: string | null;
+}
+
+/**
+ * Sanitizes the patient record by removing nested or sensitive fields.
+ */
+function sanitizarPaciente(paciente: unknown): PacienteSanitizado | null {
+  if (!paciente || typeof paciente !== 'object') return null;
+  const p = paciente as Record<string, unknown>;
+  return {
+    id: String(p.id ?? ''),
+    nome: String(p.nome ?? ''),
+    data_nascimento: String(p.data_nascimento ?? ''),
+    cpf: p.cpf !== undefined && p.cpf !== null ? String(p.cpf) : null,
+    telefone: p.telefone !== undefined && p.telefone !== null ? String(p.telefone) : null,
+    cep: p.cep !== undefined && p.cep !== null ? String(p.cep) : null,
+    cidade: p.cidade !== undefined && p.cidade !== null ? String(p.cidade) : null,
+    estado: p.estado !== undefined && p.estado !== null ? String(p.estado) : null,
+    endereco: p.endereco !== undefined && p.endereco !== null ? String(p.endereco) : null,
+    bairro: p.bairro !== undefined && p.bairro !== null ? String(p.bairro) : null,
+    numero: p.numero !== undefined && p.numero !== null ? String(p.numero) : null,
+    complemento: p.complemento !== undefined && p.complemento !== null ? String(p.complemento) : null,
+    clinica_id: p.clinica_id !== undefined && p.clinica_id !== null ? String(p.clinica_id) : null,
+    status_ativo: p.status_ativo !== false,
+    ...(p.created_at ? { created_at: String(p.created_at) } : {}),
+    ...(p.updated_at ? { updated_at: String(p.updated_at) } : {}),
+  };
+}
+
+/**
+ * Sanitizes data of the legal guardian linked to the patient.
+ */
+function sanitizarResponsavel(r: unknown): ResponsavelSanitizado | null {
+  if (!r || typeof r !== 'object') return null;
+  const raw = ('responsavel' in r && r.responsavel && typeof r.responsavel === 'object')
+    ? (r.responsavel as Record<string, unknown>)
+    : (r as Record<string, unknown>);
+
+  return {
+    id: raw.id !== undefined && raw.id !== null ? String(raw.id) : undefined,
+    nome: String(raw.nome ?? ''),
+    cpf: raw.cpf !== undefined && raw.cpf !== null ? String(raw.cpf) : null,
+    telefone: raw.telefone !== undefined && raw.telefone !== null ? String(raw.telefone) : null,
+    email: raw.email !== undefined && raw.email !== null ? String(raw.email) : null,
+    parentesco: raw.parentesco !== undefined && raw.parentesco !== null ? String(raw.parentesco) : null,
+    principal: Boolean(raw.principal ?? raw.is_principal ?? false),
+  };
+}
+
+/**
+ * Sanitizes data of the therapist linked to the multidisciplinary team.
+ */
+function sanitizarTerapeuta(t: unknown): TerapeutaSanitizado | null {
+  if (!t || typeof t !== 'object') return null;
+  const raw = ('terapeuta' in t && t.terapeuta && typeof t.terapeuta === 'object')
+    ? (t.terapeuta as Record<string, unknown>)
+    : (t as Record<string, unknown>);
+
+  return {
+    id: String(raw.id ?? ''),
+    nome: String(raw.nome ?? ''),
+    email: raw.email !== undefined && raw.email !== null ? String(raw.email) : null,
+    ...(raw.telefone !== undefined ? { telefone: raw.telefone !== null ? String(raw.telefone) : null } : {}),
+    ...(raw.registro_profissional !== undefined ? { registro_profissional: raw.registro_profissional !== null ? String(raw.registro_profissional) : null } : {}),
+    ...(raw.especialidade !== undefined ? { especialidade: raw.especialidade !== null ? String(raw.especialidade) : null } : {}),
+  };
+}
 
 export class PacienteController {
   /**
    * Handles GET /api/paciente to list patients with optional filtering, search, and pagination.
    *
-   * @param req - Express request with optional query filters (nome, cpf, idadeMin, idadeMax, page, limit).
-   * @param res - Express response returning patient list data and pagination metadata.
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "pacientes": [ ... ],
+   *     "meta": { "total": number, "pagina": number, "limite": number, "total_paginas": number }
+   *   },
+   *   "message": "Pacientes listados com sucesso."
+   * }
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
@@ -35,9 +152,21 @@ export class PacienteController {
 
       const resultado = await PacienteService.listar(filtros, usuarioLogado, verTodosPacientes);
 
+      const pacientesSanitizados = (resultado.data || [])
+        .map((p) => sanitizarPaciente(p))
+        .filter((p): p is PacienteSanitizado => p !== null);
+
       res.status(200).json({
-        data: resultado.data,
-        meta: resultado.meta,
+        data: {
+          pacientes: pacientesSanitizados,
+          meta: {
+            total: resultado.meta?.total ?? 0,
+            pagina: resultado.meta?.page ?? 1,
+            limite: resultado.meta?.limit ?? 10,
+            total_paginas: resultado.meta?.totalPages ?? 1,
+          },
+        },
+        message: 'Pacientes listados com sucesso.',
       });
     } catch (error: unknown) {
       if (error instanceof PacienteServiceError) {
@@ -56,10 +185,18 @@ export class PacienteController {
   }
 
   /**
-   * Handles GET /api/paciente/:id to retrieve a single patient by UUID.
+   * Handles GET /api/paciente/:id to retrieve a single patient by UUID with relations.
    *
-   * @param req - Express request containing the patient UUID in URL parameter `:id`.
-   * @param res - Express response returning the patient record or 404 if not found.
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "paciente": { ... },
+   *     "responsaveis": [ ... ],
+   *     "dados_clinicos": { ... },
+   *     "meta": { "total_responsaveis": number, "ultima_atualizacao": string }
+   *   },
+   *   "message": "Paciente recuperado com sucesso."
+   * }
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
@@ -71,7 +208,24 @@ export class PacienteController {
         return;
       }
 
-      res.status(200).json({ data: paciente });
+      const pacienteSanitizado = sanitizarPaciente(paciente);
+      const responsaveisSanitizados = Array.isArray(paciente.responsaveis)
+        ? paciente.responsaveis.map((r) => sanitizarResponsavel(r)).filter((r): r is ResponsavelSanitizado => r !== null)
+        : [];
+      const dadosClinicos = (paciente as { dados_clinicos?: unknown }).dados_clinicos ?? {};
+
+      res.status(200).json({
+        data: {
+          paciente: pacienteSanitizado,
+          responsaveis: responsaveisSanitizados,
+          dados_clinicos: dadosClinicos,
+          meta: {
+            total_responsaveis: responsaveisSanitizados.length,
+            ultima_atualizacao: paciente.updated_at || paciente.created_at || new Date().toISOString(),
+          },
+        },
+        message: 'Paciente recuperado com sucesso.',
+      });
     } catch (error: unknown) {
       if (error instanceof PacienteServiceError) {
         res.status(error.statusCode).json({ error: error.message });
@@ -85,8 +239,14 @@ export class PacienteController {
   /**
    * Handles POST /api/paciente to create a new patient with sanitized demographic data.
    *
-   * @param req - Express request containing `CriarPacienteDTO` in body.
-   * @param res - Express response returning status 201 with newly created patient.
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "paciente": { ... },
+   *     "responsavel": { ... } | null
+   *   },
+   *   "message": "Paciente cadastrado com sucesso."
+   * }
    */
   static async criar(req: Request, res: Response): Promise<void> {
     try {
@@ -94,8 +254,16 @@ export class PacienteController {
       const usuarioLogado = (req as AuthenticatedRequest).user;
       const novoPaciente = await PacienteService.criar(dto, usuarioLogado);
 
+      const pacienteSanitizado = sanitizarPaciente(novoPaciente);
+      const responsavelSanitizado = Array.isArray(novoPaciente.responsaveis) && novoPaciente.responsaveis.length > 0
+        ? sanitizarResponsavel(novoPaciente.responsaveis[0])
+        : (dto.responsavel ? sanitizarResponsavel(dto.responsavel) : null);
+
       res.status(201).json({
-        data: novoPaciente,
+        data: {
+          paciente: pacienteSanitizado,
+          responsavel: responsavelSanitizado,
+        },
         message: 'Paciente cadastrado com sucesso.',
       });
     } catch (error: unknown) {
@@ -129,10 +297,15 @@ export class PacienteController {
   }
 
   /**
-   * Handles PUT /api/paciente/:id to update fields of an existing patient.
+   * Handles PUT / PATCH /api/paciente/:id to update fields of an existing patient.
    *
-   * @param req - Express request with patient UUID in `:id` and update fields in body.
-   * @param res - Express response returning status 200 with the updated patient.
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "paciente": { ... }
+   *   },
+   *   "message": "Paciente atualizado com sucesso."
+   * }
    */
   static async atualizar(req: Request, res: Response): Promise<void> {
     try {
@@ -142,7 +315,9 @@ export class PacienteController {
       const pacienteAtualizado = await PacienteService.atualizar(id, dto);
 
       res.status(200).json({
-        data: pacienteAtualizado,
+        data: {
+          paciente: sanitizarPaciente(pacienteAtualizado),
+        },
         message: 'Paciente atualizado com sucesso.',
       });
     } catch (error: unknown) {
@@ -175,25 +350,26 @@ export class PacienteController {
   /**
    * Handles DELETE /api/paciente/:id applying soft deletion (RN05).
    *
-   * @param req - Express request with patient UUID in `:id`.
-   * @param res - Express response returning status 200 with deactivated patient info.
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "paciente": { ... }
+   *   },
+   *   "message": "Paciente desativado com sucesso (soft delete aplicado)."
+   * }
    */
   static async desativar(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
       const { paciente, jaInativo } = await PacienteService.desativar(id);
 
-      if (jaInativo) {
-        res.status(200).json({
-          data: paciente,
-          message: 'O paciente já se encontra inativo.',
-        });
-        return;
-      }
-
       res.status(200).json({
-        data: paciente,
-        message: 'Paciente desativado com sucesso (soft delete aplicado).',
+        data: {
+          paciente: sanitizarPaciente(paciente),
+        },
+        message: jaInativo
+          ? 'O paciente já se encontra inativo.'
+          : 'Paciente desativado com sucesso (soft delete aplicado).',
       });
     } catch (error: unknown) {
       if (error instanceof PacienteServiceError) {
@@ -208,8 +384,13 @@ export class PacienteController {
   /**
    * Handles PATCH /api/paciente/:id/reativar to reactivate an inactive patient record.
    *
-   * @param req - Express request with patient UUID in `:id`.
-   * @param res - Express response returning status 200 with reactivated patient.
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "paciente": { ... }
+   *   },
+   *   "message": "Paciente reativado com sucesso."
+   * }
    */
   static async reativar(req: Request, res: Response): Promise<void> {
     try {
@@ -217,7 +398,9 @@ export class PacienteController {
       const pacienteReativado = await PacienteService.reativar(id);
 
       res.status(200).json({
-        data: pacienteReativado,
+        data: {
+          paciente: sanitizarPaciente(pacienteReativado),
+        },
         message: 'Paciente reativado com sucesso.',
       });
     } catch (error: unknown) {
@@ -233,8 +416,13 @@ export class PacienteController {
   /**
    * Handles DELETE /api/paciente/:id/hard to permanently delete a patient (testing/dev).
    *
-   * @param req - Express request with patient UUID in `:id`.
-   * @param res - Express response confirming permanent deletion.
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "paciente": { "id": string, "removido": true }
+   *   },
+   *   "message": "Paciente excluído fisicamente do banco com sucesso (hard delete para testes)."
+   * }
    */
   static async deletarHard(req: Request, res: Response): Promise<void> {
     try {
@@ -242,6 +430,12 @@ export class PacienteController {
       await PacienteService.deletarHard(id);
 
       res.status(200).json({
+        data: {
+          paciente: {
+            id,
+            removido: true,
+          },
+        },
         message: 'Paciente excluído fisicamente do banco com sucesso (hard delete para testes).',
       });
     } catch (error: unknown) {
@@ -259,8 +453,13 @@ export class PacienteController {
   /**
    * Handles POST /api/paciente/:id/terapeutas to associate a therapist with a patient.
    *
-   * @param req - Express request with patient UUID in `:id` and `terapeuta_id` in body.
-   * @param res - Express response returning status 201 on success.
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "vinculo": { "paciente_id": string, "terapeuta_id": string }
+   *   },
+   *   "message": "Terapeuta vinculado ao paciente com sucesso."
+   * }
    */
   static async vincularTerapeuta(req: Request, res: Response): Promise<void> {
     try {
@@ -275,6 +474,12 @@ export class PacienteController {
       await PacienteService.vincularTerapeuta(pacienteId, terapeuta_id);
 
       res.status(201).json({
+        data: {
+          vinculo: {
+            paciente_id: pacienteId,
+            terapeuta_id,
+          },
+        },
         message: 'Terapeuta vinculado ao paciente com sucesso.',
       });
     } catch (error: unknown) {
@@ -305,8 +510,13 @@ export class PacienteController {
   /**
    * Handles DELETE /api/paciente/:id/terapeutas/:terapeutaId to unlink a therapist.
    *
-   * @param req - Express request with patient UUID in `:id` and therapist UUID in `:terapeutaId`.
-   * @param res - Express response returning status 200 on unlinking.
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "vinculo": { "paciente_id": string, "terapeuta_id": string, "status": "removido" }
+   *   },
+   *   "message": "Vínculo do terapeuta com o paciente removido com sucesso."
+   * }
    */
   static async desvincularTerapeuta(req: Request, res: Response): Promise<void> {
     try {
@@ -316,6 +526,13 @@ export class PacienteController {
       await PacienteService.desvincularTerapeuta(pacienteId, terapeutaId);
 
       res.status(200).json({
+        data: {
+          vinculo: {
+            paciente_id: pacienteId,
+            terapeuta_id: terapeutaId,
+            status: 'removido',
+          },
+        },
         message: 'Vínculo do terapeuta com o paciente removido com sucesso.',
       });
     } catch (error: unknown) {
@@ -341,15 +558,33 @@ export class PacienteController {
   /**
    * Handles GET /api/paciente/:id/terapeutas to retrieve all linked therapists.
    *
-   * @param req - Express request with patient UUID in `:id`.
-   * @param res - Express response returning the array of linked therapists.
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "terapeutas": [ ... ],
+   *     "meta": { "total": number }
+   *   },
+   *   "message": "Terapeutas vinculados listados com sucesso."
+   * }
    */
   static async listarTerapeutas(req: Request, res: Response): Promise<void> {
     try {
       const pacienteId = String(req.params.id);
       const terapeutas = await PacienteService.listarTerapeutas(pacienteId);
 
-      res.status(200).json({ data: terapeutas });
+      const terapeutasSanitizados = (terapeutas || [])
+        .map((t) => sanitizarTerapeuta(t))
+        .filter((t): t is TerapeutaSanitizado => t !== null);
+
+      res.status(200).json({
+        data: {
+          terapeutas: terapeutasSanitizados,
+          meta: {
+            total: terapeutasSanitizados.length,
+          },
+        },
+        message: 'Terapeutas vinculados listados com sucesso.',
+      });
     } catch (error: unknown) {
       if (error instanceof PacienteServiceError) {
         res.status(error.statusCode).json({ error: error.message });
@@ -369,4 +604,168 @@ export class PacienteController {
       });
     }
   }
+
+  /**
+   * Handles GET /api/paciente/:id/historico to retrieve longitudinal patient history
+   * with universal engagement metrics and game-specific metric series (RF15, RF19, RN01, RN02, RN04, RN05).
+   *
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "engajamento": { ... },
+   *     "jogos": [ ... ],
+   *     "meta": { ... }
+   *   },
+   *   "message": "Histórico geral de engajamento do paciente recuperado com sucesso."
+   * }
+   */
+  static async buscarHistoricoGeral(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id);
+
+      if (!validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O identificador do paciente deve ser um UUID válido.' });
+        return;
+      }
+
+      // Proteção contra uso indevido de jogoId nesta rota (T1-P1)
+      if (req.query.jogoId) {
+        res.status(400).json({
+          error: 'Para consultar o histórico de um jogo específico, use GET /api/paciente/:id/historico/jogo/:jogoId',
+        });
+        return;
+      }
+
+      const filtros = {
+        dataInicio: typeof req.query.dataInicio === 'string' && req.query.dataInicio.trim() ? req.query.dataInicio.trim() : undefined,
+        dataFim: typeof req.query.dataFim === 'string' && req.query.dataFim.trim() ? req.query.dataFim.trim() : undefined,
+      };
+
+      const resultado = await PacienteHistoricoService.buscarHistoricoGeral(pacienteId, filtros);
+
+      res.status(200).json({
+        data: {
+          engajamento: resultado.engajamento,
+          jogos: resultado.jogos,
+          meta: resultado.meta,
+        },
+        message: 'Histórico geral de engajamento do paciente recuperado com sucesso.',
+      });
+    } catch (error: unknown) {
+      if (error instanceof PacienteServiceError) {
+        res.status(error.statusCode).json({
+          error: error.message,
+          ...(typeof error.detalhes === 'object' && error.detalhes !== null ? error.detalhes : { detalhes: error.detalhes }),
+        });
+        return;
+      }
+
+      console.error('[PacienteController.buscarHistoricoGeral]', error);
+      res.status(500).json({
+        error: 'Erro interno ao consultar histórico geral do paciente.',
+        detalhes: obterMensagemErro(error),
+      });
+    }
+  }
+
+  /**
+   * Handles GET /api/paciente/:id/historico/jogo/:jogoId to retrieve specific game metric series (RF15, RN02).
+   *
+   * Canonical Format:
+   * {
+   *   "data": {
+   *     "jogo": { ... },
+   *     "metricas_declaradas": [ ... ],
+   *     "series_temporais": [ ... ],
+   *     "sessoes": [ ... ],
+   *     "meta": { ... }
+   *   },
+   *   "message": "Histórico do jogo para o paciente recuperado com sucesso."
+   * }
+   */
+  static async buscarHistoricoJogo(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id);
+      const jogoId = String(req.params.jogoId);
+      if (!validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O identificador do paciente deve ser um UUID válido.' });
+        return;
+      }
+
+      if (!validarUUID(jogoId)) {
+        res.status(400).json({ error: 'O identificador do jogo deve ser um UUID válido.' });
+        return;
+      }
+
+      const filtros = {
+        sessaoId: typeof req.query.sessaoId === 'string' && req.query.sessaoId.trim() ? req.query.sessaoId.trim() : undefined,
+        dataInicio: typeof req.query.dataInicio === 'string' && req.query.dataInicio.trim() ? req.query.dataInicio.trim() : undefined,
+        dataFim: typeof req.query.dataFim === 'string' && req.query.dataFim.trim() ? req.query.dataFim.trim() : undefined,
+        page: req.query.page !== undefined ? Number(req.query.page) : undefined,
+        limit: req.query.limit !== undefined ? Number(req.query.limit) : undefined,
+      };
+
+      const resultado = await PacienteHistoricoService.buscarHistoricoJogo(pacienteId, jogoId, filtros);
+
+      res.status(200).json({
+        data: {
+          jogo: resultado.jogo,
+          metricas_declaradas: resultado.metricas_declaradas,
+          series_temporais: resultado.series_temporais,
+          sessoes: resultado.sessoes,
+          meta: resultado.meta,
+        },
+        message: 'Histórico do jogo para o paciente recuperado com sucesso.',
+      });
+    } catch (error: unknown) {
+      if (error instanceof PacienteServiceError) {
+        res.status(error.statusCode).json({
+          error: error.message,
+          ...(typeof error.detalhes === 'object' && error.detalhes !== null ? error.detalhes : { detalhes: error.detalhes }),
+        });
+        return;
+      }
+
+      console.error('[PacienteController.buscarHistoricoJogo]', error);
+      res.status(500).json({
+        error: 'Erro interno ao consultar histórico do jogo para o paciente.',
+        detalhes: obterMensagemErro(error),
+      });
+    }
+  }
+
+  /**
+   * Alias de compatibilidade para consultas unificadas.
+   */
+  static async buscarHistorico(req: Request, res: Response): Promise<void> {
+    return PacienteController.buscarHistoricoGeral(req, res);
+  }
+
+  /**
+   * Handles GET /api/paciente/:id/prontuario/exportar to export longitudinal clinical report in PDF.
+   */
+  static async exportarProntuario(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id || '').trim();
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+
+      const resultado = await PacienteExportarHistoricoService.exportarProntuario(pacienteId, usuarioLogado);
+
+      if (!resultado.sucesso) {
+        res.status(resultado.statusHttp).json({ error: resultado.erro });
+        return;
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${resultado.filename}"`);
+      res.status(200).send(resultado.pdfBuffer);
+    } catch (error: unknown) {
+      console.error('[PacienteController.exportarProntuario]', error);
+      res.status(500).json({
+        error: 'Erro interno ao exportar prontuário longitudinal do paciente.',
+        detalhes: obterMensagemErro(error),
+      });
+    }
+  }
 }
+

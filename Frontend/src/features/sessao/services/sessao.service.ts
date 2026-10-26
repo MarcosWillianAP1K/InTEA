@@ -9,6 +9,7 @@
  */
 
 import { http, withFallback, ENDPOINTS } from "@/core/api";
+import { USE_MOCK_DATA } from "@/core/api/http-client";
 import type {
   Sessao,
   IniciarSessaoDTO,
@@ -18,6 +19,8 @@ import type {
   ResultadoSessao,
   RelatorioIAResultado,
   MetricasConsolidadas,
+  HistoricoEvolutivoResultado,
+  TentativaGraficoResultado,
   FinalizarSessaoResposta,
   BuscarResultadoResposta,
   SalvarAnotacaoPayload,
@@ -43,6 +46,11 @@ const API_BASE_URL =
   (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ||
   "http://localhost:3000/api";
 
+/**
+ * Retrieves the stored JWT access token and constructs HTTP authorization headers for session requests.
+ *
+ * @returns Headers dictionary populated with Bearer token authentication if present.
+ */
 function obterAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -64,8 +72,7 @@ function obterAuthHeaders(): Record<string, string> {
 }
 
 /**
- * Normaliza o payload de resultado consolidado retornado pelo backend (GET /api/sessao/:id/resultado)
- * para a interface plana ResultadoSessao esperada pelos componentes da UI.
+ * Normalizes consolidated outcome payload from backend (GET /api/sessao/:id/resultado) into UI ResultadoSessao interface.
  */
 export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
   if (!raw || typeof raw !== "object") {
@@ -147,31 +154,46 @@ export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
     ? iaJson.metricas_consolidadas
     : {}) as Record<string, unknown>;
 
-  const metricasAgregadas = Array.isArray(iaJson.metricas_agregadas)
-    ? (iaJson.metricas_agregadas as Array<{ id_metrica: string; valor_dominante: string | number; tendencia: "crescente" | "decrescente" | "estavel" }>)
-    : [
+  let metricasAgregadas: Array<{ id_metrica: string; valor_dominante: string | number; tendencia: "crescente" | "decrescente" | "estavel" }> = [];
+
+  if (Array.isArray(iaJson.metricas_agregadas) && iaJson.metricas_agregadas.length > 0) {
+    metricasAgregadas = iaJson.metricas_agregadas as Array<{
+      id_metrica: string;
+      valor_dominante: string | number;
+      tendencia: "crescente" | "decrescente" | "estavel";
+    }>;
+  } else {
+    if (metricasConsolidadasRaw.tempo_resposta_medio_segundos !== undefined) {
+      metricasAgregadas.push({
+        id_metrica: "tempo_resposta",
+        valor_dominante: `${metricasConsolidadasRaw.tempo_resposta_medio_segundos}s`,
+        tendencia: "crescente",
+      });
+    }
+    if (metricasConsolidadasRaw.precisao_acertos_percentual !== undefined) {
+      metricasAgregadas.push({
+        id_metrica: "precisao",
+        valor_dominante: `${metricasConsolidadasRaw.precisao_acertos_percentual}%`,
+        tendencia: "estavel",
+      });
+    }
+    if (iaJson.estabilidade_emocional_score !== undefined) {
+      metricasAgregadas.push({
+        id_metrica: "estabilidade_emocional",
+        valor_dominante: `${iaJson.estabilidade_emocional_score}/10`,
+        tendencia: "estavel",
+      });
+    }
+    if (metricasAgregadas.length === 0) {
+      metricasAgregadas = [
         {
           id_metrica: "tempo_resposta",
-          valor_dominante: metricasConsolidadasRaw.tempo_resposta_medio_segundos
-            ? `${metricasConsolidadasRaw.tempo_resposta_medio_segundos}s`
-            : "2.8s",
-          tendencia: "crescente" as const,
-        },
-        {
-          id_metrica: "precisao",
-          valor_dominante: metricasConsolidadasRaw.precisao_acertos_percentual
-            ? `${metricasConsolidadasRaw.precisao_acertos_percentual}%`
-            : "89%",
-          tendencia: "estavel" as const,
-        },
-        {
-          id_metrica: "estabilidade_emocional",
-          valor_dominante: iaJson.estabilidade_emocional_score
-            ? `${iaJson.estabilidade_emocional_score}/10`
-            : "8.6/10",
-          tendencia: "estavel" as const,
+          valor_dominante: "2.8s",
+          tendencia: "crescente",
         },
       ];
+    }
+  }
 
   const dadosIa: RelatorioIAResultado = {
     token_sessao: sessionToken,
@@ -194,6 +216,22 @@ export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
     total_acertos: 45,
     total_erros: 4,
   };
+
+  // Preservar historico_evolutivo retornado pelo backend (GET /api/sessao/:id/resultado)
+  const rawHistorico = (r.historico_evolutivo || r.grafico_evolutivo) as Record<string, unknown> | undefined;
+  const historicoEvolutivo: HistoricoEvolutivoResultado | null =
+    rawHistorico && typeof rawHistorico === "object"
+      ? {
+          tipo: rawHistorico.tipo ? String(rawHistorico.tipo) : undefined,
+          tempo_medio_referencia:
+            rawHistorico.tempo_medio_referencia !== undefined
+              ? Number(rawHistorico.tempo_medio_referencia)
+              : undefined,
+          tentativas: Array.isArray(rawHistorico.tentativas)
+            ? (rawHistorico.tentativas as TentativaGraficoResultado[])
+            : [],
+        }
+      : null;
 
   const rawAnotacoes = Array.isArray(r.anotacoes) ? (r.anotacoes as Array<Record<string, unknown>>) : [];
   const anotacoes: AnotacaoClinicaResultado[] = rawAnotacoes.map((a) => ({
@@ -223,35 +261,70 @@ export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
     terapeuta,
     metricas_consolidadas: metricasConsolidadas,
     dados_ia: dadosIa,
+    historico_evolutivo: historicoEvolutivo,
     anotacoes,
   };
 }
 
 export const sessaoService = {
   /**
-   * Inicia uma nova sessão clínica ou em Modo Livre (RN01, RF10).
+   * Starts a new clinical session or free play session (RN01, RF10).
    */
   iniciarSessao: async (dto: IniciarSessaoDTO): Promise<Sessao> => {
     return await withFallback(
       async () => {
-        const resposta = await http.post<{ data: Sessao } | Sessao>(
-          ENDPOINTS.SESSAO.INICIAR,
-          dto,
-        );
+        interface TokenPareamentoPayload {
+          token?: string;
+          codigo?: string;
+          expira_em?: string;
+        }
+        const resposta = await http.post<
+          | {
+              data:
+                | ({
+                    sessao?: Sessao;
+                    token_pareamento?: TokenPareamentoPayload;
+                  } & Partial<Sessao>)
+                | Sessao;
+            }
+          | Sessao
+        >(ENDPOINTS.SESSAO.INICIAR, dto);
+
         let dados: Sessao;
+        let tokenPareamento: TokenPareamentoPayload | undefined;
+
         if ("data" in resposta && resposta.data) {
-          dados = resposta.data;
+          const dataObj = resposta.data as {
+            sessao?: Sessao;
+            token_pareamento?: TokenPareamentoPayload;
+          } & Sessao;
+          tokenPareamento = dataObj.token_pareamento;
+          dados = dataObj.sessao || dataObj;
         } else {
           dados = resposta as Sessao;
         }
-        const dadosRaw = dados as unknown as { id?: string; session_id?: string };
+
+        const dadosRaw = dados as unknown as {
+          id?: string;
+          session_id?: string;
+          session_token?: string;
+          expira_em?: string;
+        };
         const idNormalizado = dadosRaw.id || dadosRaw.session_id;
-        if (idNormalizado && !dados.id) {
-          dados = {
-            ...dados,
-            id: idNormalizado,
-          };
-        }
+        const tokenNormalizado =
+          dadosRaw.session_token ||
+          tokenPareamento?.token ||
+          tokenPareamento?.codigo;
+        const expiraEmNormalizado =
+          dadosRaw.expira_em || tokenPareamento?.expira_em;
+
+        dados = {
+          ...dados,
+          ...(idNormalizado ? { id: idNormalizado } : {}),
+          ...(tokenNormalizado ? { session_token: tokenNormalizado } : {}),
+          ...(expiraEmNormalizado ? { expira_em: expiraEmNormalizado } : {}),
+        };
+
         return dados;
       },
       () => iniciarSessaoMock(dto),
@@ -259,18 +332,19 @@ export const sessaoService = {
   },
 
   /**
-   * Consulta uma sessão por UUID.
+   * Retrieves session by UUID.
    */
   buscarPorId: async (id: string): Promise<Sessao | null> => {
     if (!id || !id.trim()) return null;
 
     return await withFallback(
       async () => {
-        const resposta = await http.get<{ data: Sessao } | Sessao>(
+        const resposta = await http.get<{ data: { sessao?: Sessao } | Sessao } | Sessao>(
           ENDPOINTS.SESSAO.BY_ID(id),
         );
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const dataObj = resposta.data as unknown as { sessao?: Sessao } & Sessao;
+          return dataObj.sessao || dataObj;
         }
         return (resposta as Sessao) ?? null;
       },
@@ -279,18 +353,19 @@ export const sessaoService = {
   },
 
   /**
-   * Consulta uma sessão pelo session_token de pareamento.
+   * Retrieves a session by pairing session_token.
    */
   buscarPorToken: async (token: string): Promise<Sessao | null> => {
     if (!token || !token.trim()) return null;
 
     return await withFallback(
       async () => {
-        const resposta = await http.get<{ data: Sessao } | Sessao>(
+        const resposta = await http.get<{ data: { sessao?: Sessao } | Sessao } | Sessao>(
           ENDPOINTS.SESSAO.BY_TOKEN(token),
         );
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const dataObj = resposta.data as unknown as { sessao?: Sessao } & Sessao;
+          return dataObj.sessao || dataObj;
         }
         return (resposta as Sessao) ?? null;
       },
@@ -299,7 +374,7 @@ export const sessaoService = {
   },
 
   /**
-   * Consulta o status de conexão do tablet ou VR pelo PIN/Token de pareamento.
+   * Queries tablet or VR connection status via pairing PIN/Token.
    */
   consultarStatusPorPin: async (
     tokenOuPin: string,
@@ -308,12 +383,44 @@ export const sessaoService = {
 
     return await withFallback(
       async () => {
+        interface RawStatusEnvelope {
+          sessao?: Record<string, unknown>;
+          dispositivo?: {
+            info?: StatusSessaoDTO["dispositivo_info"];
+            presenca?: StatusSessaoDTO["presenca_dispositivo"];
+          };
+          presenca_dispositivo?: StatusSessaoDTO["presenca_dispositivo"];
+        }
         const resposta = await http.get<
-          { data: StatusSessaoDTO } | StatusSessaoDTO
+          { data: (RawStatusEnvelope & Partial<StatusSessaoDTO>) | StatusSessaoDTO } | StatusSessaoDTO
         >(ENDPOINTS.SESSAO.STATUS_BY_TOKEN(tokenOuPin));
 
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const dataObj = resposta.data as RawStatusEnvelope & StatusSessaoDTO;
+          if (dataObj.sessao && typeof dataObj.sessao === "object") {
+            const sessao = dataObj.sessao;
+            const disp = dataObj.dispositivo;
+            return {
+              id: String(sessao.id || ""),
+              session_token: String(sessao.session_token || tokenOuPin),
+              status_sessao: (sessao.status_sessao ||
+                "aguardando_pareamento") as StatusSessao,
+              modo_sessao: (sessao.modo_sessao || "sessao_clinica") as
+                | "sessao_clinica"
+                | "modo_livre",
+              dispositivo_conectado: Boolean(
+                sessao.dispositivo_conectado ?? disp?.presenca?.conectado,
+              ),
+              dispositivo_info:
+                (sessao.dispositivo_info as StatusSessaoDTO["dispositivo_info"]) ??
+                disp?.info ??
+                null,
+              expirado: Boolean(sessao.expirado ?? false),
+              presenca_dispositivo:
+                dataObj.presenca_dispositivo ?? disp?.presenca,
+            };
+          }
+          return dataObj;
         }
         return (resposta as StatusSessaoDTO) ?? null;
       },
@@ -322,7 +429,7 @@ export const sessaoService = {
   },
 
   /**
-   * Atualiza o status operacional da sessão (FSM).
+   * Updates operational status of session (FSM).
    */
   atualizarStatus: async (
     id: string,
@@ -332,12 +439,13 @@ export const sessaoService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.patch<{ data: Sessao } | Sessao>(
+        const resposta = await http.patch<{ data: { sessao?: Sessao } | Sessao } | Sessao>(
           ENDPOINTS.SESSAO.STATUS(id),
           { status },
         );
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          const dataObj = resposta.data as unknown as { sessao?: Sessao } & Sessao;
+          return dataObj.sessao || dataObj;
         }
         return (resposta as Sessao) ?? null;
       },
@@ -346,7 +454,7 @@ export const sessaoService = {
   },
 
   /**
-   * Finaliza sessão clínica e sintetiza laudo IA (RF13, RF14, RF17).
+   * Finalizes clinical session and synthesizes AI outcome report (RF13, RF14, RF17).
    */
   finalizarSessao: async (
     id: string,
@@ -364,16 +472,16 @@ export const sessaoService = {
         >(ENDPOINTS.SESSAO.FINALIZAR(id), payload);
 
         if ("data" in resposta && resposta.data) {
-          return resposta.data;
+          return normalizarResultadoSessao(resposta.data);
         }
-        return resposta as ResultadoSessao;
+        return normalizarResultadoSessao(resposta);
       },
       () => finalizarSessaoMock(id, dto),
     );
   },
 
   /**
-   * Cancela a sessão clínica em andamento.
+   * Cancels in-progress clinical session.
    */
   cancelarSessao: async (
     id: string,
@@ -396,7 +504,7 @@ export const sessaoService = {
   },
 
   /**
-   * Obtém resultados consolidados da sessão pós-intervenção (RF14).
+   * Retrieves consolidated post-intervention session outcomes (RF14).
    */
   obterResultado: async (id: string): Promise<ResultadoSessao | null> => {
     if (!id || !id.trim()) return null;
@@ -417,7 +525,7 @@ export const sessaoService = {
   },
 
   /**
-   * Exporta dados clínicos estruturados da sessão (RF20).
+   * Exports structured clinical session data (RF20).
    */
   exportarRelatorio: async (
     id: string,
@@ -452,12 +560,20 @@ export const sessaoService = {
         sucesso: true,
         data: resultado.data,
       };
-    } catch {
-      // Fallback gracioso para bdmock
-      const dadosMock = await exportarRelatorioSessaoMock(id);
+    } catch (err: unknown) {
+      if (USE_MOCK_DATA || import.meta.env.MODE === "test") {
+        const dadosMock = await exportarRelatorioSessaoMock(id);
+        return {
+          sucesso: true,
+          data: dadosMock,
+        };
+      }
       return {
-        sucesso: true,
-        data: dadosMock,
+        sucesso: false,
+        error:
+          err instanceof Error
+            ? err.message
+            : "Erro ao conectar com a API para exportar relatório",
       };
     }
   },
@@ -467,7 +583,7 @@ export const sessaoService = {
   // ==========================================================================
 
   /**
-   * Finaliza sessão mantendo o contrato esperado pelos testes de Cockpit e sessaoService.test.ts.
+   * Finalizes session matching contract expected by Cockpit test suites.
    */
   finalizar: async (
     identificadorSessao: string,
@@ -558,23 +674,28 @@ export const sessaoService = {
         sucesso: true,
         data: normalizarResultadoSessao(resultado.data),
       };
-    } catch {
-      const dadosMock = await obterResultadoSessaoMock(identificadorSessao);
-      if (dadosMock) {
-        return {
-          sucesso: true,
-          data: normalizarResultadoSessao(dadosMock),
-        };
+    } catch (err: unknown) {
+      if (USE_MOCK_DATA || import.meta.env.MODE === "test") {
+        const dadosMock = await obterResultadoSessaoMock(identificadorSessao);
+        if (dadosMock) {
+          return {
+            sucesso: true,
+            data: normalizarResultadoSessao(dadosMock),
+          };
+        }
       }
       return {
         sucesso: false,
-        error: "Erro desconhecido ao buscar resultado",
+        error:
+          err instanceof Error
+            ? err.message
+            : "Erro desconhecido ao buscar resultado",
       };
     }
   },
 
   /**
-   * Salva anotação clínica mantendo contrato consumido pelo BlocoAnotacoesClinicas.
+   * Saves clinical annotation matching contract consumed by BlocoAnotacoesClinicas.
    */
   salvarAnotacao: async (
     payload: SalvarAnotacaoPayload,
@@ -622,30 +743,42 @@ export const sessaoService = {
       }
 
       const resultado = (await response.json()) as {
-        data?: AnotacaoClinicaResultado;
+        data?: AnotacaoClinicaResultado | { anotacao?: AnotacaoClinicaResultado };
       };
+      const anotacao = (resultado.data && typeof resultado.data === "object" && "anotacao" in resultado.data)
+        ? (resultado.data as { anotacao: AnotacaoClinicaResultado }).anotacao
+        : (resultado.data as AnotacaoClinicaResultado);
       return {
         sucesso: true,
-        data: resultado.data,
+        data: anotacao,
       };
-    } catch {
+    } catch (err: unknown) {
+      if (USE_MOCK_DATA || import.meta.env.MODE === "test") {
+        return {
+          sucesso: true,
+          data: {
+            id: payload.anotacaoId || `anot-mock-${Date.now()}`,
+            conteudo: payload.conteudo.trim(),
+            terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
+            sessao_id: payload.sessaoId,
+            paciente_id: payload.pacienteId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        };
+      }
       return {
-        sucesso: true,
-        data: {
-          id: payload.anotacaoId || `anot-mock-${Date.now()}`,
-          conteudo: payload.conteudo.trim(),
-          terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
-          sessao_id: payload.sessaoId,
-          paciente_id: payload.pacienteId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
+        sucesso: false,
+        error:
+          err instanceof Error
+            ? err.message
+            : "Erro ao conectar com a API para salvar anotação clínica",
       };
     }
   },
 
   /**
-   * Lista sessões com suporte a filtros de status, data, paciente, jogo e paginação.
+   * Lists sessions supporting status, date, patient, game, and pagination filters.
    */
   listar: async (filtros?: FiltroSessaoDTO): Promise<RespostaListagemSessao<Sessao>> => {
     return await withFallback(
@@ -662,13 +795,47 @@ export const sessaoService = {
         if (filtros?.page !== undefined) params.page = String(filtros.page);
         if (filtros?.limit !== undefined) params.limit = String(filtros.limit);
 
-        const resposta = await http.get<RespostaListagemSessao<Sessao>>(
+        interface RawListarResponse {
+          data?:
+            | Sessao[]
+            | {
+                sessoes?: Sessao[];
+                meta?: RespostaListagemSessao<Sessao>["meta"];
+              };
+          meta?: RespostaListagemSessao<Sessao>["meta"];
+          message?: string;
+        }
+
+        const resposta = await http.get<RawListarResponse>(
           ENDPOINTS.SESSAO.BASE,
-          { params }
+          { params },
         );
-        return resposta;
+
+        const rawData = resposta.data;
+        const sessoesArray: Sessao[] = Array.isArray(rawData)
+          ? rawData
+          : rawData && typeof rawData === "object" && Array.isArray(rawData.sessoes)
+            ? rawData.sessoes
+            : [];
+
+        const metaObj: RespostaListagemSessao<Sessao>["meta"] =
+          resposta.meta ||
+          (rawData && !Array.isArray(rawData) && rawData.meta
+            ? rawData.meta
+            : {
+                total: sessoesArray.length,
+                page: filtros?.page ?? 1,
+                limit: filtros?.limit ?? (sessoesArray.length || 10),
+                totalPages: 1,
+              });
+
+        return {
+          data: sessoesArray,
+          meta: metaObj,
+          message: resposta.message,
+        };
       },
-      () => listarSessoesMock(filtros)
+      () => listarSessoesMock(filtros),
     );
   },
 };

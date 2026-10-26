@@ -203,7 +203,7 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
       await TelemetriaController.registrarLote(reqTel, resTel);
 
       expect(statusTel()).toBe(201);
-      expect((jsonTel() as { total: number }).total).toBe(2);
+      expect((jsonTel() as any).data.meta.total_processados).toBe(2);
       expect(bancoTelemetria).toHaveLength(2);
 
       // PASSO 3: Consulta dos Eventos de Telemetria pelo Terapeuta
@@ -216,7 +216,8 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
       await TelemetriaController.listarPorSessao(reqListTel, resListTel);
 
       expect(statusListTel()).toBe(200);
-      expect((jsonListTel() as { data: TelemetriaEvento[] }).data).toHaveLength(2);
+      const telemetriasRecebidas = (jsonListTel() as any).data.telemetria || (jsonListTel() as any).data;
+      expect(telemetriasRecebidas).toHaveLength(2);
 
       // PASSO 4: Encerramento da Sessão pelo Terapeuta
       const { mockReq: reqFim, mockRes: resFim, getStatus: statusFim, getJson: jsonFim } = criarMocks(
@@ -289,7 +290,7 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
 
       // Sucesso HTTP 200, mas persistido = false conforme RN01
       expect(statusTel()).toBe(200);
-      expect((jsonTel() as { persistido: boolean }).persistido).toBe(false);
+      expect((jsonTel() as any).data.meta.persistido).toBe(false);
       expect(spyRegistrarLote).not.toHaveBeenCalled();
 
       // 2. Finalização no Modo Livre
@@ -302,7 +303,7 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
       await SessaoController.finalizar(reqFim, resFim);
 
       expect(statusFim()).toBe(200);
-      expect((jsonFim() as any).data.relatorio).toBeUndefined();
+      expect((jsonFim() as any).data.relatorio).toBeNull();
       expect(spyCriarRelatorio).not.toHaveBeenCalled();
     });
   });

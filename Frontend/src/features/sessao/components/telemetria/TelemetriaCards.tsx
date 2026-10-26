@@ -25,8 +25,8 @@ export interface TelemetriaCardsProps {
  */
 
 /**
- * Grid de cartões com indicadores e métricas clínicas recebidas em tempo real (RF12, RF17, RN02).
- * Exibe contagem de acertos/erros, precisão percentual, tempo médio de resposta, níveis de atenção e estresse.
+ * Grid of cards with real-time clinical indicators and telemetry metrics (RF12, RF17, RN02).
+ * Displays hits/errors, accuracy percentage, mean reaction time, and attention/stress levels.
  */
 export function TelemetriaCards({ metricas, isLoading = false }: TelemetriaCardsProps) {
   const taxaAcerto =

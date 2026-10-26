@@ -115,7 +115,7 @@ describe("Domínio Auth — authService", () => {
         password: "Senha@123",
       });
 
-      expect(resultado.user?.email).toBe("marcos.terapeuta@intea.com.br");
+      expect(resultado.data.user?.email).toBe("marcos.terapeuta@intea.com.br");
       expect(localStorage.getItem("access_token")).toBe(
         MOCK_AUTH_TOKENS.access_token,
       );
@@ -129,8 +129,8 @@ describe("Domínio Auth — authService", () => {
         password: "Admin@123",
       });
 
-      expect(resultado.user?.is_super_admin).toBe(true);
-      expect(resultado.user?.role).toBe("super_admin");
+      expect(resultado.data.user?.is_super_admin).toBe(true);
+      expect(resultado.data.user?.role).toBe("super_admin");
     });
 
     it("deve rejeitar credenciais inválidas no fallback mock", async () => {
@@ -189,18 +189,19 @@ describe("Domínio Auth — authService", () => {
         email: "marcos.terapeuta@intea.com.br",
         password: "Senha@123",
       });
-      expect(resTerapeuta.user?.id).toBe(MOCK_USUARIO_TERAPEUTA.id);
+      expect(resTerapeuta.data.user?.id).toBe(MOCK_USUARIO_TERAPEUTA.id);
 
       const resAdmin = await loginMock({
         email: "admin@intea.com.br",
         password: "Admin@123",
       });
-      expect(resAdmin.user?.is_super_admin).toBe(true);
+      expect(resAdmin.data.user?.is_super_admin).toBe(true);
     });
 
     it("logoutMock deve encerrar sessão em memória", async () => {
       const res = await logoutMock();
-      expect(res.success).toBe(true);
+      expect(res.data).toBeNull();
+      expect(res.message).toBe("Sessão encerrada com sucesso.");
     });
 
     it("refreshMock deve gerar novos tokens", async () => {

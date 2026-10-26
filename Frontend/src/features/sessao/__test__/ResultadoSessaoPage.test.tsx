@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { ResultadoSessaoPage } from "../pages/ResultadoSessaoPage";
-import { sessaoService, type DadosResultadoSessao } from "../services/sessaoService";
+import {
+  sessaoService,
+  type DadosResultadoSessao,
+  type BuscarResultadoResposta,
+} from "../services/sessaoService";
 import { useSessionStore } from "../store/sessionStore";
 
 // Mock do useNavigate e useParams
@@ -78,12 +82,12 @@ describe("Card 3.1 & 3.4 — Testes da Página Mestre de Resultados da Sessão (
   };
 
   it("Estado 1 (Loading State): deve renderizar Skeleton Loaders estruturais sem saltos de layout (zero CLS)", async () => {
-    let resolverPromise: (val: unknown) => void = () => {};
-    const promessaPendente = new Promise((resolve) => {
+    let resolverPromise: (val: BuscarResultadoResposta) => void = () => {};
+    const promessaPendente = new Promise<BuscarResultadoResposta>((resolve) => {
       resolverPromise = resolve;
     });
 
-    vi.spyOn(sessaoService, "buscarResultado").mockReturnValue(promessaPendente as any);
+    vi.spyOn(sessaoService, "buscarResultado").mockReturnValue(promessaPendente);
 
     render(
       <BrowserRouter>
@@ -183,6 +187,76 @@ describe("Card 3.1 & 3.4 — Testes da Página Mestre de Resultados da Sessão (
     // Métricas padrão
     expect(screen.getByText("Mundo das Cores e Sons")).toBeDefined();
     expect(screen.getByText("92.4%")).toBeDefined();
+  });
+
+  it("deve renderizar apenas 1 ponto no gráfico quando houver apenas 1 dado consolidado, exibindo a data e o nome da métrica", async () => {
+    render(
+      <BrowserRouter>
+        <ResultadoSessaoPage initialData={dadosSessaoMock} />
+      </BrowserRouter>
+    );
+
+    const slotGrafico = screen.getByTestId("slot-grafico-default");
+    expect(slotGrafico).toBeDefined();
+
+    // Título deve incluir o nome legível da métrica
+    expect(screen.getByText("Gráfico por Data — Tempo de Reação")).toBeDefined();
+
+    // Deve haver exatamente 1 ponto (<circle>) pois não há tentativas extras
+    const circulos = slotGrafico.querySelectorAll("circle");
+    expect(circulos.length).toBe(1);
+
+    // Deve exibir o valor do dado ("1.2s") e a data ("13/10/2026")
+    expect(slotGrafico.textContent).toContain("1.2s");
+    expect(slotGrafico.textContent).toContain("13/10/2026");
+  });
+
+  it("deve renderizar exatamente a quantidade de pontos das tentativas do historico_evolutivo por data e métrica", async () => {
+    const dadosComDuasTentativas: DadosResultadoSessao = {
+      ...dadosSessaoMock,
+      historico_evolutivo: {
+        tipo: "serie_temporal_tentativas",
+        tempo_medio_referencia: 2.5,
+        tentativas: [
+          {
+            tentativa: 1,
+            segundo: 174,
+            tempoFormatado: "02:54",
+            tempo_resposta_segundos: 2.8,
+            acerto: true,
+            data_hora: "2026-10-20T17:42:54.333Z",
+            id_metrica: "tempo_reacao",
+            intervencaoDda: {
+              tipoIntervencao: "reducao_estimulos_visuais",
+              momentoFormatado: "09:54",
+            },
+          },
+          {
+            tentativa: 2,
+            segundo: 1674,
+            tempoFormatado: "27:54",
+            tempo_resposta_segundos: 2.2,
+            acerto: true,
+            data_hora: "2026-10-20T18:07:54.333Z",
+            id_metrica: "tempo_reacao",
+            intervencaoDda: null,
+          },
+        ],
+      },
+    };
+
+    render(
+      <BrowserRouter>
+        <ResultadoSessaoPage initialData={dadosComDuasTentativas} />
+      </BrowserRouter>
+    );
+
+    const slotGrafico = screen.getByTestId("slot-grafico-default");
+    expect(slotGrafico.textContent).toContain("2.8s");
+    expect(slotGrafico.textContent).toContain("2.2s");
+    expect(slotGrafico.textContent).toContain("20/10/2026");
+    expect(screen.getByTestId("ponto-grafico-tentativa-1")).toBeDefined();
+    expect(screen.getByTestId("ponto-grafico-tentativa-2")).toBeDefined();
   });
 
   it("deve tratar sessões em Modo Livre suprimindo dados de prontuário e exibindo badge informativo (RN01)", async () => {

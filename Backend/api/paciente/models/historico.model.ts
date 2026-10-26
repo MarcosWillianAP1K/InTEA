@@ -14,8 +14,7 @@ import { validarUUID } from '../../../core/utils/validators.js';
 import { RelatorioIAContrato } from '../../sessao/models/relatorio.model.js';
 
 /**
- * Métricas universais consolidadas de engajamento do paciente.
- * Compartilhadas transversalmente por todos os jogos terapêuticos.
+ * Consolidated universal patient engagement metrics shared across all therapeutic games.
  */
 export interface MetricasEngajamentoGeral {
   total_sessoes: number;
@@ -29,7 +28,7 @@ export interface MetricasEngajamentoGeral {
 }
 
 /**
- * Parâmetros de filtro e paginação para consultas de histórico clínico (RF19).
+ * Filter and pagination parameters for clinical history queries (RF19).
  */
 export interface FiltrosHistoricoDTO {
   dataInicio?: string;
@@ -40,7 +39,7 @@ export interface FiltrosHistoricoDTO {
 }
 
 /**
- * Item individual de histórico com parecer técnico e dados analíticos da IA.
+ * Individual history record with technical report and AI analytical insights.
  */
 export interface SessaoHistoricoItem {
   sessao_id: string;
@@ -57,7 +56,7 @@ export interface SessaoHistoricoItem {
 }
 
 /**
- * Resumo de catálogo de jogos já jogados pelo paciente.
+ * Catalog summary of therapeutic games previously played by the patient.
  */
 export interface ResumoJogoPaciente {
   jogo_id: string;
@@ -101,12 +100,13 @@ interface SessaoComJogoRow {
 
 export class HistoricoSessaoModel {
   /**
-   * Calcula as métricas transversais de engajamento clínico e assiduidade do paciente.
-   * Utiliza o índice parcial `idx_sessao_paciente_engajamento` no PostgreSQL.
-   * Exclui rigorosamente partidas em modo livre (RN01: paciente_id = NULL).
+   * Calculates transversal metrics of clinical engagement and patient attendance.
+   * Uses PostgreSQL partial index `idx_sessao_paciente_engajamento`.
+   * Strictly excludes free play sessions (RN01: paciente_id = NULL).
    *
-   * @param pacienteId UUID do paciente
-   * @param filtros Filtros opcionais de intervalo temporal (dataInicio, dataFim)
+   * @param pacienteId - UUID of the patient.
+   * @param filtros - Optional time range filters (dataInicio, dataFim).
+   * @returns Consolidated patient engagement metrics.
    */
   static async buscarMetricasEngajamentoGeral(
     pacienteId: string,
@@ -138,16 +138,14 @@ export class HistoricoSessaoModel {
         return null;
       }
 
-      const totalSessoes = data.length;
+      const totalSessoes = data.filter((s) => s.status_sessao !== 'aguardando_pareamento').length;
       const sessoesFinalizadas = data.filter((s) => s.status_sessao === 'finalizada').length;
       const sessoesInterrompidas = data.filter((s) =>
         ['cancelada', 'interrompida_por_queda', 'expirada'].includes(s.status_sessao)
       ).length;
 
       // Sessões que iniciaram a execução clínica (não ficaram apenas em aguardando_pareamento)
-      const totalIniciadas = data.filter(
-        (s) => s.status_sessao !== 'aguardando_pareamento'
-      ).length;
+      const totalIniciadas = totalSessoes;
 
       const baseCalculo = totalIniciadas > 0 ? totalIniciadas : totalSessoes;
       const taxaConclusao =
@@ -187,15 +185,16 @@ export class HistoricoSessaoModel {
   }
 
   /**
-   * Recupera o histórico longitudinal detalhado de sessões concluídas de um jogo específico.
-   * Utiliza o índice parcial composto `idx_sessao_paciente_jogo_fim` e relaciona com `relatorio_sessao`.
-   * Garante expurgo de modo livre (RN01) e ignora relatórios inativados com soft_delete = true (RN05).
+   * Retrieves detailed longitudinal history of completed sessions for a specific game.
+   * Uses compound partial index `idx_sessao_paciente_jogo_fim` and joins with `relatorio_sessao`.
+   * Strictly excludes free play mode (RN01) and ignores soft-deleted reports (RN05).
    *
-   * @param pacienteId UUID do paciente
-   * @param jogoId UUID do jogo terapêutico
-   * @param limit Limite máximo de registros (paginação)
-   * @param offset Deslocamento para paginação
-   * @param filtros Filtros opcionais de intervalo temporal
+   * @param pacienteId - UUID of the patient.
+   * @param jogoId - UUID of the therapeutic game.
+   * @param limit - Maximum record limit for pagination.
+   * @param offset - Offset for pagination.
+   * @param filtros - Optional time range filters.
+   * @returns Array of individual session history items.
    */
   static async buscarHistoricoPorJogo(
     pacienteId: string,
@@ -262,20 +261,20 @@ export class HistoricoSessaoModel {
           : row.relatorio_sessao;
 
         // RN05: Ignora relatórios com soft delete ativado
-        if (!relatorio || relatorio.soft_delete === true) {
+        if (relatorio && relatorio.soft_delete === true) {
           continue;
         }
 
         // Determina duração a partir do payload de IA ou timestamp diff
         let duracaoSegundos = 0;
-        const dadosIA = relatorio.dados_ia_json as RelatorioIAContrato | undefined;
+        const dadosIA = relatorio?.dados_ia_json as RelatorioIAContrato | undefined;
         if (dadosIA && typeof dadosIA.duracao_segundos === 'number' && dadosIA.duracao_segundos > 0) {
           duracaoSegundos = dadosIA.duracao_segundos;
         } else if (row.data_hora_inicio && row.data_hora_fim) {
           const ini = new Date(row.data_hora_inicio).getTime();
           const fim = new Date(row.data_hora_fim).getTime();
           if (!isNaN(ini) && !isNaN(fim) && fim >= ini) {
-            duracaoSegundos = Math.round((fim - ini) / 1000);
+            duracaoSegundos = Math.round((fim - inicioSegura(ini, fim)) / 1000);
           }
         }
 
@@ -289,8 +288,8 @@ export class HistoricoSessaoModel {
           data_hora_inicio: row.data_hora_inicio,
           data_hora_fim: row.data_hora_fim || row.data_hora_inicio,
           duracao_segundos: duracaoSegundos,
-          conteudo_relatorio: relatorio.conteudo ?? null,
-          dados_ia_json: relatorio.dados_ia_json ?? {},
+          conteudo_relatorio: relatorio?.conteudo ?? null,
+          dados_ia_json: relatorio?.dados_ia_json ?? {},
         });
       }
 
@@ -302,10 +301,60 @@ export class HistoricoSessaoModel {
   }
 
   /**
-   * Lista o catálogo de jogos com intervenções clínicas realizadas pelo paciente.
-   * Utilizado quando jogoId é omitido para alimentar seletores dinâmicos no front-end.
+   * Counts total completed sessions with active clinical report for a patient and game.
+   * Used for accurate pagination (RF19).
    *
-   * @param pacienteId UUID do paciente
+   * @param pacienteId - UUID of the patient.
+   * @param jogoId - UUID of the therapeutic game.
+   * @param filtros - Optional time range filters.
+   * @returns Total number of matching sessions.
+   */
+  static async contarHistoricoPorJogo(
+    pacienteId: string,
+    jogoId: string,
+    filtros?: FiltrosHistoricoDTO
+  ): Promise<number> {
+    if (!pacienteId || !validarUUID(pacienteId) || !jogoId || !validarUUID(jogoId)) {
+      return 0;
+    }
+
+    try {
+      let query = supabase
+        .from('sessao')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', pacienteId)
+        .eq('jogo_id', jogoId)
+        .eq('modo_sessao', 'sessao_clinica')
+        .eq('status_sessao', 'finalizada')
+        .not('paciente_id', 'is', null);
+
+      if (filtros?.dataInicio) {
+        query = query.gte('data_hora_fim', filtros.dataInicio);
+      }
+      if (filtros?.dataFim) {
+        query = query.lte('data_hora_fim', filtros.dataFim);
+      }
+
+      const { count, error } = await query;
+
+      if (error || count === null) {
+        console.error('[HistoricoSessaoModel] Erro ao contar histórico por jogo:', error);
+        return 0;
+      }
+
+      return count;
+    } catch (err) {
+      console.error('[HistoricoSessaoModel] Exceção em contarHistoricoPorJogo:', err);
+      return 0;
+    }
+  }
+
+  /**
+   * Lists catalog of games with clinical interventions completed by the patient.
+   * Used when jogoId is omitted to populate dynamic front-end selectors.
+   *
+   * @param pacienteId - UUID of the patient.
+   * @returns List of played games with session counts.
    */
   static async listarJogosDoPaciente(pacienteId: string): Promise<ResumoJogoPaciente[] | null> {
     if (!pacienteId || !validarUUID(pacienteId)) {
@@ -327,6 +376,7 @@ export class HistoricoSessaoModel {
         `)
         .eq('paciente_id', pacienteId)
         .eq('modo_sessao', 'sessao_clinica')
+        .eq('status_sessao', 'finalizada')
         .not('paciente_id', 'is', null)
         .order('data_hora_fim', { ascending: false });
 
@@ -367,4 +417,8 @@ export class HistoricoSessaoModel {
       return null;
     }
   }
+}
+
+function inicioSegura(ini: number, _fim: number): number {
+  return ini;
 }

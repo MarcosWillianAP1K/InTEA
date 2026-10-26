@@ -23,11 +23,10 @@ export interface UseRelatorioExportReturn {
  * HOOK: useRelatorioExport (Front-end 2 — Luma Maiara / Card 4.4)
  * Requisitos: RF20, RNF06, RNF07
  * 
- * Hook para gerenciar o fluxo de exportação clínica e emissão de laudo em PDF:
- * - Aciona a impressão formatada do navegador (window.print()) com proteção A4 (@media print).
- * - Realiza download de laudo em formato JSON clínico sanitizado (RF20/RNF06).
- * - Proteção estrita contra múltiplos cliques concorrentes (isExporting).
- * - Consulta resiliente ao endpoint de exportação GET /api/sessao/:id/exportar.
+ * Hook managing clinical report export and PDF printing lifecycle:
+ * Handles formatted browser printing with A4 layout.
+ * Downloads sanitized clinical JSON report (RF20/RNF06).
+ * Protects against concurrent exports and queries export endpoint.
  * ============================================================================
  */
 export function useRelatorioExport(
@@ -91,7 +90,7 @@ export function useRelatorioExport(
   );
 
   /**
-   * Realiza o download de arquivo JSON com os dados clínicos estruturados e sanitizados.
+   * Triggers JSON download of sanitized structured clinical report.
    */
   const exportarJson = React.useCallback(
     async (dadosParaExportar?: unknown, nomeArquivoCustomizado?: string): Promise<boolean> => {

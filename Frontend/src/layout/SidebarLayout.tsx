@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { AppSidebar } from "./components/app-sidebar";
@@ -23,8 +23,16 @@ export function SidebarLayout({
   terapeutaNome,
 }: SidebarLayoutProps) {
   const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const carregarUsuario = useAuthStore((s) => s.carregarUsuario);
   const abrirModalPreSessao = useSessionStore((s) => s.abrirModalPreSessao);
   const [notificacoesAbertas, setNotificacoesAbertas] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && (!user || !user.nome)) {
+      void carregarUsuario();
+    }
+  }, [isAuthenticated, user, carregarUsuario]);
 
   const nomeExibicao = user?.nome || terapeutaNome || "Dr. Hermeson Alves";
 

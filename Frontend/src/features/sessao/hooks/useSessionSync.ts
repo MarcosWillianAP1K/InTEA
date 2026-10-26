@@ -9,10 +9,10 @@ import { useSessionSocket, type UseSessionSocketReturn } from "@/core/web.socket
  */
 
 /**
- * Conecta o ciclo de eventos do WebSocket ao Zustand SessionStore.
- * Trata entrada de dispositivo, desconexões e erros operacionais da sessão.
+ * Connects WebSocket event lifecycle with Zustand SessionStore.
+ * Handles device presence, disconnections, and operational session events.
  *
- * @returns Instância ativa do cliente socket com métodos de emissão e status de conexão.
+ * @returns Active socket client instance with emission methods and connection status.
  */
 export function useSessionSync(): UseSessionSocketReturn {
   const sessionToken = useSessionStore((state) => state.pareamento?.sessionToken);

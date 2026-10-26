@@ -24,9 +24,8 @@ export interface BlocoAnotacoesClinicasProps {
 
 /**
  * ============================================================================
- * COMPONENTE: BlocoAnotacoesClinicas (Front-end 1 — Hermeson Alves / Card 3.3)
- * Requisitos: RF16 (Bloco de Anotações), RF21 (Autoria Obrigatória),
- *             RN05 (Inalterabilidade e Prontuário Clínico)
+ * COMPONENT: BlocoAnotacoesClinicas (Clinical Notes)
+ * Compliance: RF16 (Notes Block), RF21 (Mandatory Authorship), RN05 (Medical Record Immutability)
  * ============================================================================
  */
 export function BlocoAnotacoesClinicas({

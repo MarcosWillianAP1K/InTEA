@@ -12,6 +12,7 @@ import {
   ResultadoPaginado,
   JogoResumo,
   ManifestoJogo,
+  MetricaManifesto,
 } from '../models/jogo.model.js';
 import { ManifestoValidator } from '../validators/manifesto.validator.js';
 import { MetricaValidator } from '../validators/metrica.validator.js';
@@ -37,6 +38,10 @@ export interface CadastrarJogoDTO {
   status?: StatusJogo;
   status_jogo?: StatusJogo;
   objetivo_clinico?: string;
+  foco_pedagogico?: string;
+  mecanicas?: string[];
+  cooperativo?: boolean;
+  adaptativo?: boolean;
   metricas_suportadas?: unknown[];
 }
 
@@ -47,6 +52,10 @@ export interface AtualizarJogoDTO {
   status?: StatusJogo;
   status_jogo?: StatusJogo;
   objetivo_clinico?: string;
+  foco_pedagogico?: string;
+  mecanicas?: string[];
+  cooperativo?: boolean;
+  adaptativo?: boolean;
   metricas_suportadas?: unknown[];
 }
 
@@ -68,7 +77,7 @@ export class JogoService {
   }
 
   /**
-   * Lists games from catalog with objective and status filters and pagination.
+   * Lists games from catalog with objective, focus, adaptive, and status filters and pagination.
    *
    * @param filtros - Catalog filter options.
    * @returns Paginated games list.
@@ -113,6 +122,7 @@ export class JogoService {
 
   /**
    * Registers a new game in catalog, generating automatic slug and validating clinical manifest.
+   * Rejects games declaring competitive, punitive or leaderboard mechanics.
    *
    * @param dto - New game payload.
    * @returns Created game record.
@@ -153,11 +163,38 @@ export class JogoService {
       nome: dto.nome.trim(),
       versao: dto.versao.trim(),
       objetivo_clinico: typeof dto.objetivo_clinico === 'string' ? dto.objetivo_clinico.trim() : undefined,
-      metricas_suportadas: Array.isArray(dto.metricas_suportadas) ? (dto.metricas_suportadas as any) : [],
+      foco_pedagogico: typeof dto.foco_pedagogico === 'string' ? dto.foco_pedagogico.trim() : undefined,
+      mecanicas: Array.isArray(dto.mecanicas) ? dto.mecanicas : undefined,
+      cooperativo: dto.cooperativo !== undefined ? Boolean(dto.cooperativo) : undefined,
+      adaptativo: dto.adaptativo !== undefined ? Boolean(dto.adaptativo) : undefined,
+      metricas_suportadas: Array.isArray(dto.metricas_suportadas) ? (dto.metricas_suportadas as unknown as MetricaManifesto[]) : [],
     };
 
     const validacao = ManifestoValidator.validar(manifesto_json);
     if (!validacao.valido) {
+      const temErroNaoCompetitivo = validacao.erros.some(
+        e => e.includes('Diretriz Clínica de Não-Competitividade') || e.includes('competitiva') || e.includes('ranking') || e.includes('eliminat') || e.includes('punitiv')
+      );
+      if (temErroNaoCompetitivo) {
+        throw new JogoServiceError(
+          'Violação da Diretriz Clínica de Não-Competitividade no manifesto do jogo.',
+          422,
+          validacao.erros,
+          'Diretriz Clínica de Não-Competitividade - Foco em Cooperação e Autorregulação'
+        );
+      }
+
+      const temErroRN02 = validacao.erros.some(
+        e => e.includes('RN02') || e.includes('tipo_metrica') || e.includes('sem tipo') || e.includes('tipo \'')
+      );
+      if (temErroRN02) {
+        throw new JogoServiceError(
+          'Incompatibilidade de tipo clínico no manifesto (RN02).',
+          422,
+          validacao.erros,
+          'RN02 - Fallback de Métrica Proibido'
+        );
+      }
       throw new JogoServiceError('Manifesto clínico do jogo inválido', 400, validacao.erros);
     }
 
@@ -173,6 +210,7 @@ export class JogoService {
 
   /**
    * Updates game attributes, metadata, and operational status.
+   * Rejects updates introducing competitive or punitive mechanics.
    *
    * @param identificador - Game UUID or slug.
    * @param dto - Updated fields.
@@ -193,7 +231,7 @@ export class JogoService {
     }
 
     let manifesto_json = jogoExistente.manifesto_json;
-    if (dto.nome || dto.versao || dto.objetivo_clinico !== undefined || dto.metricas_suportadas !== undefined) {
+    if (dto.nome || dto.versao || dto.objetivo_clinico !== undefined || dto.foco_pedagogico !== undefined || dto.mecanicas !== undefined || dto.cooperativo !== undefined || dto.adaptativo !== undefined || dto.metricas_suportadas !== undefined) {
       const id_jogo = dto.nome ? JogoService.gerarSlug(dto.nome) : manifesto_json?.id_jogo;
 
       manifesto_json = {
@@ -202,13 +240,44 @@ export class JogoService {
         versao: dto.versao?.trim() ?? manifesto_json?.versao ?? jogoExistente.versao,
         objetivo_clinico:
           dto.objetivo_clinico !== undefined ? dto.objetivo_clinico : manifesto_json?.objetivo_clinico,
+        foco_pedagogico:
+          dto.foco_pedagogico !== undefined ? dto.foco_pedagogico : manifesto_json?.foco_pedagogico,
+        mecanicas:
+          dto.mecanicas !== undefined ? dto.mecanicas : manifesto_json?.mecanicas,
+        cooperativo:
+          dto.cooperativo !== undefined ? dto.cooperativo : manifesto_json?.cooperativo,
+        adaptativo:
+          dto.adaptativo !== undefined ? dto.adaptativo : manifesto_json?.adaptativo,
         metricas_suportadas: Array.isArray(dto.metricas_suportadas)
-          ? (dto.metricas_suportadas as any)
+          ? (dto.metricas_suportadas as unknown as MetricaManifesto[])
           : (manifesto_json?.metricas_suportadas ?? []),
       };
 
       const validacao = ManifestoValidator.validar(manifesto_json);
       if (!validacao.valido) {
+        const temErroNaoCompetitivo = validacao.erros.some(
+          e => e.includes('Diretriz Clínica de Não-Competitividade') || e.includes('competitiva') || e.includes('ranking') || e.includes('eliminat') || e.includes('punitiv')
+        );
+        if (temErroNaoCompetitivo) {
+          throw new JogoServiceError(
+            'Violação da Diretriz Clínica de Não-Competitividade no manifesto do jogo.',
+            422,
+            validacao.erros,
+            'Diretriz Clínica de Não-Competitividade - Foco em Cooperação e Autorregulação'
+          );
+        }
+
+        const temErroRN02 = validacao.erros.some(
+          e => e.includes('RN02') || e.includes('tipo_metrica') || e.includes('sem tipo') || e.includes('tipo \'')
+        );
+        if (temErroRN02) {
+          throw new JogoServiceError(
+            'Incompatibilidade de tipo clínico no manifesto (RN02).',
+            422,
+            validacao.erros,
+            'RN02 - Fallback de Métrica Proibido'
+          );
+        }
         throw new JogoServiceError('Manifesto clínico do jogo inválido', 400, validacao.erros);
       }
     }
@@ -249,7 +318,7 @@ export class JogoService {
   }
 
   /**
-   * Validates an arbitrary game manifest against Contract 1 (RNF02).
+   * Validates an arbitrary game manifest against Contract 1 (RNF02) and Clinical Non-Competitiveness Guideline.
    *
    * @param manifesto - Manifest object to validate.
    * @returns Validation outcome and normalized valid manifest.
@@ -257,6 +326,29 @@ export class JogoService {
   static validarManifesto(manifesto: unknown): { valido: boolean; erros: string[]; manifestoValido?: unknown } {
     const resultado = ManifestoValidator.validar(manifesto);
     if (!resultado.valido) {
+      const temErroNaoCompetitivo = resultado.erros.some(
+        e => e.includes('Diretriz Clínica de Não-Competitividade') || e.includes('competitiva') || e.includes('ranking') || e.includes('eliminat') || e.includes('punitiv')
+      );
+      if (temErroNaoCompetitivo) {
+        throw new JogoServiceError(
+          'Violação da Diretriz Clínica de Não-Competitividade no manifesto do jogo.',
+          422,
+          resultado.erros,
+          'Diretriz Clínica de Não-Competitividade - Foco em Cooperação e Autorregulação'
+        );
+      }
+
+      const temErroRN02 = resultado.erros.some(
+        e => e.includes('RN02') || e.includes('tipo_metrica') || e.includes('sem tipo') || e.includes('tipo \'')
+      );
+      if (temErroRN02) {
+        throw new JogoServiceError(
+          'Incompatibilidade de tipo clínico no manifesto (RN02).',
+          422,
+          resultado.erros,
+          'RN02 - Fallback de Métrica Proibido'
+        );
+      }
       throw new JogoServiceError('Manifesto do jogo inválido', 400, resultado.erros);
     }
     return {

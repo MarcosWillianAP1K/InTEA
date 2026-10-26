@@ -32,7 +32,15 @@ export function PainelPage() {
   const { patients, setSelectedPatientId, fetchPatients } = usePacienteStore();
 
   const listaPacientes: Patient[] = Object.values(patients);
-  const pacienteDestaque = listaPacientes.find((p) => p.name.includes("Pedro")) || listaPacientes[0];
+  const sessaoMaisRecente = sessoesRecentes[0];
+  const pacienteDestaque =
+    (sessaoMaisRecente
+      ? listaPacientes.find(
+          (p) => p.id === sessaoMaisRecente.pacienteId || p.name === sessaoMaisRecente.pacienteNome,
+        )
+      : undefined) ||
+    listaPacientes.find((p) => p.name.includes("Pedro")) ||
+    listaPacientes[0];
 
   useEffect(() => {
     void fetchPatients();
@@ -69,16 +77,16 @@ export function PainelPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 w-full max-w-7xl mx-auto pb-12 overflow-x-hidden">
+    <div className="flex flex-1 flex-col gap-8 w-full max-w-7xl mx-auto pb-12">
       {/* 1. SESSÃO PACIENTE SUMÁRIO (Figma Frame: 'Sessao paciente sumario') */}
       {pacienteDestaque && (
         <section
           data-testid="sessao-paciente-sumario"
-          className="relative overflow-hidden rounded-2xl border border-blue-100 bg-linear-to-r from-blue-50/80 via-indigo-50/50 to-white p-6 shadow-xs dark:border-blue-900/40 dark:from-blue-950/20 dark:to-background"
+          className="relative shrink-0 rounded-2xl border border-blue-100 bg-linear-to-r from-blue-50/80 via-indigo-50/50 to-white p-6 shadow-xs dark:border-blue-900/40 dark:from-blue-950/20 dark:to-background"
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="relative">
+              <div className="relative shrink-0">
                 <div className="h-14 w-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-xl shadow-md">
                   {pacienteDestaque.name.slice(0, 2).toUpperCase()}
                 </div>
@@ -95,7 +103,7 @@ export function PainelPage() {
                   </span>
                   <span className="text-xs text-muted-foreground">• {pacienteDestaque.age} anos</span>
                 </div>
-                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                   <span>Status: <strong className="text-foreground font-medium">{pacienteDestaque.clinicalStatus}</strong></span>
                   <span>•</span>
                   <span>Última sessão: <strong className="text-foreground font-medium">{pacienteDestaque.lastSessionDate || "Hoje"}</strong></span>
@@ -103,7 +111,7 @@ export function PainelPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => handleVerPerfil(pacienteDestaque.id)}
@@ -127,7 +135,7 @@ export function PainelPage() {
       )}
 
       {/* 2. CARDS DE MÉTRICAS CONSOLIDADAS DO PAINEL */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl border border-border bg-card flex flex-col gap-2 shadow-xs transition-shadow hover:shadow-sm">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-semibold uppercase tracking-wider">Sessões Realizadas</span>
@@ -190,7 +198,7 @@ export function PainelPage() {
       </section>
 
       {/* 3. SEÇÃO SESSÕES RECENTES (Figma Frame: 'Sessões' & 'sessão - InTEA') */}
-      <section className="flex flex-col gap-4">
+      <section className="shrink-0 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-bold tracking-tight text-foreground">
@@ -228,7 +236,7 @@ export function PainelPage() {
       </section>
 
       {/* 4. SEÇÃO MEUS PACIENTES (Tabela resumida fiel ao Figma 'Tabela de pacientes') */}
-      <section className="flex flex-col gap-4">
+      <section className="shrink-0 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-bold tracking-tight text-foreground">

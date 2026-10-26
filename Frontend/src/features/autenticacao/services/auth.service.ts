@@ -1,9 +1,7 @@
 /**
  * ============================================================================
- * SERVIÇO REST DO DOMÍNIO AUTH (auth.service.ts)
- * Consome os endpoints centralizados ENDPOINTS.AUTH via http-client
- * com fallback resiliente para bdmock.ts em caso de indisponibilidade da API.
- * Conformidade: RF21 (Autenticação e Autoria), RN04 (Vínculo e Clínica)
+ * REST SERVICE FOR AUTHENTICATION DOMAIN
+ * Compliance: RF21, RN04
  * ============================================================================
  */
 
@@ -27,7 +25,9 @@ const TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 
 /**
- * Utilitário seguro para persistência local de tokens no browser
+ * Persists authentication tokens securely into browser local storage.
+ *
+ * @param tokens - Authentication bundle containing access and refresh tokens.
  */
 function salvarTokens(tokens: AuthTokens): void {
   if (typeof window === "undefined") return;
@@ -41,6 +41,9 @@ function salvarTokens(tokens: AuthTokens): void {
   }
 }
 
+/**
+ * Removes all authentication tokens from local and session storage.
+ */
 function removerTokens(): void {
   if (typeof window === "undefined") return;
   try {
@@ -55,8 +58,8 @@ function removerTokens(): void {
 
 export const authService = {
   /**
-   * Realiza login autenticando credenciais do terapeuta ou super admin (RF21).
-   * Persiste os tokens no localStorage automaticamente.
+   * Performs login authenticating therapist or super admin credentials (RF21).
+   * Persists tokens in local storage automatically.
    */
   login: async (payload: LoginPayload): Promise<LoginResponse> => {
     return await withFallback(
@@ -67,6 +70,7 @@ export const authService = {
         );
         type RawData = {
           tokens?: AuthTokens;
+          token?: AuthTokens;
           user?: UsuarioAutenticado;
           access_token?: string;
           refresh_token?: string | null;
@@ -74,10 +78,10 @@ export const authService = {
           expires_in?: number;
         };
         const dataObj = resposta.data as unknown as RawData | undefined;
-        let tokens: AuthTokens | undefined = dataObj?.tokens || resposta.tokens;
+        let token: AuthTokens | undefined = dataObj?.token || dataObj?.tokens;
 
-        if (!tokens && dataObj?.access_token) {
-          tokens = {
+        if (!token && dataObj?.access_token) {
+          token = {
             access_token: dataObj.access_token,
             refresh_token: dataObj.refresh_token ?? null,
             token_type: dataObj.token_type || "Bearer",
@@ -85,30 +89,17 @@ export const authService = {
           };
         }
 
-        const user: UsuarioAutenticado | undefined = dataObj?.user || resposta.user;
-
-        if (tokens) {
-          salvarTokens(tokens);
+        if (token) {
+          salvarTokens(token);
         }
 
-        if (dataObj?.user && dataObj?.tokens) {
-          return resposta;
-        }
-
-        return {
-          ...resposta,
-          data: {
-            ...resposta.data,
-            user: user as UsuarioAutenticado,
-            tokens: tokens as AuthTokens,
-          },
-        };
+        return resposta;
       },
       async () => {
         const respostaMock = await loginMock(payload);
-        const tokens = respostaMock.data?.tokens || respostaMock.tokens;
-        if (tokens) {
-          salvarTokens(tokens);
+        const token = respostaMock.data?.token;
+        if (token) {
+          salvarTokens(token);
         }
         return respostaMock;
       },
@@ -116,7 +107,7 @@ export const authService = {
   },
 
   /**
-   * Encerra a sessão ativa e revoga tokens locais e remotos.
+   * Ends active session and clears local and remote tokens.
    */
   logout: async (): Promise<void> => {
     try {
@@ -134,7 +125,7 @@ export const authService = {
   },
 
   /**
-   * Renova o token de acesso (access_token) utilizando o refresh_token armazenado.
+   * Renews access token using stored refresh token.
    */
   refresh: async (): Promise<AuthTokens> => {
     const refreshToken =
@@ -144,12 +135,16 @@ export const authService = {
 
     return await withFallback(
       async () => {
-        const resposta = await http.post<{ data: AuthTokens } | AuthTokens>(
+        const resposta = await http.post<
+          { data: { token?: AuthTokens; tokens?: AuthTokens } | AuthTokens } | AuthTokens
+        >(
           ENDPOINTS.AUTH.REFRESH,
           { refresh_token: refreshToken },
         );
-        const tokens =
-          "data" in resposta && resposta.data ? resposta.data : (resposta as AuthTokens);
+        const rawData = (
+          "data" in resposta && resposta.data ? resposta.data : resposta
+        ) as { token?: AuthTokens; tokens?: AuthTokens } & AuthTokens;
+        const tokens: AuthTokens = rawData.token || rawData.tokens || rawData;
         salvarTokens(tokens);
         return tokens;
       },
@@ -162,7 +157,7 @@ export const authService = {
   },
 
   /**
-   * Obtém os dados cadastrais e perfil clínico do usuário atualmente autenticado (RF21, RN04).
+   * Retrieves profile and clinical metadata of currently authenticated user (RF21, RN04).
    */
   obterUsuarioAtual: async (): Promise<UsuarioAutenticado> => {
     return await withFallback(
@@ -186,11 +181,22 @@ export const authService = {
           status_ativo?: boolean;
           created_at?: string | null;
         }
+        interface RawUser extends RawPerfil {
+          is_admin?: boolean;
+          is_super_admin?: boolean;
+          role?: string;
+          autenticado?: boolean;
+          status_ativo?: boolean;
+          created_at?: string | null;
+        }
         interface BackendResponse {
-          data: {
-            perfil?: RawPerfil;
-            metadados?: RawMetadados;
-          } | UsuarioAutenticado;
+          data:
+            | {
+                user?: RawUser;
+                perfil?: RawPerfil;
+                metadados?: RawMetadados;
+              }
+            | UsuarioAutenticado;
         }
 
         const resposta = await http.get<BackendResponse | UsuarioAutenticado>(
@@ -199,9 +205,37 @@ export const authService = {
 
         if ("data" in resposta && resposta.data) {
           const dataObj = resposta.data as {
+            user?: RawUser;
             perfil?: RawPerfil;
             metadados?: RawMetadados;
           } & Partial<UsuarioAutenticado>;
+
+          if (dataObj.user && typeof dataObj.user === "object") {
+            const u = dataObj.user;
+            const isAdmin = Boolean(u.is_super_admin ?? u.is_admin);
+            const usuario: UsuarioAutenticado = {
+              id: u.id,
+              nome: u.nome,
+              email: u.email,
+              clinica_id: u.clinica_id ?? null,
+              clinica_nome: u.clinica_nome,
+              is_super_admin: isAdmin,
+              status_ativo: u.status_ativo ?? true,
+              role:
+                u.role === "super_admin" || isAdmin
+                  ? "super_admin"
+                  : "terapeuta",
+              crefito: u.crefito ?? u.registro_profissional ?? null,
+              registro_profissional:
+                u.registro_profissional ?? u.crefito ?? null,
+              especialidade: u.especialidade ?? null,
+              telefone: u.telefone ?? null,
+              tempo_experiencia_anos: u.tempo_experiencia_anos,
+              areas_foco: (u.areas_foco as unknown[]) ?? undefined,
+              created_at: u.created_at ?? undefined,
+            };
+            return usuario;
+          }
 
           if (dataObj.perfil) {
             const perfil = dataObj.perfil;
@@ -235,7 +269,7 @@ export const authService = {
   },
 
   /**
-   * Altera a senha do usuário autenticado no sistema.
+   * Updates password of authenticated user.
    */
   alterarSenha: async (novaSenha: string): Promise<{ message: string }> => {
     return await http.patch<{ message: string }>(ENDPOINTS.AUTH.ALTERAR_SENHA, { novaSenha });
@@ -252,7 +286,7 @@ export const authService = {
 };
 
 /**
- * Retrocompatibilidade para testes existentes e código legado
+ * Backwards compatibility for existing test suites
  */
 export interface ExemploData {
   id: string;
@@ -261,6 +295,11 @@ export interface ExemploData {
 }
 
 export const exemploService = {
+  /**
+   * Returns mock items for backwards compatibility in existing tests.
+   *
+   * @returns Array of mock example items.
+   */
   async listar(): Promise<ExemploData[]> {
     return [
       { id: "1", titulo: "Item de Exemplo 1", ativo: true },
