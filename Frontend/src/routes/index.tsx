@@ -1,4 +1,4 @@
-﻿import { Navigate, Outlet, Route, Routes as RouterRoutes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes as RouterRoutes } from "react-router-dom";
 import { SidebarLayout, FocusLayout } from "@/layout";
 import { LoginPage } from "@/features/autenticacao";
 import { CadastroPage } from "@/features/autenticacao/pages/CadastroPage";
@@ -11,6 +11,8 @@ import { BibliotecaJogosPage } from "@/features/jogos";
 import { CockpitSessaoPage, ResultadoSessaoPage } from "@/features/sessao";
 import { HistoricoSessoesPage } from "@/features/sessao/pages/HistoricoSessoesPage";
 import { SettingsPage } from "@/features/configuracoes/pages/settingsPage";
+import { AuditoriaAdminPage } from "@/features/admin";
+import { SuperAdminGuard } from "./admin.routes";
 import { useAuthStore } from "@/features/autenticacao";
 
 /**
@@ -50,6 +52,13 @@ export function Routes() {
           <Route path="/historico" element={<HistoricoSessoesPage />} />
           <Route path="/configuracoes" element={<SettingsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+
+        {/* Rotas Administrativas Exclusivas de SuperAdmin (RF07, RF08) */}
+        <Route element={<SuperAdminGuard />}>
+          <Route element={<SidebarLayout />}>
+            <Route path="/admin/auditoria" element={<AuditoriaAdminPage />} />
+          </Route>
         </Route>
 
         {/* Rotas de Intervenção Clínica e Resultados (com FocusLayout - 100% Foco) */}

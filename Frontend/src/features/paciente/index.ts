@@ -8,6 +8,8 @@ export * from "./components/ConteudoPacientes";
 export * from "./components/ListaPacientes";
 export * from "./components/CardPacienteGrid";
 export * from "./components/CardAdicionarPaciente";
+export * from "./components/TabelaComparativaMetricas";
+export * from "./components/ModalCompararSessoes";
 export * from "./components/CardsEngajamentoGeral";
 export * from "./components/GraficoEvolucaoJogo";
 export * from "./components/GraficoPolimorficoMetrica";

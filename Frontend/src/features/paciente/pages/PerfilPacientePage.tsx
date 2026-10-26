@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -15,7 +15,9 @@ import {
   Eye,
   AlertCircle,
   FileCheck,
+  GitCompare,
 } from "lucide-react";
+import { ModalCompararSessoes } from "../components/ModalCompararSessoes";
 import { pacienteService } from "../services/paciente.service";
 import type { Paciente } from "../types/paciente.types";
 import { anotacaoService } from "@/features/anotacao/services/anotacao.service";
@@ -48,6 +50,8 @@ export function PerfilPacientePage() {
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [anotacoes, setAnotacoes] = useState<AnotacaoClinica[]>([]);
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
+  const [sessoesSelecionadas, setSessoesSelecionadas] = useState<string[]>([]);
+  const [modalCompararAberto, setModalCompararAberto] = useState(false);
   const [loading, setLoading] = useState(true);
   const [novaNota, setNovaNota] = useState("");
   const [salvandoNota, setSalvandoNota] = useState(false);
@@ -156,6 +160,18 @@ export function PerfilPacientePage() {
   const idade = calcularIdade(paciente.data_nascimento);
   const responsavel = paciente.responsaveis?.[0];
   const responsavelExtra = paciente.responsaveis?.[1];
+
+  const toggleSelecaoSessao = (sessaoId: string) => {
+    setSessoesSelecionadas((prev) => {
+      if (prev.includes(sessaoId)) {
+        return prev.filter((id) => id !== sessaoId);
+      }
+      if (prev.length >= 2) {
+        return [prev[1], sessaoId];
+      }
+      return [...prev, sessaoId];
+    });
+  };
 
   return (
     <div className="flex flex-1 flex-col gap-6 w-full max-w-7xl mx-auto py-2">
@@ -390,13 +406,27 @@ export function PerfilPacientePage() {
 
       {/* Seção: Histórico de Sessões do Paciente */}
       <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between">
+        <div className="p-4 border-b border-border bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 font-bold text-sm text-foreground">
             <Clock className="h-4 w-4 text-primary" />
             <span>Histórico de Sessões do Paciente</span>
           </div>
-          <div className="flex items-center gap-3">
+
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs text-muted-foreground">{sessoes.length} sessões</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={sessoesSelecionadas.length !== 2}
+              onClick={() => setModalCompararAberto(true)}
+              className="h-8 px-3 text-xs font-semibold gap-1.5 rounded-xl border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50 cursor-pointer min-h-9"
+              data-testid="botao-comparar-sessoes"
+            >
+              <GitCompare className="h-4 w-4" />
+              <span>
+                Comparar Sessões {sessoesSelecionadas.length > 0 ? `(${sessoesSelecionadas.length}/2)` : ""}
+              </span>
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -412,6 +442,9 @@ export function PerfilPacientePage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/20 hover:bg-muted/20 border-b border-border">
+              <TableHead className="w-12 text-center text-xs font-bold text-foreground">
+                Sel.
+              </TableHead>
               <TableHead className="text-xs font-bold text-foreground">Game Terapêutico</TableHead>
               <TableHead className="text-xs font-bold text-foreground">Data de Realização</TableHead>
               <TableHead className="text-xs font-bold text-foreground">Status</TableHead>
@@ -421,13 +454,23 @@ export function PerfilPacientePage() {
           <TableBody>
             {sessoes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-xs text-muted-foreground">
+                <TableCell colSpan={5} className="py-8 text-center text-xs text-muted-foreground">
                   Este paciente ainda não possui sessões registradas.
                 </TableCell>
               </TableRow>
             ) : (
               sessoes.map((s) => (
                 <TableRow key={s.id} className="hover:bg-muted/30 border-b border-border/60">
+                  <TableCell className="text-center py-3">
+                    <input
+                      type="checkbox"
+                      checked={sessoesSelecionadas.includes(s.id)}
+                      onChange={() => toggleSelecaoSessao(s.id)}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                      aria-label={`Selecionar sessão ${s.id}`}
+                      data-testid={`checkbox-sessao-${s.id}`}
+                    />
+                  </TableCell>
                   <TableCell className="text-xs font-semibold text-foreground py-3">
                     {s.jogo?.nome || "Jogo Terapêutico"}
                   </TableCell>
@@ -462,6 +505,15 @@ export function PerfilPacientePage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Modal de Comparação Lado a Lado de Sessões (RF15 / RF19) */}
+      <ModalCompararSessoes
+        isOpen={modalCompararAberto}
+        onClose={() => setModalCompararAberto(false)}
+        sessaoA={sessoes.find((s) => s.id === sessoesSelecionadas[0]) || null}
+        sessaoB={sessoes.find((s) => s.id === sessoesSelecionadas[1]) || null}
+        pacienteNome={paciente?.nome}
+      />
     </div>
   );
 }
