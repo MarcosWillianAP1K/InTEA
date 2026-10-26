@@ -4,7 +4,13 @@
 // Conformidade: RF13, RNF06 (LGPD), RN04 (Vínculo Institucional), RN05
 // ==============================================================================
 
-import { AuditoriaModel, AuditoriaSessao, CriarAuditoriaDTO } from '../models/auditoria.model.js';
+import {
+  AuditoriaModel,
+  AuditoriaSessao,
+  CriarAuditoriaDTO,
+  FiltrosAuditoriaDTO,
+  EstatisticasAuditoriaModel,
+} from '../models/auditoria.model.js';
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
@@ -169,5 +175,31 @@ export class AuditoriaService {
   static async listarPorSessao(sessaoId: string): Promise<AuditoriaSessao[]> {
     if (!sessaoId || !validarUUID(sessaoId)) return [];
     return AuditoriaModel.buscarPorSessaoId(sessaoId);
+  }
+
+  /**
+   * Lists audit events with filters and pagination.
+   *
+   * @param filtros - Search, filter, and pagination options.
+   * @param usuario - Authenticated user info.
+   * @returns Paginated list and total count.
+   */
+  static async listarComFiltros(
+    filtros: FiltrosAuditoriaDTO = {},
+    usuario?: UsuarioAutenticadoInfo
+  ): Promise<{ auditoria: AuditoriaSessao[]; total: number }> {
+    return AuditoriaModel.listarComFiltros(filtros);
+  }
+
+  /**
+   * Retrieves aggregated clinical audit statistics.
+   *
+   * @param usuario - Authenticated user info.
+   * @returns Consolidated counts for audit metric cards.
+   */
+  static async obterEstatisticas(
+    usuario?: UsuarioAutenticadoInfo
+  ): Promise<EstatisticasAuditoriaModel> {
+    return AuditoriaModel.obterEstatisticas();
   }
 }

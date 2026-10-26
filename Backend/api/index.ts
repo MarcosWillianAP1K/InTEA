@@ -22,6 +22,7 @@ apiRouter.use('/terapeuta', terapeutaRoutes);
 apiRouter.use('/sessao', sessaoRoutes);
 apiRouter.use('/telemetria', telemetriaRoutes);
 apiRouter.use('/auditoria', auditoriaRoutes);
+apiRouter.use('/admin/auditoria', auditoriaRoutes);
 apiRouter.use('/anotacao', anotacaoRoutes);
 apiRouter.use('/exemplo', exemploRoutes);
 apiRouter.use('/jogos', jogosRoutes);

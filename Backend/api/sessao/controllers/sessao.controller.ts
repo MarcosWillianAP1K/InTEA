@@ -116,6 +116,8 @@ export class SessaoController {
         modo_sessao = MODO_SESSAO.SESSAO_CLINICA,
         contexto_dda_json = {},
         codigo_pareamento,
+        dispositivo_info,
+        status_sessao,
       } = req.body || {};
 
       // 2. Guarda Anti-Spoofing: bloqueia com 403 se o body informar terapeuta divergente do token (CA-3)
@@ -168,6 +170,10 @@ export class SessaoController {
         modo_sessao,
         contexto_dda_json,
         codigo_pareamento: codigoFinal,
+        dispositivo_info: dispositivo_info || null,
+        status_sessao: status_sessao && Object.values(STATUS_SESSAO).includes(status_sessao)
+          ? status_sessao
+          : (dispositivo_info ? STATUS_SESSAO.EM_ANDAMENTO : STATUS_SESSAO.AGUARDANDO_PAREAMENTO),
       };
 
       const novaSessao = await SessaoModel.criar(dadosSessao);

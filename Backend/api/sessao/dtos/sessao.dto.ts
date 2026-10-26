@@ -15,6 +15,8 @@ export interface CriarSessaoDTO {
   modo_sessao?: 'sessao_clinica' | 'modo_livre';
   contexto_dda_json?: Record<string, unknown>;
   codigo_pareamento: string;
+  dispositivo_info?: DispositivoInfoDTO | null;
+  status_sessao?: string;
 }
 
 export interface ParearSessaoDTO {

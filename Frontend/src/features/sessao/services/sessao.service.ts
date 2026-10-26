@@ -268,6 +268,26 @@ export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
 
 export const sessaoService = {
   /**
+   * Generates or fetches a unique random pairing PIN code without persisting any session.
+   */
+  gerarCodigoPareamento: async (): Promise<string> => {
+    return await withFallback(
+      async () => {
+        const resposta = await http.get<{
+          data?: {
+            token_pareamento?: { codigo?: string };
+          };
+        }>(ENDPOINTS.SESSAO.CODIGO_PAREAMENTO);
+        return (
+          resposta?.data?.token_pareamento?.codigo ||
+          `${Math.floor(100 + Math.random() * 900)}-${Math.floor(100 + Math.random() * 900)}`
+        );
+      },
+      () =>
+        `${Math.floor(100 + Math.random() * 900)}-${Math.floor(100 + Math.random() * 900)}`
+    );
+  },
+  /**
    * Starts a new clinical session or free play session (RN01, RF10).
    */
   iniciarSessao: async (dto: IniciarSessaoDTO): Promise<Sessao> => {

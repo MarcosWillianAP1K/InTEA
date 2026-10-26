@@ -98,6 +98,8 @@ export interface IniciarSessaoDTO {
   contexto_dda_json?: ContextoDDA;
   codigo_pareamento?: string;
   session_token?: string;
+  dispositivo_info?: Record<string, unknown> | null;
+  status_sessao?: StatusSessao;
 }
 
 export interface FinalizarSessaoDTO {

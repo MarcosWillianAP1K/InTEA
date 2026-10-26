@@ -78,7 +78,12 @@ export function HistoricoSessoesPage() {
       };
 
       const resposta = await sessaoService.listar(filtros);
-      setSessoes(resposta.data || []);
+      const lista = resposta.data || [];
+      setSessoes(
+        statusFiltro === "todas"
+          ? lista.filter((s) => s.status_sessao !== "aguardando_pareamento")
+          : lista,
+      );
       if (resposta.meta) {
         setMeta(resposta.meta);
       }

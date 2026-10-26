@@ -240,11 +240,68 @@ export const auditoriaAdminService = {
         if (filtros?.page) params.page = String(filtros.page);
         if (filtros?.limit) params.limit = String(filtros.limit);
 
-        const resposta = await http.get<RespostaPaginadaAuditoria>(
-          "/admin/auditoria",
-          { params }
-        );
-        return resposta;
+        const resposta = await http.get<
+          | {
+              data: {
+                auditoria?: EventoAuditoria[];
+                registros?: EventoAuditoria[];
+                meta?: { page: number; limit: number; total: number; totalPages: number };
+              } | EventoAuditoria[];
+              total?: number;
+              meta?: { page: number; limit: number; total: number; totalPages: number };
+            }
+          | RespostaPaginadaAuditoria
+        >("/admin/auditoria", { params });
+
+        let eventos: EventoAuditoria[] = [];
+        let total = 0;
+        let meta = {
+          page: Number(filtros?.page || 1),
+          limit: Number(filtros?.limit || 10),
+          totalPages: 1,
+          total: 0,
+        };
+
+        if (resposta && typeof resposta === "object") {
+          if ("data" in resposta && resposta.data) {
+            const d = resposta.data as Record<string, unknown>;
+            if (Array.isArray(d.auditoria)) {
+              eventos = d.auditoria as EventoAuditoria[];
+            } else if (Array.isArray(d.registros)) {
+              eventos = d.registros as EventoAuditoria[];
+            } else if (Array.isArray(resposta.data)) {
+              eventos = resposta.data as EventoAuditoria[];
+            }
+
+            if (d.meta && typeof d.meta === "object") {
+              const m = d.meta as Record<string, number>;
+              meta = {
+                page: m.page || meta.page,
+                limit: m.limit || meta.limit,
+                total: m.total ?? eventos.length,
+                totalPages: m.totalPages || Math.ceil((m.total ?? eventos.length) / meta.limit) || 1,
+              };
+              total = meta.total;
+            } else if ("meta" in resposta && resposta.meta) {
+              meta = resposta.meta as typeof meta;
+              total = meta.total;
+            } else {
+              total = ("total" in resposta && typeof resposta.total === "number") ? resposta.total : eventos.length;
+              meta.total = total;
+              meta.totalPages = Math.ceil(total / meta.limit) || 1;
+            }
+          } else if (Array.isArray(resposta)) {
+            eventos = resposta;
+            total = eventos.length;
+            meta.total = total;
+          }
+        }
+
+        return {
+          data: eventos,
+          total,
+          meta,
+        };
       },
       () => {
         let filtrados = [...MOCK_EVENTOS_AUDITORIA];
@@ -321,10 +378,35 @@ export const auditoriaAdminService = {
   buscarEstatisticas: async (): Promise<EstatisticasAuditoria> => {
     return await withFallback(
       async () => {
-        const resposta = await http.get<EstatisticasAuditoria>(
-          "/admin/auditoria/estatisticas"
-        );
-        return resposta;
+        const resposta = await http.get<{
+          data?: { estatisticas?: EstatisticasAuditoria } | EstatisticasAuditoria;
+          estatisticas?: EstatisticasAuditoria;
+        } | EstatisticasAuditoria>("/admin/auditoria/estatisticas");
+
+        if (resposta && typeof resposta === "object") {
+          if ("data" in resposta && resposta.data) {
+            const d = resposta.data as Record<string, unknown>;
+            if ("estatisticas" in d && d.estatisticas) {
+              return d.estatisticas as EstatisticasAuditoria;
+            }
+            if ("totalEventos" in d) {
+              return d as unknown as EstatisticasAuditoria;
+            }
+          }
+          if ("estatisticas" in resposta && resposta.estatisticas) {
+            return resposta.estatisticas;
+          }
+          if ("totalEventos" in resposta) {
+            return resposta as EstatisticasAuditoria;
+          }
+        }
+
+        return {
+          totalEventos: 0,
+          acessosProntuario: 0,
+          sessoesEIntervencoes: 0,
+          alertasSeguranca: 0,
+        };
       },
       () => {
         const totalEventos = MOCK_EVENTOS_AUDITORIA.length;

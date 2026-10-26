@@ -635,7 +635,7 @@ export function TabelaAuditoria({
               Detalhes do Evento de Auditoria
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Registro forense append-only com carimbo UTC e assinatura digital (RF08 / RN05).
+              Registro forense append-only com carimbo UTC e assinatura digital.
             </DialogDescription>
           </DialogHeader>
 

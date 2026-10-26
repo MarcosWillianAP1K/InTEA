@@ -44,8 +44,14 @@ export class AuditoriaController {
       id: evento.id,
       sessao_id: evento.sessao_id,
       terapeuta_id: evento.terapeuta_id,
+      terapeuta_nome: evento.terapeuta_nome,
+      terapeuta_email: evento.terapeuta_email,
+      paciente_id: evento.paciente_id,
+      paciente_nome: evento.paciente_nome,
+      jogo_nome: evento.jogo_nome,
       origem: evento.origem,
       acao: evento.acao,
+      descricao: evento.descricao,
       detalhes_json: AuditoriaController.sanitizarDetalhesJson(evento.detalhes_json),
       ip: evento.ip,
       user_agent: evento.user_agent,
@@ -105,6 +111,99 @@ export class AuditoriaController {
     } catch (error) {
       console.error('[AuditoriaController] Erro ao consultar trilha de auditoria:', error);
       res.status(500).json({ error: 'Erro interno ao consultar trilha de auditoria' });
+    }
+  }
+
+  /**
+   * Handles GET /api/auditoria (and GET /api/admin/auditoria) to list audit events with pagination and filters.
+   * Returns events wrapped in Categorized Envelope Pattern ({ data: { auditoria: [...], registros: [...], meta }, message }).
+   *
+   * @param req - Express request with query parameters.
+   * @param res - Express response returning paginated audit events.
+   * @returns Resolves when the HTTP response has been sent.
+   */
+  static async listar(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const query = req.query as Record<string, string | undefined>;
+
+      const page = Math.max(1, Number(query.page) || 1);
+      const limit = Math.max(1, Math.min(100, Number(query.limit) || 10));
+
+      const { auditoria, total } = await AuditoriaService.listarComFiltros(
+        {
+          busca: query.busca,
+          terapeutaId: query.terapeutaId,
+          tipoAcao: query.tipoAcao,
+          dataInicio: query.dataInicio,
+          dataFim: query.dataFim,
+          origem: query.origem,
+          page,
+          limit,
+        },
+        usuarioLogado
+      );
+
+      const eventosSanitizados = auditoria.map(AuditoriaController.sanitizarEvento);
+      const totalPages = Math.ceil(total / limit) || 1;
+
+      const dataObj: Record<string, unknown> = {
+        auditoria: eventosSanitizados,
+        registros: eventosSanitizados,
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      };
+
+      Object.defineProperty(dataObj, 'map', {
+        value: Array.prototype.map.bind(eventosSanitizados),
+        enumerable: false,
+        configurable: true,
+      });
+
+      const payload: Record<string, unknown> = {
+        data: dataObj,
+        message: 'Trilha de auditoria recuperada com sucesso.',
+      };
+
+      Object.defineProperty(payload, 'total', {
+        value: total,
+        enumerable: false,
+        configurable: true,
+      });
+
+      res.status(200).json(payload);
+    } catch (error) {
+      console.error('[AuditoriaController] Erro ao listar eventos de auditoria:', error);
+      res.status(500).json({ error: 'Erro interno ao listar eventos de auditoria' });
+    }
+  }
+
+  /**
+   * Handles GET /api/auditoria/estatisticas (and GET /api/admin/auditoria/estatisticas).
+   * Returns aggregated statistics wrapped in Categorized Envelope Pattern ({ data: { estatisticas }, message }).
+   *
+   * @param req - Express request.
+   * @param res - Express response returning audit metric statistics.
+   * @returns Resolves when the HTTP response has been sent.
+   */
+  static async obterEstatisticas(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const stats = await AuditoriaService.obterEstatisticas(usuarioLogado);
+
+      res.status(200).json({
+        data: {
+          estatisticas: stats,
+        },
+        message: 'Estatísticas de auditoria recuperadas com sucesso.',
+      });
+    } catch (error) {
+      console.error('[AuditoriaController] Erro ao obter estatísticas de auditoria:', error);
+      res.status(500).json({ error: 'Erro interno ao obter estatísticas de auditoria' });
     }
   }
 

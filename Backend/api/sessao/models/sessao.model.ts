@@ -78,7 +78,8 @@ export class SessaoModel {
           session_token: sessionToken,
           modo_sessao: modoSessao,
           contexto_dda_json: dados.contexto_dda_json || {},
-          status_sessao: STATUS_SESSAO.AGUARDANDO_PAREAMENTO,
+          dispositivo_info: dados.dispositivo_info || null,
+          status_sessao: (dados.status_sessao as StatusSessao) || (dados.dispositivo_info ? STATUS_SESSAO.EM_ANDAMENTO : STATUS_SESSAO.AGUARDANDO_PAREAMENTO),
           expira_em: expiraEm,
         }])
         .select('*')

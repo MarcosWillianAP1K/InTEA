@@ -49,6 +49,8 @@ describe('Feature Auditoria — Rotas e Estrutura', () => {
   it('deve expor métodos estáticos no AuditoriaModel', () => {
     expect(typeof AuditoriaModel.registrar).toBe('function');
     expect(typeof AuditoriaModel.buscarPorSessaoId).toBe('function');
+    expect(typeof AuditoriaModel.listarComFiltros).toBe('function');
+    expect(typeof AuditoriaModel.obterEstatisticas).toBe('function');
   });
 
   it('deve expor métodos estáticos no AuditoriaService', () => {
@@ -56,6 +58,8 @@ describe('Feature Auditoria — Rotas e Estrutura', () => {
     expect(typeof AuditoriaService.registrarSilencioso).toBe('function');
     expect(typeof AuditoriaService.validarAcessoLinhaDoTempo).toBe('function');
     expect(typeof AuditoriaService.listarPorSessao).toBe('function');
+    expect(typeof AuditoriaService.listarComFiltros).toBe('function');
+    expect(typeof AuditoriaService.obterEstatisticas).toBe('function');
   });
 
   it('deve expor métodos estáticos no AuditoriaController', () => {
@@ -63,6 +67,8 @@ describe('Feature Auditoria — Rotas e Estrutura', () => {
     expect(typeof AuditoriaController.registrarEvento).toBe('function');
     expect(typeof AuditoriaController.sanitizarEvento).toBe('function');
     expect(typeof AuditoriaController.sanitizarDetalhesJson).toBe('function');
+    expect(typeof AuditoriaController.listar).toBe('function');
+    expect(typeof AuditoriaController.obterEstatisticas).toBe('function');
   });
 });
 
@@ -668,6 +674,101 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
     );
 
     await AuditoriaController.registrarEvento(mockReq, mockRes);
+
+    expect(getStatus()).toBe(500);
+  });
+  // --------------------------------------------------------------------------
+  // GET /api/auditoria (Listar com Paginação e Filtros)
+  // --------------------------------------------------------------------------
+  it('GET /api/auditoria: deve listar eventos retornando Envelope Pattern { data: { auditoria, meta }, message }', async () => {
+    const mockEventos: AuditoriaSessao[] = [
+      {
+        id: 'evt-1',
+        sessao_id: sessaoIdValido,
+        terapeuta_id: terapeutaIdValido,
+        terapeuta_nome: 'Dr. Marcos Terapeuta',
+        origem: 'terapeuta_web',
+        acao: 'sessao_finalizada',
+        detalhes_json: { duracao: 30 },
+        ip: '127.0.0.1',
+        user_agent: 'Chrome',
+        created_at: new Date().toISOString(),
+      },
+    ];
+
+    vi.spyOn(AuditoriaService, 'listarComFiltros').mockResolvedValue({
+      auditoria: mockEventos,
+      total: 1,
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, {}, { page: '1', limit: '10' });
+
+    await AuditoriaController.listar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(200);
+    const json = getJson() as {
+      data: { auditoria: AuditoriaSessao[]; meta: { total: number; page: number; limit: number } };
+      message: string;
+    };
+
+    expect(json.message).toBe('Trilha de auditoria recuperada com sucesso.');
+    expect(json.data.auditoria).toHaveLength(1);
+    expect(json.data.meta.total).toBe(1);
+    expect(json.data.meta.page).toBe(1);
+    expect(json.data.meta.limit).toBe(10);
+  });
+
+  it('GET /api/auditoria: deve retornar 500 se ocorrer exceção no serviço', async () => {
+    vi.spyOn(AuditoriaService, 'listarComFiltros').mockRejectedValue(new Error('Erro no banco'));
+
+    const { mockReq, mockRes, getStatus } = criarMocks({}, {}, {});
+
+    await AuditoriaController.listar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(500);
+  });
+
+  // --------------------------------------------------------------------------
+  // GET /api/auditoria/estatisticas (Consolidado de Métricas)
+  // --------------------------------------------------------------------------
+  it('GET /api/auditoria/estatisticas: deve retornar métricas consolidadas em Envelope Pattern { data: { estatisticas }, message }', async () => {
+    vi.spyOn(AuditoriaService, 'obterEstatisticas').mockResolvedValue({
+      totalEventos: 15,
+      acessosProntuario: 5,
+      sessoesEIntervencoes: 8,
+      alertasSeguranca: 2,
+    });
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks();
+
+    await AuditoriaController.obterEstatisticas(mockReq, mockRes);
+
+    expect(getStatus()).toBe(200);
+    const json = getJson() as {
+      data: {
+        estatisticas: {
+          totalEventos: number;
+          acessosProntuario: number;
+          sessoesEIntervencoes: number;
+          alertasSeguranca: number;
+        };
+      };
+      message: string;
+    };
+
+    expect(json.message).toBe('Estatísticas de auditoria recuperadas com sucesso.');
+    expect(json.data.estatisticas.totalEventos).toBe(15);
+    expect(json.data.estatisticas.acessosProntuario).toBe(5);
+    expect(json.data.estatisticas.sessoesEIntervencoes).toBe(8);
+    expect(json.data.estatisticas.alertasSeguranca).toBe(2);
+  });
+
+  it('GET /api/auditoria/estatisticas: deve retornar 500 se ocorrer exceção no serviço', async () => {
+    vi.spyOn(AuditoriaService, 'obterEstatisticas').mockRejectedValue(new Error('Falha estatísticas'));
+
+    const { mockReq, mockRes, getStatus } = criarMocks();
+
+    await AuditoriaController.obterEstatisticas(mockReq, mockRes);
 
     expect(getStatus()).toBe(500);
   });

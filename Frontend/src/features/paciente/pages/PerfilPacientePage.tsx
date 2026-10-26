@@ -75,7 +75,7 @@ export function PerfilPacientePage() {
         if (isMounted) {
           setPaciente(dadosPaciente);
           setAnotacoes(listaAnotacoes || []);
-          setSessoes(resSessoes?.data || []);
+          setSessoes((resSessoes?.data || []).filter((s) => s.status_sessao !== "aguardando_pareamento"));
         }
       } catch {
         toast.error("Erro ao carregar prontuário do paciente.");

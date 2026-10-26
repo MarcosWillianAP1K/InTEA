@@ -190,12 +190,12 @@ describe("Frontend: Auditoria Administrativa (RF07 / RF08)", () => {
 
       expect(screen.getByText("Auditoria e Conformidade Clínica")).toBeDefined();
       expect(screen.getByText("Painel SuperAdmin")).toBeDefined();
-      expect(screen.getByText("RF07 / RF08")).toBeDefined();
+      expect(screen.queryByText("RF07 / RF08")).toBeNull();
       expect(screen.getByText("Total de Eventos Auditados")).toBeDefined();
-      expect(screen.getByText("Acessos a Prontuários (RF08)")).toBeDefined();
-      expect(screen.getByText("Sessões & DDA (RF13)")).toBeDefined();
-      expect(screen.getByText("Bloqueios de Acesso (RN04)")).toBeDefined();
-      expect(screen.getByText(/Invariante de Imutabilidade/i)).toBeDefined();
+      expect(screen.getByText("Acessos a Prontuários")).toBeDefined();
+      expect(screen.getByText("Sessões & DDA")).toBeDefined();
+      expect(screen.getByText("Bloqueios de Acesso")).toBeDefined();
+      expect(screen.queryByText(/Invariante de Imutabilidade/i)).toBeNull();
     });
 
     it("deve recarregar dados ao clicar no botão 'Atualizar'", async () => {

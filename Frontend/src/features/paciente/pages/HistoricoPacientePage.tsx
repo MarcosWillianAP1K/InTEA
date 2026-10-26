@@ -49,7 +49,7 @@ function mapearSessoesParaLinhaDoTempo(
 ): SessaoHistoricoItem[] {
   const filtradas = listaSessoes.filter((s) => {
     // RN01: Exclui modo livre
-    if (s.modo_sessao === "modo_livre") {
+    if (s.modo_sessao === "modo_livre" || s.status_sessao === "aguardando_pareamento") {
       return false;
     }
     const idJogoSessao = s.jogo_id || s.jogo?.id;

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ============================================================================
  * ENDPOINTS DA API REST DO InTEA
  * Especificação canônica dos caminhos da API para os módulos clínicos e de jogos.
@@ -42,6 +42,7 @@ export const ENDPOINTS = {
   SESSAO: {
     BASE: "/sessao",
     INICIAR: "/sessao/iniciar",
+    CODIGO_PAREAMENTO: "/sessao/codigo-pareamento",
     BY_ID: (id: string) => `/sessao/${id}`,
     FINALIZAR: (id: string) => `/sessao/${id}/finalizar`,
     CANCELAR: (id: string) => `/sessao/${id}/cancelar`,
@@ -90,6 +91,7 @@ export const ENDPOINTS = {
     JOGOS_BY_ID: "/jogos/:id",
     JOGOS_MANIFESTO: "/jogos/:id/manifesto",
     SESSAO_INICIAR: "/sessao/iniciar",
+    SESSAO_CODIGO_PAREAMENTO: "/sessao/codigo-pareamento",
     SESSAO_BY_ID: "/sessao/:id",
     SESSAO_FINALIZAR: "/sessao/:id/finalizar",
     SESSAO_CANCELAR: "/sessao/:id/cancelar",
