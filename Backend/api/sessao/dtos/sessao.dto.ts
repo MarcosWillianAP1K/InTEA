@@ -68,3 +68,42 @@ export interface RespostaListagemSessao<T = unknown> {
     totalPages: number;
   };
 }
+
+// ==============================================================================
+// DTOs de Concorrência e Permissões Multi-terapeuta (Sprint 13 — RF13, RF18, RF21)
+// ==============================================================================
+
+export interface EspecialistaResponsavelDTO {
+  id: string;
+  nome?: string;
+  especialidade?: string;
+  registro_conselho?: string;
+}
+
+export interface SessaoAtivaConcorrenteDTO {
+  id: string;
+  status_sessao: string;
+  terapeuta_id: string;
+  expira_em?: string;
+  data_hora_inicio?: string;
+  especialista_responsavel?: EspecialistaResponsavelDTO;
+  mesmo_terapeuta?: boolean;
+}
+
+export interface ResultadoConcorrenciaDTO {
+  conflito: boolean;
+  statusHttp?: 409;
+  codigo?: string;
+  mensagem?: string;
+  sessaoAtiva?: SessaoAtivaConcorrenteDTO;
+}
+
+export interface ResultadoPermissaoMutacaoDTO {
+  permitido: boolean;
+  statusHttp?: 403;
+  codigo?: 'FORBIDDEN_MUTACAO_CONDUTOR' | string;
+  mensagem?: string;
+  terapeutaCondutorId?: string;
+  usuarioSolicitanteId?: string;
+}
+
