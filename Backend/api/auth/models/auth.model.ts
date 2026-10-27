@@ -1,5 +1,6 @@
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
+import { RecuperacaoService } from '../../../core/auth/recuperacao.service.js';
 import type { Terapeuta } from '../../terapeuta/models/terapeuta.model.js';
 
 // ==============================================================================
@@ -13,6 +14,11 @@ export interface LoginDTO {
 
 export interface RecuperarSenhaDTO {
   email: string;
+}
+
+export interface RedefinirSenhaDTO {
+  token: string;
+  novaSenha: string;
 }
 
 export interface AuthResponse {
@@ -85,16 +91,25 @@ export class AuthModel {
   }
 
   /**
-   * Initiates a mock password recovery request for the given email address.
+   * Initiates a password recovery request for the given email address (RF01, RNF03).
+   * Uses RecuperacaoService with Anti-User Enumeration protection.
    *
    * @param email - Target email address for the password reset instructions.
-   * @returns Object containing the confirmation message and a demonstration flag.
+   * @returns Object containing confirmation message.
    */
-  static async recuperarSenha(email: string): Promise<{ message: string; exemplo: boolean }> {
-    return {
-      message: `[EXEMPLO] Solicitação recebida para o e-mail: ${email}. O envio de e-mails será ativado futuramente.`,
-      exemplo: true,
-    };
+  static async recuperarSenha(email: string): Promise<{ message: string; exemplo?: boolean }> {
+    return await RecuperacaoService.solicitarRecuperacao(email);
+  }
+
+  /**
+   * Validates ephemeral recovery token and applies new password (RF01, RNF03).
+   *
+   * @param token - Recovery token (magic link token or access token).
+   * @param novaSenha - New password (minimum 6 characters).
+   * @returns Object containing confirmation message.
+   */
+  static async redefinirSenha(token: string, novaSenha: string): Promise<{ message: string }> {
+    return await RecuperacaoService.redefinirSenha(token, novaSenha);
   }
 
   /**

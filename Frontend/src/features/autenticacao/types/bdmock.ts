@@ -12,6 +12,9 @@ import type {
   LoginPayload,
   LoginResponse,
   LogoutResponse,
+  RecuperarSenhaRespostaApi,
+  RedefinirSenhaPayload,
+  RedefinirSenhaRespostaApi,
 } from "./auth.types";
 import { MOCK_TERAPEUTA_LOGADO, MOCK_TERAPEUTA_ADMIN, MOCK_CLINICA } from "@/shared/types";
 
@@ -355,4 +358,40 @@ export async function obterPerfilTerapeutaAuthMock(
 export function validarTokenMock(token: string | null | undefined): boolean {
   if (!token) return false;
   return token.startsWith("mock-jwt-") || token.length > 20;
+}
+
+/**
+ * Mock password recovery request (Anti-User Enumeration).
+ */
+export async function recuperarSenhaMock(
+  email: string,
+): Promise<RecuperarSenhaRespostaApi> {
+  return {
+    data: {
+      recuperacao: {
+        email: email.trim().toLowerCase(),
+        solicitado: true,
+      },
+    },
+    message:
+      "Se o e-mail informado estiver cadastrado, as instruções para redefinição de senha foram enviadas.",
+  };
+}
+
+/**
+ * Mock password reset request.
+ */
+export async function redefinirSenhaMock(
+  payload: RedefinirSenhaPayload,
+): Promise<RedefinirSenhaRespostaApi> {
+  if (!payload.token || payload.token.trim() === "") {
+    throw new Error("O token de recuperação é obrigatório.");
+  }
+  if (!payload.novaSenha || payload.novaSenha.trim().length < 6) {
+    throw new Error("A nova senha deve conter no mínimo 6 caracteres.");
+  }
+  return {
+    data: null,
+    message: "Senha de acesso redefinida com sucesso.",
+  };
 }

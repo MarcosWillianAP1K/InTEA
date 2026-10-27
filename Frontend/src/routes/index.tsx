@@ -1,6 +1,6 @@
 import { Navigate, Outlet, Route, Routes as RouterRoutes } from "react-router-dom";
 import { SidebarLayout, FocusLayout } from "@/layout";
-import { LoginPage } from "@/features/autenticacao";
+import { LoginPage, RedefinirSenhaPage } from "@/features/autenticacao";
 import { CadastroPage } from "@/features/autenticacao/pages/CadastroPage";
 import { PainelPage } from "@/features/painel";
 import { PacientesPage } from "@/features/paciente";
@@ -36,6 +36,8 @@ export function Routes() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/cadastro" element={<CadastroPage />} />
+      <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
+      <Route path="/reset-password" element={<RedefinirSenhaPage />} />
 
       {/* Rotas Protegidas (Requer Autenticação Ativa) */}
       <Route element={<ProtectedRoute />}>

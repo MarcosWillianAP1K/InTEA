@@ -91,6 +91,17 @@ export interface LogoutResponse {
 export type AlterarSenhaRespostaApi = LogoutResponse;
 
 /** POST /auth/recuperar-senha → `{ data: { recuperacao }, message }` */
+export interface RecuperarSenhaPayload {
+  email: string;
+}
+
+export interface RedefinirSenhaPayload {
+  token: string;
+  novaSenha: string;
+}
+
+export type RedefinirSenhaRespostaApi = LogoutResponse;
+
 export interface RecuperarSenhaRespostaApi {
   data: {
     recuperacao: {

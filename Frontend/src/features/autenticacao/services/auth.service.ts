@@ -12,6 +12,9 @@ import type {
   AuthTokens,
   UsuarioAutenticado,
   LogoutResponse,
+  RecuperarSenhaRespostaApi,
+  RedefinirSenhaPayload,
+  RedefinirSenhaRespostaApi,
 } from "../types/auth.types";
 import {
   loginMock,
@@ -19,6 +22,8 @@ import {
   refreshMock,
   obterUsuarioAtualMock,
   validarTokenMock,
+  recuperarSenhaMock,
+  redefinirSenhaMock,
 } from "../types/bdmock";
 
 const TOKEN_KEY = "access_token";
@@ -265,6 +270,44 @@ export const authService = {
         return resposta as UsuarioAutenticado;
       },
       () => obterUsuarioAtualMock(),
+    );
+  },
+
+  /**
+   * Dispatches password recovery instructions via email (RF01, RNF03).
+   */
+  solicitarRecuperacaoSenha: async (
+    email: string,
+  ): Promise<RecuperarSenhaRespostaApi> => {
+    return await withFallback(
+      async () => {
+        return await http.post<RecuperarSenhaRespostaApi>(
+          ENDPOINTS.AUTH.RECUPERAR_SENHA,
+          { email },
+        );
+      },
+      async () => {
+        return await recuperarSenhaMock(email);
+      },
+    );
+  },
+
+  /**
+   * Resets password using ephemeral magic link token (RF01, RNF03).
+   */
+  redefinirSenha: async (
+    payload: RedefinirSenhaPayload,
+  ): Promise<RedefinirSenhaRespostaApi> => {
+    return await withFallback(
+      async () => {
+        return await http.post<RedefinirSenhaRespostaApi>(
+          ENDPOINTS.AUTH.REDEFINIR_SENHA,
+          payload,
+        );
+      },
+      async () => {
+        return await redefinirSenhaMock(payload);
+      },
     );
   },
 

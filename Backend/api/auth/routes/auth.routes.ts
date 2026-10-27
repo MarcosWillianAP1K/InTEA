@@ -92,6 +92,36 @@ authRoutes.post('/recuperar-senha', AuthController.recuperarSenha);
 
 /**
  * @swagger
+ * /api/auth/redefinir-senha:
+ *   post:
+ *     summary: Redefine a senha de acesso utilizando token efêmero de recuperação (RF01, RNF03)
+ *     tags: [Autenticação]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             token: "token-efemero-magic-link-123"
+ *             novaSenha: "novaSenhaSegura123"
+ *     responses:
+ *       200:
+ *         description: Senha redefinida com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data: null
+ *               message: "Senha de acesso redefinida com sucesso."
+ *       400:
+ *         description: Token não informado ou senha menor que 6 caracteres
+ *       410:
+ *         description: Token expirado ou inválido (TTL de 30 minutos)
+ *       500:
+ *         description: Erro interno ao redefinir credenciais
+ */
+authRoutes.post('/redefinir-senha', AuthController.redefinirSenha);
+
+/**
+ * @swagger
  * /api/auth/alterar-senha:
  *   patch:
  *     summary: Atualiza a senha de acesso do usuário autenticado

@@ -4,3 +4,4 @@ export * from "./store/authStore";
 export * from "./hooks/useAuth";
 export { default as authService, autenticacaoService } from "./services/auth.service";
 export * from "./pages/LoginPage";
+export * from "./pages/RedefinirSenhaPage";

@@ -53,6 +53,7 @@ describe('Backend: Auth Feature (Envelope Pattern & Sanitização Estrita)', () 
       expect(typeof AuthModel.refreshSession).toBe('function');
       expect(typeof AuthModel.logout).toBe('function');
       expect(typeof AuthModel.alterarSenha).toBe('function');
+      expect(typeof AuthModel.redefinirSenha).toBe('function');
     });
 
     it('deve autenticar usuário chamando signInWithPassword e retornando token JWT', async () => {
@@ -127,15 +128,41 @@ describe('Backend: Auth Feature (Envelope Pattern & Sanitização Estrita)', () 
       await expect(AuthModel.login(dto)).rejects.toThrow('inativada');
     });
 
-    it('deve retornar mensagem simulada de exemplo para recuperação de senha', async () => {
+    it('deve retornar confirmação segura para recuperação de senha com anti-enumeração (RNF03)', async () => {
       const email = 'recuperar@intea.com.br';
 
       const res = await AuthModel.recuperarSenha(email);
 
       expect(res).toBeDefined();
-      expect(res.exemplo).toBe(true);
-      expect(res.message).toContain('[EXEMPLO]');
-      expect(res.message).toContain(email);
+      expect(res.message).toBeDefined();
+      expect(typeof res.message).toBe('string');
+    });
+
+    it('deve permitir redefinir senha com token efêmero válido', async () => {
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValueOnce({
+        data: { user: { id: 'uuid-user-recuperacao' } as unknown as any },
+        error: null,
+      });
+      vi.spyOn(supabase.auth.admin, 'updateUserById').mockResolvedValueOnce({
+        data: { user: { id: 'uuid-user-recuperacao' } as unknown as any },
+        error: null,
+      });
+
+      const res = await AuthModel.redefinirSenha('token-valido-123', 'novaSenha123');
+      expect(res.message).toContain('sucesso');
+    });
+
+    it('deve rejeitar redefinir senha com token expirado (410)', async () => {
+      vi.spyOn(supabase.auth, 'getUser').mockResolvedValueOnce({
+        data: { user: null },
+        error: new Error('Token expirado') as unknown as any,
+      });
+      vi.spyOn(supabase.auth, 'verifyOtp').mockResolvedValueOnce({
+        data: { user: null, session: null },
+        error: new Error('Token expirado') as unknown as any,
+      });
+
+      await expect(AuthModel.redefinirSenha('token-expirado', 'novaSenha123')).rejects.toThrow();
     });
 
     it('deve renovar sessão chamando refreshSession', async () => {
@@ -426,7 +453,7 @@ describe('Backend: Auth Feature (Envelope Pattern & Sanitização Estrita)', () 
       expect(Object.keys(payload).sort()).toEqual(['data', 'message'].sort());
       expect(payload.data.recuperacao.email).toBe('terapeuta@intea.com.br');
       expect(payload.data.recuperacao.solicitado).toBe(true);
-      expect(payload.message).toContain('[EXEMPLO]');
+      expect(payload.message).toBeDefined();
     });
 
     it('deve retornar 400 se e-mail não for informado', async () => {
@@ -440,6 +467,70 @@ describe('Backend: Auth Feature (Envelope Pattern & Sanitização Estrita)', () 
       expect(mockRes.statusCode).toBe(400);
       const payload = mockRes.body as ErrorResponse;
       expect(payload.error).toContain('email');
+    });
+  });
+
+  
+  describe('AuthController: POST /api/auth/redefinir-senha', () => {
+    it('deve retornar 200 com { data: null, message } ao redefinir com sucesso (RF01, RNF03)', async () => {
+      vi.spyOn(AuthModel, 'redefinirSenha').mockResolvedValueOnce({
+        message: 'Senha de acesso redefinida com sucesso.',
+      });
+
+      const mockReq = {
+        body: { token: 'token-efemero-valido', novaSenha: 'novaSenhaSegura123' },
+      } as unknown as Request;
+      const mockRes = createMockResponse();
+
+      await AuthController.redefinirSenha(mockReq, mockRes as unknown as Response);
+
+      expect(mockRes.statusCode).toBe(200);
+      const payload = mockRes.body as { data: unknown; message: string };
+      expect(payload.data).toBeNull();
+      expect(payload.message).toContain('sucesso');
+    });
+
+    it('deve retornar 400 se o token de recuperação não for informado', async () => {
+      const mockReq = {
+        body: { novaSenha: 'novaSenhaSegura123' },
+      } as unknown as Request;
+      const mockRes = createMockResponse();
+
+      await AuthController.redefinirSenha(mockReq, mockRes as unknown as Response);
+
+      expect(mockRes.statusCode).toBe(400);
+      const payload = mockRes.body as ErrorResponse;
+      expect(payload.error).toContain('token');
+    });
+
+    it('deve retornar 400 se novaSenha tiver menos de 6 caracteres', async () => {
+      const mockReq = {
+        body: { token: 'token-valido', novaSenha: '123' },
+      } as unknown as Request;
+      const mockRes = createMockResponse();
+
+      await AuthController.redefinirSenha(mockReq, mockRes as unknown as Response);
+
+      expect(mockRes.statusCode).toBe(400);
+      const payload = mockRes.body as ErrorResponse;
+      expect(payload.error).toContain('6 caracteres');
+    });
+
+    it('deve retornar 410 Gone se o token tiver expirado ou for inválido', async () => {
+      const erroGone = new Error('O token de recuperação é inválido ou expirou. Solicite um novo link.');
+      (erroGone as unknown as { statusCode: number }).statusCode = 410;
+      vi.spyOn(AuthModel, 'redefinirSenha').mockRejectedValueOnce(erroGone);
+
+      const mockReq = {
+        body: { token: 'token-expirado', novaSenha: 'novaSenhaSegura123' },
+      } as unknown as Request;
+      const mockRes = createMockResponse();
+
+      await AuthController.redefinirSenha(mockReq, mockRes as unknown as Response);
+
+      expect(mockRes.statusCode).toBe(410);
+      const payload = mockRes.body as ErrorResponse;
+      expect(payload.error).toContain('expirou');
     });
   });
 

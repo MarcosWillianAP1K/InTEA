@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AuthModel, LoginDTO, RecuperarSenhaDTO } from '../models/auth.model.js';
+import { AuthModel, LoginDTO, RecuperarSenhaDTO, RedefinirSenhaDTO } from '../models/auth.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { SessoesAtivasService } from '../../../core/auth/sessoes-ativas.service.js';
 
@@ -163,6 +163,59 @@ export class AuthController {
   /**
    * Handles PATCH /api/auth/alterar-senha to update password for authenticated user.
    */
+
+  /**
+   * Handles POST /api/auth/redefinir-senha to validate ephemeral recovery token and apply new password (RF01, RNF03).
+   *
+   * @param req - Express request containing token (in body or Authorization header) and novaSenha.
+   * @param res - Express response acknowledging password reset with Envelope Pattern { data: null, message }.
+   */
+  static async redefinirSenha(req: Request, res: Response): Promise<void> {
+    try {
+      const authHeader = req.headers?.authorization;
+      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
+      const body: Partial<RedefinirSenhaDTO> = req.body || {};
+
+      const token = body.token || bearerToken;
+
+      if (!token || typeof token !== 'string' || token.trim() === '') {
+        res.status(400).json({ error: 'O token de recuperação é obrigatório.' });
+        return;
+      }
+
+      if (!body.novaSenha || typeof body.novaSenha !== 'string' || body.novaSenha.trim().length < 6) {
+        res.status(400).json({ error: 'A nova senha deve conter no mínimo 6 caracteres.' });
+        return;
+      }
+
+      const resultado = await AuthModel.redefinirSenha(token.trim(), body.novaSenha.trim());
+
+      res.status(200).json({
+        data: null,
+        message: resultado.message,
+      });
+    } catch (error: unknown) {
+      const status = (error as { statusCode?: number })?.statusCode;
+      if (status === 410) {
+        res.status(410).json({
+          error: (error as Error).message || 'O link de recuperação expirou ou é inválido. Solicite um novo link.',
+        });
+        return;
+      }
+
+      const msg = error instanceof Error ? error.message : 'Erro interno ao redefinir senha.';
+      if (msg.includes('expirou') || msg.includes('inválido') || msg.includes('expired') || msg.includes('invalid')) {
+        res.status(410).json({
+          error: 'O link de recuperação expirou ou é inválido. Solicite um novo link.',
+        });
+        return;
+      }
+
+      console.error('[AuthController.redefinirSenha]', error);
+      res.status(500).json({ error: 'Erro interno ao redefinir senha.', detalhes: msg });
+    }
+  }
+
   static async alterarSenha(req: Request, res: Response): Promise<void> {
     try {
       const usuarioLogado = (req as AuthenticatedRequest).user;

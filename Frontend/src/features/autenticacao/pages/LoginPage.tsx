@@ -20,9 +20,12 @@ import {
   ShieldCheck,
   Sparkles,
   CheckCircle2,
+  X,
+  KeyRound,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useAuthStore } from "../store/authStore";
+import { authService } from "../services/auth.service";
 
 interface ContaDemonstracao {
   nome: string;
@@ -75,6 +78,11 @@ export function LoginPage() {
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   const [avisoRecuperacao, setAvisoRecuperacao] = useState<string | null>(null);
   const [mostrarContasDemo, setMostrarContasDemo] = useState(false);
+  const [mostrarModalRecuperar, setMostrarModalRecuperar] = useState(false);
+  const [emailRecuperacao, setEmailRecuperacao] = useState("");
+  const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false);
+  const [feedbackRecuperacao, setFeedbackRecuperacao] = useState<string | null>(null);
+  const [erroRecuperacao, setErroRecuperacao] = useState<string | null>(null);
 
   const mensagemErroExibida = erroValidacao || error;
 
@@ -113,10 +121,37 @@ export function LoginPage() {
 
   function handleEsqueciSenha() {
     setErroValidacao(null);
-    setAvisoRecuperacao(
-      "Para redefinir sua credencial institucional, contate a coordenação da clínica ou selecione um perfil de acesso rápido abaixo.",
-    );
-    setMostrarContasDemo(true);
+    setAvisoRecuperacao(null);
+    setEmailRecuperacao(email || "");
+    setFeedbackRecuperacao(null);
+    setErroRecuperacao(null);
+    setMostrarModalRecuperar(true);
+  }
+
+  async function handleEnviarRecuperacao(e: FormEvent) {
+    e.preventDefault();
+    const emailLimpo = emailRecuperacao.trim();
+    if (!emailLimpo || !emailLimpo.includes("@")) {
+      setErroRecuperacao("Informe um e-mail válido.");
+      return;
+    }
+
+    setErroRecuperacao(null);
+    setEnviandoRecuperacao(true);
+
+    try {
+      const res = await authService.solicitarRecuperacaoSenha(emailLimpo);
+      setFeedbackRecuperacao(
+        res.message ||
+          "Se o e-mail informado estiver cadastrado, as instruções para redefinição foram enviadas.",
+      );
+    } catch {
+      setFeedbackRecuperacao(
+        "Se o e-mail informado estiver cadastrado, as instruções para redefinição foram enviadas.",
+      );
+    } finally {
+      setEnviandoRecuperacao(false);
+    }
   }
 
   return (
@@ -313,6 +348,115 @@ export function LoginPage() {
           </p>
         </footer>
       </section>
+
+      {/* Modal de Recuperação de Senha (RF01, RNF03) */}
+      {mostrarModalRecuperar && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div className="bg-card w-full max-w-md rounded-2xl border border-border/80 shadow-2xl p-6 sm:p-8 flex flex-col gap-6 relative">
+            <button
+              type="button"
+              onClick={() => setMostrarModalRecuperar(false)}
+              aria-label="Fechar"
+              className="absolute top-5 right-5 text-muted-foreground hover:text-foreground p-1 rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <header className="flex flex-col gap-2">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">
+                Recuperação de Senha
+              </h2>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Digite seu e-mail cadastrado. Enviaremos um link mágico seguro com validade de 30 minutos para você redefinir sua credencial.
+              </p>
+            </header>
+
+            {feedbackRecuperacao ? (
+              <div className="flex flex-col gap-4">
+                <div
+                  role="status"
+                  className="flex items-start gap-2.5 text-primary text-xs font-medium bg-primary/10 border border-primary/20 rounded-[10px] p-3.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">{feedbackRecuperacao}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarModalRecuperar(false);
+                    setFeedbackRecuperacao(null);
+                  }}
+                  className="w-full py-2.5 px-4 rounded-[10px] bg-secondary hover:bg-secondary/80 text-foreground text-xs font-medium transition-colors cursor-pointer"
+                >
+                  Concluir e Voltar ao Login
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleEnviarRecuperacao} className="flex flex-col gap-4">
+                <div className="flex flex-row items-center gap-3 w-full px-4 py-3 rounded-[12px] bg-input border border-transparent focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 transition-all">
+                  <Mail className="w-5 h-5 text-muted-foreground shrink-0" />
+                  <input
+                    id="emailRecuperacao"
+                    type="email"
+                    placeholder="terapeuta@intea.com.br"
+                    value={emailRecuperacao}
+                    onChange={(e) => {
+                      setEmailRecuperacao(e.target.value);
+                      if (erroRecuperacao) setErroRecuperacao(null);
+                    }}
+                    required
+                    className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  />
+                </div>
+
+                {erroRecuperacao && (
+                  <div
+                    role="alert"
+                    className="flex items-center gap-2 text-destructive text-xs font-medium bg-destructive/10 border border-destructive/20 rounded-[10px] px-3 py-2"
+                  >
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{erroRecuperacao}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setMostrarModalRecuperar(false)}
+                    className="py-2.5 px-4 rounded-[10px] text-muted-foreground hover:text-foreground text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={enviandoRecuperacao}
+                    className="flex items-center gap-2 py-2.5 px-5 rounded-[10px] bg-[#1E40AF] hover:bg-primary active:bg-primary-active text-white text-xs font-semibold shadow-sm transition-all cursor-pointer disabled:opacity-60"
+                  >
+                    {enviandoRecuperacao ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Enviando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Enviar Link Mágico</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
