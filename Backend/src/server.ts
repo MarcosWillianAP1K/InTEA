@@ -1,6 +1,5 @@
 import http from "node:http";
 import express, { Request, Response, NextFunction } from "express";
-import cors from "cors";
 import dotenv from "dotenv";
 import { Server as SocketIOServer } from "socket.io";
 import swaggerUi from "swagger-ui-express";
@@ -9,6 +8,13 @@ import { apiRouter } from "../api/index.js";
 import { SessaoGateway } from "../core/websocket/sessao.gateway.js";
 import { TelemetriaService } from "../api/telemetria/services/telemetria.service.js";
 import { inicializarAuditoriaListeners } from "../api/auditoria/listeners/auditoria.listener.js";
+import {
+  securityHeadersMiddleware,
+  corsMiddleware,
+  corsErrorHandler,
+  validarOrigemCORS,
+  obterOrigensAutorizadas,
+} from "../core/middlewares/security-headers.middleware.js";
 
 dotenv.config();
 
@@ -19,21 +25,16 @@ const app = express();
 const port = process.env.PORT || 3000;
 const httpServer = http.createServer(app);
 
-// Quando credentials: true está ativo, a especificação CORS do navegador proíbe
-// retornar literal "Access-Control-Allow-Origin: *". Usar `true` reflete a Origin
-// da requisição (ex: http://localhost:5173) de forma compatível com credentials.
-const rawCorsOrigin = process.env.CORS_ORIGIN;
-const corsOrigin: boolean | string | string[] =
-  !rawCorsOrigin || rawCorsOrigin === "*"
-    ? true
-    : rawCorsOrigin.includes(",")
-      ? rawCorsOrigin.split(",").map((o) => o.trim())
-      : rawCorsOrigin;
-
-// Inicialização do WebSocket (Socket.IO) integrado ao servidor HTTP
+// Inicialização do WebSocket (Socket.IO) integrado ao servidor HTTP com validação estrita de CORS
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: corsOrigin,
+    origin: (origin, callback) => {
+      if (validarOrigemCORS(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS não autorizado para WebSocket"));
+      }
+    },
     credentials: true,
   },
 });
@@ -90,12 +91,11 @@ const swaggerSpec = swaggerJsdoc({
     : ["./api/**/*.routes.ts"],
 });
 
-app.use(
-  cors({
-    origin: corsOrigin,
-    credentials: true,
-  })
-);
+// Headers de segurança HTTP e bloqueio de clickjacking / CSP / HSTS (RNF03)
+app.use(securityHeadersMiddleware);
+
+// Middleware CORS estrito com validação de origens confiáveis
+app.use(corsMiddleware);
 app.use(express.json());
 
 // Middleware de observabilidade HTTP — registra todas as requisições recebidas no terminal
@@ -131,9 +131,12 @@ app.use(
 // Rotas da API (features MVC)
 app.use("/api", apiRouter);
 
+// Tratamento seguro de rejeições de CORS (HTTP 403 Forbidden)
+app.use(corsErrorHandler);
+
 httpServer.listen(port, () => {
   console.log(`[Backend] Servidor rodando na porta ${port}`);
   console.log(`[Backend] Swagger: http://localhost:${port}/api/docs`);
   console.log(`[Backend] WebSocket namespace: /sessao`);
-  console.log(`[Backend] CORS_ORIGIN: ${rawCorsOrigin || "* (reflected)"}`);
+  console.log(`[Backend] Origens CORS autorizadas:`, obterOrigensAutorizadas());
 });
