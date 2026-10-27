@@ -11,6 +11,7 @@ import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 import { verificarSessaoMiddleware } from '../../../core/middlewares/sessao.middleware.js';
 import { validarIntervaloHistorico } from '../../../core/middlewares/query-range.middleware.js';
+import { parearRateLimiter } from '../../../core/middlewares/rate-limit.middleware.js';
 
 export const sessaoRoutes = Router();
 
@@ -394,7 +395,7 @@ sessaoRoutes.post('/iniciar', authMiddleware, verificarVisibilidadePaciente, Ses
  *       500:
  *         description: Erro interno ao realizar pareamento
  */
-sessaoRoutes.post('/parear', SessaoController.parear);
+sessaoRoutes.post('/parear', parearRateLimiter, SessaoController.parear);
 
 // =============================================================================
 // ROTAS COM PARÂMETROS DINÂMICOS
