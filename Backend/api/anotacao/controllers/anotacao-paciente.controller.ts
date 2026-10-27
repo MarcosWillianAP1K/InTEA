@@ -10,6 +10,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { AnotacaoService } from '../services/anotacao.service.js';
+import { FiltrosAnotacaoDTO } from '../models/anotacao.model.js';
 
 export class AnotacaoPacienteController {
   /**
@@ -59,7 +60,8 @@ export class AnotacaoPacienteController {
   }
 
   /**
-   * Handles GET /api/anotacao/paciente/:pacienteId to list clinical notes associated with a patient.
+   * Handles GET /api/anotacao/paciente/:pacienteId to list clinical notes associated with a patient,
+   * supporting advanced filters (author, session, date range, search) and pagination.
    *
    * @param req - Authenticated Express request containing patient UUID in URL parameter `:pacienteId`.
    * @param res - Express response returning categorized list of clinical notes with metadata.
@@ -68,7 +70,66 @@ export class AnotacaoPacienteController {
   static async listarPorPaciente(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const pacienteId = String(req.params?.pacienteId || '');
-      const resultado = await AnotacaoService.listarAnotacoesPaciente(pacienteId);
+      const query = req.query || {};
+
+      const terapeutaId = query.terapeutaId
+        ? String(query.terapeutaId)
+        : query.terapeuta_id
+        ? String(query.terapeuta_id)
+        : undefined;
+
+      const sessaoId = query.sessaoId
+        ? String(query.sessaoId)
+        : query.sessao_id
+        ? String(query.sessao_id)
+        : undefined;
+
+      let somenteSemSessao: boolean | undefined = undefined;
+      if (query.somenteSemSessao !== undefined) {
+        somenteSemSessao = String(query.somenteSemSessao).toLowerCase() === 'true';
+      }
+
+      let incluirDeletadas: boolean | undefined = undefined;
+      if (query.incluirDeletadas !== undefined) {
+        incluirDeletadas = String(query.incluirDeletadas).toLowerCase() === 'true';
+      } else if (query.incluirInativos !== undefined) {
+        incluirDeletadas = String(query.incluirInativos).toLowerCase() === 'true';
+      }
+
+      const dataInicio = query.dataInicio
+        ? String(query.dataInicio)
+        : query.data_inicio
+        ? String(query.data_inicio)
+        : undefined;
+
+      const dataFim = query.dataFim
+        ? String(query.dataFim)
+        : query.data_fim
+        ? String(query.data_fim)
+        : undefined;
+
+      const busca = query.busca ? String(query.busca) : query.q ? String(query.q) : undefined;
+
+      const filtros: FiltrosAnotacaoDTO | undefined =
+        terapeutaId ||
+        sessaoId ||
+        somenteSemSessao !== undefined ||
+        incluirDeletadas !== undefined ||
+        dataInicio ||
+        dataFim ||
+        busca
+          ? {
+              terapeutaId,
+              sessaoId,
+              somenteSemSessao,
+              incluirDeletadas,
+              dataInicio,
+              dataFim,
+              busca,
+            }
+          : undefined;
+
+      const resultado = await AnotacaoService.listarAnotacoesPaciente(pacienteId, filtros);
 
       if (!resultado.sucesso) {
         res.status(resultado.status).json({ error: resultado.erro });
@@ -77,7 +138,6 @@ export class AnotacaoPacienteController {
 
       const todos = resultado.dados ?? [];
       const total = todos.length;
-      const query = req.query || {};
       const pagina = Number(query.pagina || query.page) || 1;
       const temPaginacao = query.limite !== undefined || query.limit !== undefined;
       const limite = temPaginacao ? Number(query.limite || query.limit) : total;
@@ -218,6 +278,45 @@ export class AnotacaoPacienteController {
     } catch (error) {
       console.error('[AnotacaoPacienteController.deletar]', error);
       res.status(500).json({ error: 'Erro interno ao excluir anotação de paciente.' });
+    }
+  }
+
+  /**
+   * Handles PATCH /api/anotacao/:id/reativar or /api/anotacao/paciente/:id/reativar
+   * to reactivate a soft-deleted clinical note.
+   *
+   * @param req - Authenticated Express request containing note UUID in params.
+   * @param res - Express response returning status 200 with `{ data: { anotacao }, message }`.
+   */
+  static async reativar(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const usuarioLogadoId = req.user?.id;
+      if (!usuarioLogadoId) {
+        res.status(401).json({
+          error: 'Acesso não autorizado: identificação do terapeuta não encontrada no token de autenticação.',
+        });
+        return;
+      }
+
+      const isSuperAdmin = !!req.user?.is_super_admin;
+      const id = String(req.params?.id || '');
+
+      const resultado = await AnotacaoService.reativar(id, usuarioLogadoId, isSuperAdmin);
+
+      if (!resultado.sucesso) {
+        res.status(resultado.status).json({ error: resultado.erro });
+        return;
+      }
+
+      res.status(200).json({
+        data: {
+          anotacao: resultado.dados,
+        },
+        message: 'Anotação clínica reativada com sucesso.',
+      });
+    } catch (error) {
+      console.error('[AnotacaoPacienteController.reativar]', error);
+      res.status(500).json({ error: 'Erro interno ao reativar anotação clínica.' });
     }
   }
 

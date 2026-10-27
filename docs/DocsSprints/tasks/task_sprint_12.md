@@ -30,13 +30,13 @@
 
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
-* **Fronteira de Arquivos:** `Database/migrations/014_indices_anotacao_e_contexto_dda.sql`, `Database/database.sql`, `Backend/api/anotacao/models/anotacao.model.ts`, `Backend/api/anotacao/services/anotacao.service.ts`, `Backend/api/anotacao/controllers/anotacao-paciente.controller.ts`, `Backend/api/anotacao/controllers/anotacao-sessao.controller.ts`, `Backend/api/anotacao/routes/anotacao.routes.ts`
+* **Fronteira de Arquivos:** `Database/migrations/016_indices_anotacao_e_contexto_dda.sql`, `Database/database.sql`, `Backend/api/anotacao/models/anotacao.model.ts`, `Backend/api/anotacao/services/anotacao.service.ts`, `Backend/api/anotacao/controllers/anotacao-paciente.controller.ts`, `Backend/api/anotacao/controllers/anotacao-sessao.controller.ts`, `Backend/api/anotacao/routes/anotacao.routes.ts`
 * **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Cria os índices compostos de busca no PostgreSQL e enriquece o model/service de anotações clínicas antes da integração com os componentes visuais do prontuário.
 * **Requisitos:** RF16, RF19, RF21, RN04, RN05, RNF05
 * **Referência Documentação:** Projeto_de_InTEA.pdf (Tabela 1 — Sprint 12, Seção 5.1 RF16/RF19/RF21, Seção 7.12), AGENTS.md (Seção 6.8)
-* **Descrição:** Criar a migração idempotente `014_indices_anotacao_e_contexto_dda.sql` e atualizar `Database/database.sql` adicionando índices compostos para listagem e filtragem rápida de anotações por paciente, terapeuta autor e intervalo temporal (`idx_anotacao_paciente_autor_data` em `anotacao_clinica(paciente_id, terapeuta_id, created_at DESC) WHERE soft_delete = false`). Evoluir `AnotacaoClinicaModel` e `AnotacaoService` para realizar `JOIN` com a tabela `terapeuta` (`id, nome, registro_profissional, crefito, especialidade`), retornando o objeto categorizado `autor` em todas as anotações e extinguindo a exibição de UUIDs crus na interface (**RF21**). Implementar suporte a filtros combinados em `GET /api/anotacao/paciente/:pacienteId` (`terapeutaId`, `sessaoId`, `somenteSemSessao`, `incluirInativos`, `dataInicio`, `dataFim`, `busca`, `page`, `limit` — **RF19**) e criar o endpoint `PATCH /api/anotacao/:id/reativar` permitindo que o terapeuta autor (ou SuperAdmin) reative uma anotação previamente inativada via soft delete (**RN05**).
+* **Descrição:** Criar a migração idempotente `016_indices_anotacao_e_contexto_dda.sql` e atualizar `Database/database.sql` adicionando índices compostos para listagem e filtragem rápida de anotações por paciente, terapeuta autor e intervalo temporal (`idx_anotacao_paciente_autor_data` em `anotacao_clinica(paciente_id, terapeuta_id, created_at DESC) WHERE soft_delete = false`). Evoluir `AnotacaoClinicaModel` e `AnotacaoService` para realizar `JOIN` com a tabela `terapeuta` (`id, nome, registro_profissional, crefito, especialidade`), retornando o objeto categorizado `autor` em todas as anotações e extinguindo a exibição de UUIDs crus na interface (**RF21**). Implementar suporte a filtros combinados em `GET /api/anotacao/paciente/:pacienteId` (`terapeutaId`, `sessaoId`, `somenteSemSessao`, `incluirInativos`, `dataInicio`, `dataFim`, `busca`, `page`, `limit` — **RF19**) e criar o endpoint `PATCH /api/anotacao/:id/reativar` permitindo que o terapeuta autor (ou SuperAdmin) reative uma anotação previamente inativada via soft delete (**RN05**).
 * **Critérios de Aceite:**
-  * [ ] Migração SQL `014_indices_anotacao_e_contexto_dda.sql` executada de forma 100% idempotente (`CREATE INDEX IF NOT EXISTS`) e sincronizada em `Database/database.sql`.
+  * [ ] Migração SQL `016_indices_anotacao_e_contexto_dda.sql` executada de forma 100% idempotente (`CREATE INDEX IF NOT EXISTS`) e sincronizada em `Database/database.sql`.
   * [ ] Retorno de `GET /api/anotacao/paciente/:pacienteId`, `GET /api/anotacao/sessao/:sessaoId` e `GET /api/anotacao/:id` com status **`200 OK`** incluindo os dados sanitizados do profissional autor (`autor: { id, nome, registro_profissional, crefito, especialidade }`).
   * [ ] Suporte aos filtros de query `terapeutaId`, `sessaoId`, `dataInicio`, `dataFim`, `busca` (case-insensitive no conteúdo), `page` e `limit` em `GET /api/anotacao/paciente/:pacienteId` (**RF19**).
   * [ ] Implementação da rota `PATCH /api/anotacao/:id/reativar` retornando **`200 OK`** com `soft_delete: false` quando acionada pelo terapeuta autor ou SuperAdmin, e **`403 Forbidden`** caso acionada por terceiro (**RF21**, **RN05**).
@@ -117,18 +117,47 @@
 
 ---
 
+### Front: Modal de Anotação Clínica em Tempo Real no Cockpit de Sessão Ativa (Tipo: Feature)
+
+* **Tipo:** Feature
+* **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
+* **Fronteira de Arquivos:** `Frontend/src/features/sessao/components/ModalAnotacaoSessaoAtiva.tsx`, `Frontend/src/features/sessao/pages/CockpitSessaoPage.tsx`, `Frontend/src/features/sessao/components/CardSessaoAtiva.tsx`, `Frontend/src/features/anotacao/services/anotacao.service.ts`
+* **Ordem de Execução / Dependência:** **FAZ DEPOIS DE (Cards 1 e 3 de Anotações — Dias 4 a 5)**. Utiliza os contratos e componentes do módulo de anotações integrando diretamente ao Cockpit de sessão em andamento.
+* **Requisitos:** RF12, RF13, RF16, RF21, RN01, RN04, RN05, RNF05, RNF07
+* **Referência Documentação:** Projeto_de_InTEA.pdf (Seção 5.1 RF13/RF16, Seção 7.9 Cockpit do Terapeuta), AGENTS.md (Seção 6.3 e Seção 6.8)
+* **Descrição:** Implementar o componente `ModalAnotacaoSessaoAtiva.tsx` e integrá-lo ao Cockpit de Sessão Ativa (`CockpitSessaoPage.tsx` e `CardSessaoAtiva.tsx`), sanando a lacuna ergonômica em que o terapeuta só conseguia registrar notas clínicas após a finalização da sessão na Tela de Resultados:
+  1. No painel de controle do terapeuta do Cockpit (`CockpitSessaoPage.tsx`) e no card da sessão ativa (`CardSessaoAtiva.tsx`), disponibilizar o botão de ação rápida "Anotações Clínicas" / "Anotar na Sessão" com ícone intuitivo e alvo de toque ergonômico ($\ge 44\times 44\text{px}$ — **RNF07**);
+  2. Ao clicar, abrir o modal/painel lateral `ModalAnotacaoSessaoAtiva.tsx` focado na sessão corrente, contextualizado automaticamente com `sessao_id` e `paciente_id`;
+  3. Carregar reativamente o histórico cronológico de anotações já tomadas pelo profissional ao longo daquela intervenção via `GET /api/anotacao/sessao/:sessaoId` (**RF16**);
+  4. Disponibilizar formulário de redação rápida de nova anotação clínica com contador de caracteres em tempo real, validação de preenchimento mínimo e persistência temporária de rascunho em memória local (`sessionStorage`) para proteção contra recarregamento acidental de página;
+  5. Submissão direta e assíncrona (`POST /api/anotacao` enviando `conteudo`, `sessao_id` e `paciente_id` com autoria indelével extraída do token JWT — **RF16**, **RF21**), persistindo a observação imediatamente no banco relacional sem necessidade de aguardar o término da partida ou a geração do relatório de IA. Todas as anotações registradas durante a sessão ativa são automaticamente indexadas pelo `sessao_id`, de modo que, ao final da intervenção, são imediatamente carregadas e exibidas no Bloco de Anotações da Tela de Resultados (`ResultadoSessaoPage.tsx` / `BlocoAnotacoesClinicas.tsx` — Sprint 10), onde o terapeuta pode revisá-las e complementá-las com o parecer final pós-sessão sem duplicidade;
+  6. Gerenciamento estrito de estados visuais na interface: indicador de carregamento das notas anteriores, trava de segurança no botão de submissão contra múltiplos envios concorrentes (`isSubmitting`), toast/feedback visual sutil e não intrusivo de sucesso (para não desviar a atenção do monitoramento da telemetria em tempo real — **RNF05**), e tratamento de falhas com opção de repetição (retry);
+  7. Invariante de Modo Livre (**RN01**): quando a sessão ativa for do tipo `modo_livre` (`paciente_id = NULL`), o botão de anotações deve ser desabilitado ou ocultado visualmente com tooltip explicativo indicando que partidas livres não persistem registros no prontuário;
+  8. Verificação de Vínculo e Permissão (**RN04**): garantir que apenas o terapeuta com vínculo ativo e sessão em andamento consiga enviar anotações, tratando de forma resiliente respostas `403 Forbidden` ou `401 Unauthorized` sem interromper o streaming de telemetria.
+* **Critérios de Aceite:**
+  * [ ] Botão acessível de anotações clínicas presente no Cockpit de sessão ativa (`CockpitSessaoPage.tsx` / `CardSessaoAtiva.tsx`) abrindo o modal `ModalAnotacaoSessaoAtiva.tsx` com alvo de toque $\ge 44\times 44\text{px}$ (**RNF07**).
+  * [ ] Carregamento automático e exibição da lista cronológica de anotações da sessão corrente via `GET /api/anotacao/sessao/:sessaoId` (**RF16**).
+  * [ ] Redação de nova anotação clínica com submissão imediata via `POST /api/anotacao` (`201 Created`), associando indelével e automaticamente o `sessao_id`, `paciente_id` e o `terapeuta_id` do usuário logado (**RF21**).
+  * [ ] Preservação de rascunho em edição durante a sessão contra recarregamentos acidentais ou minimizações do modal.
+  * [ ] Trava visual e lógica contra múltiplos envios concorrentes (`isSubmitting`) e feedback de sucesso sutil sem bloquear a visualização dos gráficos de telemetria em tempo real (**RNF05**).
+  * [ ] Ocultação/desativação do botão de anotações quando a sessão em andamento for em Modo Livre (`modo_livre = true` / `paciente_id = NULL`), em estrita conformidade com a **RN01**.
+  * [ ] Continuidade com a Tela de Resultados: anotações salvas em tempo real durante a sessão ativa são consultáveis e complementáveis no pós-sessão via Bloco de Anotações (`BlocoAnotacoesClinicas.tsx` — Sprint 10).
+  * [ ] Tratamento adequado de erros de rede ou autorização (`403 Forbidden` / `401 Unauthorized`), exibindo mensagem amigável sem quebrar o monitoramento contínuo da sessão (**RN04**).
+
+---
+
 ### Back/Front: Suíte de Testes Automatizados de Anotações Clínicas e Contexto Pré-Sessão DDA (Tipo: Validação)
 
 * **Tipo:** Validação
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
-* **Fronteira de Arquivos:** `Backend/api/anotacao/test/anotacao_contexto_sprint12.test.ts`, `Backend/api/sessao/test/contexto_dda_rn03.test.ts`, `Frontend/src/features/anotacao/__test__/GerenciadorAnotacoesProntuario.test.tsx`, `Frontend/src/features/sessao/__test__/ModalPreSessao.test.tsx`
+* **Fronteira de Arquivos:** `Backend/api/anotacao/test/anotacao_contexto_sprint12.test.ts`, `Backend/api/sessao/test/contexto_dda_rn03.test.ts`, `Frontend/src/features/anotacao/__test__/GerenciadorAnotacoesProntuario.test.tsx`, `Frontend/src/features/sessao/__test__/ModalPreSessao.test.tsx`, `Frontend/src/features/sessao/__test__/ModalAnotacaoSessaoAtiva.test.tsx`
 * **Ordem de Execução / Dependência:** **Dia 6 (Fechamento e Garantia de Qualidade da Sprint 12)**.
-* **Requisitos:** Qualidade de Software, RF16, RF17, RF19, RF21, RN01, RN03, RN04, RN05
+* **Requisitos:** Qualidade de Software, RF12, RF13, RF16, RF17, RF19, RF21, RN01, RN03, RN04, RN05
 * **Referência Documentação:** Projeto_de_InTEA.pdf (Seção 7.12), `docs/roteiro-testes.md`, AGENTS.md (Seção 6.8)
 * **Descrição:** Implementar suítes de testes automatizados no Vitest (Backend e Frontend) validando de ponta a ponta as entregas da Sprint 12:
   1. **Backend (`anotacao_contexto_sprint12.test.ts`):** criação de anotação com autoria extraída do JWT (`201 Created` — **RF21**), retorno do objeto `autor` enriquecido na listagem (`200 OK`), filtragem por `terapeutaId`, `busca` e intervalo de datas (**RF19**), bloqueio de edição/exclusão por terapeuta que não seja o autor (`403 Forbidden`), soft delete (`200 OK` com `soft_delete: true` — **RN05**) e reativação (`PATCH /api/anotacao/:id/reativar`);
   2. **Backend (`contexto_dda_rn03.test.ts`):** validação do Contrato 2 no `SessaoContextoDdaService`, aplicação do fallback clínico padrão (Figura 5), entrega do contexto DDA no pareamento antes do primeiro evento de telemetria (**RN03**), rejeição de estresse inválido (`400 Bad Request`) e bloqueio de contexto clínico em Modo Livre (**RN01**);
-  3. **Frontend (`GerenciadorAnotacoesProntuario.test.tsx` e `ModalPreSessao.test.tsx`):** renderização dos 4 estados visuais, exibição do nome e conselho do autor, ocultação de botões de edição para notas de outros terapeutas, pré-carregamento de gatilhos do paciente no modal pré-sessão e submissão do objetivo clínico + estresse + gatilhos.
+  3. **Frontend (`GerenciadorAnotacoesProntuario.test.tsx`, `ModalPreSessao.test.tsx` e `ModalAnotacaoSessaoAtiva.test.tsx`):** renderização dos 4 estados visuais, exibição do nome e conselho do autor, ocultação de botões de edição para notas de outros terapeutas, pré-carregamento de gatilhos do paciente no modal pré-sessão, submissão de anotações em tempo real no Cockpit e validação da ocultação em Modo Livre (**RN01**).
 * **Critérios de Aceite:**
   * [ ] 100% dos testes unitários e de integração passando no Backend (`npm test` em `Backend/`).
   * [ ] 100% dos testes de componentes e páginas passando no Frontend (`npm test` em `Frontend/`).

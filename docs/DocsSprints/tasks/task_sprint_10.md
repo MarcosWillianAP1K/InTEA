@@ -1,4 +1,4 @@
-﻿# Cards de Tarefas — Sprint 10: Tela de Resultados e Relatórios Clínicos Analíticos
+# Cards de Tarefas — Sprint 10: Tela de Resultados e Relatórios Clínicos Analíticos
 
 > **Sprint:** 10  
 > **Período:** 08/10/2026 a 15/10/2026  
@@ -221,7 +221,7 @@
 * **Ordem de Execução / Dependência:** **Dias 1 a 3 (Interface isolada com mock); Dias 4 a 5 (Integração com endpoints `POST /api/anotacao` e `PATCH /api/anotacao/:id` de Marcos Willian)**.
 * **Requisitos:** RF16, RF21, RN05
 * **Referência Documentação:** RF16 (Bloco de Anotações), RF21 (Autoria Obrigatória), RN05, Figura 12
-* **Descrição:** Implementar componente de anotações clínicas na Tela de Resultados: exibe o texto preliminar digitado no modal de encerramento, permite ao terapeuta complementar com novas observações pós-sessão, oferece salvamento assíncrono com botão e indicador visual de estado ("Salvo", "Salvando...", "Erro") e exibe a autoria indelével do profissional (**RF21**). Previne cliques múltiplos concorrentes.
+* **Descrição:** Implementar componente de anotações clínicas na Tela de Resultados (`BlocoAnotacoesClinicas.tsx`): carrega e exibe o histórico consolidado de todas as anotações clínicas já tomadas ao longo da sessão ativa (registradas em tempo real no Cockpit via `ModalAnotacaoSessaoAtiva` — Sprint 12), permitindo ao terapeuta revisar, editar ou complementar com novas observações e parecer clínico pós-sessão antes da exportação do laudo final, garantindo continuidade e integridade relacional com `sessao_id`. Oferece salvamento assíncrono com botão e indicador visual de estado ("Salvo", "Salvando...", "Erro") e exibe a autoria indelével do profissional (**RF21**). Previne cliques múltiplos concorrentes.
 * **Critérios de Aceite:**
   * [x] Textarea acessível com contagem de caracteres e salvamento com botão protegido contra duplo clique (`isSubmitting`).
   * [x] Indicadores visuais dos estados de persistência ("Salvando...", "Salvo com sucesso", "Falha ao salvar").

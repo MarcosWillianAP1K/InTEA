@@ -5,7 +5,7 @@
 // Padrão de Camadas Limpas: Lógica de negócio pura isolada do Controller
 // ==============================================================================
 
-import { AnotacaoClinicaModel, AnotacaoClinica } from '../models/anotacao.model.js';
+import { AnotacaoClinicaModel, AnotacaoClinica, FiltrosAnotacaoDTO } from '../models/anotacao.model.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 
 export interface RespostaServico<T = unknown> {
@@ -83,13 +83,24 @@ export class AnotacaoService {
   }
 
   /**
-   * Lists exclusively general clinical notes for a patient (`sessao_id IS NULL`).
+   * Lists clinical notes for a patient with optional advanced filters.
    *
    * @param pacienteId - UUID of the patient.
+   * @param filtros - Optional DTO with filters (author, session, date range, search, soft_delete).
    * @returns Service response containing the array of clinical notes.
    */
-  static async listarAnotacoesPaciente(pacienteId: string): Promise<RespostaServico<AnotacaoClinica[]>> {
-    const lista = await AnotacaoClinicaModel.listarPorPaciente(pacienteId, false, true);
+  static async listarAnotacoesPaciente(
+    pacienteId: string,
+    filtros?: FiltrosAnotacaoDTO
+  ): Promise<RespostaServico<AnotacaoClinica[]>> {
+    const lista = filtros
+      ? await AnotacaoClinicaModel.listarPorPaciente(
+          pacienteId,
+          filtros.incluirDeletadas ?? false,
+          filtros.somenteSemSessao ?? true,
+          filtros
+        )
+      : await AnotacaoClinicaModel.listarPorPaciente(pacienteId, false, true);
     return { sucesso: true, status: 200, dados: lista };
   }
 
@@ -207,6 +218,45 @@ export class AnotacaoService {
     };
 
     return { sucesso: true, status: 200, dados: anotacaoDesativada };
+  }
+
+  /**
+   * Reactivates a soft-deleted clinical note (`soft_delete = false`, RN05).
+   * Validates author ownership (RF21) or SuperAdmin privileges.
+   *
+   * @param id - UUID of the clinical note to reactivate.
+   * @param usuarioLogadoId - UUID of the authenticated user.
+   * @param isSuperAdmin - Boolean flag indicating if user is SuperAdmin.
+   * @returns Service response containing the reactivated clinical note record.
+   */
+  static async reativar(
+    id: string,
+    usuarioLogadoId: string,
+    isSuperAdmin = false
+  ): Promise<RespostaServico<AnotacaoClinica>> {
+    if (!id || !validarUUID(id)) {
+      return { sucesso: false, status: 400, erro: 'ID inválido. Forneça um UUID válido.' };
+    }
+
+    const anotacao = await AnotacaoClinicaModel.buscarPorId(id, true);
+    if (!anotacao) {
+      return { sucesso: false, status: 404, erro: 'Anotação clínica não encontrada.' };
+    }
+
+    if (anotacao.terapeuta_id !== usuarioLogadoId && !isSuperAdmin) {
+      return {
+        sucesso: false,
+        status: 403,
+        erro: 'Acesso negado: apenas o terapeuta autor ou SuperAdmin pode reativar esta anotação clínica.',
+      };
+    }
+
+    const reativada = await AnotacaoClinicaModel.reativar(id);
+    if (!reativada) {
+      return { sucesso: false, status: 500, erro: 'Erro ao reativar anotação clínica no banco de dados.' };
+    }
+
+    return { sucesso: true, status: 200, dados: reativada };
   }
 
   /**
