@@ -17,6 +17,7 @@ import {
 import { TerapeutaModel } from '../../terapeuta/models/terapeuta.model.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
+import { CryptoService } from '../../../core/security/crypto.service.js';
 import {
   validarUUID,
   validarCriarPacienteDTO,
@@ -138,6 +139,25 @@ export class PacienteService {
         })
       : [];
 
+    // Decifragem segura em repouso de dados clínicos sensíveis (LGPD / RNF06)
+    const pacienteComDadosClinicos = paciente as Paciente & {
+      dados_clinicos?: {
+        diagnostico_base?: string | null;
+        observacoes_gerais?: string | null;
+        [key: string]: unknown;
+      } | null;
+    };
+
+    if (pacienteComDadosClinicos.dados_clinicos) {
+      const dc = pacienteComDadosClinicos.dados_clinicos;
+      if (typeof dc.diagnostico_base === 'string') {
+        dc.diagnostico_base = CryptoService.decifrarSeCifrado(dc.diagnostico_base);
+      }
+      if (typeof dc.observacoes_gerais === 'string') {
+        dc.observacoes_gerais = CryptoService.decifrarSeCifrado(dc.observacoes_gerais);
+      }
+    }
+
     return {
       ...paciente,
       responsaveis: responsaveisNormalizados,
@@ -185,6 +205,28 @@ export class PacienteService {
     if (dto.responsavel) {
       if (dto.responsavel.cpf) dto.responsavel.cpf = formatarCPF(dto.responsavel.cpf);
       if (dto.responsavel.telefone) dto.responsavel.telefone = formatarTelefone(dto.responsavel.telefone);
+    }
+
+    // 3.1. Cifragem simétrica AES-256-GCM para dados clínicos sensíveis em repouso (LGPD / RNF06)
+    const dtoClinico = dto as CriarPacienteDTO & {
+      dados_clinicos?: {
+        diagnostico_base?: string | null;
+        observacoes_gerais?: string | null;
+        [key: string]: unknown;
+      };
+    };
+
+    if (dtoClinico.dados_clinicos) {
+      if (typeof dtoClinico.dados_clinicos.diagnostico_base === 'string') {
+        dtoClinico.dados_clinicos.diagnostico_base = CryptoService.cifrarSeNaoCifrado(
+          dtoClinico.dados_clinicos.diagnostico_base
+        );
+      }
+      if (typeof dtoClinico.dados_clinicos.observacoes_gerais === 'string') {
+        dtoClinico.dados_clinicos.observacoes_gerais = CryptoService.cifrarSeNaoCifrado(
+          dtoClinico.dados_clinicos.observacoes_gerais
+        );
+      }
     }
 
     // 4. Persistência e auto-vínculo do criador
@@ -349,5 +391,26 @@ export class PacienteService {
     }
 
     return (await PacienteModel.listarTerapeutasVinculados(pacienteId)) as TerapeutaVinculado[];
+  }
+
+  /**
+   * Sanitiza e anonimiza identificadores do paciente para registro seguro em logs (RNF06).
+   */
+  static anonimizarParaLogs(dado: unknown): unknown {
+    return CryptoService.anonimizarParaLogs(dado);
+  }
+
+  /**
+   * Cifra campos clínicos sensíveis via AES-256-GCM em repouso (RNF06).
+   */
+  static cifrarDadoSensivel(texto: string): string {
+    return CryptoService.cifrar(texto);
+  }
+
+  /**
+   * Decifra campos clínicos sensíveis cifrados via AES-256-GCM em repouso (RNF06).
+   */
+  static decifrarDadoSensivel(texto: string): string {
+    return CryptoService.decifrar(texto);
   }
 }

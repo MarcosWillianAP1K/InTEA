@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.paciente (
     nome VARCHAR(255) NOT NULL,
     data_nascimento DATE NOT NULL,
     telefone VARCHAR(20),
-    cpf VARCHAR(14) UNIQUE,
+    cpf VARCHAR(255) UNIQUE, -- Suporta armazenamento cifrado AES-256-GCM (RNF06)
     cep VARCHAR(10),
     cidade VARCHAR(255),
     estado VARCHAR(100),
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS public.responsavel (
     nome VARCHAR(255) NOT NULL,
     cpf VARCHAR(14) UNIQUE,
     data_nascimento DATE,
-    telefone VARCHAR(20) NOT NULL,
+    telefone VARCHAR(255) NOT NULL, -- Suporta armazenamento cifrado AES-256-GCM (RNF06)
     email VARCHAR(255),
     parentesco VARCHAR(50), -- Ex: Mãe, Pai, Tutor legal, Avó
     cep VARCHAR(10),
