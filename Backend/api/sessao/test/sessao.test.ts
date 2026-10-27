@@ -570,7 +570,7 @@ describe('SessaoController.finalizar', () => {
       return { id: 'relatorio-uuid-1', ...dto };
     };
 
-    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: uuidValido });
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: uuidValido }, { id: '11111111-1111-1111-1111-111111111111' });
     await SessaoController.finalizar(mockReq, mockRes);
 
     SessaoModel.buscarPorId = originalBuscar;
@@ -629,7 +629,7 @@ describe('SessaoController.finalizar', () => {
       data_hora_fim: new Date().toISOString(),
     });
 
-    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: uuidValido });
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, { id: uuidValido }, { id: 'terapeuta-1' });
     await SessaoController.finalizar(mockReq, mockRes);
 
     SessaoModel.buscarPorId = originalBuscar;

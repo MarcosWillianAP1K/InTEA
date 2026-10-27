@@ -10,6 +10,7 @@ import { SessaoListarService } from '../services/sessao-listar.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { SessaoResultadoService } from '../services/sessao-resultado.service.js';
 import { SessaoExportarService } from '../services/sessao-exportar.service.js';
+import { SessaoConcorrenciaService } from '../services/sessao-concorrencia.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { eventBus } from '../../../core/events/event-bus.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
@@ -163,6 +164,27 @@ export class SessaoController {
         return;
       }
 
+      // 4. Verificação de concorrência de sessão clínica simultânea (Sprint 13 — RF13, RF18, RN01, RN04)
+      if (modo_sessao === MODO_SESSAO.SESSAO_CLINICA && paciente_id) {
+        const resultadoConcorrencia = await SessaoConcorrenciaService.verificarSessaoAtivaConcorrente(
+          paciente_id,
+          usuarioLogadoId
+        );
+
+        if (resultadoConcorrencia.conflito) {
+          res.status(409).json({
+            error: resultadoConcorrencia.mensagem || 'O paciente já possui uma sessão clínica ativa no momento.',
+            codigo: resultadoConcorrencia.codigo || 'SESSAO_CLINICA_SIMULTANEA_CONFLITO',
+            detalhes: 'Não é permitido iniciar múltiplas sessões clínicas simultâneas para o mesmo paciente.',
+            data: {
+              conflito: true,
+              sessao_ativa: resultadoConcorrencia.sessaoAtiva,
+            },
+          });
+          return;
+        }
+      }
+
       const dadosSessao: CriarSessaoDTO = {
         terapeuta_id: usuarioLogadoId,
         jogo_id,
@@ -300,6 +322,26 @@ export class SessaoController {
         return;
       }
 
+      // Validação de autoria e permissão de mutação do condutor (Sprint 13 — RF21)
+      const isSuperAdminFinalizar =
+        authReq.user?.is_super_admin === true ||
+        authReq.user?.user_metadata?.is_super_admin === true;
+
+      const permissaoFinalizar = SessaoConcorrenciaService.validarPermissaoMutacaoSessao(
+        sessaoAtual,
+        authReq.user?.id || '',
+        isSuperAdminFinalizar
+      );
+
+      if (!permissaoFinalizar.permitido) {
+        res.status(403).json({
+          error: permissaoFinalizar.mensagem || 'Acesso negado: apenas o terapeuta condutor pode finalizar esta sessão.',
+          codigo: permissaoFinalizar.codigo || 'FORBIDDEN_MUTACAO_CONDUTOR',
+          detalhes: 'Especialistas vinculados acompanham a sessão como observadores e não possuem permissão de encerramento.',
+        });
+        return;
+      }
+
       if (sessaoAtual.status_sessao === STATUS_SESSAO.FINALIZADA) {
         res.status(400).json({
           error: 'A sessão já se encontra finalizada.',
@@ -418,6 +460,26 @@ export class SessaoController {
 
       if (!sessao) {
         res.status(404).json({ error: 'Sessão não encontrada' });
+        return;
+      }
+
+      // Validação de autoria e permissão de mutação do condutor (Sprint 13 — RF21)
+      const isSuperAdminCancelar =
+        authReq.user?.is_super_admin === true ||
+        authReq.user?.user_metadata?.is_super_admin === true;
+
+      const permissaoCancelar = SessaoConcorrenciaService.validarPermissaoMutacaoSessao(
+        sessao,
+        authReq.user?.id || '',
+        isSuperAdminCancelar
+      );
+
+      if (!permissaoCancelar.permitido) {
+        res.status(403).json({
+          error: permissaoCancelar.mensagem || 'Acesso negado: apenas o terapeuta condutor pode cancelar esta sessão.',
+          codigo: permissaoCancelar.codigo || 'FORBIDDEN_MUTACAO_CONDUTOR',
+          detalhes: 'Especialistas vinculados acompanham a sessão como observadores e não possuem permissão de cancelamento.',
+        });
         return;
       }
 

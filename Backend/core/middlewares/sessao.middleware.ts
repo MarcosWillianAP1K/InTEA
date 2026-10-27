@@ -18,6 +18,7 @@ import { supabase } from '../supabase/supabase.client.js';
 import { AuthenticatedRequest } from './auth.middleware.js';
 import { validarUUID } from '../utils/validators.js';
 import { SessaoModel, Sessao, MODO_SESSAO } from '../../api/sessao/models/sessao.model.js';
+import { SessaoConcorrenciaService } from '../../api/sessao/services/sessao-concorrencia.service.js';
 
 export const REGEX_PIN_PAREAMENTO = /^[A-Z0-9]{3,5}-?[A-Z0-9]{3,5}$/i;
 
@@ -142,4 +143,44 @@ export async function verificarSessaoMiddleware(
   }
 }
 
+/**
+ * Middleware de guarda para mutações críticas na sessão (RF21).
+ * Exige que o usuário autenticado seja o terapeuta condutor (autor) da sessão ou SuperAdmin.
+ * Pressupõe execução posterior a verificarSessaoMiddleware (onde req.contextoSessao foi injetado).
+ */
+export function validarCondutorSessaoMiddleware(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void {
+  const sessao = req.contextoSessao;
+  const usuarioLogadoId = req.user?.id || '';
+  const isSuperAdmin =
+    req.user?.is_super_admin === true ||
+    req.user?.user_metadata?.is_super_admin === true;
+
+  if (!sessao) {
+    res.status(404).json({ error: 'Sessão clínica não encontrada no contexto da requisição.' });
+    return;
+  }
+
+  const validacao = SessaoConcorrenciaService.validarPermissaoMutacaoSessao(
+    sessao,
+    usuarioLogadoId,
+    isSuperAdmin
+  );
+
+  if (!validacao.permitido) {
+    res.status(403).json({
+      error: validacao.mensagem || 'Acesso negado: apenas o terapeuta condutor pode modificar esta sessão.',
+      codigo: validacao.codigo || 'FORBIDDEN_MUTACAO_CONDUTOR',
+      detalhes: 'Especialistas vinculados acompanham a sessão como observadores e não possuem permissão de mutação.',
+    });
+    return;
+  }
+
+  next();
+}
+
 export const sessaoMiddleware = verificarSessaoMiddleware;
+
