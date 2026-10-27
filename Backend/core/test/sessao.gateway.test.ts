@@ -782,5 +782,178 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao) & Heartbeat/Que
       dispositivoSocket.disconnect();
     });
   });
+
+  describe('Sprint 13 (Card 2.2) — Suporte a Especialistas Observadores da Equipe Multidisciplinar (RF18, RF21)', () => {
+    it('deve aceitar entrada com role observador_equipe e emitir equipe_presenca_atualizada', async () => {
+      const condutorSocket = await createClientSocket();
+      const observadorSocket = await createClientSocket();
+
+      // 1. Terapeuta condutor entra
+      await new Promise<void>((resolve) => {
+        condutorSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'terapeuta',
+          terapeuta_id: 'terapeuta-condutor-uuid',
+          nome: 'Dr. Marcos Willian',
+          especialidade: 'Fonoaudiologia',
+        });
+        condutorSocket.on('sessao_conectada', () => resolve());
+      });
+
+      // 2. Prepara listener para o evento de presença da equipe
+      const presencaPromise = new Promise<any>((resolve) => {
+        condutorSocket.once('equipe_presenca_atualizada', (dados) => resolve(dados));
+      });
+
+      // 3. Observador da equipe multidisciplinar entra
+      const confirmacaoObservador = await new Promise<any>((resolve) => {
+        observadorSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'observador_equipe',
+          terapeuta_id: 'especialista-observador-uuid',
+          nome: 'Dra. Luiza TO',
+          especialidade: 'Terapia Ocupacional',
+        });
+        observadorSocket.on('sessao_conectada', (dados) => resolve(dados));
+      });
+
+      expect(confirmacaoObservador.status).toBe('ok');
+      expect(confirmacaoObservador.role).toBe('observador_equipe');
+
+      const presenca = await presencaPromise;
+      expect(presenca.session_token).toBe('849-291');
+      expect(presenca.total_especialistas).toBe(2);
+      expect(presenca.total_observadores).toBe(1);
+      expect(presenca.especialistas).toHaveLength(2);
+
+      condutorSocket.disconnect();
+      observadorSocket.disconnect();
+    });
+
+    it('deve emitir equipe_presenca_atualizada quando um especialista se desconectar da sala', async () => {
+      const condutorSocket = await createClientSocket();
+      const observadorSocket = await createClientSocket();
+
+      await new Promise<void>((resolve) => {
+        condutorSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'terapeuta',
+          terapeuta_id: 'condutor-uuid',
+        });
+        condutorSocket.on('sessao_conectada', () => resolve());
+      });
+
+      await new Promise<void>((resolve) => {
+        observadorSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'observador_equipe',
+          terapeuta_id: 'observador-uuid',
+        });
+        observadorSocket.on('sessao_conectada', () => resolve());
+      });
+
+      // Prepara listener para a saída do observador
+      const presencaAposSaidaPromise = new Promise<any>((resolve) => {
+        condutorSocket.on('equipe_presenca_atualizada', (dados) => {
+          if (dados.total_especialistas === 1) {
+            resolve(dados);
+          }
+        });
+      });
+
+      // Desconecta o observador
+      observadorSocket.disconnect();
+
+      const presencaAtualizada = await presencaAposSaidaPromise;
+      expect(presencaAtualizada.total_especialistas).toBe(1);
+      expect(presencaAtualizada.total_observadores).toBe(0);
+
+      condutorSocket.disconnect();
+    });
+
+    it('deve permitir que o observador_equipe receba telemetria em tempo real transmitida pelo jogo', async () => {
+      const dispositivoSocket = await createClientSocket();
+      const observadorSocket = await createClientSocket();
+
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'dispositivo',
+        });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      await new Promise<void>((resolve) => {
+        observadorSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'observador_equipe',
+        });
+        observadorSocket.on('sessao_conectada', () => resolve());
+      });
+
+      const telemetriaPromise = new Promise<any>((resolve) => {
+        observadorSocket.once('sessao:telemetria', (dados) => resolve(dados));
+      });
+
+      // Dispositivo emite telemetria
+      dispositivoSocket.emit('sessao:telemetria', {
+        session_token: '849-291',
+        tipo_evento: 'coleta_moeda',
+        dados: { id_metrica: 'moedas_coletadas', valor: 10 },
+      });
+
+      const eventoRecebido = await telemetriaPromise;
+      expect(eventoRecebido.session_token).toBe('849-291');
+      expect(eventoRecebido.tipo_evento).toBe('coleta_moeda');
+      expect(eventoRecebido.dados.valor).toBe(10);
+
+      dispositivoSocket.disconnect();
+      observadorSocket.disconnect();
+    });
+
+    it('deve rejeitar comandos com PERMISSAO_NEGADA quando disparados por socket observador_equipe (RF21)', async () => {
+      const dispositivoSocket = await createClientSocket();
+      const observadorSocket = await createClientSocket();
+
+      await new Promise<void>((resolve) => {
+        dispositivoSocket.emit('entrar_sessao', { session_token: '849-291', role: 'dispositivo' });
+        dispositivoSocket.on('sessao_conectada', () => resolve());
+      });
+
+      await new Promise<void>((resolve) => {
+        observadorSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'observador_equipe',
+        });
+        observadorSocket.on('sessao_conectada', () => resolve());
+      });
+
+      let dispositivoRecebeuComando = false;
+      dispositivoSocket.on('sessao:comando', () => {
+        dispositivoRecebeuComando = true;
+      });
+
+      const ackResposta = await new Promise<RespostaComandoAck>((resolve) => {
+        observadorSocket.emit(
+          'sessao:comando',
+          { session_token: '849-291', tipo_comando: 'pausar_jogo' },
+          (res: RespostaComandoAck) => resolve(res)
+        );
+      });
+
+      // Validação do critério de aceite estrito
+      expect(ackResposta.sucesso).toBe(false);
+      expect(ackResposta.codigo).toBe('PERMISSAO_NEGADA');
+      expect(ackResposta.erro).toContain('Observadores da equipe possuem acesso exclusivamente de leitura');
+
+      // Aguarda pequeno intervalo para garantir que o comando não vazou para o dispositivo
+      await new Promise((r) => setTimeout(r, 100));
+      expect(dispositivoRecebeuComando).toBe(false);
+
+      dispositivoSocket.disconnect();
+      observadorSocket.disconnect();
+    });
+  });
 });
+
 
