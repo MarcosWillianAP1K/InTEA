@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Calendar, User } from "lucide-react";
+import { SparklineTendencia } from "./SparklineTendencia";
 import { Button } from "@/shared/components/ui/button";
 import type { Patient } from "../types/paciente.types";
 
@@ -117,6 +118,25 @@ export function CardPacienteGrid({
         >
           {patient.category || patient.clinicalStatus}
         </span>
+      </div>
+
+      {/* TENDÊNCIA CLÍNICA & DESEMPENHO (SparklineTendencia) */}
+      <div className="flex items-center justify-between w-full px-3 py-2 mb-3 rounded-lg bg-card-patient/40 dark:bg-card-patient/20 border border-border/40">
+        <div className="flex flex-col text-left">
+          <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Evolução
+          </span>
+          <span className="text-xs font-bold text-foreground">
+            {patient.performanceScore !== undefined
+              ? `${patient.performanceScore}%`
+              : `${patient.progress}%`}
+          </span>
+        </div>
+        <SparklineTendencia
+          data={patient.performanceHistory || (patient.performanceScore !== undefined ? [Math.max(0, patient.performanceScore - 15), Math.max(0, patient.performanceScore - 6), patient.performanceScore] : [Math.max(0, patient.progress - 10), patient.progress])}
+          width={60}
+          height={20}
+        />
       </div>
 
       {/* ÚLTIMA SESSÃO & BOTÃO DE AÇÃO */}

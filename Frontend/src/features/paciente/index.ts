@@ -7,6 +7,7 @@ export * from "./components/DialogDetalhesPaciente";
 export * from "./components/ConteudoPacientes";
 export * from "./components/ListaPacientes";
 export * from "./components/CardPacienteGrid";
+export * from "./components/SparklineTendencia";
 export * from "./components/CardAdicionarPaciente";
 export * from "./components/TabelaComparativaMetricas";
 export * from "./components/ModalCompararSessoes";

@@ -29,6 +29,11 @@ describe("Componente ListaPacientes (Alternador Tabela vs Grid de Cards)", () =>
     expect(screen.getByText("Categoria")).toBeDefined();
     expect(screen.getByText("Progresso")).toBeDefined();
     expect(screen.getByText("Data de Criação")).toBeDefined();
+    expect(screen.getByText("Desempenho")).toBeDefined();
+
+    // Verifica presença da sparkline na coluna de desempenho da tabela
+    const sparklines = screen.getAllByTestId("sparkline-tendencia");
+    expect(sparklines.length).toBeGreaterThan(0);
   });
 
   it("deve alternar de volta para o Grid ao clicar no botão de Grid", () => {
