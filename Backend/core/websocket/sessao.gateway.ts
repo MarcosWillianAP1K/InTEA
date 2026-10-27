@@ -12,6 +12,7 @@ import { AuditoriaService } from '../../api/auditoria/services/auditoria.service
 export interface EntrarSessaoPayload {
   session_token: string;
   role?: 'terapeuta' | 'dispositivo' | string;
+  jogo_id?: string;
   dispositivo_info?: Record<string, unknown>;
 }
 
@@ -281,6 +282,8 @@ export class SessaoGateway {
       session_token?: string;
       sessionToken?: string;
       role?: 'terapeuta' | 'dispositivo' | string;
+      jogo_id?: string;
+      jogoId?: string;
       dispositivo_info?: Record<string, unknown>;
       dispositivoInfo?: Record<string, unknown>;
     };
@@ -290,6 +293,7 @@ export class SessaoGateway {
       this.lidarEntradaSessao(socket, {
         session_token: token,
         role: payload?.role,
+        jogo_id: payload?.jogo_id || payload?.jogoId,
         dispositivo_info: payload?.dispositivo_info || payload?.dispositivoInfo,
       });
     };
@@ -364,6 +368,25 @@ export class SessaoGateway {
 
     // Se o cliente conectando for o dispositivo do jogo:
     if (role === 'dispositivo') {
+      // Validação de jogo e injeção do pacote de pré-contexto DDA diretamente para o game (RN03)
+      SessaoModel.buscarPorToken(tokenNormalizado).then(sessaoBanco => {
+        if (sessaoBanco) {
+          if (payload.jogo_id && payload.jogo_id !== sessaoBanco.jogo_id) {
+            socket.emit('erro_sessao', {
+              error: 'O jogo conectado não corresponde ao jogo selecionado pelo terapeuta para esta sessão.',
+            });
+            return;
+          }
+
+          socket.emit('contexto_dda_inicial', {
+            session_token: tokenNormalizado,
+            contexto: sessaoBanco.contexto_dda_json || {},
+          });
+        }
+      }).catch(err => {
+        console.error('[SessaoGateway] Erro ao recuperar contexto DDA para envio inicial:', err);
+      });
+
       this.reconnectionManager.registrarReconexao(tokenNormalizado);
       const presencaExistente = this.presencas.get(tokenNormalizado);
       const agora = Date.now();

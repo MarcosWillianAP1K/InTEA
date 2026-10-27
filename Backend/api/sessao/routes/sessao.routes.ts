@@ -278,6 +278,65 @@ sessaoRoutes.post('/iniciar', authMiddleware, verificarVisibilidadePaciente, Ses
 
 /**
  * @swagger
+ * /api/sessao/contexto-sugerido/{pacienteId}:
+ *   get:
+ *     summary: Recupera contexto clínico DDA sugerido para o paciente selecionado (RF12, RF17)
+ *     description: |
+ *       Consulta os gatilhos sensoriais cadastrados no prontuário do paciente (dados_clinicos e paciente_gatilho)
+ *       e o nível de estresse e objetivo clínico da última intervenção finalizada, abastecendo o pré-preenchimento
+ *       inteligente do modal pré-sessão no Frontend.
+ *       Exige autenticação JWT e vínculo ativo na mesma clínica (RN04).
+ *     tags: [Sessão]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: pacienteId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente
+ *     responses:
+ *       200:
+ *         description: Contexto sugerido retornado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     sugestao_contexto:
+ *                       type: object
+ *                       properties:
+ *                         nivel_estresse_sugerido:
+ *                           type: string
+ *                           enum: [baixo, medio, alto]
+ *                         gatilhos_sensoriais_cadastrados:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                         objetivo_clinico_sugerido:
+ *                           type: string
+ *                         origem:
+ *                           type: string
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: UUID do paciente inválido
+ *       401:
+ *         description: Não autorizado (token JWT ausente ou inválido)
+ *       403:
+ *         description: Acesso negado — terapeuta sem vínculo ativo ou clínica divergente (RN04)
+ *       404:
+ *         description: Paciente não encontrado
+ */
+sessaoRoutes.get('/contexto-sugerido/:pacienteId', authMiddleware, verificarVisibilidadePaciente, SessaoController.obterContextoSugerido);
+
+/**
+ * @swagger
  * /api/sessao/parear:
  *   post:
  *     summary: Handshake de pareamento remoto (jogo externo confirma conexão)

@@ -10,6 +10,7 @@ import { SessaoListarService } from '../services/sessao-listar.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { SessaoResultadoService } from '../services/sessao-resultado.service.js';
 import { SessaoExportarService } from '../services/sessao-exportar.service.js';
+import { SessaoContextoDdaService, ContextoPacienteContrato2, EntradaContextoDDA } from '../services/sessao-contexto-dda.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { eventBus } from '../../../core/events/event-bus.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
@@ -114,7 +115,12 @@ export class SessaoController {
         jogo_id,
         paciente_id,
         modo_sessao = MODO_SESSAO.SESSAO_CLINICA,
-        contexto_dda_json = {},
+        contexto_dda_json,
+        contexto_pre_sessao,
+        nivel_estresse_inicial,
+        gatilhos_sensoriais_evitar,
+        objetivo_clinico,
+        usar_fallback_padrao,
         codigo_pareamento,
         dispositivo_info,
         status_sessao,
@@ -163,12 +169,41 @@ export class SessaoController {
         return;
       }
 
+      // 4. Validação e formatação do Contexto DDA Pré-Sessão (Contrato 2 / RN01 / RN03)
+      let contextoFormatado: ContextoPacienteContrato2 | null = null;
+      try {
+        const entradaContexto = (contexto_dda_json || contexto_pre_sessao || {
+          nivel_estresse_inicial,
+          gatilhos_sensoriais_evitar,
+          objetivo_clinico,
+          usar_fallback_padrao,
+        }) as EntradaContextoDDA;
+
+        contextoFormatado = await SessaoContextoDdaService.validarEFormatarContexto(
+          entradaContexto,
+          modo_sessao === MODO_SESSAO.MODO_LIVRE ? null : paciente_id,
+          jogo_id,
+          modo_sessao
+        );
+      } catch (ddaError) {
+        const mensagem = ddaError instanceof Error ? ddaError.message : 'Erro de validação do contexto DDA';
+        res.status(400).json({ error: mensagem });
+        return;
+      }
+
+      const contextoFinal = contextoFormatado
+        ? {
+            ...contextoFormatado,
+            contexto_paciente: contextoFormatado,
+          }
+        : (contexto_dda_json || {});
+
       const dadosSessao: CriarSessaoDTO = {
         terapeuta_id: usuarioLogadoId,
         jogo_id,
         paciente_id: modo_sessao === MODO_SESSAO.MODO_LIVRE ? null : paciente_id,
         modo_sessao,
-        contexto_dda_json,
+        contexto_dda_json: contextoFinal,
         codigo_pareamento: codigoFinal,
         dispositivo_info: dispositivo_info || null,
         status_sessao: status_sessao && Object.values(STATUS_SESSAO).includes(status_sessao)
@@ -182,6 +217,13 @@ export class SessaoController {
         res.status(500).json({ error: 'Erro ao criar a sessão no banco de dados' });
         return;
       }
+
+      const pacoteContrato2 = SessaoContextoDdaService.montarPacoteContrato2(
+        novaSessao.session_token,
+        novaSessao.terapeuta_id,
+        novaSessao.paciente_id,
+        contextoFormatado
+      );
 
       res.status(201).json({
         data: {
@@ -200,6 +242,7 @@ export class SessaoController {
             codigo: novaSessao.session_token,
             expira_em: novaSessao.expira_em,
           },
+          ...(pacoteContrato2 ? { contexto_pre_sessao: pacoteContrato2 } : {}),
         },
         message: 'Sessão iniciada com sucesso.',
       });
@@ -562,6 +605,25 @@ export class SessaoController {
       const porta = process.env.PORT || 3000;
       const wsUrl = process.env.WS_URL || `ws://localhost:${porta}/sessao`;
 
+      const rawContexto = sessaoAtualizada.contexto_dda_json as Record<string, unknown> | undefined;
+      const contextoPaciente = (rawContexto?.contexto_paciente || rawContexto) as ContextoPacienteContrato2 | undefined;
+      const pacoteContrato2 = sessaoAtualizada.modo_sessao === MODO_SESSAO.SESSAO_CLINICA && contextoPaciente?.nivel_estresse_inicial
+        ? SessaoContextoDdaService.montarPacoteContrato2(
+            sessaoAtualizada.session_token,
+            sessaoAtualizada.terapeuta_id,
+            sessaoAtualizada.paciente_id,
+            {
+              nivel_estresse_inicial: contextoPaciente.nivel_estresse_inicial,
+              gatilhos_sensoriais_evitar: Array.isArray(contextoPaciente.gatilhos_sensoriais_evitar)
+                ? contextoPaciente.gatilhos_sensoriais_evitar
+                : (Array.isArray(rawContexto?.gatilhos_a_evitar) ? rawContexto.gatilhos_a_evitar as string[] : []),
+              objetivo_clinico: typeof contextoPaciente.objetivo_clinico === 'string'
+                ? contextoPaciente.objetivo_clinico
+                : (typeof rawContexto?.objetivo_clinico === 'string' ? rawContexto.objetivo_clinico : 'foco_atencional'),
+            }
+          )
+        : null;
+
       const respostaPayload: PareamentoRespostaDTO = {
         sessao_id: sessaoAtualizada.id,
         session_token: sessaoAtualizada.session_token,
@@ -575,6 +637,7 @@ export class SessaoController {
         jogo_id: sessaoAtualizada.jogo_id,
         paciente_id: sessaoAtualizada.paciente_id,
         contexto_dda: sessaoAtualizada.contexto_dda_json || {},
+        contexto_pre_sessao: pacoteContrato2,
         websocket: {
           url: wsUrl,
           canal: `session_${sessaoAtualizada.session_token}`,
@@ -615,6 +678,7 @@ export class SessaoController {
             dispositivo_info: sessaoAtualizada.dispositivo_info || null,
             contexto_dda: sessaoAtualizada.contexto_dda_json || {},
           },
+          ...(pacoteContrato2 ? { contexto_pre_sessao: pacoteContrato2 } : {}),
           conexao: {
             url: wsUrl,
             canal: `session_${sessaoAtualizada.session_token}`,
@@ -865,6 +929,35 @@ export class SessaoController {
    */
   static async exportar(req: Request, res: Response): Promise<void> {
     return SessaoExportarService.handlerExportarHttp(req, res);
+  }
+
+  /**
+   * Handles GET /api/sessao/contexto-sugerido/:pacienteId to retrieve suggested DDA context
+   * based on the patient's registered sensory triggers and previous session calibration (RF12, RF17).
+   *
+   * @param req - Authenticated Express request with :pacienteId parameter.
+   * @param res - Express response returning the suggested context.
+   */
+  static async obterContextoSugerido(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params?.pacienteId || '').trim();
+      if (!pacienteId || !validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'Identificador pacienteId inválido: deve ser um UUID válido.' });
+        return;
+      }
+
+      const sugestao = await SessaoContextoDdaService.obterContextoSugerido(pacienteId);
+
+      res.status(200).json({
+        data: {
+          sugestao_contexto: sugestao,
+        },
+        message: 'Contexto clínico sugerido recuperado com sucesso.',
+      });
+    } catch (error) {
+      console.error('[SessaoController.obterContextoSugerido] Erro inesperado:', error);
+      res.status(500).json({ error: 'Erro interno ao consultar contexto sugerido para o paciente.' });
+    }
   }
 }
 
