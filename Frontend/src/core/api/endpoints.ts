@@ -53,6 +53,7 @@ export const ENDPOINTS = {
     EXPORTAR: (id: string) => `/sessao/${id}/exportar`,
     STATUS_BY_TOKEN: (token: string) => `/sessao/${token}/status`,
     BY_TOKEN: (token: string) => `/sessao/token/${token}`,
+    CONTEXTO_SUGERIDO: (pacienteId: string) => `/sessao/contexto-sugerido/${pacienteId}`,
   },
   ANOTACAO: {
     BASE: "/anotacao",
@@ -60,6 +61,7 @@ export const ENDPOINTS = {
     HARD_DELETE: (id: string) => `/anotacao/${id}/hard`,
     REATIVAR: (id: string) => `/anotacao/${id}/reativar`,
     POR_PACIENTE: (pacienteId: string) => `/anotacao/paciente/${pacienteId}`,
+    POR_SESSAO: (sessaoId: string) => `/anotacao/sessao/${sessaoId}`,
   },
   DASHBOARD: {
     METRICAS: "/dashboard/metricas",
@@ -102,11 +104,13 @@ export const ENDPOINTS = {
     SESSAO_EXPORTAR: "/sessao/:id/exportar",
     SESSAO_TOKEN_STATUS: "/sessao/:token/status",
     SESSAO_BY_TOKEN: "/sessao/token/:token",
+    SESSAO_CONTEXTO_SUGERIDO: "/sessao/contexto-sugerido/:pacienteId",
     ANOTACAO_BASE: "/anotacao",
     ANOTACAO_BY_ID: "/anotacao/:id",
     ANOTACAO_HARD: "/anotacao/:id/hard",
     ANOTACAO_REATIVAR: "/anotacao/:id/reativar",
     ANOTACAO_POR_PACIENTE: "/anotacao/paciente/:pacienteId",
+    ANOTACAO_POR_SESSAO: "/anotacao/sessao/:sessaoId",
   },
 } as const;
 

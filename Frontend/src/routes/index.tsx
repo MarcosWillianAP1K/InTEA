@@ -14,6 +14,7 @@ import { SettingsPage } from "@/features/configuracoes/pages/settingsPage";
 import { AuditoriaAdminPage } from "@/features/admin";
 import { SuperAdminGuard } from "./admin.routes";
 import { useAuthStore } from "@/features/autenticacao";
+import { useSessionPersistence } from "@/features/sessao/hooks/useSessionPersistence";
 
 /**
  * Authenticated route guard (RF21 / RN04).
@@ -21,6 +22,7 @@ import { useAuthStore } from "@/features/autenticacao";
  */
 export function ProtectedRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  useSessionPersistence();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

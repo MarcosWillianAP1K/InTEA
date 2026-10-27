@@ -454,7 +454,7 @@ O **Zustand** cria **Stores globais em memória RAM no navegador** (fora da árv
 | Store | Arquivo | O que armazena | Persistência |
 | :--- | :--- | :--- | :--- |
 | **`useAuthStore`** | `features/autenticacao/store/authStore.ts` | `user` (terapeuta logado), `tokens` (`access_token`, `refresh_token`), `isAuthenticated` e actions `login()`, `logout()`. | `localStorage` (`intea:auth-store`) |
-| **`useSessionStore`** | `features/sessao/store/sessionStore.ts` | Máquina de estados da sessão (`status`: `ocioso` $\rightarrow$ `configurando` $\rightarrow$ `aguardando_dispositivo` $\rightarrow$ `em_andamento` $\rightarrow$ `pausado` $\rightarrow$ `finalizado`), `config` DDA, `pareamento` (`sessionToken`, `pinCode`), `dispositivo`, `nivelDdaAtual` e `eventosTelemetria`. | Memória + hidratação via `useSessionPersistence` (`sessionStorage`) |
+| **`useSessionStore`** | `features/sessao/store/sessionStore.ts` | Máquina de estados da sessão (`status`: `ocioso` $\rightarrow$ `configurando` $\rightarrow$ `aguardando_dispositivo` $\rightarrow$ `em_andamento` $\rightarrow$ `pausada` $\rightarrow$ `finalizada`), `config` DDA, `pareamento` (`sessionToken`, `pinCode`), `dispositivo`, `nivelDdaAtual` e `eventosTelemetria`. | Memória + hidratação via `useSessionPersistence` (`sessionStorage`) |
 | **`usePacienteStore`** | `features/paciente/store/paciente.store.ts` | Dicionário e lista de pacientes da clínica (`patients`), `isLoading`, `fetchPatients()` (integração com `pacienteService.listar()`), `savePatient()` e `toggleStatus()`. | Memória + sincronização REST |
 | **`useSettingStore`** | `features/configuracoes/store/settingsStore.ts` | Preferências visuais do terapeuta (`theme`, `language`, `autoDelete`). | `localStorage` (`app:preferences`) |
 

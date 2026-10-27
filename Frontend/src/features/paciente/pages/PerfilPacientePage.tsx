@@ -7,21 +7,20 @@ import {
   User,
   Phone,
   Mail,
-  FileText,
   ShieldAlert,
   Play,
   Clock,
-  Plus,
   Eye,
   AlertCircle,
   FileCheck,
   GitCompare,
+  Activity,
 } from "lucide-react";
 import { ModalCompararSessoes } from "../components/ModalCompararSessoes";
 import { pacienteService } from "../services/paciente.service";
 import type { Paciente } from "../types/paciente.types";
-import { anotacaoService } from "@/features/anotacao/services/anotacao.service";
-import type { AnotacaoClinica } from "@/features/anotacao/types/anotacao.types";
+import { GerenciadorAnotacoesProntuario } from "@/features/anotacao";
+import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { sessaoService } from "@/features/sessao/services/sessaoService";
 import type { Sessao } from "@/features/sessao/types/sessao.types";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
@@ -48,14 +47,12 @@ export function PerfilPacientePage() {
   const navigate = useNavigate();
 
   const [paciente, setPaciente] = useState<Paciente | null>(null);
-  const [anotacoes, setAnotacoes] = useState<AnotacaoClinica[]>([]);
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const [sessoesSelecionadas, setSessoesSelecionadas] = useState<string[]>([]);
   const [modalCompararAberto, setModalCompararAberto] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [novaNota, setNovaNota] = useState("");
-  const [salvandoNota, setSalvandoNota] = useState(false);
 
+  const user = useAuthStore((s) => s.user);
   const abrirModalPreSessao = useSessionStore((s) => s.abrirModalPreSessao);
   const selecionarPaciente = useSessionStore((s) => s.selecionarPaciente);
 
@@ -66,15 +63,13 @@ export function PerfilPacientePage() {
     async function carregarDados() {
       try {
         setLoading(true);
-        const [dadosPaciente, listaAnotacoes, resSessoes] = await Promise.all([
+        const [dadosPaciente, resSessoes] = await Promise.all([
           pacienteService.buscarPorId(id!),
-          anotacaoService.listarPorPaciente(id!),
           sessaoService.listar({ pacienteId: id! }),
         ]);
 
         if (isMounted) {
           setPaciente(dadosPaciente);
-          setAnotacoes(listaAnotacoes || []);
           setSessoes((resSessoes?.data || []).filter((s) => s.status_sessao !== "aguardando_pareamento"));
         }
       } catch {
@@ -110,28 +105,6 @@ export function PerfilPacientePage() {
     if (!paciente) return;
     abrirModalPreSessao();
     selecionarPaciente({ id: paciente.id, nome: paciente.nome });
-  };
-
-  const handleSalvarNota = async () => {
-    if (!novaNota.trim() || !id) return;
-
-    try {
-      setSalvandoNota(true);
-      const criada = await anotacaoService.criar({
-        paciente_id: id,
-        conteudo: novaNota.trim(),
-      });
-
-      if (criada) {
-        setAnotacoes((prev) => [criada, ...prev]);
-        setNovaNota("");
-        toast.success("Nota clínica registrada no prontuário!");
-      }
-    } catch {
-      toast.error("Erro ao salvar nota clínica.");
-    } finally {
-      setSalvandoNota(false);
-    }
   };
 
   if (loading) {
@@ -346,63 +319,8 @@ export function PerfilPacientePage() {
         </p>
       </div>
 
-      {/* Seção: Notas do Paciente (Prontuário Editor) */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col gap-4">
-        <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <div className="flex items-center gap-2 text-foreground font-bold text-sm">
-            <FileText className="h-4 w-4 text-primary" />
-            <span>Notas e Evoluções Clínicas do Prontuário</span>
-          </div>
-          <span className="text-xs text-muted-foreground">{anotacoes.length} notas registradas</span>
-        </div>
-
-        {/* Input de nova nota */}
-        <div className="flex flex-col gap-2">
-          <textarea
-            value={novaNota}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNovaNota(e.target.value)}
-            placeholder="Digite a evolução clínica ou observação comportamental deste atendimento..."
-            className="w-full text-xs min-h-20 p-3 rounded-xl bg-background border border-border resize-y focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              disabled={salvandoNota || !novaNota.trim()}
-              onClick={handleSalvarNota}
-              className="text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>{salvandoNota ? "Salvando..." : "Registrar Nota Clínica"}</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Histórico de anotações */}
-        <div className="space-y-3 pt-2">
-          {anotacoes.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic py-2 text-center">
-              Nenhuma evolução clínica registrada no prontuário ainda.
-            </p>
-          ) : (
-            anotacoes.map((anot) => (
-              <div
-                key={anot.id}
-                className="p-3.5 rounded-lg border border-border/60 bg-muted/20 flex flex-col gap-1.5"
-              >
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span className="font-semibold text-foreground">
-                    {anot.terapeuta_id ? `Terapeuta #${anot.terapeuta_id.slice(0, 8)}` : "Terapeuta Responsável"}
-                  </span>
-                  <span>{anot.created_at ? new Date(anot.created_at).toLocaleString("pt-BR") : ""}</span>
-                </div>
-                <p className="text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed">
-                  {anot.conteudo}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      {/* Seção: Gerenciador de Anotações do Prontuário (RF16, RF19, RF21, RN05) */}
+      <GerenciadorAnotacoesProntuario pacienteId={id!} usuarioLogadoId={user?.id} />
 
       {/* Seção: Histórico de Sessões do Paciente */}
       <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
@@ -478,26 +396,49 @@ export function PerfilPacientePage() {
                     {s.data_hora_inicio ? new Date(s.data_hora_inicio).toLocaleString("pt-BR") : ""}
                   </TableCell>
                   <TableCell className="py-3">
-                    <Badge
-                      className={
-                        s.status_sessao === "finalizada"
-                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px]"
-                          : "bg-slate-500/10 text-slate-600 border-slate-500/20 text-[11px]"
-                      }
-                    >
-                      {s.status_sessao === "finalizada" ? "Completo" : s.status_sessao}
-                    </Badge>
+                    {s.status_sessao === "pausada" ? (
+                      <Badge className="bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700 text-[11px] font-semibold gap-1">
+                        <span>Em Pausa</span>
+                      </Badge>
+                    ) : s.status_sessao === "em_andamento" || s.status_sessao === "conectado" ? (
+                      <Badge className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700 text-[11px] font-semibold gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span>Em Andamento</span>
+                      </Badge>
+                    ) : (
+                      <Badge
+                        className={
+                          s.status_sessao === "finalizada"
+                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px]"
+                            : "bg-slate-500/10 text-slate-600 border-slate-500/20 text-[11px]"
+                        }
+                      >
+                        {s.status_sessao === "finalizada" ? "Completo" : s.status_sessao}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right py-3 pr-6">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/sessao/${s.id}/resultado`)}
-                      className="h-7 text-xs px-2.5 gap-1 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
-                    >
-                      <Eye className="h-3 w-3" />
-                      <span>Ver Relatório</span>
-                    </Button>
+                    {s.status_sessao === "em_andamento" || s.status_sessao === "conectado" || s.status_sessao === "pausada" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/sessao/${s.id}/monitoramento`)}
+                        className="h-7 text-xs px-2.5 gap-1 border-amber-400 text-amber-800 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-700 hover:bg-amber-100 cursor-pointer"
+                      >
+                        <Activity className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                        <span>Cockpit</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/sessao/${s.id}/resultado`)}
+                        className="h-7 text-xs px-2.5 gap-1 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
+                      >
+                        <Eye className="h-3 w-3" />
+                        <span>Ver Relatório</span>
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

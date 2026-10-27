@@ -1318,6 +1318,7 @@ export function ResultadoSessaoPage({
             pacienteId={dados.paciente?.id}
             anotacaoId={anotacaoId}
             anotacaoInicial={anotacaoInicial}
+            anotacoesSessao={dados.anotacoes}
             terapeutaNome={nomeTerapeuta}
             terapeutaRegistro={registroTerapeuta}
           />

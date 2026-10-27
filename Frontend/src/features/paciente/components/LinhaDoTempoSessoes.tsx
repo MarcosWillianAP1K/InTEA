@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Calendar,
   Timer,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/components/ui/badge";
@@ -172,6 +173,11 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
             const dataIso = sessao.data_hora_fim || sessao.data_hora_inicio;
             const { data, hora } = formatarDataHora(dataIso);
 
+            const isPausada = sessao.status_sessao === "pausada";
+            const isEmAndamento =
+              sessao.status_sessao === "em_andamento" ||
+              sessao.status_sessao === "conectado" ||
+              isPausada;
             const isFinalizada = sessao.status_sessao === "finalizada";
             const isInterrompida =
               sessao.status_sessao === "interrompida" ||
@@ -203,11 +209,13 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                 <div
                   className={cn(
                     "absolute -left-5.75 sm:-left-7.75 top-3.5 h-3.5 w-3.5 rounded-full border-2 bg-background transition-transform group-hover:scale-125",
-                    isFinalizada
-                      ? "border-emerald-500 text-emerald-500 bg-emerald-500/20"
-                      : isInterrompida
-                        ? "border-amber-500 text-amber-500 bg-amber-500/20"
-                        : "border-primary text-primary bg-primary/20",
+                    isEmAndamento
+                      ? "border-amber-500 text-amber-500 bg-amber-500/20"
+                      : isFinalizada
+                        ? "border-emerald-500 text-emerald-500 bg-emerald-500/20"
+                        : isInterrompida
+                          ? "border-destructive text-destructive bg-destructive/20"
+                          : "border-primary text-primary bg-primary/20",
                   )}
                   aria-hidden="true"
                 />
@@ -217,8 +225,23 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                   {/* Informações Principais da Sessão */}
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      {/* Badge de Status Semântico: Verde para Concluída, Âmbar para Interrompida */}
-                      {isFinalizada ? (
+                      {/* Badge de Status Semântico: Amarelo para Em Andamento, Verde para Concluída */}
+                      {isPausada ? (
+                        <Badge
+                          data-testid="badge-status-pausada"
+                          className="bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700 text-[11px] font-semibold gap-1 px-2 py-0.5"
+                        >
+                          <span>Em Pausa</span>
+                        </Badge>
+                      ) : isEmAndamento ? (
+                        <Badge
+                          data-testid="badge-status-em-andamento"
+                          className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700 text-[11px] font-semibold gap-1 px-2 py-0.5"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          <span>Em Andamento</span>
+                        </Badge>
+                      ) : isFinalizada ? (
                         <Badge
                           data-testid="badge-status-concluida"
                           className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px] font-semibold gap-1 px-2 py-0.5"
@@ -229,7 +252,7 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                       ) : isInterrompida ? (
                         <Badge
                           data-testid="badge-status-interrompida"
-                          className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[11px] font-semibold gap-1 px-2 py-0.5"
+                          className="bg-destructive/10 text-destructive border-destructive/20 text-[11px] font-semibold gap-1 px-2 py-0.5"
                         >
                           <AlertTriangle className="h-3 w-3" />
                           <span>Interrompida</span>
@@ -271,20 +294,35 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                     </div>
                   </div>
 
-                  {/* Botão de Ação: Atalho para Relatório da Sessão (RNF07: Toque >= 44x44px) */}
+                  {/* Botão de Ação: Atalho para Cockpit (se em andamento) ou Relatório (se finalizada) (RNF07: Toque >= 44x44px) */}
                   <div className="flex items-center self-end sm:self-center shrink-0">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleVerRelatorio(sessao.sessao_id)}
-                      data-testid={`btn-ver-relatorio-${sessao.sessao_id}`}
-                      className="min-h-11 px-3.5 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer transition-all shadow-2xs select-none"
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      <span>Ver Resultados</span>
-                      <ArrowRight className="h-3 w-3 ml-0.5" />
-                    </Button>
+                    {isEmAndamento ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/sessao/${sessao.sessao_id}/monitoramento`)}
+                        data-testid={`btn-cockpit-${sessao.sessao_id}`}
+                        className="min-h-11 px-3.5 text-xs font-semibold gap-1.5 border-amber-400 text-amber-800 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-700 hover:bg-amber-100 cursor-pointer transition-all shadow-2xs select-none"
+                      >
+                        <Activity className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                        <span>Cockpit</span>
+                        <ArrowRight className="h-3 w-3 ml-0.5" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleVerRelatorio(sessao.sessao_id)}
+                        data-testid={`btn-ver-relatorio-${sessao.sessao_id}`}
+                        className="min-h-11 px-3.5 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer transition-all shadow-2xs select-none"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>Ver Resultados</span>
+                        <ArrowRight className="h-3 w-3 ml-0.5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

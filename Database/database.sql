@@ -210,12 +210,13 @@ CREATE TABLE IF NOT EXISTS public.sessao (
         (modo_sessao = 'sessao_clinica' AND paciente_id IS NOT NULL)
     ),
 
-    -- Máquina de Estados da Sessão e Pareamento Remoto
+    -- Máquina de Estados da Sessão e Pareamento Remoto (RF12, RF21)
     CONSTRAINT chk_status_sessao CHECK (
         status_sessao IN (
             'aguardando_pareamento',
             'conectado',
             'em_andamento',
+            'pausada',
             'finalizada',
             'expirada',
             'cancelada',

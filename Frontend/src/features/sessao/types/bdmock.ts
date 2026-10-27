@@ -93,6 +93,55 @@ export const MOCK_RESULTADO_SESSAO: ResultadoSessao = {
   anotacoes: MOCK_ANOTACOES_RESULTADO,
 };
 
+export const MOCK_SESSAO_EM_ANDAMENTO_DEMO: Sessao = {
+  id: "44444444-4444-4444-8444-444444444444",
+  terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
+  paciente_id: "164a2d30-2ca1-464f-9b55-9070f06b2058",
+  jogo_id: "11111111-1111-4111-8111-111111111111",
+  session_token: "849-291",
+  modo_sessao: "sessao_clinica",
+  status_sessao: "em_andamento",
+  contexto_dda_json: {
+    estresse_inicial: 2,
+    gatilhos_a_evitar: ["Sons Repentinos e Ruídos Agudos", "Luzes Estroboscópicas"],
+    objetivo_clinico: "Atenção Compartilhada",
+    sensibilidade_sensorial: "moderada",
+  },
+  dispositivo_info: {
+    tipo_dispositivo: "tablet",
+    modelo: "Samsung Galaxy Tab S9 FE",
+    bateria: 88,
+    latencia_ms: 22,
+    conectado: true,
+    resolucao: "2304x1440",
+    sistema_operacional: "Android 14",
+    ultimo_heartbeat: new Date().toISOString(),
+  },
+  data_hora_inicio: new Date(Date.now() - 14 * 60 * 1000).toISOString(),
+  data_hora_fim: null,
+  expira_em: new Date(Date.now() + 46 * 60 * 1000).toISOString(),
+  created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+  updated_at: new Date().toISOString(),
+  is_modo_livre: false,
+  jogo: {
+    id: "11111111-1111-4111-8111-111111111111",
+    titulo: "Aventura das Cores",
+    nome: "Aventura das Cores",
+    versao: "1.2",
+    categoria: "Atenção Compartilhada",
+  },
+  paciente: {
+    id: "164a2d30-2ca1-464f-9b55-9070f06b2058",
+    nome: "Raildom da Rocha Silva",
+    diagnostico: "Transtorno do Espectro Autista (F84.0) - Nível 2",
+  },
+  terapeuta: {
+    id: "a9849163-613f-4492-90cf-89985902d16e",
+    nome: "Dr. Marcos Willian",
+    registro_profissional: "CREFITO-14/12345-TO",
+  },
+};
+
 export const MOCK_SESSAO_ATIVA: Sessao = {
   id: "uuid-sessao-1",
   terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
@@ -234,6 +283,7 @@ export const MOCK_SESSAO_AGUARDANDO: Sessao = {
 };
 
 export const FIXTURES_SESSOES: Sessao[] = [
+  MOCK_SESSAO_EM_ANDAMENTO_DEMO,
   MOCK_SESSAO_ATIVA,
   MOCK_SESSAO_FINALIZADA,
   MOCK_SESSAO_MODO_LIVRE,
@@ -360,6 +410,23 @@ export async function atualizarStatusSessaoMock(
   };
 
   sessoesMockState[index] = atualizada;
+
+  try {
+    const painelModule = await import("@/features/painel/types/bdmock");
+    const itemPainel = painelModule.MOCK_SESSOES_RECENTES.find((s) => s.id === id);
+    if (itemPainel) {
+      itemPainel.status = (status === "pausada"
+        ? "pausada"
+        : status === "em_andamento" || status === "conectado"
+          ? "em_andamento"
+          : status === "finalizada"
+            ? "finalizada"
+            : "cancelada");
+    }
+  } catch {
+    // Fallback silencioso
+  }
+
   return JSON.parse(JSON.stringify(atualizada));
 }
 

@@ -28,6 +28,7 @@ import type {
   AnotacaoClinicaResultado,
   FiltroSessaoDTO,
   RespostaListagemSessao,
+  ContextoSugeridoDTO,
 } from "../types/sessao.types";
 import {
   iniciarSessaoMock,
@@ -390,6 +391,67 @@ export const sessaoService = {
         return (resposta as Sessao) ?? null;
       },
       () => buscarSessaoMockPorToken(token),
+    );
+  },
+
+  /**
+   * Retrieves suggested clinical pre-session DDA context (RF12, RF17, RN04).
+   */
+  obterContextoSugerido: async (
+    pacienteId: string,
+  ): Promise<ContextoSugeridoDTO | null> => {
+    if (!pacienteId || !pacienteId.trim()) return null;
+
+    return await withFallback(
+      async () => {
+        interface RawSugestaoEnvelope {
+          sugestao_contexto?: {
+            nivel_estresse_sugerido?: "baixo" | "medio" | "alto" | string;
+            gatilhos_sensoriais_cadastrados?: string[];
+            objetivo_clinico_sugerido?: string;
+            origem?: "anamnese_padrao" | "ultima_sessao" | string;
+          };
+          contexto_sugerido?: ContextoSugeridoDTO;
+        }
+
+        const resposta = await http.get<{
+          data: RawSugestaoEnvelope | ContextoSugeridoDTO;
+        }>(ENDPOINTS.SESSAO.CONTEXTO_SUGERIDO(pacienteId));
+
+        if ("data" in resposta && resposta.data) {
+          const raw = resposta.data as RawSugestaoEnvelope;
+          if (raw.contexto_sugerido) {
+            return raw.contexto_sugerido;
+          }
+          if (raw.sugestao_contexto) {
+            const sc = raw.sugestao_contexto;
+            const estresseNum =
+              sc.nivel_estresse_sugerido === "alto"
+                ? 5
+                : sc.nivel_estresse_sugerido === "medio"
+                  ? 3
+                  : 1;
+            return {
+              origem: sc.origem === "ultima_sessao" ? "ultima_sessao" : "anamnese",
+              estresse_inicial: estresseNum,
+              nivel_estresse_autorrelatado:
+                (sc.nivel_estresse_sugerido as "baixo" | "medio" | "alto") || "baixo",
+              gatilhos_a_evitar:
+                sc.gatilhos_sensoriais_cadastrados || ["Som Alto", "Luz Intensa"],
+              objetivo_terapeutico: sc.objetivo_clinico_sugerido || "foco_atencional",
+            };
+          }
+          return resposta.data as unknown as ContextoSugeridoDTO;
+        }
+        return (resposta as unknown as ContextoSugeridoDTO) ?? null;
+      },
+      () => ({
+        origem: "anamnese" as const,
+        estresse_inicial: 1,
+        nivel_estresse_autorrelatado: "baixo" as const,
+        gatilhos_a_evitar: ["Som Alto", "Luz Intensa"],
+        objetivo_terapeutico: "foco_atencional",
+      }),
     );
   },
 

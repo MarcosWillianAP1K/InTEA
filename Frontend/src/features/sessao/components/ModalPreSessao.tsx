@@ -21,13 +21,12 @@ import { useSessionSync } from "@/features/sessao/hooks/useSessionSync";
 import { usePacienteStore } from "@/features/paciente/store/paciente.store";
 import { sessaoService } from "@/features/sessao/services/sessaoService";
 import { jogosService } from "@/features/jogos/services/jogosService";
+import { FormularioContextoDDA } from "./FormularioContextoDDA";
+import { Badge } from "@/shared/components/ui/badge";
 import { toast } from "sonner";
 import {
   Brain,
   Cast,
-  VolumeX,
-  Sun,
-  TimerOff,
   Loader2,
   CheckCircle2,
   Play,
@@ -162,6 +161,37 @@ export function ModalPreSessao() {
     };
   }, [isModalAberto, config, pareamento, iniciarPareamento]);
 
+  // Carrega automaticamente gatilhos e contexto sugerido do paciente (RF12, RF17, RN03)
+  useEffect(() => {
+    if (!isModalAberto || !config?.pacienteId || config.pacienteId === "modo-livre") return;
+
+    let isMounted = true;
+    async function carregarContextoSugerido() {
+      try {
+        const sugerido = await sessaoService.obterContextoSugerido(config!.pacienteId);
+        if (!isMounted || !sugerido) return;
+
+        configurarParametros({
+          gatilhosEvitar:
+            sugerido.gatilhos_a_evitar && sugerido.gatilhos_a_evitar.length > 0
+              ? sugerido.gatilhos_a_evitar
+              : config?.gatilhosEvitar || ["Som Alto", "Luz Intensa"],
+          nivelEstresseInicial:
+            sugerido.estresse_inicial ?? config?.nivelEstresseInicial ?? 1,
+          objetivoClinico:
+            sugerido.objetivo_terapeutico || config?.objetivoClinico || "Foco Atencional",
+        });
+      } catch {
+        // Fallback silencioso preservando estado local
+      }
+    }
+
+    void carregarContextoSugerido();
+    return () => {
+      isMounted = false;
+    };
+  }, [isModalAberto, config?.pacienteId, configurarParametros]);
+
   const pinExibido = pareamento?.sessionToken || "849 - 291";
   const nivelEstresse = config?.nivelEstresseInicial ?? 1;
   const gatilhosAtivos = config?.gatilhosEvitar ?? ["Som Alto", "Luz Intensa"];
@@ -231,7 +261,6 @@ export function ModalPreSessao() {
     }
 
     const pinFinal = pareamento?.sessionToken || pinExibido;
-    const modo = pacienteId ? "sessao_clinica" : "modo_livre";
 
     iniciarIntervencao();
     fecharModal();
@@ -243,17 +272,25 @@ export function ModalPreSessao() {
 
     setIniciando(true);
     try {
-      // Persistência no banco de dados acontece SOMENTE quando o pareamento aconteceu e o terapeuta clica em iniciar
+      // Persistência no banco de dados com injeção estruturada do Contrato 2 (RN03)
+      const isModoLivre = !pacienteId || pacienteId === "modo-livre";
       await sessaoService.iniciarSessao({
         jogo_id: config?.jogoId || "jogo-1",
-        paciente_id: pacienteId || null,
-        modo_sessao: modo,
+        paciente_id: isModoLivre ? null : pacienteId,
+        modo_sessao: isModoLivre ? "modo_livre" : "sessao_clinica",
         codigo_pareamento: pinFinal,
-        contexto_dda_json: {
-          estresse_inicial: config?.nivelEstresseInicial ?? 1,
-          gatilhos_a_evitar: config?.gatilhosEvitar ?? [],
-          objetivo_clinico: "Intervenção clínica com jogo terapêutico",
-        },
+        nivel_estresse_inicial: isModoLivre ? undefined : (config?.nivelEstresseInicial ?? 1),
+        gatilhos_sensoriais_evitar: isModoLivre ? [] : (config?.gatilhosEvitar ?? []),
+        objetivo_clinico: isModoLivre ? undefined : (config?.objetivoClinico || "Foco Atencional"),
+        usar_fallback_padrao: isModoLivre ? undefined : Boolean(config?.usarFallbackPadrao),
+        contexto_dda_json: isModoLivre
+          ? undefined
+          : {
+              estresse_inicial: config?.nivelEstresseInicial ?? 1,
+              gatilhos_a_evitar: config?.gatilhosEvitar ?? [],
+              objetivo_clinico: config?.objetivoClinico || "Foco Atencional",
+              usar_fallback_padrao: Boolean(config?.usarFallbackPadrao),
+            },
         dispositivo_info: pareamento?.dispositivo
           ? {
               identificador_dispositivo: pareamento.dispositivo.deviceId,
@@ -371,6 +408,10 @@ export function ModalPreSessao() {
                 <Select
                   value={config.pacienteId || ""}
                   onValueChange={(id) => {
+                    if (id === "modo-livre") {
+                      selecionarPaciente({ id: "modo-livre", nome: "Modo Livre (Sem Prontuário)" });
+                      return;
+                    }
                     const p = patients[id];
                     if (p) {
                       selecionarPaciente({ id: p.id, nome: p.name });
@@ -384,6 +425,9 @@ export function ModalPreSessao() {
                     <SelectValue placeholder="Selecione o paciente..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="modo-livre">
+                      🎮 Modo Livre (Partida Avulsa — Sem Paciente / RN01)
+                    </SelectItem>
                     {listaPacientes.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.name} ({p.age} anos • {p.category})
@@ -394,74 +438,47 @@ export function ModalPreSessao() {
               </div>
             </div>
 
-            {/* SEÇÃO 2: Contexto DDA */}
+            {/* SEÇÃO 2: Contexto DDA (RN01, RN03, RF17) */}
             <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-2 text-primary">
-                <Brain className="h-4 w-4 stroke-[2.2]" />
-                <h3 className="text-sm font-bold tracking-tight text-foreground">
-                  Contexto DDA
-                </h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-primary">
+                  <Brain className="h-4 w-4 stroke-[2.2]" />
+                  <h3 className="text-sm font-bold tracking-tight text-foreground">
+                    Contexto DDA
+                  </h3>
+                </div>
+                {config.pacienteId === "modo-livre" && (
+                  <Badge
+                    variant="outline"
+                    className="text-2xs text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30"
+                  >
+                    Modo Livre (RN01)
+                  </Badge>
+                )}
               </div>
 
-              <div className="rounded-2xl border border-border bg-muted/40 p-5 flex flex-col gap-4">
-                {/* Nível de Estresse Inicial */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-foreground">Nível de Estresse Inicial</span>
-                    <span
-                      data-testid="valor-estresse"
-                      className="font-bold text-primary px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20"
-                    >
-                      {nivelEstresse}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((lvl) => (
-                      <button
-                        key={lvl}
-                        type="button"
-                        onClick={() => handleNivelEstresseChange(lvl)}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                          nivelEstresse === lvl
-                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                            : "bg-card text-muted-foreground border-border hover:bg-accent"
-                        }`}
-                      >
-                        {lvl}
-                      </button>
-                    ))}
-                  </div>
+              {config.pacienteId === "modo-livre" ? (
+                <div
+                  data-testid="banner-modo-livre-dda"
+                  className="rounded-2xl border border-amber-300/40 bg-amber-50/50 dark:bg-amber-950/20 p-4 text-xs text-amber-800 dark:text-amber-200"
+                >
+                  <p className="font-semibold">Partida em Modo Livre (Sem Prontuário)</p>
+                  <p className="text-2xs text-muted-foreground mt-1">
+                    Conforme a regra RN01, partidas em modo livre suprimem a injeção de contexto DDA e não persistem telemetria no prontuário.
+                  </p>
                 </div>
-
-                {/* Gatilhos a Evitar */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold text-foreground">Gatilhos a Evitar</span>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { nome: "Som Alto", icone: VolumeX },
-                      { nome: "Luz Intensa", icone: Sun },
-                      { nome: "Pressão de Tempo", icone: TimerOff },
-                    ].map(({ nome, icone: Icone }) => {
-                      const ativo = gatilhosAtivos.includes(nome);
-                      return (
-                        <button
-                          key={nome}
-                          type="button"
-                          onClick={() => handleToggleGatilho(nome)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
-                            ativo
-                              ? "bg-destructive/10 text-destructive border-destructive/20 font-semibold"
-                              : "bg-card text-muted-foreground border-border hover:bg-accent"
-                          }`}
-                        >
-                          <Icone className="h-3.5 w-3.5" />
-                          {nome}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+              ) : (
+                <FormularioContextoDDA
+                  nivelEstresse={nivelEstresse}
+                  onNivelEstresseChange={handleNivelEstresseChange}
+                  gatilhosAtivos={gatilhosAtivos}
+                  onToggleGatilho={handleToggleGatilho}
+                  objetivoClinico={config.objetivoClinico || "Foco Atencional"}
+                  onObjetivoClinicoChange={(obj) => configurarParametros({ objetivoClinico: obj })}
+                  usarFallback={Boolean(config.usarFallbackPadrao)}
+                  onToggleFallback={(usar) => configurarParametros({ usarFallbackPadrao: usar })}
+                />
+              )}
             </div>
 
             {/* SEÇÃO 3: Pareamento Remoto */}

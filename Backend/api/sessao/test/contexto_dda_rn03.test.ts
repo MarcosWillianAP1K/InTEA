@@ -6,9 +6,11 @@
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Request, Response } from 'express';
 import { SessaoContextoDdaService } from '../services/sessao-contexto-dda.service.js';
 import { SessaoController } from '../controllers/sessao.controller.js';
-import { SessaoModel, STATUS_SESSAO, MODO_SESSAO } from '../models/sessao.model.js';
+import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, type Sessao } from '../models/sessao.model.js';
+import type { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 
 describe('SessaoContextoDdaService — Validação e Normalização (Contrato 2 / RN01 / RN03)', () => {
@@ -171,9 +173,27 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
   const terapeutaId = '11111111-1111-4111-a111-111111111111';
   const sessaoId = '55555555-5555-4555-a555-555555555555';
 
+  interface RespostaJsonGenerica {
+    data?: {
+      contexto_pre_sessao?: {
+        token_sessao?: string;
+        contexto_paciente?: {
+          nivel_estresse_inicial?: string;
+          gatilhos_sensoriais_evitar?: string[];
+          objetivo_clinico?: string;
+        };
+      };
+      sugestao_contexto?: {
+        nivel_estresse_sugerido?: string;
+        gatilhos_sensoriais_cadastrados?: string[];
+      };
+    };
+    error?: string;
+  }
+
   function criarMocks(body: Record<string, unknown> = {}, params: Record<string, string> = {}, user: { id: string } = { id: terapeutaId }) {
     let statusCode = 200;
-    let jsonData: unknown = null;
+    let jsonData: RespostaJsonGenerica | null = null;
 
     const mockReq = {
       body,
@@ -181,18 +201,18 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
       user,
       headers: {},
       ip: '127.0.0.1',
-    } as any;
+    } as unknown as AuthenticatedRequest;
 
     const mockRes = {
       status(code: number) {
         statusCode = code;
         return mockRes;
       },
-      json(data: unknown) {
+      json(data: RespostaJsonGenerica) {
         jsonData = data;
         return mockRes;
       },
-    } as any;
+    } as unknown as Response;
 
     return {
       mockReq,
@@ -223,7 +243,7 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
           gatilhos_sensoriais_evitar: ['luz_piscante'],
           objetivo_clinico: 'foco_atencional',
         },
-      } as any);
+      } as unknown as Sessao);
 
       const { mockReq, mockRes, getStatus, getJson } = criarMocks({
         jogo_id: jogoId,
@@ -238,11 +258,11 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
       await SessaoController.iniciar(mockReq, mockRes);
 
       expect(getStatus()).toBe(201);
-      const json = getJson() as any;
-      expect(json.data.contexto_pre_sessao).toBeDefined();
-      expect(json.data.contexto_pre_sessao.contexto_paciente.nivel_estresse_inicial).toBe('medio');
-      expect(json.data.contexto_pre_sessao.contexto_paciente.gatilhos_sensoriais_evitar).toEqual(['luz_piscante']);
-      expect(json.data.contexto_pre_sessao.contexto_paciente.objetivo_clinico).toBe('foco_atencional');
+      const json = getJson();
+      expect(json?.data?.contexto_pre_sessao).toBeDefined();
+      expect(json?.data?.contexto_pre_sessao?.contexto_paciente?.nivel_estresse_inicial).toBe('medio');
+      expect(json?.data?.contexto_pre_sessao?.contexto_paciente?.gatilhos_sensoriais_evitar).toEqual(['luz_piscante']);
+      expect(json?.data?.contexto_pre_sessao?.contexto_paciente?.objetivo_clinico).toBe('foco_atencional');
     });
 
     it('deve rejeitar com 400 Bad Request se nivel_estresse_inicial for inválido', async () => {
@@ -257,7 +277,7 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
       await SessaoController.iniciar(mockReq, mockRes);
 
       expect(getStatus()).toBe(400);
-      expect((getJson() as any).error).toMatch(/estresse/i);
+      expect(getJson()?.error).toMatch(/estresse/i);
     });
 
     it('RN01: deve rejeitar com 400 Bad Request tentativas de injetar contexto em modo_livre', async () => {
@@ -271,7 +291,7 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
       await SessaoController.iniciar(mockReq, mockRes);
 
       expect(getStatus()).toBe(400);
-      expect((getJson() as any).error).toMatch(/RN01/i);
+      expect(getJson()?.error).toMatch(/RN01/i);
     });
   });
 
@@ -283,7 +303,7 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
         status_sessao: STATUS_SESSAO.AGUARDANDO_PAREAMENTO,
         jogo_id: jogoId,
         expira_em: new Date(Date.now() + 10 * 60000).toISOString(),
-      } as any);
+      } as unknown as Sessao);
 
       const { mockReq, mockRes, getStatus, getJson } = criarMocks({
         session_token: '4M5S-8U7B',
@@ -293,7 +313,7 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
       await SessaoController.parear(mockReq, mockRes);
 
       expect(getStatus()).toBe(409);
-      expect((getJson() as any).error).toContain('não corresponde ao jogo selecionado');
+      expect(getJson()?.error).toContain('não corresponde ao jogo selecionado');
     });
 
     it('RN03: deve entregar o contexto pré-sessão do Contrato 2 diretamente na resposta de pareamento do game', async () => {
@@ -313,12 +333,12 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
         },
       };
 
-      vi.spyOn(SessaoModel, 'buscarPorToken').mockResolvedValue(sessaoMock as any);
+      vi.spyOn(SessaoModel, 'buscarPorToken').mockResolvedValue(sessaoMock as unknown as Sessao);
       vi.spyOn(SessaoModel, 'parearDispositivo').mockResolvedValue({
         ...sessaoMock,
         status_sessao: STATUS_SESSAO.EM_ANDAMENTO,
         data_hora_inicio: new Date().toISOString(),
-      } as any);
+      } as unknown as Sessao);
 
       const { mockReq, mockRes, getStatus, getJson } = criarMocks({
         session_token: '4M5S-8U7B',
@@ -329,11 +349,11 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
       await SessaoController.parear(mockReq, mockRes);
 
       expect(getStatus()).toBe(200);
-      const json = getJson() as any;
-      expect(json.data.contexto_pre_sessao).toBeDefined();
-      expect(json.data.contexto_pre_sessao.token_sessao).toBe('4M5S-8U7B');
-      expect(json.data.contexto_pre_sessao.contexto_paciente.nivel_estresse_inicial).toBe('baixo');
-      expect(json.data.contexto_pre_sessao.contexto_paciente.gatilhos_sensoriais_evitar).toEqual(['luz_piscante']);
+      const json = getJson();
+      expect(json?.data?.contexto_pre_sessao).toBeDefined();
+      expect(json?.data?.contexto_pre_sessao?.token_sessao).toBe('4M5S-8U7B');
+      expect(json?.data?.contexto_pre_sessao?.contexto_paciente?.nivel_estresse_inicial).toBe('baixo');
+      expect(json?.data?.contexto_pre_sessao?.contexto_paciente?.gatilhos_sensoriais_evitar).toEqual(['luz_piscante']);
     });
   });
 
@@ -351,9 +371,9 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
       await SessaoController.obterContextoSugerido(mockReq, mockRes);
 
       expect(getStatus()).toBe(200);
-      const json = getJson() as any;
-      expect(json.data.sugestao_contexto.nivel_estresse_sugerido).toBe('baixo');
-      expect(json.data.sugestao_contexto.gatilhos_sensoriais_cadastrados).toEqual(['som_agudo', 'toque_repentino']);
+      const json = getJson();
+      expect(json?.data?.sugestao_contexto?.nivel_estresse_sugerido).toBe('baixo');
+      expect(json?.data?.sugestao_contexto?.gatilhos_sensoriais_cadastrados).toEqual(['som_agudo', 'toque_repentino']);
     });
 
     it('deve retornar 400 Bad Request para pacienteId que não seja UUID válido', async () => {

@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
+  Activity,
 } from "lucide-react";
 import { sessaoService } from "../services/sessaoService";
 import type { Sessao, FiltroSessaoDTO } from "../types/sessao.types";
@@ -128,6 +129,7 @@ export function HistoricoSessoesPage() {
   function renderBadgeStatus(status: string) {
     switch (status) {
       case "finalizada":
+      case "concluida":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#6FFBBE] text-slate-900 shadow-xs">
             <CheckCircle2 className="h-3 w-3" />
@@ -143,14 +145,32 @@ export function HistoricoSessoesPage() {
             <span>Falha</span>
           </span>
         );
-      case "aguardando_pareamento":
-      case "conectado":
+      case "pausada":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700 shadow-xs">
+            <span>Em Pausa</span>
+          </span>
+        );
       case "em_andamento":
+      case "conectado":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700 shadow-xs">
+            <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            <span>Em Andamento</span>
+          </span>
+        );
+      case "aguardando_pareamento":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 shadow-xs">
+            <Clock className="h-3 w-3" />
+            <span>Aguardando</span>
+          </span>
+        );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#E1E1E1] text-slate-800 shadow-xs">
             <Clock className="h-3 w-3" />
-            <span>Incompleto</span>
+            <span>{status}</span>
           </span>
         );
     }
@@ -321,15 +341,27 @@ export function HistoricoSessoesPage() {
 
                     {/* COLUNA 5: AÇÕES */}
                     <TableCell className="text-right py-4 pr-6">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/sessao/${sessao.id}/resultado`)}
-                        className="h-8 px-3 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>Ver Relatório</span>
-                      </Button>
+                      {sessao.status_sessao === "em_andamento" || sessao.status_sessao === "conectado" ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/sessao/${sessao.id}/monitoramento`)}
+                          className="h-8 px-3 text-xs font-semibold gap-1.5 border-amber-400 text-amber-800 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-700 hover:bg-amber-100 cursor-pointer"
+                        >
+                          <Activity className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                          <span>Cockpit</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/sessao/${sessao.id}/resultado`)}
+                          className="h-8 px-3 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>Ver Relatório</span>
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

@@ -16,6 +16,18 @@ export interface BlocoAnotacoesClinicasProps {
   pacienteId?: string;
   anotacaoId?: string;
   anotacaoInicial?: string;
+  anotacoesSessao?: Array<{
+    id: string;
+    conteudo: string;
+    created_at?: string;
+    terapeuta_nome?: string;
+    registro_profissional?: string;
+    autor?: {
+      nome?: string;
+      registro_profissional?: string | null;
+      crefito?: string | null;
+    } | null;
+  }>;
   terapeutaNome?: string;
   terapeutaRegistro?: string;
   onSalvar?: (conteudo: string) => Promise<boolean | void> | boolean | void;
@@ -33,6 +45,7 @@ export function BlocoAnotacoesClinicas({
   pacienteId,
   anotacaoId: anotacaoIdProp,
   anotacaoInicial = "",
+  anotacoesSessao = [],
   terapeutaNome = "Hermeson Alves",
   terapeutaRegistro = "CRP 11/04589",
   onSalvar,
@@ -135,6 +148,48 @@ export function BlocoAnotacoesClinicas({
       </div>
 
 
+
+      {/* Histórico de Notas Tomadas Durante a Sessão (Cockpit em Tempo Real - RF16) */}
+      {anotacoesSessao.length > 0 && (
+        <div
+          data-testid="historico-anotacoes-sessao"
+          className="flex flex-col gap-2.5 p-4 rounded-xl bg-muted/30 border border-border/70"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <FileText className="h-4 w-4 text-primary" />
+              Observações Registradas Durante a Intervenção ({anotacoesSessao.length})
+            </span>
+            <span className="text-2xs text-muted-foreground font-mono">Cockpit / Tempo Real</span>
+          </div>
+
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            {anotacoesSessao.map((anot, idx) => (
+              <div
+                key={anot.id || idx}
+                className="p-3 rounded-lg bg-card border border-border/50 text-xs flex flex-col gap-1 shadow-2xs"
+              >
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span className="font-semibold text-foreground">
+                    {anot.autor?.nome || anot.terapeuta_nome || "Terapeuta"}
+                  </span>
+                  <span>
+                    {anot.created_at
+                      ? new Date(anot.created_at).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : ""}
+                  </span>
+                </div>
+                <p className="text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                  {anot.conteudo}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Campo de Texto Principal */}
       <div className="flex flex-col gap-1.5">

@@ -942,6 +942,27 @@ export class SessaoGateway {
         timestamp: comando.timestamp
       });
     }
+
+    // Se o comando for de pausa ou retomada, sincroniza a máquina de estados no banco (RF12, RF21)
+    const buscarSessao = async (tokenOuId: string) => {
+      const sessaoPorToken = await SessaoModel.buscarPorToken(tokenOuId);
+      if (sessaoPorToken) return sessaoPorToken;
+      return await SessaoModel.buscarPorId(tokenOuId);
+    };
+
+    if (comando.tipo_comando === 'pausar_jogo') {
+      void buscarSessao(comando.session_token).then((sessao) => {
+        if (sessao && (sessao.status_sessao === STATUS_SESSAO.EM_ANDAMENTO || sessao.status_sessao === STATUS_SESSAO.CONECTADO)) {
+          void SessaoModel.atualizarStatus(sessao.id, STATUS_SESSAO.PAUSADA);
+        }
+      });
+    } else if (comando.tipo_comando === 'retomar_jogo') {
+      void buscarSessao(comando.session_token).then((sessao) => {
+        if (sessao && sessao.status_sessao === STATUS_SESSAO.PAUSADA) {
+          void SessaoModel.atualizarStatus(sessao.id, STATUS_SESSAO.EM_ANDAMENTO);
+        }
+      });
+    }
   }
 
   /**

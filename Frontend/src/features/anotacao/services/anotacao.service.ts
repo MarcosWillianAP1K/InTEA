@@ -41,6 +41,10 @@ function serializarFiltros(
 
   const params: Record<string, string> = {};
   if (filtros.sessao_id) params.sessao_id = filtros.sessao_id;
+  if (filtros.terapeutaId) params.terapeutaId = filtros.terapeutaId;
+  if (filtros.busca) params.busca = filtros.busca;
+  if (filtros.dataInicio) params.dataInicio = filtros.dataInicio;
+  if (filtros.dataFim) params.dataFim = filtros.dataFim;
   if (filtros.incluirInativos !== undefined) {
     params.incluirInativos = String(filtros.incluirInativos);
   }
@@ -112,6 +116,24 @@ export const anotacaoService = {
         return extrairListaAnotacoes(resposta);
       },
       () => listarAnotacoesMock({ paciente_id: pacienteId, ...filtro }),
+    );
+  },
+
+  /**
+   * Lists clinical annotations linked to an active or concluded session (RF16).
+   */
+  listarPorSessao: async (sessaoId: string): Promise<AnotacaoClinica[]> => {
+    if (!sessaoId || !sessaoId.trim()) return [];
+
+    return await withFallback(
+      async () => {
+        const resposta = await http.get<
+          AnotacoesListaRespostaApi | AnotacaoClinica[]
+        >(ENDPOINTS.ANOTACAO.POR_SESSAO(sessaoId));
+
+        return extrairListaAnotacoes(resposta);
+      },
+      () => listarAnotacoesMock({ sessao_id: sessaoId }),
     );
   },
 

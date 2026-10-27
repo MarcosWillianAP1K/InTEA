@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { ModalPreSessao } from "../components/ModalPreSessao";
 import { useSessionStore } from "../store/sessionStore";
+import { sessaoService } from "../services/sessao.service";
 import { toast } from "sonner";
 
 // Mock do Sonner
@@ -205,5 +206,58 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
       name: /Confirmar e Iniciar Intervenção/i,
     });
     expect((botaoIniciar as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("deve carregar automaticamente gatilhos e contexto sugerido do paciente via sessaoService (RN03)", async () => {
+    const pacienteId = "paciente-teste-uuid";
+    vi.spyOn(sessaoService, "obterContextoSugerido").mockResolvedValue({
+      estresse_inicial: 3,
+      gatilhos_a_evitar: ["Luz Estroboscópica", "Ruído Repentino"],
+      objetivo_terapeutico: "Regulação Sensorial",
+    });
+
+    act(() => {
+      useSessionStore.getState().abrirModalPreSessao({
+        id: "jogo-1",
+        titulo: "Aventura das Cores",
+      });
+      useSessionStore.getState().selecionarPaciente({
+        id: pacienteId,
+        nome: "Gabriel Silva",
+      });
+    });
+
+    render(<ModalPreSessao />);
+
+    await waitFor(() => {
+      expect(sessaoService.obterContextoSugerido).toHaveBeenCalledWith(pacienteId);
+    });
+
+    await waitFor(() => {
+      expect(useSessionStore.getState().config?.gatilhosEvitar).toContain("Luz Estroboscópica");
+      expect(useSessionStore.getState().config?.gatilhosEvitar).toContain("Ruído Repentino");
+    });
+  });
+
+  it("deve suprimir contexto DDA e exibir banner explicativo quando em Modo Livre (RN01)", () => {
+    act(() => {
+      useSessionStore.getState().abrirModalPreSessao({
+        id: "jogo-1",
+        titulo: "Aventura das Cores",
+      });
+      useSessionStore.getState().selecionarPaciente({
+        id: "modo-livre",
+        nome: "Modo Livre (Sem Prontuário)",
+      });
+    });
+
+    render(<ModalPreSessao />);
+
+    expect(screen.getByTestId("banner-modo-livre-dda")).toBeDefined();
+    expect(screen.getByText("Partida em Modo Livre (Sem Prontuário)")).toBeDefined();
+    expect(
+      screen.getByText(/partidas em modo livre suprimem a injeção de contexto DDA/i),
+    ).toBeDefined();
+    expect(screen.queryByTestId("valor-estresse")).toBeNull();
   });
 });

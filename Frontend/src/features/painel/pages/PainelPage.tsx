@@ -17,8 +17,16 @@ import type {
   AlertaClinico,
 } from "@/features/painel/types/dashboard.types";
 import type { Patient } from "@/features/paciente/types/paciente.types";
-import { useSessionStore, CardSessaoTimer } from "@/features/sessao";
+import {
+  useSessionStore,
+  CardSessaoTimer,
+  CardSessaoAtiva,
+  ModalAnotacaoSessaoAtiva,
+  sessaoService,
+} from "@/features/sessao";
 import { usePacienteStore } from "@/features/paciente/store/paciente.store";
+import { SessionSocketManager } from "@/core/web.socket";
+import { toast } from "sonner";
 
 
 export function PainelPage() {
@@ -27,9 +35,17 @@ export function PainelPage() {
   const [sessoesRecentes, setSessoesRecentes] = useState<SessaoRecenteResumo[]>([]);
   const [alertas, setAlertas] = useState<AlertaClinico[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalAnotacaoAtivaAberto, setModalAnotacaoAtivaAberto] = useState(false);
 
   const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
   const { patients, setSelectedPatientId, fetchPatients } = usePacienteStore();
+
+  const sessaoEmAndamento = sessoesRecentes.find(
+    (s) =>
+      s.status === "em_andamento" ||
+      s.status === "conectado" ||
+      s.status === "pausada"
+  );
 
   const listaPacientes: Patient[] = Object.values(patients);
   const sessaoMaisRecente = sessoesRecentes[0];
@@ -76,8 +92,67 @@ export function PainelPage() {
     abrirModalPreSessao();
   }
 
+  const handleTogglePausa = async (sessaoId: string, statusAtual: string) => {
+    const isPausada = statusAtual === "pausada";
+    const novoStatus: StatusSessaoResumo = isPausada ? "em_andamento" : "pausada";
+
+    // 1. Atualização otimista e reativa na lista de sessões recentes
+    setSessoesRecentes((prev) =>
+      prev.map((s) => (s.id === sessaoId ? { ...s, status: novoStatus } : s))
+    );
+
+    // 2. Notifica store Zustand e socket WebSocket para o jogo
+    if (isPausada) {
+      useSessionStore.getState().retomarSessao();
+      SessionSocketManager.getInstance().enviarComando({
+        tipo: "retomar",
+        sessionToken: sessaoId,
+      });
+      toast.success("Intervenção retomada.");
+    } else {
+      useSessionStore.getState().pausarSessao();
+      SessionSocketManager.getInstance().enviarComando({
+        tipo: "pausar",
+        sessionToken: sessaoId,
+      });
+      toast.info("Intervenção pausada.");
+    }
+
+    // 3. Persistência no Banco de Dados (RF12, RF21)
+    try {
+      await sessaoService.atualizarStatus(sessaoId, novoStatus);
+    } catch (err) {
+      console.error("Erro ao sincronizar status de pausa no backend:", err);
+    }
+  };
+
+  function formatarDuracao(segundos?: number): string {
+    if (!segundos) return "14:00";
+    const m = Math.floor(segundos / 60);
+    const s = segundos % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-8 w-full max-w-7xl mx-auto pb-12">
+      {/* SESSÃO ATIVA EM TEMPO REAL COM ACESSO DIRETO AO COCKPIT E ANOTAÇÕES (RF12, RF16) */}
+      {sessaoEmAndamento && (
+        <section aria-label="Sessão Clínica em Andamento" className="shrink-0">
+          <CardSessaoAtiva
+            sessaoId={sessaoEmAndamento.id}
+            pacienteNome={sessaoEmAndamento.pacienteNome}
+            pacienteId={sessaoEmAndamento.pacienteId}
+            jogoTitulo={sessaoEmAndamento.jogoNome}
+            dataHoraInicio={sessaoEmAndamento.dataHora}
+            status={sessaoEmAndamento.status}
+            onAcessarCockpit={() =>
+              navigate(`/sessao/${encodeURIComponent(sessaoEmAndamento.id)}/monitoramento`)
+            }
+            onAbrirAnotacoes={() => setModalAnotacaoAtivaAberto(true)}
+          />
+        </section>
+      )}
+
       {/* 1. SESSÃO PACIENTE SUMÁRIO (Figma Frame: 'Sessao paciente sumario') */}
       {pacienteDestaque && (
         <section
@@ -227,9 +302,12 @@ export function PainelPage() {
               pacienteNome={sessao.pacienteNome}
               jogoTitulo={sessao.jogoNome}
               duracaoSegundos={sessao.duracaoSegundos}
+              dataHoraInicio={sessao.dataHora}
               status={sessao.status}
+              onTogglePausa={() => handleTogglePausa(sessao.id, sessao.status)}
               onCockpitClick={() => navigate(`/sessao/${sessao.id}/monitoramento`)}
               onConcluirClick={() => navigate(`/sessao/${sessao.id}/resultado`)}
+              onVerRelatorioClick={() => navigate(`/sessao/${sessao.id}/resultado`)}
             />
           ))}
         </div>
@@ -307,6 +385,18 @@ export function PainelPage() {
           </div>
         </div>
       </section>
+
+      {/* Modal de Anotação Clínica da Sessão Ativa */}
+      {sessaoEmAndamento && (
+        <ModalAnotacaoSessaoAtiva
+          aberto={modalAnotacaoAtivaAberto}
+          onFechar={() => setModalAnotacaoAtivaAberto(false)}
+          sessaoId={sessaoEmAndamento.id}
+          pacienteId={sessaoEmAndamento.pacienteId}
+          pacienteNome={sessaoEmAndamento.pacienteNome}
+          isModoLivre={!sessaoEmAndamento.pacienteId}
+        />
+      )}
     </div>
   );
 }

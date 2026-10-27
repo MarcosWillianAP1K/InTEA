@@ -279,9 +279,22 @@ export function ModalCompararSessoes({
                     <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
                     <span>
                       Status:{" "}
-                      <strong className="text-foreground capitalize font-semibold">
-                        {sessaoBaseline.status_sessao}
-                      </strong>
+                      {sessaoBaseline.status_sessao === "pausada" ? (
+                        <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-400">
+                          Em Pausa
+                        </span>
+                      ) : sessaoBaseline.status_sessao === "em_andamento" ? (
+                        <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Em Andamento
+                        </span>
+                      ) : (
+                        <strong className="text-foreground capitalize font-semibold">
+                          {sessaoBaseline.status_sessao === "finalizada"
+                            ? "Finalizada"
+                            : sessaoBaseline.status_sessao}
+                        </strong>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -332,9 +345,22 @@ export function ModalCompararSessoes({
                     <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
                     <span>
                       Status:{" "}
-                      <strong className="text-foreground capitalize font-semibold">
-                        {sessaoRecente.status_sessao}
-                      </strong>
+                      {sessaoRecente.status_sessao === "pausada" ? (
+                        <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-400">
+                          Em Pausa
+                        </span>
+                      ) : sessaoRecente.status_sessao === "em_andamento" ? (
+                        <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Em Andamento
+                        </span>
+                      ) : (
+                        <strong className="text-foreground capitalize font-semibold">
+                          {sessaoRecente.status_sessao === "finalizada"
+                            ? "Finalizada"
+                            : sessaoRecente.status_sessao}
+                        </strong>
+                      )}
                     </span>
                   </div>
                 </div>

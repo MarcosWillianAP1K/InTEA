@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import { useSessionPersistence } from "@/features/sessao/hooks/useSessionPersistence";
@@ -7,6 +7,7 @@ import { useClinicalTimer } from "@/features/sessao/hooks/useClinicalTimer";
 import { SessionSocketManager } from "@/core/web.socket";
 import { ControlesClinicos } from "@/features/sessao/components/ControlesClinicos";
 import { ModalFinalizarSessao } from "../components/ModalFinalizarSessao";
+import { ModalAnotacaoSessaoAtiva } from "../components/ModalAnotacaoSessaoAtiva";
 import { TelemetriaCards } from "@/features/sessao/components/telemetria/TelemetriaCards";
 import { TelemetriaChart } from "@/features/sessao/components/telemetria/TelemetriaChart";
 import { TabletDiagnosticCard } from "@/features/sessao/components/telemetria/TabletDiagnosticCard";
@@ -24,7 +25,8 @@ import {
  * ============================================================================
  * PAGE: CockpitSessaoPage (Clinical Session Monitoring)
  * Route: /sessao/:id/monitoramento
- * Compliance: RF12 (Session Management), RF13 (Lifecycle), RF17 (DDA Context), RF21
+ * Compliance: RF12 (Session Management), RF13 (Lifecycle), RF16 (Anotações Clínicas),
+ *             RF17 (DDA Context), RF21 (Intervenção Manual), RN01 (Modo Livre)
  * ============================================================================
  */
 export function CockpitSessaoPage() {
@@ -45,34 +47,146 @@ export function CockpitSessaoPage() {
   const retomarSessao = useSessionStore((state) => state.retomarSessao);
   const ajustarDda = useSessionStore((state) => state.ajustarDda);
   const finalizarSessao = useSessionStore((state) => state.finalizarSessao);
+  const restaurarSessao = useSessionStore((state) => state.restaurarSessao);
+
+  // Sincronização do Cockpit com a Sessão Clínica (Backend / API / BD)
+  // REGRA CLÍNICA: O Cockpit DEVE aparecer SOMENTE quando a sessão está em andamento (RN01, RF12, RF13)
+  useEffect(() => {
+    let ativo = true;
+
+    async function sincronizarSessaoCockpit() {
+      if (!paramSessaoId) return;
+
+      // Se a sessão já estiver ativa no Zustand com os dados consistentes, evita re-fetch cíclico
+      if (
+        status === "em_andamento" &&
+        (pareamento?.sessionToken === paramSessaoId || config?.jogoTitulo)
+      ) {
+        return;
+      }
+
+      try {
+        // Busca a sessão no backend/mock por ID ou Token de Pareamento
+        let sessaoEncontrada = await sessaoService.buscarPorId(paramSessaoId);
+        if (!sessaoEncontrada) {
+          sessaoEncontrada = await sessaoService.buscarPorToken(paramSessaoId);
+        }
+
+        if (!ativo) return;
+
+        if (!sessaoEncontrada) {
+          toast.error("Sessão clínica não localizada.");
+          navigate("/painel");
+          return;
+        }
+
+        // Se a sessão já foi finalizada, o Cockpit não deve aparecer: redireciona para a tela de resultado
+        if (sessaoEncontrada.status_sessao === "finalizada") {
+          toast.info("Esta sessão clínica já foi finalizada. Redirecionando para o relatório.");
+          navigate(`/sessao/${encodeURIComponent(sessaoEncontrada.id || paramSessaoId)}/resultado`);
+          return;
+        }
+
+        // Se a sessão estiver cancelada ou expirada, volta ao painel
+        if (
+          sessaoEncontrada.status_sessao === "cancelada" ||
+          sessaoEncontrada.status_sessao === "expirada" ||
+          sessaoEncontrada.status_sessao === "interrompida_por_queda"
+        ) {
+          toast.warning(
+            `Sessão com status '${sessaoEncontrada.status_sessao}'. O Cockpit está disponível apenas para sessões em andamento.`
+          );
+          navigate("/painel");
+          return;
+        }
+
+        // Sessão válida em andamento: hidrata o store e sincroniza controles
+        const nomePaciente =
+          sessaoEncontrada.paciente?.nome ||
+          (sessaoEncontrada.modo_sessao === "modo_livre" ? "Modo Livre" : "Paciente em Atendimento");
+        const tituloJogo =
+          sessaoEncontrada.jogo?.titulo || sessaoEncontrada.jogo?.nome || "Aventura das Cores";
+        const ddaJson = sessaoEncontrada.contexto_dda_json as Record<string, unknown> | undefined;
+
+        restaurarSessao({
+          status: "em_andamento",
+          sessaoId: sessaoEncontrada.id || paramSessaoId,
+          config: {
+            pacienteId: sessaoEncontrada.paciente_id || sessaoEncontrada.paciente?.id || null,
+            pacienteNome: nomePaciente,
+            jogoId: sessaoEncontrada.jogo_id,
+            jogoTitulo: tituloJogo,
+            focoTerapeutico: (ddaJson?.objetivo_clinico as string) || "Atenção Compartilhada",
+          },
+          pareamento: {
+            sessionToken: sessaoEncontrada.session_token,
+            codigoFormatado: sessaoEncontrada.session_token,
+            dispositivo: {
+              tipo: (sessaoEncontrada.dispositivo_info?.tipo_dispositivo as "tablet" | "vr") || "tablet",
+              modelo: sessaoEncontrada.dispositivo_info?.modelo || "Tablet Clínico Pareado",
+              bateria: sessaoEncontrada.dispositivo_info?.bateria ?? 88,
+              latenciaMs: sessaoEncontrada.dispositivo_info?.latencia_ms ?? 22,
+              conectado: true,
+            },
+          },
+          dataHoraInicio: sessaoEncontrada.data_hora_inicio || new Date().toISOString(),
+          nivelDdaAtual: Number(ddaJson?.nivel_dificuldade_inicial ?? ddaJson?.estresse_inicial ?? 2),
+          isPausado:
+            sessaoEncontrada.status_sessao === "pausada"
+              ? true
+              : (useSessionStore.getState().isPausado ?? false),
+        });
+
+        // Entra na sala do WebSocket para streaming de telemetria
+        if (sessaoEncontrada.session_token) {
+          SessionSocketManager.getInstance().entrarSala(sessaoEncontrada.session_token);
+        }
+      } catch (err) {
+        console.error("Erro ao sincronizar sessão no Cockpit:", err);
+      }
+    }
+
+    void sincronizarSessaoCockpit();
+
+    return () => {
+      ativo = false;
+    };
+  }, [paramSessaoId, status, pareamento, config, restaurarSessao, navigate]);
 
   // 3. Telemetria em tempo real
   const { metricas, historico } = useLiveTelemetry({
     habilitado: status === "em_andamento",
   });
 
-  // 4. Modal de encerramento
+  // 4. Modais (Encerramento e Anotações Clínicas em Tempo Real)
   const [modalFinalizarAberto, setModalFinalizarAberto] = useState(false);
   const [isSubmittingFinalizar, setIsSubmittingFinalizar] = useState(false);
+  const [modalAnotacaoAberto, setModalAnotacaoAberto] = useState(false);
 
-  // 5. Cronômetro clínico de alta precisão resiliente contra throttling e F5 (Card 5 - Fix)
+  // 5. Cronômetro clínico de alta precisão sincronizado com Dashboard e resiliente (Card 5 - Fix, RF12, RF21)
+  const idSessaoEfetivo = paramSessaoId || pareamento?.sessionToken || "sessao-ativa";
   const tokenSessao = pareamento?.sessionToken || paramSessaoId || "sessao-ativa";
+  const dataHoraInicioStore = useSessionStore((state) => state.dataHoraInicio);
   const { tempoFormatado } = useClinicalTimer({
-    sessaoId: tokenSessao,
+    sessaoId: idSessaoEfetivo,
     ativo: status === "em_andamento",
     isPausado,
+    dataHoraInicioInicial: dataHoraInicioStore,
   });
+
+  // Determina se a sessão ativa está em Modo Livre (sem paciente associado - RN01)
+  const isModoLivre = !config?.pacienteId;
 
   // Handlers de intervenção clínica imediata
 
-
-  /** Dispatches pause command to store and remote game via WebSocket (RF21 — Manual Intervention). */
+  /** Dispatches pause command to store, remote game via WebSocket, and backend REST (RF21 — Manual Intervention). */
   const handlePausar = () => {
     pausarSessao();
     SessionSocketManager.getInstance().enviarComando({
       tipo: "pausar",
-      sessionToken: tokenSessao,
+      sessionToken: pareamento?.sessionToken || idSessaoEfetivo,
     });
+    void sessaoService.atualizarStatus(idSessaoEfetivo, "pausada");
     toast.info("Comando de pausa enviado ao jogo remoto.");
   };
 
@@ -81,8 +195,9 @@ export function CockpitSessaoPage() {
     retomarSessao();
     SessionSocketManager.getInstance().enviarComando({
       tipo: "retomar",
-      sessionToken: tokenSessao,
+      sessionToken: pareamento?.sessionToken || idSessaoEfetivo,
     });
+    void sessaoService.atualizarStatus(idSessaoEfetivo, "em_andamento");
     toast.success("Intervenção retomada no dispositivo.");
   };
 
@@ -115,9 +230,6 @@ export function CockpitSessaoPage() {
       }
 
       setModalFinalizarAberto(false);
-
-      // Validação RN01 (Modo Livre vs Sessão Clínica com Paciente)
-      const isModoLivre = !config?.pacienteId;
 
       if (isModoLivre) {
         toast.info(
@@ -171,7 +283,7 @@ export function CockpitSessaoPage() {
                 variant="outline"
                 className="text-2xs bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary-foreground dark:border-primary/40"
               >
-                Prontuário Ativo
+                {isModoLivre ? "Modo Livre" : "Prontuário Ativo"}
               </Badge>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -232,6 +344,8 @@ export function CockpitSessaoPage() {
             onRetomar={handleRetomar}
             onAjustarDda={handleAjustarDda}
             onAbrirModalFinalizar={() => setModalFinalizarAberto(true)}
+            onAbrirAnotacoes={() => setModalAnotacaoAberto(true)}
+            isModoLivre={isModoLivre}
           />
         </section>
 
@@ -257,6 +371,16 @@ export function CockpitSessaoPage() {
         </section>
       </main>
 
+      {/* Modal de Anotações Clínicas em Tempo Real */}
+      <ModalAnotacaoSessaoAtiva
+        aberto={modalAnotacaoAberto}
+        onFechar={() => setModalAnotacaoAberto(false)}
+        sessaoId={paramSessaoId || tokenSessao}
+        pacienteId={config?.pacienteId}
+        pacienteNome={config?.pacienteNome}
+        isModoLivre={isModoLivre}
+      />
+
       {/* Modal de Confirmação de Finalização */}
       <ModalFinalizarSessao
         aberto={modalFinalizarAberto}
@@ -268,4 +392,5 @@ export function CockpitSessaoPage() {
     </div>
   );
 }
+
 export default CockpitSessaoPage;

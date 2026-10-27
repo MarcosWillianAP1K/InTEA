@@ -948,9 +948,28 @@ export class SessaoController {
 
       const sugestao = await SessaoContextoDdaService.obterContextoSugerido(pacienteId);
 
+      const estresseNum =
+        sugestao.nivel_estresse_sugerido === 'alto'
+          ? 5
+          : sugestao.nivel_estresse_sugerido === 'medio'
+            ? 3
+            : 1;
+
+      const contextoSugeridoFormatado = {
+        origem: sugestao.origem === 'ultima_sessao' ? 'ultima_sessao' : 'anamnese',
+        estresse_inicial: estresseNum,
+        nivel_estresse_autorrelatado: sugestao.nivel_estresse_sugerido,
+        gatilhos_a_evitar: sugestao.gatilhos_sensoriais_cadastrados,
+        objetivo_terapeutico: sugestao.objetivo_clinico_sugerido,
+        nivel_estresse_sugerido: sugestao.nivel_estresse_sugerido,
+        gatilhos_sensoriais_cadastrados: sugestao.gatilhos_sensoriais_cadastrados,
+        objetivo_clinico_sugerido: sugestao.objetivo_clinico_sugerido,
+      };
+
       res.status(200).json({
         data: {
           sugestao_contexto: sugestao,
+          contexto_sugerido: contextoSugeridoFormatado,
         },
         message: 'Contexto clínico sugerido recuperado com sucesso.',
       });

@@ -21,7 +21,7 @@ describe("Componente CardSessaoTimer (Figma: 'sessão - InTEA' 61:759)", () => {
     expect(screen.getByText("João Betinha da Silva")).toBeDefined();
     expect(screen.getByText("Atividade atual: Caminho das Cores")).toBeDefined();
     expect(screen.getByTestId("countdown-display").textContent).toBe("14:55");
-    expect(screen.getByText("Conectado")).toBeDefined();
+    expect(screen.getByText("Em Andamento")).toBeDefined();
     expect(screen.getByRole("button", { name: /Concluir sessão/i })).toBeDefined();
     expect(screen.getByRole("button", { name: /Cockpit/i })).toBeDefined();
   });
@@ -60,11 +60,57 @@ describe("Componente CardSessaoTimer (Figma: 'sessão - InTEA' 61:759)", () => {
     expect(handleConcluir).toHaveBeenCalledTimes(1);
   });
 
-  it("deve exibir status Finalizado quando a sessão estiver concluída", () => {
+  it("deve exibir status Finalizado quando a sessão estiver concluída e ocultar botões de cockpit/concluir", () => {
+    const handleVerRelatorio = vi.fn();
     renderWithRouter(
-      <CardSessaoTimer status="finalizada" />,
+      <CardSessaoTimer status="finalizada" onVerRelatorioClick={handleVerRelatorio} />,
     );
 
     expect(screen.getByText("Finalizado")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Concluir sessão/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Cockpit/i })).toBeNull();
+
+    const btnRelatorio = screen.getByRole("button", { name: /Ver Relatório/i });
+    expect(btnRelatorio).toBeDefined();
+    fireEvent.click(btnRelatorio);
+    expect(handleVerRelatorio).toHaveBeenCalledTimes(1);
+  });
+
+  it("deve exibir status 'Em Pausa' quando a sessão estiver pausada mantendo botões de ação", () => {
+    renderWithRouter(
+      <CardSessaoTimer status="pausada" tempoFormatado="18:00" />,
+    );
+
+    expect(screen.getByText("Em Pausa")).toBeDefined();
+    expect(screen.getByTestId("countdown-display").textContent).toBe("18:00");
+    expect(screen.getByRole("button", { name: /Concluir sessão/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Cockpit/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Continuar sessão/i })).toBeDefined();
+  });
+
+  it("deve renderizar botão compacto de pausa (ícone Pause) quando sessão estiver em andamento e disparar onTogglePausa", () => {
+    const handleTogglePausa = vi.fn();
+    renderWithRouter(
+      <CardSessaoTimer
+        status="em_andamento"
+        tempoFormatado="10:00"
+        onTogglePausa={handleTogglePausa}
+      />,
+    );
+
+    const btnPausa = screen.getByRole("button", { name: /Pausar sessão/i });
+    expect(btnPausa).toBeDefined();
+    expect(btnPausa.getAttribute("data-testid")).toBe("btn-toggle-pausa");
+
+    fireEvent.click(btnPausa);
+    expect(handleTogglePausa).toHaveBeenCalledTimes(1);
+  });
+
+  it("deve ocultar botão de pausa/retomada quando a sessão estiver finalizada", () => {
+    renderWithRouter(
+      <CardSessaoTimer status="finalizada" tempoFormatado="25:00" />,
+    );
+
+    expect(screen.queryByTestId("btn-toggle-pausa")).toBeNull();
   });
 });
