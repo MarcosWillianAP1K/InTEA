@@ -720,7 +720,11 @@ export const sessaoService = {
   },
 
   /**
-   * Consulta resultado consolidado com o formato BuscarResultadoResposta.
+   * Fetches consolidated session outcome formatted as `BuscarResultadoResposta`.
+   * Result Visualization (RF14): Combines session metadata, telemetry summaries, AI analysis, and clinical notes.
+   *
+   * @param id - UUID of the completed session
+   * @returns Consolidated session outcome payload
    */
   buscarResultado: async (
     identificadorSessao: string,

@@ -38,6 +38,13 @@ function formatarSegundos(segundos?: number): string {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
+/**
+ * Renders high-precision clinical intervention countdown/elapsed timer with pause and resume controls.
+ * Temporal Synchronization (RF13, RF21): Uses high-precision `useClinicalTimer` persisting across refreshes.
+ *
+ * @param props - Component properties including duration limit, active state, and tick callback
+ * @returns Synchronized clinical timer card component
+ */
 export function CardSessaoTimer({
   sessaoId,
   pacienteNome = "João Betinha da Silva",

@@ -36,6 +36,13 @@ export function formatarDuracaoClinica(segundos: number): string {
 }
 
 
+/**
+ * Renders summary metric cards summarizing key session performance indicators (RF14).
+ * Outcome Indicators (RF14): Shows session duration, mean heart rate, cognitive score, and trigger occurrences.
+ *
+ * @param props - Component properties with consolidated metric values and baseline comparison
+ * @returns Grid of key performance indicator cards
+ */
 export function MetricasConsolidadasCards({
   metricas,
   isLoading = false,

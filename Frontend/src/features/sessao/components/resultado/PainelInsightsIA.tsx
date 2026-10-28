@@ -39,6 +39,13 @@ export function formatarNomeMetrica(id: string): string {
 }
 
 
+/**
+ * Displays AI-generated analytical insights and clinical synthesis from session telemetry (RF14, RF16).
+ * Clinical Decision Support (RF14): Highlights sustained attention, stress triggers, and game progress patterns.
+ *
+ * @param props - Component properties containing synthesized AI insights and recommendation lists
+ * @returns AI clinical insights panel component
+ */
 export function PainelInsightsIA({
   dadosIa,
   isLoading = false,

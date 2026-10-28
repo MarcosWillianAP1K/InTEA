@@ -26,6 +26,13 @@ export interface FiltrosAnotacoesClinicasProps {
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
+/**
+ * Filter controls bar for longitudinal clinical notes in patient health records (RF19).
+ * Query Filtering: Provides full-text search, therapist author dropdown, date interval, and status filters.
+ *
+ * @param props - Component properties containing filter state and change dispatcher
+ * @returns Clinical note filters toolbar component
+ */
 export function FiltrosAnotacoesClinicas({
   filtros,
   onFiltrosChange,

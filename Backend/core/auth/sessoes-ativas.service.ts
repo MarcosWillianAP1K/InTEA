@@ -44,7 +44,10 @@ export class SessoesAtivasService {
   private static sessõesMemoria: Map<string, SessaoAtivaRegistro> = new Map();
 
   /**
-   * Verifica se o cliente Supabase está ativo e configurado (ou devidamente mockado em testes).
+   * Checks whether the Supabase client is active and configured (or mocked in test suites).
+   * Connection Guard: Prevents unexpected network timeouts in isolated testing environments.
+   *
+   * @returns True if Supabase client is accessible, false otherwise
    */
   private static isSupabaseAvailable(): boolean {
     if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
@@ -63,17 +66,19 @@ export class SessoesAtivasService {
   }
 
   /**
-   * Limpa o estado em memória (utilizado em suítes de teste).
+   * Clears in-memory session caches and mock stores between test executions.
+   * Test Isolation: Resets mocked session records to prevent state bleeding.
    */
   static limparMemoria(): void {
     this.sessõesMemoria.clear();
   }
 
   /**
-   * Gera hash seguro SHA-256 do token JWT para não armazenar tokens em texto plano (LGPD / RNF06).
+   * Generates a secure SHA-256 hash of the JWT token to avoid storing plaintext tokens (LGPD / RNF06).
+   * Token Security (RNF06): Hashes bearer tokens deterministically before database lookup and storage.
    *
-   * @param token - Token de acesso JWT.
-   * @returns String hexadecimal de 64 caracteres.
+   * @param token - Raw JWT access token
+   * @returns 64-character hexadecimal SHA-256 digest string
    */
   static gerarHashToken(token: string): string {
     if (!token) return '';
@@ -81,10 +86,11 @@ export class SessoesAtivasService {
   }
 
   /**
-   * Identifica amigavelmente o tipo de dispositivo e navegador a partir do User-Agent (LGPD / RNF06).
+   * Parses the User-Agent header to generate a human-readable device and browser description.
+   * Audit Transparency (RNF06): Categorizes operating system and browser families (e.g. 'Chrome on Windows').
    *
-   * @param userAgent - Cabeçalho User-Agent enviado pelo cliente.
-   * @returns String amigável (ex: 'Chrome no Windows', 'Safari no iOS').
+   * @param userAgent - Client User-Agent header string
+   * @returns Friendly description of device and browser platform
    */
   static detectarDispositivo(userAgent?: string | null): string {
     if (!userAgent || typeof userAgent !== 'string' || userAgent.trim() === '') {
@@ -114,7 +120,15 @@ export class SessoesAtivasService {
   }
 
   /**
-   * Registra uma nova sessão de autenticação ativa para o usuário.
+   * Registers a newly authenticated user session for multi-device session management and auditing.
+   * Active Sessions (RF01, RNF06): Stores hashed token, client IP, user agent, and expiration timestamp.
+   *
+   * @param usuarioId - UUID of the authenticated user
+   * @param token - Bearer JWT access token
+   * @param ip - Client IP address
+   * @param userAgent - Client User-Agent header string
+   * @param expiraEm - Expiration date of the session
+   * @returns Registered session record
    */
   static async registrarSessao(input: RegistrarSessaoInput): Promise<SessaoAtivaDTO> {
     const tokenHash = this.gerarHashToken(input.token);
@@ -176,11 +190,12 @@ export class SessoesAtivasService {
   }
 
   /**
-   * Lista todas as conexões ativas do terapeuta com indicação da sessão atual.
+   * Lists all active concurrent sessions for a therapist, identifying the current session.
+   * Session Management (RF01): Compares hashed token with active sessions to mark `atual = true`.
    *
-   * @param usuarioId - Identificador UUID do terapeuta.
-   * @param tokenAtual - Token JWT da requisição atual para marcação de `atual = true`.
-   * @returns Lista de sessões ativas com IP, User-Agent e dispositivo.
+   * @param usuarioId - UUID of the therapist
+   * @param tokenAtual - Current request JWT to flag the active session
+   * @returns List of active user sessions with client metadata
    */
   static async listarSessoes(usuarioId: string, tokenAtual?: string): Promise<SessaoAtivaDTO[]> {
     const hashAtual = tokenAtual ? this.gerarHashToken(tokenAtual) : '';
@@ -237,11 +252,12 @@ export class SessoesAtivasService {
   }
 
   /**
-   * Revoga todas as outras sessões ativas do terapeuta (logout-all), mantendo a atual.
+   * Revokes all other active sessions for the therapist (logout-all), preserving only the current one.
+   * Security Invalidation: Immediately terminates remote sessions across other devices.
    *
-   * @param usuarioId - Identificador do terapeuta autenticado.
-   * @param tokenAtual - Token JWT da requisição atual que NÃO deve ser revogado.
-   * @returns Total de sessões revogadas com sucesso.
+   * @param usuarioId - UUID of the authenticated therapist
+   * @param tokenAtual - Current request JWT that must NOT be revoked
+   * @returns Total number of successfully revoked sessions
    */
   static async revogarOutrasSessoes(usuarioId: string, tokenAtual: string): Promise<{ revogadas: number }> {
     const hashAtual = this.gerarHashToken(tokenAtual);
@@ -285,11 +301,12 @@ export class SessoesAtivasService {
   }
 
   /**
-   * Revoga uma sessão remota específica por UUID.
+   * Revokes a specific remote session identified by its UUID.
+   * Targeted Termination: Ensures only the session owner or SuperAdmin can terminate the session.
    *
-   * @param usuarioId - Identificador do usuário proprietário da sessão.
-   * @param sessaoId - Identificador UUID da sessão a ser revogada.
-   * @returns Boolean indicando se a sessão foi revogada com sucesso.
+   * @param usuarioId - UUID of the session owner
+   * @param sessaoId - UUID of the target session to revoke
+   * @returns True if the session was successfully revoked, false otherwise
    */
   static async revogarSessaoPorId(usuarioId: string, sessaoId: string): Promise<boolean> {
     const agoraIso = new Date().toISOString();
@@ -333,10 +350,11 @@ export class SessoesAtivasService {
   }
 
   /**
-   * Verifica se o token informado foi explicitamente revogado (logout ou logout-all).
+   * Checks whether the provided JWT has been explicitly revoked via logout or session termination.
+   * Token Blacklisting: Validates token hash against revoked sessions table or memory store.
    *
-   * @param token - Token JWT de acesso.
-   * @returns `true` se o token estiver revogado, `false` se estiver válido/ativo.
+   * @param token - Bearer JWT access token
+   * @returns True if the token has been revoked, false if valid and active
    */
   static async isTokenRevogado(token: string): Promise<boolean> {
     if (!token || typeof token !== 'string') return false;

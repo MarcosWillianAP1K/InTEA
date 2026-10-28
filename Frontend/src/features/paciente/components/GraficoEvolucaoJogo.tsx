@@ -57,6 +57,13 @@ function formatarNomeMetricaLegivel(idOuNome?: string): string {
  * RN02 (Tipagem Estrita), RNF04 (Zero CLS), RNF07 (Acessibilidade)
  * ============================================================================
  */
+/**
+ * Renders longitudinal game progress and engagement evolution chart across multiple sessions (RF15).
+ * Game Trend Analysis: Plots score, duration, and performance evolution curves over time.
+ *
+ * @param props - Chart properties including session metric series and game title
+ * @returns Longitudinal game evolution chart component
+ */
 export function GraficoEvolucaoJogo({
   historicoJogo,
   isLoading = false,

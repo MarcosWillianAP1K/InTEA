@@ -28,7 +28,11 @@ export interface CardAnotacaoClinicaProps {
 }
 
 /**
- * Formata timestamp ISO para o padrão brasileiro legível.
+ * Formats an ISO 8601 timestamp string into localized Brazilian date and time format (DD/MM/YYYY HH:mm).
+ * Timestamp Localization: Converts UTC timestamps to user local timezone for clinical records.
+ *
+ * @param isoString - ISO formatted timestamp string
+ * @returns Localized date and time string
  */
 function formatarDataHora(isoString?: string): string {
   if (!isoString) return "Data não informada";
@@ -55,6 +59,13 @@ function formatarDataHora(isoString?: string): string {
  *              RNF07 (Acessibilidade e Alvos de Toque >= 44x44px)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
+ */
+/**
+ * Renders an individual clinical note card with therapist author badge, timestamp, and action menu.
+ * Author Identification (RF21, RN05): Displays therapist credentials (CREFITO/Council) and soft-delete toggle.
+ *
+ * @param props - Clinical note card properties including note data, permission flags, and update callbacks
+ * @returns Interactive clinical note card component
  */
 export function CardAnotacaoClinica({
   anotacao,

@@ -13,6 +13,14 @@ import { AuthenticatedRequest } from './auth.middleware.js';
  * 4. Retorna HTTP 403 Forbidden caso o usuário não seja superadministrador ou esteja inativo.
  * ==============================================================================
  */
+/**
+ * Express middleware that enforces SuperAdmin authorization privileges.
+ * Access Control (RF07, RF08): Validates active therapist status and requires `is_super_admin = true`.
+ *
+ * @param req - Authenticated Express request populated with user claims
+ * @param res - Express response
+ * @param next - Express next middleware function
+ */
 export async function adminMiddleware(
   req: AuthenticatedRequest,
   res: Response,
@@ -84,6 +92,11 @@ export async function adminMiddleware(
 }
 
 /**
- * Alias canônico de `adminMiddleware` conforme especificação da Sprint 8 (Critério 1).
+ * Canonical alias for `adminMiddleware` complying with administrative access control standards.
+ * Access Control (RF07): Enforces SuperAdmin privileges for protected administrative routes.
+ *
+ * @param req - Authenticated Express request with user token claims
+ * @param res - Express response
+ * @param next - Express next middleware callback
  */
 export const superAdminMiddleware = adminMiddleware;

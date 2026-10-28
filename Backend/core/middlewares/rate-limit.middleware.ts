@@ -15,7 +15,8 @@ export const loginMemoryStore = new MemoryStore();
 export const parearMemoryStore = new MemoryStore();
 
 /**
- * Utilitário para redefinir contadores em memória (essencial para isolamento de testes).
+ * Utility to reset in-memory rate limiting counters between automated test runs.
+ * Test Isolation: Clears request buckets to prevent false positive 429 errors during testing.
  */
 export function resetarRateLimits(): void {
   loginMemoryStore.resetAll();
@@ -23,8 +24,8 @@ export function resetarRateLimits(): void {
 }
 
 /**
- * Middleware de Rate Limiting para Login (RNF03).
- * Limite: 5 requisições por IP a cada 15 minutos.
+ * Rate limiting middleware for authentication and login endpoints (RNF03).
+ * Brute Force Protection (RNF03): Restricts requests to 5 attempts per IP per 15-minute window.
  */
 export const loginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
@@ -56,8 +57,8 @@ export const loginRateLimiter = rateLimit({
 });
 
 /**
- * Middleware de Rate Limiting para Pareamento Remoto (/api/sessao/parear) (RNF03).
- * Limite: 10 checagens de PIN por IP a cada 15 minutos contra enumeração exaustiva.
+ * Rate limiting middleware for remote game pairing handshake endpoints (RNF03).
+ * PIN Brute Force Guard: Restricts pairing attempts to 10 requests per IP per 15-minute window.
  */
 export const parearRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos

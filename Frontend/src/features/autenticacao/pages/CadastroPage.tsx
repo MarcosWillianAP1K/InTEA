@@ -25,6 +25,12 @@ import { toast } from "sonner";
  * Modo Restrito ("Off"): Requer token de convite institucional (?token=...)
  * ============================================================================
  */
+/**
+ * Renders the therapist account self-registration page with form validation and masked inputs.
+ * Therapist Registration (RF01): Validates email, password strength, and professional council credentials.
+ *
+ * @returns Therapist registration page view
+ */
 export function CadastroPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
