@@ -7,6 +7,7 @@
 
 import { Request, Response } from 'express';
 import { AuditoriaService } from '../services/auditoria.service.js';
+import { AuditoriaProntuarioService } from '../auditoria-prontuario.service.js';
 import { AuditoriaSessao } from '../models/auditoria.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { validarUUID } from '../../../core/utils/validators.js';
@@ -306,4 +307,54 @@ export class AuditoriaController {
       res.status(500).json({ error: 'Erro interno ao registrar evento de auditoria' });
     }
   }
+
+  /**
+   * Consulta registros de auditoria de acessos ao prontuário médico com suporte a filtro por período e terapeuta (RF08, RNF06).
+   */
+  static async consultarAcessosProntuario(req: Request, res: Response): Promise<void> {
+    try {
+      const {
+        paciente_id,
+        pacienteId,
+        terapeuta_id,
+        terapeutaId,
+        operacao,
+        data_inicio,
+        dataInicio,
+        data_fim,
+        dataFim,
+        periodo,
+        page,
+        limit,
+      } = req.query as Record<string, string | undefined>;
+
+      const resultado = await AuditoriaProntuarioService.consultarAcessos({
+        paciente_id: paciente_id || pacienteId,
+        terapeuta_id: terapeuta_id || terapeutaId,
+        operacao,
+        data_inicio: data_inicio || dataInicio,
+        data_fim: data_fim || dataFim,
+        periodo,
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 10,
+      });
+
+      res.status(200).json({
+        data: {
+          acessos: resultado.data,
+          meta: {
+            total: resultado.total,
+            pagina: resultado.page,
+            limite: resultado.limit,
+            total_paginas: resultado.totalPages,
+          },
+        },
+        message: 'Registros de auditoria de prontuário recuperados com sucesso.',
+      });
+    } catch (error) {
+      console.error('[AuditoriaController] Erro ao consultar acessos a prontuário:', error);
+      res.status(500).json({ error: 'Erro interno ao consultar auditoria de prontuário' });
+    }
+  }
 }
+
