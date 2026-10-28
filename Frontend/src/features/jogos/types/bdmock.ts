@@ -341,12 +341,184 @@ export const MOCK_JOGO_LABIRINTO_EMOJIS: Jogo = {
   },
 };
 
+export const MOCK_JOGO_VISITA_DENTISTA: Jogo = {
+  id: "jogo-visita-dentista",
+  titulo: "Visita ao Dentista",
+  nome: "Visita ao Dentista",
+  versao: "1.0",
+  descricaoClinica:
+    "Simulação de rotina prática para dessensibilização sensorial odontológica, estimulando previsibilidade e autorregulação em consultas reais.",
+  descricao:
+    "Simulação de rotina prática para dessensibilização sensorial odontológica, estimulando previsibilidade e autorregulação em consultas reais.",
+  objetivoTerapeutico: "Simulação de Rotinas",
+  status_jogo: "ativo",
+  bannerUrl:
+    "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=200&auto=format&fit=crop&q=60",
+  manifesto: {
+    id_jogo: "visita-ao-dentista",
+    nome: "Visita ao Dentista",
+    versao: "1.0",
+    descricaoClinica:
+      "Simulação de rotina prática para dessensibilização sensorial odontológica",
+    objetivoTerapeutico: "Simulação de Rotinas",
+    objetivo_clinico: "simulacao_rotina",
+    foco_pedagogico: "atividades_vida_diaria",
+    faixaEtaria: "4 a 14 anos",
+    faixa_etaria: "4 a 14 anos",
+    suportaVR: true,
+    suporta_vr: true,
+    metricasSuportadas: [
+      {
+        nome: "tempo_tolerancia",
+        id_metrica: "tempo_tolerancia",
+        tipo: "tempo",
+        tipo_metrica: "numerica",
+        unidade: "segundos",
+        descricao: "Tempo de tolerância a estímulos odontológicos",
+      },
+      {
+        nome: "nivel_ansiedade",
+        id_metrica: "nivel_ansiedade",
+        tipo: "emocional",
+        tipo_metrica: "categorica",
+        valores: ["baixo", "moderado", "alto"],
+        descricao: "Nível de ansiedade observado durante a simulação",
+      },
+      {
+        nome: "conclusao_etapas",
+        id_metrica: "conclusao_etapas",
+        tipo: "progresso",
+        tipo_metrica: "numerica",
+        unidade: "etapas",
+        descricao: "Quantidade de etapas da consulta concluídas",
+      },
+    ],
+    metricas_suportadas: [
+      {
+        id_metrica: "tempo_tolerancia",
+        tipo_metrica: "numerica",
+        unidade: "segundos",
+        descricao: "Tempo de permanência e tolerância na cadeira",
+      },
+      {
+        id_metrica: "nivel_ansiedade",
+        tipo_metrica: "categorica",
+        valores: ["baixo", "moderado", "alto"],
+        descricao: "Nível de ansiedade antecipatória",
+      },
+      {
+        id_metrica: "conclusao_etapas",
+        tipo_metrica: "numerica",
+        unidade: "etapas",
+        descricao: "Etapas concluídas da consulta",
+      },
+    ],
+    parametros_dda: [
+      {
+        nome: "intensidade_ruidos",
+        tipo: "range",
+        valor_padrao: 1,
+        min: 1,
+        max: 3,
+        descricao: "Nível de intensidade dos sons de instrumentos odontológicos",
+      },
+    ],
+  },
+};
+
+export const MOCK_JOGO_SUPERMERCADO: Jogo = {
+  id: "jogo-supermercado",
+  titulo: "Ida ao Supermercado / Atacadão",
+  nome: "Ida ao Supermercado / Atacadão",
+  versao: "1.0",
+  descricaoClinica:
+    "Treino prático de compras e interação em ambientes de grande porte, promovendo autonomia, planejamento de lista e tolerância a estímulos cotidianos.",
+  descricao:
+    "Treino prático de compras e interação em ambientes de grande porte, promovendo autonomia, planejamento de lista e tolerância a estímulos cotidianos.",
+  objetivoTerapeutico: "Simulação de Rotinas",
+  status_jogo: "ativo",
+  bannerUrl:
+    "https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=200&auto=format&fit=crop&q=60",
+  manifesto: {
+    id_jogo: "ida-ao-supermercado",
+    nome: "Ida ao Supermercado / Atacadão",
+    versao: "1.0",
+    descricaoClinica:
+      "Treino de compras, lista e tolerância a estímulos de supermercado",
+    objetivoTerapeutico: "Simulação de Rotinas",
+    objetivo_clinico: "simulacao_rotina",
+    foco_pedagogico: "atividades_vida_diaria",
+    faixaEtaria: "5 a 16 anos",
+    faixa_etaria: "5 a 16 anos",
+    suportaVR: false,
+    suporta_vr: false,
+    metricasSuportadas: [
+      {
+        nome: "itens_coletados",
+        id_metrica: "itens_coletados",
+        tipo: "quantidade",
+        tipo_metrica: "numerica",
+        unidade: "itens",
+        descricao: "Quantidade de itens corretos da lista coletados",
+      },
+      {
+        nome: "tolerancia_estimulos",
+        id_metrica: "tolerancia_estimulos",
+        tipo: "sensorial",
+        tipo_metrica: "categorica",
+        valores: ["baixa", "moderada", "alta"],
+        descricao: "Tolerância a ruídos e estímulos visuais do ambiente",
+      },
+      {
+        nome: "tempo_fila_espera",
+        id_metrica: "tempo_fila_espera",
+        tipo: "tempo",
+        tipo_metrica: "numerica",
+        unidade: "segundos",
+        descricao: "Tempo suportado na fila de espera do caixa",
+      },
+    ],
+    metricas_suportadas: [
+      {
+        id_metrica: "itens_coletados",
+        tipo_metrica: "numerica",
+        unidade: "itens",
+        descricao: "Itens corretos obtidos da lista",
+      },
+      {
+        id_metrica: "tolerancia_estimulos",
+        tipo_metrica: "categorica",
+        valores: ["baixa", "moderada", "alta"],
+        descricao: "Tolerância a ruídos de caixa e anúncios sonoros",
+      },
+      {
+        id_metrica: "tempo_fila_espera",
+        tipo_metrica: "numerica",
+        unidade: "segundos",
+        descricao: "Tempo sustentado na fila de espera",
+      },
+    ],
+    parametros_dda: [
+      {
+        nome: "quantidade_itens_lista",
+        tipo: "range",
+        valor_padrao: 3,
+        min: 1,
+        max: 10,
+        descricao: "Quantidade de produtos a serem localizados",
+      },
+    ],
+  },
+};
+
 export const FIXTURES_JOGOS: Jogo[] = [
   MOCK_JOGO_AVENTURA_CORES,
   MOCK_JOGO_FORMAS_CALMAS,
   MOCK_JOGO_SOM_ANIMAIS,
   MOCK_JOGO_ILHA_SENTIDOS,
   MOCK_JOGO_LABIRINTO_EMOJIS,
+  MOCK_JOGO_VISITA_DENTISTA,
+  MOCK_JOGO_SUPERMERCADO,
 ];
 
 export const JOGOS_MOCK: Jogo[] = [...FIXTURES_JOGOS];

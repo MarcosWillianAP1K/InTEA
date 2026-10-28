@@ -110,3 +110,94 @@ SET
     status_jogo = EXCLUDED.status_jogo,
     manifesto_json = EXCLUDED.manifesto_json,
     updated_at = TIMEZONE('utc', NOW());
+
+-- Jogo 4: Visita ao Dentista (Atividades de Vida Diária - AVD / Simulação de Rotina)
+INSERT INTO public.jogo (id, nome, descricao, versao, status_jogo, manifesto_json)
+VALUES (
+    '44444444-4444-4444-8444-444444444444',
+    'Visita ao Dentista',
+    'Simulação de rotina prática para dessensibilização sensorial odontológica, estimulando previsibilidade e autorregulação em consultas reais.',
+    '1.0.0',
+    'ativo',
+    '{
+        "id_jogo": "visita-ao-dentista",
+        "nome": "Visita ao Dentista",
+        "versao": "1.0.0",
+        "objetivo_clinico": "simulacao_rotina",
+        "foco_pedagogico": "atividades_vida_diaria",
+        "cooperativo": true,
+        "adaptativo": true,
+        "mecanicas": ["dessensibilizacao_sistematica", "estimulo_positivo", "adaptativo"],
+        "metricas_suportadas": [
+            {
+                "id_metrica": "tempo_tolerancia",
+                "tipo_metrica": "numerica",
+                "unidade": "segundos"
+            },
+            {
+                "id_metrica": "nivel_ansiedade",
+                "tipo_metrica": "categorica",
+                "valores": ["baixo", "moderado", "alto"]
+            },
+            {
+                "id_metrica": "conclusao_etapas",
+                "tipo_metrica": "numerica",
+                "unidade": "etapas"
+            }
+        ]
+    }'::jsonb
+)
+ON CONFLICT (id) DO UPDATE 
+SET 
+    nome = EXCLUDED.nome,
+    descricao = EXCLUDED.descricao,
+    versao = EXCLUDED.versao,
+    status_jogo = EXCLUDED.status_jogo,
+    manifesto_json = EXCLUDED.manifesto_json,
+    updated_at = TIMEZONE('utc', NOW());
+
+-- Jogo 5: Ida ao Supermercado / Atacadão (Atividades de Vida Diária - AVD / Simulação de Rotina)
+INSERT INTO public.jogo (id, nome, descricao, versao, status_jogo, manifesto_json)
+VALUES (
+    '55555555-5555-4555-8555-555555555555',
+    'Ida ao Supermercado / Atacadão',
+    'Treino prático de compras e interação em ambientes de grande porte, promovendo autonomia, planejamento de lista e tolerância a estímulos cotidianos.',
+    '1.0.0',
+    'ativo',
+    '{
+        "id_jogo": "ida-ao-supermercado",
+        "nome": "Ida ao Supermercado / Atacadão",
+        "versao": "1.0.0",
+        "objetivo_clinico": "simulacao_rotina",
+        "foco_pedagogico": "atividades_vida_diaria",
+        "cooperativo": true,
+        "adaptativo": true,
+        "mecanicas": ["planejamento_executivo", "estimulo_positivo", "adaptativo"],
+        "metricas_suportadas": [
+            {
+                "id_metrica": "itens_coletados",
+                "tipo_metrica": "numerica",
+                "unidade": "itens"
+            },
+            {
+                "id_metrica": "tolerancia_estimulos",
+                "tipo_metrica": "categorica",
+                "valores": ["baixa", "moderada", "alta"]
+            },
+            {
+                "id_metrica": "tempo_fila_espera",
+                "tipo_metrica": "numerica",
+                "unidade": "segundos"
+            }
+        ]
+    }'::jsonb
+)
+ON CONFLICT (id) DO UPDATE 
+SET 
+    nome = EXCLUDED.nome,
+    descricao = EXCLUDED.descricao,
+    versao = EXCLUDED.versao,
+    status_jogo = EXCLUDED.status_jogo,
+    manifesto_json = EXCLUDED.manifesto_json,
+    updated_at = TIMEZONE('utc', NOW());
+
