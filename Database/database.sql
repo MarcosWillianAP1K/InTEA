@@ -250,6 +250,48 @@ CREATE TABLE IF NOT EXISTS public.relatorio_sessao (
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
 );
 
+-- Trigger de Proteção e Imutabilidade do Relatório Clínico (RN05 / RNF06)
+CREATE OR REPLACE FUNCTION public.impedir_modificacao_relatorio_sessao()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- 1. Bloqueio absoluto de DELETE físico (RN05)
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'Operacao proibida: Exclusao fisica de relatorio clinico e terminantemente vedada (RN05). O prontuario e inalteravel; utilize soft_delete = true.'
+            USING ERRCODE = '23505';
+    END IF;
+
+    -- 2. Bloqueio de mutações não autorizadas em UPDATE (RN05 / RNF06)
+    IF TG_OP = 'UPDATE' THEN
+        -- Bloqueio de alteração do sessao_id (chave primária e integridade 1:1)
+        IF NEW.sessao_id IS DISTINCT FROM OLD.sessao_id THEN
+            RAISE EXCEPTION 'Operacao proibida: O identificador da sessao (sessao_id) em relatorio_sessao e imutavel (RN05 / RNF06).'
+                USING ERRCODE = '23505';
+        END IF;
+
+        -- Bloqueio de alteração dos dados brutos consolidados da síntese de IA
+        IF NEW.dados_ia_json IS DISTINCT FROM OLD.dados_ia_json THEN
+            RAISE EXCEPTION 'Operacao proibida: Os dados consolidados da IA (dados_ia_json) sao estritamente imutaveis apos a criacao do relatorio (RN05 / RNF06).'
+                USING ERRCODE = '23505';
+        END IF;
+
+        -- Atualiza automaticamente o timestamp de modificação caso campos permitidos sejam alterados
+        NEW.updated_at := TIMEZONE('utc', NOW());
+        RETURN NEW;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_delete_relatorio ON public.relatorio_sessao;
+DROP TRIGGER IF EXISTS trg_bloqueio_relatorio_sessao ON public.relatorio_sessao;
+
+CREATE TRIGGER trg_bloqueio_relatorio_sessao
+    BEFORE UPDATE OR DELETE ON public.relatorio_sessao
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_modificacao_relatorio_sessao();
+
+
 -- ==============================================================================
 -- 15. TABELA: telemetria_evento (Ingestão e Persistência de Eventos de Telemetria)
 -- ==============================================================================
@@ -301,15 +343,56 @@ CREATE INDEX IF NOT EXISTS idx_auditoria_acao
 CREATE INDEX IF NOT EXISTS idx_auditoria_detalhes_gin 
     ON public.auditoria_sessao USING gin (detalhes_json);
 
+-- ==============================================================================
+-- 16.1. TABELA: auditoria_acesso_prontuario (Auditoria de Acessos ao Prontuário - RF08, RNF06, LGPD)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.auditoria_acesso_prontuario (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    paciente_id UUID NOT NULL REFERENCES public.paciente(id) ON DELETE CASCADE,
+    terapeuta_id UUID REFERENCES public.terapeuta(id) ON DELETE SET NULL,
+    operacao VARCHAR(30) NOT NULL, -- 'visualizacao', 'alteracao', 'exclusao_logica'
+    recurso_acessado VARCHAR(255) NOT NULL,
+    ip VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    detalhes_json JSONB DEFAULT '{}'::jsonb NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+-- Trigger de Imutabilidade Estrita da Auditoria de Prontuário
+CREATE OR REPLACE FUNCTION public.impedir_modificacao_auditoria_prontuario()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Operacao proibida: Registros da trilha de auditoria de prontuario sao estritamente imutaveis (RN05 / RNF06).'
+        USING ERRCODE = '23505';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_mutacao_auditoria_prontuario ON public.auditoria_acesso_prontuario;
+CREATE TRIGGER trg_bloqueio_mutacao_auditoria_prontuario
+    BEFORE UPDATE OR DELETE ON public.auditoria_acesso_prontuario
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_modificacao_auditoria_prontuario();
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_prontuario_paciente 
+    ON public.auditoria_acesso_prontuario(paciente_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_prontuario_terapeuta 
+    ON public.auditoria_acesso_prontuario(terapeuta_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_prontuario_created 
+    ON public.auditoria_acesso_prontuario(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_prontuario_operacao 
+    ON public.auditoria_acesso_prontuario(operacao);
+
+
 
 -- ==============================================================================
--- 17. BLOQUEIO DE HARD DELETE (Desativado temporariamente em DEV/Testes)
+-- 17. BLOQUEIO DE HARD DELETE (Conformidade Clínica RN05 / RNF06)
 -- ==============================================================================
--- Os triggers de bloqueio físico (trg_bloqueio_delete_anotacao e trg_bloqueio_delete_relatorio)
--- estão temporariamente desativados durante a fase de testes e desenvolvimento.
--- Serão reativados antes da implantação oficial em produção para conformidade clínica RN05.
+-- O trigger trg_bloqueio_relatorio_sessao permanece ativo garantindo a inalterabilidade
+-- dos dados de IA e bloqueando exclusão física de relatórios clínicos (RN05 / RNF06).
+-- Para anotacao_clinica, a desativação pontual é mantida para fases de testes em DEV.
 DROP TRIGGER IF EXISTS trg_bloqueio_delete_anotacao ON public.anotacao_clinica;
 DROP TRIGGER IF EXISTS trg_bloqueio_delete_relatorio ON public.relatorio_sessao;
+
 
 -- Trigger para limpeza automática de responsáveis órfãos em exclusões físicas de testes (Hard Delete)
 CREATE OR REPLACE FUNCTION public.fn_limpar_responsavel_orfaos()
@@ -468,6 +551,105 @@ CREATE TABLE IF NOT EXISTS public.sessao_ativa (
 CREATE INDEX IF NOT EXISTS idx_sessao_ativa_usuario_id ON public.sessao_ativa(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_sessao_ativa_token_hash ON public.sessao_ativa(token_hash);
 CREATE INDEX IF NOT EXISTS idx_sessao_ativa_ativas ON public.sessao_ativa(usuario_id, revogado, expira_em) WHERE revogado = FALSE;
+
+-- ==============================================================================
+-- 21.1. VIEW MATERIALIZADA: vw_resumo_longitudinal_paciente (RF15, RNF05, RN01, RN04, RN05)
+-- ==============================================================================
+CREATE MATERIALIZED VIEW IF NOT EXISTS public.vw_resumo_longitudinal_paciente AS
+SELECT
+    s.paciente_id,
+    COUNT(CASE WHEN s.status_sessao != 'aguardando_pareamento' THEN 1 END)::INTEGER AS total_sessoes,
+    COUNT(CASE WHEN s.status_sessao != 'aguardando_pareamento' THEN 1 END)::INTEGER AS total_iniciadas,
+    COUNT(CASE WHEN s.status_sessao = 'finalizada' THEN 1 END)::INTEGER AS sessoes_finalizadas,
+    COUNT(CASE WHEN s.status_sessao IN ('cancelada', 'interrompida_por_queda', 'expirada') THEN 1 END)::INTEGER AS sessoes_interrompidas,
+    ROUND(
+        COALESCE(
+            (COUNT(CASE WHEN s.status_sessao = 'finalizada' THEN 1 END)::NUMERIC / 
+             NULLIF(COUNT(CASE WHEN s.status_sessao != 'aguardando_pareamento' THEN 1 END), 0) * 100),
+            0
+        ), 1
+    )::NUMERIC AS taxa_conclusao_porcentagem,
+    ROUND(
+        COALESCE(
+            (COUNT(CASE WHEN s.status_sessao = 'finalizada' THEN 1 END)::NUMERIC / 
+             NULLIF(COUNT(CASE WHEN s.status_sessao != 'aguardando_pareamento' THEN 1 END), 0) * 100),
+            0
+        ), 1
+    )::NUMERIC AS taxa_conclusao,
+    COALESCE(
+        SUM(
+            CASE 
+                WHEN s.data_hora_inicio IS NOT NULL AND s.data_hora_fim IS NOT NULL AND s.data_hora_fim >= s.data_hora_inicio
+                THEN EXTRACT(EPOCH FROM (s.data_hora_fim - s.data_hora_inicio))::INTEGER
+                ELSE 0
+            END
+        ), 0
+    )::INTEGER AS tempo_total_segundos,
+    ROUND(
+        COALESCE(
+            SUM(
+                CASE 
+                    WHEN s.data_hora_inicio IS NOT NULL AND s.data_hora_fim IS NOT NULL AND s.data_hora_fim >= s.data_hora_inicio
+                    THEN EXTRACT(EPOCH FROM (s.data_hora_fim - s.data_hora_inicio))::INTEGER
+                    ELSE 0
+                END
+            ) / NULLIF(COUNT(CASE WHEN s.status_sessao = 'finalizada' THEN 1 END), 0),
+            0
+        )
+    )::INTEGER AS tempo_medio_segundos,
+    COALESCE(
+        (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'jogo_id', sub.sub_jogo_id,
+                    'nome', sub.jogo_nome,
+                    'versao', sub.jogo_versao,
+                    'total_sessoes', sub.total_jogo_sessoes,
+                    'ultima_sessao', sub.max_fim
+                ) ORDER BY sub.max_fim DESC
+            )
+            FROM (
+                SELECT 
+                    sj.jogo_id AS sub_jogo_id,
+                    j.nome AS jogo_nome,
+                    j.versao AS jogo_versao,
+                    COUNT(*)::INTEGER AS total_jogo_sessoes,
+                    TO_CHAR(MAX(sj.data_hora_fim), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS max_fim
+                FROM public.sessao sj
+                JOIN public.jogo j ON j.id = sj.jogo_id
+                LEFT JOIN public.relatorio_sessao rj ON rj.sessao_id = sj.id
+                WHERE sj.paciente_id = s.paciente_id
+                  AND sj.modo_sessao = 'sessao_clinica'
+                  AND sj.status_sessao = 'finalizada'
+                  AND (rj.soft_delete IS NULL OR rj.soft_delete = FALSE)
+                GROUP BY sj.jogo_id, j.nome, j.versao
+            ) sub
+        ),
+        '[]'::jsonb
+    ) AS jogos_resumo,
+    TIMEZONE('utc', NOW()) AS atualizado_em
+FROM public.sessao s
+LEFT JOIN public.relatorio_sessao r ON r.sessao_id = s.id
+WHERE s.paciente_id IS NOT NULL
+  AND s.modo_sessao = 'sessao_clinica'
+  AND (r.soft_delete IS NULL OR r.soft_delete = FALSE)
+GROUP BY s.paciente_id
+WITH DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_vw_resumo_paciente_id
+    ON public.vw_resumo_longitudinal_paciente (paciente_id);
+
+REVOKE ALL ON public.vw_resumo_longitudinal_paciente FROM PUBLIC;
+REVOKE ALL ON public.vw_resumo_longitudinal_paciente FROM anon;
+REVOKE ALL ON public.vw_resumo_longitudinal_paciente FROM authenticated;
+GRANT SELECT ON public.vw_resumo_longitudinal_paciente TO service_role;
+
+CREATE OR REPLACE FUNCTION public.refresh_vw_resumo_longitudinal_paciente()
+RETURNS VOID AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW CONCURRENTLY public.vw_resumo_longitudinal_paciente;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ==============================================================================
 -- 22. SEMENTES DE DADOS (Seeds Iniciais)
