@@ -154,6 +154,66 @@ sessaoRoutes.get('/codigo-pareamento', authMiddleware, SessaoController.gerarCod
 
 /**
  * @swagger
+ * /api/sessao/contexto-sugerido/{pacienteId}:
+ *   get:
+ *     summary: Sugere contexto DDA pré-calibrado pela IA para início de sessão (RF14, RF17, RN03)
+ *     description: Consulta dados estáticos da anamnese clínica e o último relatório analítico consolidado (Contrato 4) do paciente. Caso a última sessão tenha registrado alta intervenção de DDA ou recomendação de redução de estímulos sonoros/visuais, o endpoint retorna uma sugestão pré-calibrada de nível de estresse e gatilhos sensoriais a evitar com justificativa clínica para aprovação em 1 clique pelo terapeuta.
+ *     tags: [Sessão]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: pacienteId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente alvo
+ *         example: "33333333-3333-3333-3333-333333333333"
+ *     responses:
+ *       200:
+ *         description: Contexto DDA sugerido pela IA retornado com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Contexto DDA sugerido pela IA recuperado com sucesso."
+ *               data:
+ *                 paciente_id: "33333333-3333-3333-3333-333333333333"
+ *                 dados_anamnese:
+ *                   diagnostico_base: "Transtorno do Espectro Autista (TEA)"
+ *                   gatilhos_estaticos: ["Sons Altos ou Repentinos"]
+ *                   observacoes_gerais: "Hipersensibilidade auditiva moderada"
+ *                 ultima_sessao:
+ *                   sessao_id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+ *                   jogo_id: "22222222-2222-2222-2222-222222222222"
+ *                   jogo_nome: "Jogo da Memória Sensorial"
+ *                   data_hora_fim: "2026-10-15T18:00:00.000Z"
+ *                   intervencoes_dda: 4
+ *                   taxa_conclusao: 65
+ *                 sugestao_ia:
+ *                   nivel_estresse_sugerido: 3
+ *                   gatilhos_recomendados: ["Sons Altos ou Repentinos", "Luzes Fortes ou Piscantes"]
+ *                   justificativa_baseada_ultima_sessao: "A última sessão registrou alta taxa de intervenções..."
+ *       400:
+ *         description: UUID do paciente inválido ou ausente
+ *       401:
+ *         description: Token JWT ausente ou inválido
+ *       403:
+ *         description: Acesso negado — terapeuta sem vínculo ativo com o paciente (RN04)
+ *       404:
+ *         description: Paciente não encontrado
+ *       500:
+ *         description: Erro interno ao obter contexto DDA sugerido
+ */
+sessaoRoutes.get(
+  '/contexto-sugerido/:pacienteId',
+  authMiddleware,
+  verificarVisibilidadePaciente,
+  SessaoController.obterContextoSugerido
+);
+
+/**
+ * @swagger
  * /api/sessao/iniciar:
  *   post:
  *     summary: Inicia uma nova sessão clínica ou em modo livre (emite token de pareamento)

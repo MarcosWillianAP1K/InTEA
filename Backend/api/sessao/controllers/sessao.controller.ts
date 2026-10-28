@@ -11,6 +11,8 @@ import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { SessaoResultadoService } from '../services/sessao-resultado.service.js';
 import { SessaoExportarService } from '../services/sessao-exportar.service.js';
 import { SessaoConcorrenciaService } from '../services/sessao-concorrencia.service.js';
+import { SessaoContextoDdaService } from '../services/sessao-contexto-dda.service.js';
+import { PacienteServiceError } from '../../paciente/services/paciente.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { eventBus } from '../../../core/events/event-bus.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
@@ -928,5 +930,41 @@ export class SessaoController {
   static async exportar(req: Request, res: Response): Promise<void> {
     return SessaoExportarService.handlerExportarHttp(req, res);
   }
+
+  /**
+   * Handles GET /api/sessao/contexto-sugerido/:pacienteId to suggest AI pre-session calibration.
+   * Cross-references static anamnesis data with the patient's latest Contract 4 report (RF14, RF17, RN03).
+   *
+   * @param req - Express request containing pacienteId in params.
+   * @param res - Express response returning suggested DDA context and clinical rationale.
+   */
+  static async obterContextoSugerido(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.pacienteId || req.params.id || '');
+
+      if (!pacienteId || !validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'Identificador do paciente inválido ou ausente.' });
+        return;
+      }
+
+      const resultado = await SessaoContextoDdaService.obterContextoSugerido(pacienteId);
+
+      res.status(200).json({
+        data: resultado,
+        message: 'Contexto DDA sugerido pela IA recuperado com sucesso.',
+      });
+    } catch (error: unknown) {
+      if (error instanceof PacienteServiceError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      console.error('[SessaoController.obterContextoSugerido]', error);
+      res.status(500).json({
+        error: 'Erro interno ao obter contexto DDA sugerido pela IA.',
+        detalhes: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }
+
 
