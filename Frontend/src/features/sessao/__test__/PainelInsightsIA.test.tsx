@@ -80,7 +80,7 @@ describe("Card 4.3 — PainelInsightsIA (Front-end 2 — Luma Maiara)", () => {
       expect(
         screen.getByText("Síntese de IA Desativada em Modo Livre")
       ).toBeDefined();
-      expect(screen.getByText("RN01")).toBeDefined();
+      expect(screen.getByText("Modo Livre")).toBeDefined();
       expect(
         screen.getByText(/Partidas executadas em Modo Livre não associam prontuário/)
       ).toBeDefined();

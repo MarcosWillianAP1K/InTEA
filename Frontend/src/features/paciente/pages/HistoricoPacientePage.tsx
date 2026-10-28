@@ -255,7 +255,7 @@ export function HistoricoPacientePage() {
 
         setErroHttp({ status, mensagem: msg });
         if (status === 403) {
-          toast.error("Acesso negado: terapeuta sem vínculo ativo nesta clínica (RN04).");
+          toast.error("Acesso negado: terapeuta sem vínculo ativo nesta clínica.");
         } else {
           toast.error("Não foi possível carregar o histórico clínico.");
         }
@@ -337,7 +337,7 @@ export function HistoricoPacientePage() {
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-foreground">
-              Acesso Negado ao Histórico Clínico (RN04)
+              Acesso Negado ao Histórico Clínico
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Você não possui vínculo ativo com este paciente na clínica atual. Por conformidade com as regras de
@@ -532,7 +532,7 @@ export function HistoricoPacientePage() {
                     Jogos Terapêuticos Experimentados
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    Selecione um jogo no seletor acima para visualizar as curvas de evolução individualizadas (RN02).
+                    Selecione um jogo no seletor acima para visualizar as curvas de evolução individualizadas.
                   </p>
                 </div>
               </div>

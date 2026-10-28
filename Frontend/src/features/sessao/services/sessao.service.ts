@@ -122,6 +122,7 @@ export function normalizarResultadoSessao(raw: unknown): ResultadoSessao {
         registro_profissional: String(
           terapeutaObj.registro_profissional || terapeutaObj.crefito || "CREFITO-TO"
         ),
+        crefito: terapeutaObj.crefito ? String(terapeutaObj.crefito) : null,
       }
     : null;
 

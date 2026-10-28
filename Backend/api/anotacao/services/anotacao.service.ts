@@ -97,7 +97,7 @@ export class AnotacaoService {
       ? await AnotacaoClinicaModel.listarPorPaciente(
           pacienteId,
           filtros.incluirDeletadas ?? false,
-          filtros.somenteSemSessao ?? true,
+          filtros.somenteSemSessao ?? false,
           filtros
         )
       : await AnotacaoClinicaModel.listarPorPaciente(pacienteId, false, true);

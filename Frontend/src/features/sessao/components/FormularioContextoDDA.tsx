@@ -107,7 +107,7 @@ export function FormularioContextoDDA({
               className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer disabled:cursor-not-allowed"
             />
             <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            <span>Usar Parâmetros Padrão Homologados (Fallback Figura 5)</span>
+            <span>Usar Parâmetros Padrão Homologados</span>
           </label>
         )}
       </div>

@@ -148,7 +148,7 @@ describe("Card 4.2 — GraficoEvolutivoResultado (Front-end 2 — Luma Maiara)",
       );
 
       // Badge de Modo Livre em destaque
-      expect(screen.getByText("Modo Livre: Sem DDA (RN01)")).toBeDefined();
+      expect(screen.getByText("Modo Livre: Sem DDA")).toBeDefined();
 
       // Marcadores de DDA não devem ser renderizados
       expect(screen.queryByTestId("marcador-dda-2")).toBeNull();

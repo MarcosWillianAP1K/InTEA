@@ -121,7 +121,7 @@ export function ControlesClinicos({
           onClick={onAbrirAnotacoes}
           title={
             isModoLivre
-              ? "Partidas em Modo Livre não registram anotações no prontuário (RN01)"
+              ? "Partidas em Modo Livre não registram anotações no prontuário"
               : "Anotações Clínicas da Sessão"
           }
           className="flex items-center justify-center gap-2 font-semibold text-xs rounded-xl min-h-11 min-w-11 px-4 py-2.5 border-border bg-card hover:bg-muted text-foreground transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

@@ -27,6 +27,7 @@ export interface AnotacaoClinica {
   sessao_id: string | null;
   conteudo: string;
   soft_delete: boolean;
+  status_ativo?: boolean;
   created_at: string;
   updated_at: string;
   autor?: AnotacaoAutorInfo;
@@ -84,8 +85,13 @@ function mapearAnotacaoComAutor(raw: Record<string, unknown>): AnotacaoClinica {
     autor = resto.autor as AnotacaoAutorInfo;
   }
 
+  const soft_delete = Boolean(raw.soft_delete);
+  const status_ativo = !Boolean(raw.soft_delete);
+
   return {
     ...(resto as unknown as AnotacaoClinica),
+    soft_delete,
+    status_ativo,
     ...(autor ? { autor } : {}),
   };
 }
@@ -107,7 +113,7 @@ export class AnotacaoClinicaModel {
           sessao_id: dto.sessao_id || null,
           conteudo: dto.conteudo.trim(),
         })
-        .select('*')
+        .select('*, terapeuta:terapeuta_id(id, nome, registro_profissional, crefito, especialidade)')
         .single();
 
       if (error || !data) {
@@ -115,7 +121,7 @@ export class AnotacaoClinicaModel {
         return null;
       }
 
-      return data as AnotacaoClinica;
+      return mapearAnotacaoComAutor(data as Record<string, unknown>);
     } catch (err) {
       console.error('[AnotacaoClinicaModel] Exceção ao criar anotação clínica:', err);
       return null;
@@ -167,7 +173,6 @@ export class AnotacaoClinicaModel {
   ): Promise<AnotacaoClinica[]> {
     try {
       const efetivoIncluirDeletadas = filtros?.incluirDeletadas ?? incluirDeletadas;
-      const efetivoSomenteSemSessao = filtros?.somenteSemSessao ?? somenteSemSessao;
 
       let query = supabase
         .from('anotacao_clinica')
@@ -179,7 +184,11 @@ export class AnotacaoClinicaModel {
         query = query.eq('soft_delete', false);
       }
 
-      if (efetivoSomenteSemSessao) {
+      if (filtros?.somenteSemSessao === true) {
+        query = query.is('sessao_id', null);
+      } else if (filtros?.somenteSemSessao === false) {
+        query = query.not('sessao_id', 'is', null);
+      } else if (somenteSemSessao) {
         query = query.is('sessao_id', null);
       }
 

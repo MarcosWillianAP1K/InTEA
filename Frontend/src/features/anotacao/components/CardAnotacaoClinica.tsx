@@ -76,7 +76,7 @@ export function CardAnotacaoClinica({
   );
   const temPermissaoEdicao = Boolean(podeEditar ?? ehAutor);
 
-  const isInativa = anotacao.soft_delete || !anotacao.status_ativo;
+  const isInativa = anotacao.soft_delete === true || anotacao.status_ativo === false;
   const ocupado = isSubmitting || salvandoLocal;
 
   // Extração de autoria com prioridade absoluta aos metadados completos (RF21)
@@ -147,7 +147,7 @@ export function CardAnotacaoClinica({
                 {autorNome}
               </span>
               <span
-                title="Autoria profissional indelével verificada (RF21)"
+                title="Autoria profissional verificada"
                 className="inline-flex items-center"
               >
                 <ShieldCheck className="h-3.5 w-3.5 text-primary" />
@@ -287,7 +287,7 @@ export function CardAnotacaoClinica({
           <div className="flex items-center gap-2 text-destructive font-medium">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             <span>
-              Deseja realmente inativar esta anotação? (Exclusão lógica preservada no histórico — RN05)
+              Deseja realmente inativar esta anotação? O registro será arquivado no histórico clínico.
             </span>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">

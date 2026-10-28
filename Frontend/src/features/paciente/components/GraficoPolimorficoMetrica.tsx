@@ -118,7 +118,7 @@ export function GraficoPolimorficoMetrica({
             </div>
             <div>
               <CardTitle className="text-sm font-bold text-destructive flex items-center gap-2">
-                Inconsistência de Tipagem Clínica (RN02)
+                Inconsistência de Tipagem Clínica
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Métrica: <strong className="text-foreground">{serie.nome_metrica || serie.id_metrica}</strong>
@@ -130,7 +130,7 @@ export function GraficoPolimorficoMetrica({
             variant="destructive"
             className="text-2xs font-semibold px-2.5 py-0.5 rounded-full shrink-0"
           >
-            Violação RN02
+            Tipo Incompatível
           </Badge>
         </CardHeader>
 
@@ -145,8 +145,7 @@ export function GraficoPolimorficoMetrica({
               <span className="font-mono text-destructive font-bold">
                 &ldquo;{serie.tipo_metrica || "vazio/indefinido"}&rdquo;
               </span>
-              ). Conforme a regra clínica <strong>RN02</strong> do InTEA, é terminantemente proibido
-              converter métricas heterogêneas ou sem tipagem estrita por fallback automático para
+              ). É terminantemente proibido converter métricas heterogêneas ou sem tipagem estrita por fallback automático para
               preservar a integridade diagnóstica do prontuário do paciente.
             </p>
           </div>

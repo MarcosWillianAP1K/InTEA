@@ -167,7 +167,7 @@ describe("Card 4.1 — MetricasConsolidadasCards (Front-end 2 — Luma Maiara)",
       expect(screen.getByTestId("card-intervencoes-dda-valor").textContent).toBe(
         "--"
       );
-      expect(screen.getByText("Inativo (RN01)")).toBeDefined();
+      expect(screen.getByText("Inativo (Modo Livre)")).toBeDefined();
     });
   });
 

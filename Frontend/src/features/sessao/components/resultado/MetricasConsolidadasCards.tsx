@@ -241,7 +241,7 @@ export function MetricasConsolidadasCards({
                 variant="outline"
                 className="text-2xs font-semibold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 shrink-0"
               >
-                Inativo (RN01)
+                Inativo (Modo Livre)
               </Badge>
             ) : (
               <Badge

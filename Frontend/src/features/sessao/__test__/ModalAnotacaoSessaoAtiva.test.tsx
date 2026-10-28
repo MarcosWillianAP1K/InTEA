@@ -291,9 +291,9 @@ describe("Feature: Modal de Anotação Clínica em Tempo Real no Cockpit de Sess
       expect(screen.getByTestId("erro-salvar-anotacao")).toBeDefined();
     });
 
-    expect(screen.getByTestId("erro-salvar-anotacao").textContent).toContain("RN04");
+    expect(screen.getByTestId("erro-salvar-anotacao").textContent).toContain("Acesso negado");
     expect(toast.error).toHaveBeenCalledWith(
-      "Acesso negado: terapeuta sem vínculo ativo nesta clínica ou prontuário (RN04)."
+      "Acesso negado: terapeuta sem vínculo ativo nesta clínica ou prontuário."
     );
 
     // O texto permanece no textarea para não perder dados
@@ -338,7 +338,7 @@ describe("Feature: Modal de Anotação Clínica em Tempo Real no Cockpit de Sess
     );
 
     expect(btnAnotacoes.hasAttribute("disabled")).toBe(true);
-    expect(btnAnotacoes.getAttribute("title")).toContain("RN01");
+    expect(btnAnotacoes.getAttribute("title")).toContain("Modo Livre");
   });
 
   it("9. CardSessaoAtiva: deve exibir identificação completa e respeitar botão de anotação rápida com RN01", () => {
@@ -382,6 +382,6 @@ describe("Feature: Modal de Anotação Clínica em Tempo Real no Cockpit de Sess
 
     expect(screen.getByTestId("card-paciente-nome").textContent).toContain("Modo Livre");
     expect(btnAnotar.hasAttribute("disabled")).toBe(true);
-    expect(btnAnotar.getAttribute("title")).toContain("RN01");
+    expect(btnAnotar.getAttribute("title")).toContain("Modo Livre");
   });
 });

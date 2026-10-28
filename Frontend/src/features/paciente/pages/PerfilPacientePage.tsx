@@ -121,7 +121,7 @@ export function PerfilPacientePage() {
         <AlertCircle className="h-10 w-10 text-amber-500" />
         <h2 className="text-lg font-bold text-foreground">Paciente não localizado</h2>
         <p className="text-xs text-muted-foreground max-w-sm">
-          O paciente solicitado não existe ou você não possui vínculo clínico autorizado (RN04).
+          O paciente solicitado não existe ou você não possui vínculo clínico autorizado.
         </p>
         <Button onClick={() => navigate("/pacientes")} variant="outline" size="sm">
           Voltar para Pacientes

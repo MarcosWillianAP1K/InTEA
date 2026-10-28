@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import { useState, useEffect, type ChangeEvent, type KeyboardEvent } from "react";
 import type { FiltroAnotacaoDTO } from "../types/anotacao.types";
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
@@ -33,6 +33,29 @@ export function FiltrosAnotacoesClinicas({
   desabilitado = false,
   className = "",
 }: FiltrosAnotacoesClinicasProps) {
+  // Estado local para digitação fluida sem engasgos ou submissão a cada caractere
+  const [termoBusca, setTermoBusca] = useState(filtros.busca || "");
+
+  // Sincroniza estado local se o filtro externo for resetado
+  useEffect(() => {
+    setTermoBusca(filtros.busca || "");
+  }, [filtros.busca]);
+
+  // Debounce de 400ms para aplicar o termo de busca sem travar a interface
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (termoBusca !== (filtros.busca || "")) {
+        onFiltrosChange({
+          ...filtros,
+          busca: termoBusca,
+          page: 1,
+        });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [termoBusca, filtros, onFiltrosChange]);
+
   const temFiltroAtivo = Boolean(
     filtros.busca ||
       filtros.terapeutaId ||
@@ -43,11 +66,25 @@ export function FiltrosAnotacoesClinicas({
   );
 
   function handleBuscaChange(e: ChangeEvent<HTMLInputElement>) {
-    onFiltrosChange({
-      ...filtros,
-      busca: e.target.value,
-      page: 1,
-    });
+    setTermoBusca(e.target.value);
+  }
+
+  function handleBuscaKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (termoBusca !== (filtros.busca || "")) {
+        onFiltrosChange({
+          ...filtros,
+          busca: termoBusca,
+          page: 1,
+        });
+      }
+    }
+  }
+
+  function handleLimparBusca() {
+    setTermoBusca("");
+    onFiltrosChange({ ...filtros, busca: "", page: 1 });
   }
 
   function handleOrigemChange(e: ChangeEvent<HTMLSelectElement>) {
@@ -111,22 +148,23 @@ export function FiltrosAnotacoesClinicas({
       className={`flex flex-col gap-3 rounded-2xl border border-border bg-card/60 p-4 shadow-xs ${className}`}
     >
       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-        {/* Campo de Busca Textual (RF19) */}
+        {/* Campo de Busca Textual */}
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
             type="search"
             data-testid="input-busca-anotacao"
             placeholder="Buscar por termo clínico, sintoma ou palavra-chave..."
-            value={filtros.busca || ""}
+            value={termoBusca}
             onChange={handleBuscaChange}
+            onKeyDown={handleBuscaKeyDown}
             disabled={desabilitado}
-            className="pl-9.5 pr-8 min-h-[44px] rounded-xl bg-background border-border text-sm"
+            className="pl-9.5 pr-8 min-h-11 rounded-xl bg-background border-border text-sm"
           />
-          {filtros.busca && (
+          {termoBusca && (
             <button
               type="button"
-              onClick={() => onFiltrosChange({ ...filtros, busca: "", page: 1 })}
+              onClick={handleLimparBusca}
               disabled={desabilitado}
               className="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer rounded-lg"
               title="Limpar busca"
@@ -222,7 +260,7 @@ export function FiltrosAnotacoesClinicas({
             className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer disabled:cursor-not-allowed"
           />
           <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-          <span>Exibir anotações inativas (Histórico RN05)</span>
+          <span>Exibir anotações inativas (Histórico)</span>
         </label>
 
         {temFiltroAtivo && (
@@ -232,7 +270,7 @@ export function FiltrosAnotacoesClinicas({
             size="sm"
             onClick={handleLimparFiltros}
             disabled={desabilitado}
-            className="min-h-[44px] min-w-[44px] px-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            className="min-h-11 min-w-11 px-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
             data-testid="botao-limpar-filtros"
           >
             <X className="h-3.5 w-3.5 mr-1" />

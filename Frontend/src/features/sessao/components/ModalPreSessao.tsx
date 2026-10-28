@@ -426,7 +426,7 @@ export function ModalPreSessao() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="modo-livre">
-                      🎮 Modo Livre (Partida Avulsa — Sem Paciente / RN01)
+                      🎮 Modo Livre (Partida Avulsa — Sem Paciente)
                     </SelectItem>
                     {listaPacientes.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
@@ -452,7 +452,7 @@ export function ModalPreSessao() {
                     variant="outline"
                     className="text-2xs text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30"
                   >
-                    Modo Livre (RN01)
+                    Modo Livre
                   </Badge>
                 )}
               </div>
@@ -464,7 +464,7 @@ export function ModalPreSessao() {
                 >
                   <p className="font-semibold">Partida em Modo Livre (Sem Prontuário)</p>
                   <p className="text-2xs text-muted-foreground mt-1">
-                    Conforme a regra RN01, partidas em modo livre suprimem a injeção de contexto DDA e não persistem telemetria no prontuário.
+                    Partidas em modo livre suprimem a injeção de contexto DDA e não persistem telemetria no prontuário.
                   </p>
                 </div>
               ) : (

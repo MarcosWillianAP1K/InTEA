@@ -92,7 +92,7 @@ export function PainelInsightsIA({
                 variant="outline"
                 className="text-2xs font-semibold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
               >
-                RN01
+                Modo Livre
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground max-w-lg mx-auto">

@@ -674,10 +674,10 @@ export function SettingsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base text-red-600 dark:text-red-400">
               <AlertTriangle className="h-5 w-5 text-red-600" />
-              Desativar Conta Clínica (Soft Delete)
+              Desativar Conta Clínica
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
-              Esta ação desativará permanentemente o acesso da sua conta (RN05). O histórico
+              Esta ação desativará permanentemente o acesso da sua conta. O histórico
               clínico de pacientes, telemetria e registros de auditoria serão preservados de
               acordo com as normas de saúde.
             </DialogDescription>

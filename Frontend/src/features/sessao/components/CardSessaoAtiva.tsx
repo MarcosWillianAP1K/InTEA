@@ -168,7 +168,7 @@ export function CardSessaoAtiva({
           onClick={onAbrirAnotacoes}
           title={
             modoLivreEfetivo
-              ? "Partidas em Modo Livre não registram anotações no prontuário (RN01)"
+              ? "Partidas em Modo Livre não registram anotações no prontuário"
               : "Registrar anotação clínica na sessão ativa"
           }
           className="flex items-center gap-2 text-xs font-semibold rounded-xl min-h-11 min-w-11 px-4 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

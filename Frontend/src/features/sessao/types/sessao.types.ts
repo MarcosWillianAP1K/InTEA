@@ -96,6 +96,7 @@ export interface Sessao {
     id: string;
     nome: string;
     registro_profissional?: string;
+    crefito?: string | null;
   } | null;
 }
 
@@ -223,6 +224,7 @@ export interface ResultadoSessao {
     id: string;
     nome: string;
     registro_profissional?: string;
+    crefito?: string | null;
   } | null;
   metricas_consolidadas?: MetricasConsolidadas;
   dados_ia?: RelatorioIAResultado | null;

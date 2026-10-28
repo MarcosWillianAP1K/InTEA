@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { http, ENDPOINTS } from "@/core/api";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
+import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import {
   sessaoService,
   type DadosResultadoSessao,
@@ -205,6 +206,9 @@ export function ResultadoSessaoPage({
 
   const identificadorSessao = propSessaoId || paramSessaoId;
 
+  // Terapeuta logado e perfil de autoria clínica (RF21)
+  const user = useAuthStore((state) => state.user);
+
   // Estado do Store local (caso tenha acabado de vir do Cockpit)
   const storeConfig = useSessionStore((state) => state.config);
   const storeAnotacoes = useSessionStore((state) => state.anotacoesClinicas);
@@ -263,11 +267,14 @@ export function ResultadoSessaoPage({
               id: storeConfig?.jogoId || "jogo-1",
               titulo: storeConfig?.jogoTitulo || "Jogo Terapêutico",
             },
-            terapeuta: {
-              id: "terap-1",
-              nome: "Hermeson Alves",
-              registro_profissional: "CRP 11/04589",
-            },
+            terapeuta: user
+              ? {
+                  id: user.id,
+                  nome: user.nome,
+                  registro_profissional:
+                    user.registro_profissional || user.crefito || "Registro Profissional",
+                }
+              : null,
             dados_ia: {
               token_sessao: storeToken || identificadorSessao || "token",
               duracao_segundos: 1200,
@@ -293,9 +300,10 @@ export function ResultadoSessaoPage({
                   {
                     id: "anot-preliminar",
                     conteudo: storeAnotacoes,
-                    terapeuta_id: "terap-1",
-                    terapeuta_nome: "Hermeson Alves",
-                    registro_profissional: "CRP 11/04589",
+                    terapeuta_id: user?.id || "terap-1",
+                    terapeuta_nome: user?.nome || "Terapeuta Responsável",
+                    registro_profissional:
+                      user?.registro_profissional || user?.crefito || "Registro Profissional",
                     created_at: new Date().toISOString(),
                   },
                 ]
@@ -535,9 +543,16 @@ export function ResultadoSessaoPage({
   const isModoLivre = Boolean(dados.is_modo_livre || !dados.paciente);
   const nomePaciente = dados.paciente?.nome || "Modo Livre (Sem Prontuário)";
   const tituloJogo = dados.jogo?.titulo || "Jogo Terapêutico";
-  const nomeTerapeuta = dados.terapeuta?.nome || "Hermeson Alves";
+  const nomeTerapeuta =
+    dados.terapeuta?.nome ||
+    user?.nome ||
+    "Terapeuta Responsável";
   const registroTerapeuta =
-    dados.terapeuta?.registro_profissional || "CRP 11/04589";
+    dados.terapeuta?.registro_profissional ||
+    dados.terapeuta?.crefito ||
+    user?.registro_profissional ||
+    user?.crefito ||
+    "Registro Profissional";
 
   const taxaConclusao =
     dados.dados_ia?.resumo?.taxa_conclusao ??
@@ -782,7 +797,7 @@ export function ResultadoSessaoPage({
                   variant="outline"
                   className="bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/20 text-xs font-semibold px-2.5 py-0.5"
                 >
-                  Modo Livre (RN01)
+                  Modo Livre
                 </Badge>
               ) : (
                 <Badge

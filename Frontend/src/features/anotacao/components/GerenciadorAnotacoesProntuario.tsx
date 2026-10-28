@@ -124,9 +124,8 @@ export function GerenciadorAnotacoesProntuario({
   const anotacoesFiltradas = useMemo(() => {
     return anotacoes.filter((a) => {
       // Filtro de inativos (RN05)
-      if (!filtros.incluirInativos && (a.soft_delete || !a.status_ativo)) {
-        return false;
-      }
+      const isDeletada = a.soft_delete === true || a.status_ativo === false;
+      if (!filtros.incluirInativos && isDeletada) return false;
 
       // Filtro por termo de busca (RF19)
       if (filtros.busca && filtros.busca.trim()) {
@@ -177,7 +176,7 @@ export function GerenciadorAnotacoesProntuario({
       paciente_id: pacienteId,
       sessao_id: sessaoId || null,
       conteudo: novoTexto.trim(),
-      terapeuta_id: idTerapeutaFinal,
+      terapeuta_id: usuarioLogadoId || authUser?.id || undefined,
     };
 
     try {

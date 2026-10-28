@@ -233,7 +233,7 @@ export function CockpitSessaoPage() {
 
       if (isModoLivre) {
         toast.info(
-          "Partida em Modo Livre concluída sem persistência em prontuário (RN01)."
+          "Partida em Modo Livre concluída sem persistência em prontuário."
         );
         navigate("/games");
       } else {

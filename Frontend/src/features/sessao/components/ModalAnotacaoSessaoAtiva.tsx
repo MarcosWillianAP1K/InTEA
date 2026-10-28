@@ -143,7 +143,7 @@ export function ModalAnotacaoSessaoAtiva({
 
     // Validações de guarda (RN01, tamanho mínimo e concorrência)
     if (isModoLivre || !pacienteId) {
-      toast.info("Partidas em Modo Livre não registram anotações no prontuário (RN01).");
+      toast.info("Partidas em Modo Livre não registram anotações no prontuário.");
       return;
     }
 
@@ -195,7 +195,7 @@ export function ModalAnotacaoSessaoAtiva({
 
       if (isForbidden) {
         const msgFormatada =
-          "Acesso negado: terapeuta sem vínculo ativo nesta clínica ou prontuário (RN04).";
+          "Acesso negado: terapeuta sem vínculo ativo nesta clínica ou prontuário.";
         setErroSalvar(msgFormatada);
         toast.error(msgFormatada);
       } else {
@@ -270,7 +270,7 @@ export function ModalAnotacaoSessaoAtiva({
             >
               <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
               <span>
-                <strong>Aviso de Conformidade (RN01):</strong> Partidas em Modo Livre não
+                <strong>Aviso:</strong> Partidas em Modo Livre não
                 registram anotações no prontuário clínico.
               </span>
             </div>

@@ -6,7 +6,32 @@
 -- Sessão ID:    44444444-4444-4444-8444-444444444444
 -- ==============================================================================
 
--- 1. Vínculo Institucional do Terapeuta com o Paciente (RN04)
+-- 1. Garante Perfil do Terapeuta na Tabela terapeuta (caso já exista em auth.users)
+INSERT INTO public.terapeuta (
+    id,
+    nome,
+    email,
+    registro_profissional,
+    crefito,
+    status_ativo
+)
+SELECT 
+    'a9849163-613f-4492-90cf-89985902d16e'::uuid,
+    'Dr. Marcos Willian',
+    'marcos.terapeuta@intea.clinica',
+    'CRP 11/09876',
+    'CRP 11/09876',
+    true
+WHERE EXISTS (
+    SELECT 1 FROM auth.users WHERE id = 'a9849163-613f-4492-90cf-89985902d16e'::uuid
+)
+ON CONFLICT (id) DO UPDATE
+SET
+    nome = EXCLUDED.nome,
+    registro_profissional = EXCLUDED.registro_profissional,
+    crefito = EXCLUDED.crefito;
+
+-- 2. Vínculo Institucional do Terapeuta com o Paciente (RN04)
 INSERT INTO public.terapeuta_paciente (terapeuta_id, paciente_id, created_at)
 VALUES (
     'a9849163-613f-4492-90cf-89985902d16e',
@@ -15,7 +40,7 @@ VALUES (
 )
 ON CONFLICT (terapeuta_id, paciente_id) DO NOTHING;
 
--- 2. Sessão Clínica Finalizada (RF10, RF12, RF14, RN01, RN03)
+-- 3. Sessão Clínica Finalizada (RF10, RF12, RF14, RN01, RN03)
 INSERT INTO public.sessao (
     id,
     terapeuta_id,

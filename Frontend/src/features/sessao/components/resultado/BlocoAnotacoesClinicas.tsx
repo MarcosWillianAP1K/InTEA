@@ -1,5 +1,6 @@
 import { useState, useId } from "react";
 import { sessaoService } from "../../services/sessaoService";
+import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { Button } from "@/shared/components/ui/button";
 import {
   FileText,
@@ -46,11 +47,20 @@ export function BlocoAnotacoesClinicas({
   anotacaoId: anotacaoIdProp,
   anotacaoInicial = "",
   anotacoesSessao = [],
-  terapeutaNome = "Hermeson Alves",
-  terapeutaRegistro = "CRP 11/04589",
+  terapeutaNome: terapeutaNomeProp,
+  terapeutaRegistro: terapeutaRegistroProp,
   onSalvar,
   readOnly = false,
 }: BlocoAnotacoesClinicasProps) {
+  const user = useAuthStore((state) => state.user);
+  const terapeutaNome =
+    terapeutaNomeProp || user?.nome || "Terapeuta Responsável";
+  const terapeutaRegistro =
+    terapeutaRegistroProp ||
+    user?.registro_profissional ||
+    user?.crefito ||
+    "Registro Profissional";
+
   const [conteudo, setConteudo] = useState(anotacaoInicial);
   const [anotacaoId, setAnotacaoId] = useState<string | undefined>(anotacaoIdProp);
   const [statusSalvar, setStatusSalvar] = useState<
@@ -127,7 +137,7 @@ export function BlocoAnotacoesClinicas({
               Anotações Clínicas & Parecer do Terapeuta
             </h3>
             <p className="text-xs text-muted-foreground">
-              Observações qualitativas consolidadas no prontuário do paciente (RF16)
+              Observações qualitativas consolidadas no prontuário do paciente
             </p>
           </div>
         </div>

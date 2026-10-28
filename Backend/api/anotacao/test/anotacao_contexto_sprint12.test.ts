@@ -278,12 +278,14 @@ describe('Sprint 12 - Enriquecimento de Autoria, Reativação e Filtros de Anota
       const lteSpy = vi.fn().mockReturnThis();
       const ilikeSpy = vi.fn().mockReturnThis();
       const isSpy = vi.fn().mockReturnThis();
+      const notSpy = vi.fn().mockReturnThis();
       const orderSpy = vi.fn().mockReturnThis();
 
       const mockQueryBuilder: Record<string, unknown> = {
         eq: eqSpy,
         order: orderSpy,
         is: isSpy,
+        not: notSpy,
         gte: gteSpy,
         lte: lteSpy,
         ilike: ilikeSpy,
@@ -294,6 +296,7 @@ describe('Sprint 12 - Enriquecimento de Autoria, Reativação e Filtros de Anota
       eqSpy.mockReturnValue(mockQueryBuilder);
       orderSpy.mockReturnValue(mockQueryBuilder);
       isSpy.mockReturnValue(mockQueryBuilder);
+      notSpy.mockReturnValue(mockQueryBuilder);
       gteSpy.mockReturnValue(mockQueryBuilder);
       lteSpy.mockReturnValue(mockQueryBuilder);
       ilikeSpy.mockReturnValue(mockQueryBuilder);
@@ -391,7 +394,7 @@ describe('Sprint 12 - Enriquecimento de Autoria, Reativação e Filtros de Anota
       expect(res.sucesso).toBe(true);
       expect(res.status).toBe(200);
       expect(res.dados).toEqual(mockLista);
-      expect(spyModel).toHaveBeenCalledWith(pacienteId, false, true, filtros);
+      expect(spyModel).toHaveBeenCalledWith(pacienteId, false, false, filtros);
     });
 
     it('reativar: deve retornar 400 se o UUID for inválido', async () => {

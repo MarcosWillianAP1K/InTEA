@@ -58,6 +58,28 @@ function serializarFiltros(
 }
 
 /**
+ * Normalizes a raw clinical annotation object ensuring strictly defined RN05 boolean flags.
+ *
+ * @param raw - Raw candidate clinical note object.
+ * @returns Validated AnotacaoClinica entity, or null if invalid or malformed.
+ */
+function normalizarAnotacao(raw: unknown): AnotacaoClinica | null {
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as Record<string, unknown>;
+  if (!a.id || typeof a.id !== "string") return null;
+
+  const soft_delete = Boolean(a.soft_delete);
+  const status_ativo =
+    typeof a.status_ativo === "boolean" ? a.status_ativo : !soft_delete;
+
+  return {
+    ...(a as unknown as AnotacaoClinica),
+    soft_delete,
+    status_ativo,
+  };
+}
+
+/**
  * Extracts and normalizes a single clinical annotation entity from various API response shapes.
  *
  * @param resposta - Raw HTTP API response or direct annotation entity.
@@ -70,11 +92,11 @@ function extrairAnotacao(
   if ("data" in resposta && resposta.data) {
     const d = resposta.data as Record<string, unknown>;
     if ("anotacao" in d && d.anotacao) {
-      return d.anotacao as AnotacaoClinica;
+      return normalizarAnotacao(d.anotacao);
     }
-    return resposta.data as AnotacaoClinica;
+    return normalizarAnotacao(resposta.data);
   }
-  return resposta as AnotacaoClinica;
+  return normalizarAnotacao(resposta);
 }
 
 /**
@@ -87,13 +109,22 @@ function extrairListaAnotacoes(
   resposta: AnotacoesListaRespostaApi | AnotacaoClinica[] | { data?: unknown } | null | undefined,
 ): AnotacaoClinica[] {
   if (!resposta) return [];
-  if (Array.isArray(resposta)) return resposta;
-  if ("data" in resposta && resposta.data) {
-    if (Array.isArray(resposta.data)) return resposta.data;
-    const d = resposta.data as Record<string, unknown>;
-    if (Array.isArray(d.anotacoes)) return d.anotacoes as AnotacaoClinica[];
+  let lista: unknown[] = [];
+  if (Array.isArray(resposta)) {
+    lista = resposta;
+  } else if ("data" in resposta && resposta.data) {
+    if (Array.isArray(resposta.data)) {
+      lista = resposta.data;
+    } else {
+      const d = resposta.data as Record<string, unknown>;
+      if (Array.isArray(d.anotacoes)) {
+        lista = d.anotacoes;
+      }
+    }
   }
-  return [];
+  return lista
+    .map(normalizarAnotacao)
+    .filter((a): a is AnotacaoClinica => a !== null);
 }
 
 export const anotacaoService = {
