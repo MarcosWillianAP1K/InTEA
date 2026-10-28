@@ -426,7 +426,7 @@ export function ModalPreSessao() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="modo-livre">
-                      🎮 Modo Livre (Partida Avulsa — Sem Paciente)
+                      Modo Livre (Partida Avulsa — Sem Paciente)
                     </SelectItem>
                     {listaPacientes.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
