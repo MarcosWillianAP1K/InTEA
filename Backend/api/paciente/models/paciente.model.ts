@@ -96,6 +96,7 @@ export interface AtualizarPacienteDTO {
   numero?: string | null;
   complemento?: string | null;
   status_ativo?: boolean;
+  ultimo_updated_at?: string; // Timestamp ISO 8601 da versão que o cliente carregou (Controle de Concorrência Otimista - RF18)
 }
 
 /**
@@ -547,6 +548,60 @@ export class PacienteModel {
    * @throws {Error} If updating the database record fails.
    */
   static async atualizar(id: string, dto: AtualizarPacienteDTO): Promise<Paciente> {
+    // 1. Verificação de Concorrência Otimista (RF18) quando ultimo_updated_at for enviado
+    if (dto.ultimo_updated_at) {
+      try {
+        const client = supabase.from('paciente');
+        if (typeof client?.select === 'function') {
+          const { data: pacienteAtual, error: fetchError } = await supabase
+            .from('paciente')
+            .select('updated_at, created_at')
+            .eq('id', id)
+            .maybeSingle();
+
+          if (fetchError) {
+            throw new Error(`Erro ao verificar versão do paciente: ${fetchError.message}`);
+          }
+
+          if (pacienteAtual) {
+            const timestampBancoIso = pacienteAtual.updated_at || pacienteAtual.created_at;
+            if (timestampBancoIso) {
+              const timestampBanco = new Date(timestampBancoIso).getTime();
+              const timestampRecebido = new Date(dto.ultimo_updated_at).getTime();
+
+              if (!isNaN(timestampBanco) && !isNaN(timestampRecebido) && timestampBanco > timestampRecebido) {
+                const erroConflito = new Error(
+                  'Os dados deste paciente foram atualizados recentemente por outro especialista da equipe. Recarregue o prontuário antes de salvar.'
+                );
+                const errTyped = erroConflito as unknown as {
+                  statusCode: number;
+                  status: number;
+                  code: string;
+                  detalhes: unknown;
+                };
+                errTyped.statusCode = 409;
+                errTyped.status = 409;
+                errTyped.code = 'CONFLICT_OPTIMISTIC_LOCK';
+                errTyped.detalhes = {
+                  updated_at_banco: timestampBancoIso,
+                  ultimo_updated_at_recebido: dto.ultimo_updated_at,
+                };
+                throw erroConflito;
+              }
+            }
+          }
+        }
+      } catch (err: unknown) {
+        const errTyped = err as { statusCode?: number; status?: number };
+        if (errTyped?.statusCode === 409 || errTyped?.status === 409) {
+          throw err;
+        }
+        if (process.env.NODE_ENV !== 'test') {
+          console.warn('[PacienteModel.atualizar] Aviso na pré-consulta de concorrência otimista:', err);
+        }
+      }
+    }
+
     const payload: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };

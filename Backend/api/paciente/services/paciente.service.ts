@@ -267,7 +267,45 @@ export class PacienteService {
       throw new PacienteServiceError('Paciente não encontrado para atualização.', 404);
     }
 
-    return await PacienteModel.atualizar(id, dto);
+    // Verificação de concorrência otimista (RF18)
+    if (dto.ultimo_updated_at !== undefined) {
+      const timestampRecebido = new Date(dto.ultimo_updated_at).getTime();
+      if (isNaN(timestampRecebido)) {
+        throw new PacienteServiceError(
+          'Formato inválido para o campo ultimo_updated_at. Utilize formato ISO 8601.',
+          400
+        );
+      }
+
+      const timestampBancoIso = existente.updated_at || existente.created_at;
+      if (timestampBancoIso) {
+        const timestampBanco = new Date(timestampBancoIso).getTime();
+        if (!isNaN(timestampBanco) && timestampBanco > timestampRecebido) {
+          throw new PacienteServiceError(
+            'Os dados deste paciente foram atualizados recentemente por outro especialista da equipe. Recarregue o prontuário antes de salvar.',
+            409,
+            {
+              updated_at_banco: timestampBancoIso,
+              ultimo_updated_at_recebido: dto.ultimo_updated_at,
+            }
+          );
+        }
+      }
+    }
+
+    try {
+      return await PacienteModel.atualizar(id, dto);
+    } catch (err: unknown) {
+      const errTyped = err as { statusCode?: number; status?: number; message?: string; detalhes?: unknown };
+      if (errTyped?.statusCode === 409 || errTyped?.status === 409) {
+        throw new PacienteServiceError(
+          errTyped.message || 'Os dados deste paciente foram atualizados recentemente por outro especialista da equipe. Recarregue o prontuário antes de salvar.',
+          409,
+          errTyped.detalhes
+        );
+      }
+      throw err;
+    }
   }
 
   /**
