@@ -83,7 +83,8 @@ function mapearSessoesParaLinhaDoTempo(
 
   return filtradas
     .map((s) => {
-      let duracao = s.duracao_segundos;
+      let duracao: number | undefined =
+        typeof s.duracao_segundos === "number" ? s.duracao_segundos : undefined;
       if ((duracao === undefined || duracao <= 0) && s.data_hora_inicio && s.data_hora_fim) {
         const ini = new Date(s.data_hora_inicio).getTime();
         const fim = new Date(s.data_hora_fim).getTime();

@@ -71,6 +71,8 @@ export interface Sessao {
   session_token: string;
   modo_sessao: ModoSessao;
   status_sessao: StatusSessao;
+  duracao_segundos?: number;
+  tempo_total_segundos?: number;
   contexto_dda_json?: ContextoDDA;
   dispositivo_info?: StatusDispositivo | null;
   data_hora_inicio?: string;
@@ -273,9 +275,10 @@ export interface SalvarAnotacaoPayload {
 export interface ConfiguracaoSessao {
   jogoId: string;
   jogoTitulo: string;
-  pacienteId: string;
+  pacienteId?: string | null;
   pacienteNome: string;
   objetivoClinico?: string;
+  focoTerapeutico?: string;
   gatilhosEvitar?: string[];
   nivelEstresseInicial?: number;
   observacoesIniciais?: string;
@@ -285,6 +288,7 @@ export interface ConfiguracaoSessao {
 
 export interface DadosPareamento {
   sessionToken: string;
+  codigoFormatado?: string;
   expiraEm: string; // ISO 8601
   tempoValidadeSegundos: number;
   dispositivo?: DispositivoConectadoPayload | null;

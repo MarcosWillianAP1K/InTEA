@@ -14,6 +14,7 @@ import { USE_MOCK_DATA } from "@/core/api/http-client";
 import type {
   DashboardMetricas,
   SessaoRecenteResumo,
+  StatusSessaoResumo,
   AlertaClinico,
 } from "@/features/painel/types/dashboard.types";
 import type { Patient } from "@/features/paciente/types/paciente.types";
@@ -41,10 +42,7 @@ export function PainelPage() {
   const { patients, setSelectedPatientId, fetchPatients } = usePacienteStore();
 
   const sessaoEmAndamento = sessoesRecentes.find(
-    (s) =>
-      s.status === "em_andamento" ||
-      s.status === "conectado" ||
-      s.status === "pausada"
+    (s) => s.status === "em_andamento" || s.status === "pausada"
   );
 
   const listaPacientes: Patient[] = Object.values(patients);
@@ -125,13 +123,6 @@ export function PainelPage() {
       console.error("Erro ao sincronizar status de pausa no backend:", err);
     }
   };
-
-  function formatarDuracao(segundos?: number): string {
-    if (!segundos) return "14:00";
-    const m = Math.floor(segundos / 60);
-    const s = segundos % 60;
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  }
 
   return (
     <div className="flex flex-1 flex-col gap-8 w-full max-w-7xl mx-auto pb-12">

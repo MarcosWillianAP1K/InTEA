@@ -163,12 +163,13 @@ export function ModalPreSessao() {
 
   // Carrega automaticamente gatilhos e contexto sugerido do paciente (RF12, RF17, RN03)
   useEffect(() => {
-    if (!isModalAberto || !config?.pacienteId || config.pacienteId === "modo-livre") return;
+    const pacienteId = config?.pacienteId;
+    if (!isModalAberto || !pacienteId || pacienteId === "modo-livre") return;
 
     let isMounted = true;
-    async function carregarContextoSugerido() {
+    async function carregarContextoSugerido(idPaciente: string) {
       try {
-        const sugerido = await sessaoService.obterContextoSugerido(config!.pacienteId);
+        const sugerido = await sessaoService.obterContextoSugerido(idPaciente);
         if (!isMounted || !sugerido) return;
 
         configurarParametros({
@@ -186,7 +187,7 @@ export function ModalPreSessao() {
       }
     }
 
-    void carregarContextoSugerido();
+    void carregarContextoSugerido(pacienteId);
     return () => {
       isMounted = false;
     };

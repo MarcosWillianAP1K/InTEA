@@ -211,6 +211,7 @@ describe("Card 4.4 — Testes de Componentes e Validação no Vitest (ModalPreSe
   it("deve carregar automaticamente gatilhos e contexto sugerido do paciente via sessaoService (RN03)", async () => {
     const pacienteId = "paciente-teste-uuid";
     vi.spyOn(sessaoService, "obterContextoSugerido").mockResolvedValue({
+      origem: "ultima_sessao",
       estresse_inicial: 3,
       gatilhos_a_evitar: ["Luz Estroboscópica", "Ruído Repentino"],
       objetivo_terapeutico: "Regulação Sensorial",
