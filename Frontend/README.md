@@ -85,7 +85,7 @@ Frontend/src/
 │   │   ├── endpoints.ts                  # Constantes tipadas de todas as rotas REST (/auth, /paciente, /sessao, etc.)
 │   │   └── http-client.ts                # Cliente HTTP com injeção automática de Bearer JWT e refresh de 401
 │   └── web.socket.ts                     # Singleton SessionSocketManager (Socket.IO Client) e hooks reativos
-├── features/                             # ★ MÓDULOS VERTICAIS POR DOMÍNIO DE NEGÓCIO
+├── features/                             # MÓDULOS VERTICAIS POR DOMÍNIO DE NEGÓCIO
 │   ├── autenticacao/                     # Autenticação, registro e sessão do terapeuta
 │   │   ├── pages/                        # LoginPage.tsx
 │   │   ├── hooks/                        # useAuth.ts

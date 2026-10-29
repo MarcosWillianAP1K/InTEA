@@ -47,6 +47,13 @@ export interface ModalAnotacaoSessaoAtivaProps {
 const LIMITE_CARACTERES = 2000;
 const MINIMO_CARACTERES = 3;
 
+/**
+ * Renders real-time clinical note capture modal during active session without interrupting gameplay.
+ * Real-Time Documentation (RF13, RF16, RN01): Links observations directly to session UUID and author JWT.
+ *
+ * @param props - Modal properties including visibility state, session UUID, and submission handler
+ * @returns Clinical observation modal component
+ */
 export function ModalAnotacaoSessaoAtiva({
   aberto,
   onFechar,

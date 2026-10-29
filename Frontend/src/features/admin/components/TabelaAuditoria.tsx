@@ -51,6 +51,13 @@ export interface TabelaAuditoriaProps {
   onRecarregar?: () => void | Promise<void>;
 }
 
+/**
+ * Renders the administrative audit log table with column filtering and details drawer (RF08).
+ * Institutional Audit Trail (RF08, RNF06): Displays timestamp, therapist, action, IP, and parameters.
+ *
+ * @param props - Table properties containing audit events, pagination, and selection callbacks
+ * @returns Interactive audit table component
+ */
 export function TabelaAuditoria({
   eventos,
   loading = false,
@@ -204,7 +211,11 @@ export function TabelaAuditoria({
   };
 
   /**
-   * Padrão Canônico de Badges e Status do InTEA (Figma Pílulas)
+   * Renders color-coded badge pill for clinical audit actions conforming to Figma design specifications.
+   * Visual Governance (RF08): Distinguishes session lifecycle, medical record access, and security alerts.
+   *
+   * @param acao - Audit action identifier
+   * @returns Styled badge element
    */
   const renderBadgeAcao = (acao: string) => {
     switch (acao) {

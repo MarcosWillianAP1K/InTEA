@@ -22,10 +22,11 @@ export interface RequestComQueryRange extends Request {
 const ISO_8601_REGEX = /^\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
 
 /**
- * Valida se uma string representa uma data válida e estritamente no padrão ISO 8601.
+ * Validates whether an input string strictly conforms to the ISO 8601 calendar date format (YYYY-MM-DD).
+ * Input Validation: Rejects malformed dates and invalid calendar dates (e.g. Feb 30).
  *
- * @param valor - Valor extraído da query string.
- * @returns Objeto com Date instanciado ou null se for inválido.
+ * @param valor - Raw date string extracted from query string
+ * @returns Valid Date instance or null if invalid
  */
 function parsearDataIsoSegura(valor: unknown): Date | null {
   if (typeof valor !== 'string') {
@@ -46,11 +47,12 @@ function parsearDataIsoSegura(valor: unknown): Date | null {
 }
 
 /**
- * Verifica se a distância temporal entre duas datas ultrapassa o limite de 24 meses consecutivos.
+ * Verifies whether the temporal range between two dates exceeds the 24-month ceiling (RNF04).
+ * Retention & Window Guard (RNF04): Prevents unindexed wide table scans on longitudinal telemetry.
  *
- * @param inicio - Data inicial do intervalo.
- * @param fim - Data final do intervalo.
- * @returns true se ultrapassar 24 meses; false caso contrário.
+ * @param inicio - Start date of the querying window
+ * @param fim - End date of the querying window
+ * @returns True if interval strictly exceeds 24 months, false otherwise
  */
 function ultrapassaLimite24Meses(inicio: Date, fim: Date): boolean {
   const dataLimite = new Date(inicio.getTime());
@@ -59,15 +61,12 @@ function ultrapassaLimite24Meses(inicio: Date, fim: Date): boolean {
 }
 
 /**
- * Middleware Express para sanear parâmetros temporais (dataInicio, dataFim) e paginação (page, limit).
- * Protege o banco de dados contra exaustão de recursos, intervalos invertidos e table scans excessivos.
+ * Express middleware to sanitize temporal query filters (dataInicio, dataFim) and pagination limits.
+ * Query Optimization & Safety: Guards database against excessive table scans, inverted intervals, and resource exhaustion.
  *
- * Regras aplicadas:
- * - Validação estrita de formato ISO 8601 para dataInicio e dataFim (HTTP 400 se inválido).
- * - Bloqueio de intervalo invertido dataInicio > dataFim (HTTP 400).
- * - Bloqueio de período consecutivo superior a 24 meses (HTTP 400).
- * - Clamping de paginação: limit padrão 20, máximo 100, mínimo 1.
- * - Normalização de page: mínimo 1, padrão 1.
+ * @param req - Express request with optional date range query parameters
+ * @param res - Express response
+ * @param next - Express next middleware function
  */
 export function validarIntervaloHistorico(
   req: RequestComQueryRange,

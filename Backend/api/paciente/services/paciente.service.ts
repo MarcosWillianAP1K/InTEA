@@ -394,21 +394,33 @@ export class PacienteService {
   }
 
   /**
-   * Sanitiza e anonimiza identificadores do paciente para registro seguro em logs (RNF06).
+   * Sanitizes and redacts patient identification attributes for privacy-compliant logging (RNF06).
+   * Log Sanitization (RNF06): Masks CPF and sensitive health notes while preserving public IDs.
+   *
+   * @param paciente - Patient data object to sanitize
+   * @returns Redacted patient object safe for logging
    */
   static anonimizarParaLogs(dado: unknown): unknown {
     return CryptoService.anonimizarParaLogs(dado);
   }
 
   /**
-   * Cifra campos clínicos sensíveis via AES-256-GCM em repouso (RNF06).
+   * Encrypts sensitive clinical fields at rest using AES-256-GCM (RNF06).
+   * At-Rest Protection (RNF06): Conditionally encrypts diagnosis and notes before database insertion.
+   *
+   * @param dadosClinicos - Clinical data payload containing potential plaintext fields
+   * @returns Encrypted clinical data object
    */
   static cifrarDadoSensivel(texto: string): string {
     return CryptoService.cifrar(texto);
   }
 
   /**
-   * Decifra campos clínicos sensíveis cifrados via AES-256-GCM em repouso (RNF06).
+   * Decrypts AES-256-GCM encrypted clinical attributes upon reading from database.
+   * Transparent Decryption: Restores plaintext notes and diagnostics for authorized therapist view.
+   *
+   * @param dadosClinicos - Encrypted clinical data payload
+   * @returns Decrypted clinical data object
    */
   static decifrarDadoSensivel(texto: string): string {
     return CryptoService.decifrar(texto);

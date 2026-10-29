@@ -345,7 +345,7 @@ Frontend/src/
 │   │   ├── endpoints.ts                  # Mapa tipado de todas as URLs da API REST (/auth, /paciente, /sessao, etc.)
 │   │   └── http-client.ts                # Instância do HttpClient com injeção automática de JWT e fila de refresh 401
 │   └── web.socket.ts                     # Singleton SessionSocketManager (Socket.IO Client) e hooks reativos
-├── features/                             # ★ MÓDULOS VERTICAIS POR DOMÍNIO DE NEGÓCIO
+├── features/                             # MÓDULOS VERTICAIS POR DOMÍNIO DE NEGÓCIO
 │   ├── autenticacao/                     # Autenticação, registro e sessão do terapeuta
 │   │   ├── pages/                        # LoginPage.tsx
 │   │   ├── hooks/                        # useAuth.ts

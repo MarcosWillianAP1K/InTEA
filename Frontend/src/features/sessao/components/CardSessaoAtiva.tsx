@@ -28,6 +28,13 @@ export interface CardSessaoAtivaProps {
   className?: string;
 }
 
+/**
+ * Renders the active clinical session monitoring card with synchronized timer and quick note triggers.
+ * Active Session Cockpit (RF12, RF13, RF16): Synchronizes state with WebSocket and sessionStore.
+ *
+ * @param props - Component properties containing active session configuration and event handlers
+ * @returns Active session card component
+ */
 export function CardSessaoAtiva({
   sessaoId,
   pacienteNome = "Paciente em Atendimento",

@@ -43,7 +43,11 @@ const OPCOES_PERIODO: OpcaoConfig[] = [
 ];
 
 /**
- * Calcula a data ISO inicial retroativa com base na opção selecionada.
+ * Computes a retroactive ISO start date based on the selected quick-filter time range.
+ * Time Window Calculation (RF15): Supports 7 days, 30 days, 90 days, 6 months, and 1 year windows.
+ *
+ * @param opcao - Selected range option key ('7d' | '30d' | '90d' | '6m' | '1a')
+ * @returns ISO 8601 formatted start date string
  */
 function calcularDataInicio(opcao: OpcaoConfig, dataReferencia: Date = new Date()): string | undefined {
   if (opcao.id === "todos" || opcao.id === "personalizado") {
@@ -59,6 +63,13 @@ function calcularDataInicio(opcao: OpcaoConfig, dataReferencia: Date = new Date(
   return d.toISOString().split("T")[0];
 }
 
+/**
+ * Renders advanced filter controls for longitudinal patient history (RF15, RF19).
+ * Query Filtering: Allows selecting target game, date range, and quick temporal intervals.
+ *
+ * @param props - Component properties including current filters, available games, and change callback
+ * @returns Filter bar component
+ */
 export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> = ({
   filtros,
   onAlterarFiltros,

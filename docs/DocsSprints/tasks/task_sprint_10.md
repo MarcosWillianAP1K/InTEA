@@ -29,7 +29,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Database/migrations/008_create_tabela_relatorio_e_anotacao.sql`, `Database/database.sql`, `Backend/api/sessao/models/relatorio.model.ts`, `Backend/api/anotacao/models/anotacao.model.ts`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Cria a base relacional formal e os models TypeScript para que as rotas de resultados e o motor analítico de João Marcos possam operar.
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Cria a base relacional formal e os models TypeScript para que as rotas de resultados e o motor analítico de João Marcos possam operar.
 * **Requisitos:** RF14, RF16, RN05, RNF06
 * **Referência Documentação:** Seção 5.7 (Figura 4), RF14, RF16, RN05, AGENTS.md (Seção 6.2)
 * **Descrição:** Criar migração SQL `008_create_tabela_relatorio_e_anotacao.sql` e atualizar `database.sql` garantindo conformidade rigorosa com a 3ª Forma Normal (**3FN**): a tabela `relatorio_sessao` vincula unicamente `sessao_id UUID UNIQUE NOT NULL REFERENCES public.sessao(id) ON DELETE RESTRICT` e armazena `dados_ia_json JSONB`, parecer e `soft_delete`, **sem duplicar redundantemente `paciente_id`** (já unívoco em `sessao`, suportando **RN01** onde modo livre tem `paciente_id = NULL`). A tabela `anotacao_clinica` contém `paciente_id UUID NOT NULL REFERENCES public.paciente(id)`, `terapeuta_id UUID NOT NULL REFERENCES public.terapeuta(id)`, `sessao_id UUID REFERENCES public.sessao(id) ON DELETE SET NULL`, `conteudo TEXT NOT NULL` e `soft_delete BOOLEAN DEFAULT FALSE`. Implementar models TypeScript estritos e auditar políticas RLS para ambas as tabelas prevenindo bloqueios acidentais (`42501`).
@@ -105,7 +105,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Backend/api/telemetria/services/telemetria-agregacao.service.ts`, `Backend/api/telemetria/routes/telemetria.routes.ts`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 3)**. Operação em memória/queries analíticas. Fornece os cálculos consolidados para a síntese analítica da IA (Card 2.2) e para o relatório clínico.
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 3)**. Operação em memória/queries analíticas. Fornece os cálculos consolidados para a síntese analítica da IA (Card 2.2) e para o relatório clínico.
 * **Requisitos:** RF14, RNF04, RN02
 * **Referência Documentação:** Seção 7.4.2 (Contrato 4), RF14, RNF04, RN02
 * **Descrição:** Construir serviço especializado para compilar e sumarizar os eventos brutos registrados na tabela `telemetria_evento` de uma sessão finalizada: cálculo de tempo médio e mediana de reação/resposta, taxa de precisão de toques (acertos vs. erros), métricas de estabilidade de atenção por janelas temporais e contagem de eventos por tipo. Respeitar rigorosamente a tipagem estrita de cada indicador do manifesto (**RN02**), sem fallback automático.
@@ -179,7 +179,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Frontend/src/features/sessao/pages/ResultadoSessaoPage.tsx`, `Frontend/src/App.tsx` (ou rotas da aplicação)
-* **Ordem de Execução / Dependência:** ⚠️ **INTEGRAÇÃO SEQUENCIAL (Dias 1 a 3 Layout e Casca; Dias 4/5 Importa Componentes da Luma e Serviços do Backend)**.  
+* **Ordem de Execução / Dependência:** **INTEGRAÇÃO SEQUENCIAL (Dias 1 a 3 Layout e Casca; Dias 4/5 Importa Componentes da Luma e Serviços do Backend)**.  
   * *Dias 1 a 3:* Cria a casca da página `/sessao/:id/resultado`, cabeçalho do paciente, dados da sessão e placeholders/slots estruturais para os componentes analíticos.  
   * *Dias 4/5:* Importa os componentes analíticos entregues por Luma Maiara (`<MetricasConsolidadasCards />`, `<GraficoEvolutivoResultado />`, `<PainelInsightsIA />`) e conecta ao endpoint `GET /api/sessao/:id/resultado` de Marcos Willian.  
   * *Zona Proibida:* É **PROIBIDO** editar arquivos dentro de `Frontend/src/features/sessao/components/resultado/` designados a Luma.
@@ -256,7 +256,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Frontend/src/features/sessao/components/resultado/MetricasConsolidadasCards.tsx`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE ENTREGAR PRIMEIRO (Dias 1 a 3)**.  
+* **Ordem de Execução / Dependência:** **DEVE ENTREGAR PRIMEIRO (Dias 1 a 3)**.  
   * Constrói os cards modulares e puros em `components/resultado/` testando isoladamente com dados mockados.  
   * Entrega no Dia 3/4 para Hermeson importar nos slots de `ResultadoSessaoPage.tsx`.  
   * *Zona Proibida:* É **PROIBIDO** editar `ResultadoSessaoPage.tsx` ou chamar APIs/rotas diretamente.
@@ -276,7 +276,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Frontend/src/features/sessao/components/resultado/GraficoEvolutivoResultado.tsx`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE ENTREGAR PRIMEIRO (Dias 2 a 3)**. Componente atômico para compor a página de resultados.
+* **Ordem de Execução / Dependência:** **DEVE ENTREGAR PRIMEIRO (Dias 2 a 3)**. Componente atômico para compor a página de resultados.
 * **Requisitos:** RF14, RNF04
 * **Referência Documentação:** Figura 12 (Gráfico evolutivo do tempo de resposta), RNF04
 * **Descrição:** Criar componente vetorial SVG puro e responsivo que plota a evolução da sessão: curva de tempo de resposta por tentativa ao longo dos minutos e marcadores visuais discretos sinalizando os momentos exatos em que o DDA modulou a dificuldade da partida.
@@ -293,7 +293,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Frontend/src/features/sessao/components/resultado/PainelInsightsIA.tsx`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE ENTREGAR PRIMEIRO (Dia 3)**. Componente atômico de visualização da IA.
+* **Ordem de Execução / Dependência:** **DEVE ENTREGAR PRIMEIRO (Dia 3)**. Componente atômico de visualização da IA.
 * **Requisitos:** RF14, RNF02, RN01
 * **Referência Documentação:** Contrato 4 (`relatorio.json`), Figura 12
 * **Descrição:** Implementar componente puro de exibição dos insights analíticos gerados pelo motor de IA aderente ao **Contrato 4**: lista de observações contextuais (`analises_ia[]`), tendências das métricas agregadas (estável, crescente, decrescente) e sugestões adaptativas para as próximas sessões. Para Modo Livre (**RN01**), exibe empty state elegante informando ausência de DDA.
@@ -380,7 +380,7 @@
 * **Tipo:** Docs
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** GitHub Projects (Board, Issues, Labels, Milestones)
-* **Ordem de Execução / Dependência:** ⚠️ **PRIORIDADE MÁXIMA (Dias 1 a 2)**.  
+* **Ordem de Execução / Dependência:** **PRIORIDADE MÁXIMA (Dias 1 a 2)**.  
   * Sincronizar o board imediatamente: fechar oficialmente as issues concluídas da Sprint 9 e abrir os 20 cards da Sprint 10 com labels e responsáveis.  
   * *Zona Proibida:* É **PROIBIDO** alterar qualquer código-fonte em `Backend/` ou `Frontend/`.
 * **Requisitos:** Gestão de Projeto
@@ -479,7 +479,7 @@
 * **Tipo:** Fix
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Backend/api/sessao/controllers/sessao.controller.ts`, `Backend/api/sessao/routes/sessao.routes.ts`, `Backend/api/sessao/test/ciclo_sessao_telemetria.test.ts`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Reforço mandatário de segurança antes de novos fluxos de sessão.
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Reforço mandatário de segurança antes de novos fluxos de sessão.
 * **Requisitos:** RF21 (Autenticação do Terapeuta), RNF03 (Segurança), RN04 (Vínculo Institucional)
 * **Referência Documentação:** RF21, AGENTS.md Seção 6.1 (Princípio da Responsabilidade Única da Rota)
 * **Descrição:** Em `Backend/api/sessao/controllers/sessao.controller.ts` (linha 45), o endpoint `POST /api/sessao/iniciar` extrai `terapeuta_id` diretamente do corpo da requisição (`req.body.terapeuta_id`), permitindo forja de identidade do terapeuta responsável. Este card refatora a rota para extrair a identidade do profissional exclusivamente do token JWT decodificado (`(req as AuthenticatedRequest).user?.id`). Caso o corpo da requisição contenha um `terapeuta_id` divergente do token autenticado, o endpoint rejeita a operação com status HTTP 403 Forbidden.
@@ -496,7 +496,7 @@
 * **Tipo:** Fix
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Database/database.sql`, `Database/migrations/008_normalizacao_relatorio_sessao.sql`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Ajuste de modelagem estrutural antes de consultas analíticas.
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Ajuste de modelagem estrutural antes de consultas analíticas.
 * **Requisitos:** 3FN (Terceira Forma Normal), RN01 (Modo Livre sem Persistência), RN04 (Vínculo Institucional), RN05 (Inalterabilidade e Soft Delete)
 * **Referência Documentação:** AGENTS.md Seção 6.2 (Regra 3FN), Figura 4 (DER), RN01, docs/ANOTACAO.MD
 * **Descrição:** A modelagem herdada da tabela `relatorio_sessao` continha `terapeuta_id UUID NOT NULL REFERENCES terapeuta(id)` e `paciente_id UUID NOT NULL REFERENCES paciente(id)`. Como `sessao_id UUID UNIQUE NOT NULL REFERENCES sessao(id)` já é a âncora relacional 1:1 e a tabela pai `sessao` já contém os relacionamentos com terapeuta e paciente, a presença dessas FKs viola a 3FN. Ademais, consolida-se a regra clínica de que partidas em Modo Livre (**RN01**) **não geram relatório**, pertencendo a tabela exclusivamente a sessões clínicas finalizadas. Este card normaliza a tabela tornando `sessao_id` a própria chave primária compartilhada (`sessao_id UUID PRIMARY KEY REFERENCES public.sessao(id)`), remove as colunas redundantes e reescreve as políticas RLS para validar autorização através da tabela pai `sessao` (`EXISTS (SELECT 1 FROM public.sessao s WHERE s.id = relatorio_sessao.sessao_id AND ...)`).

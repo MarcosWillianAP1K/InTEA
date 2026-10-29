@@ -47,7 +47,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Database/migrations/003_telemetria_e_auditoria.sql`, `Backend/api/telemetria/*` (`telemetria.model.ts`, `telemetria.service.ts`, `telemetria.validator.ts`, `telemetria.dto.ts`)
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 3)**. Cria a base de dados e a função `TelemetriaService.persistirLote()`. Deve commitar/abrir PR até o Dia 3 para que João Marcos possa conectar a persistência ao WebSocket no Dia 4.
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 3)**. Cria a base de dados e a função `TelemetriaService.persistirLote()`. Deve commitar/abrir PR até o Dia 3 para que João Marcos possa conectar a persistência ao WebSocket no Dia 4.
 * **Requisitos:** RF12, RN02, RNF05
 * **Referência Documentação:** Seção 7.9, RN02, RF12
 * **Descrição:** Criar tabela/model `telemetria_evento` e service para persistência em lote (batch insert) de alta performance dos dados de telemetria clínica transmitidos pelo jogo via WebSocket. A conformidade das métricas é assegurada previamente na validação do manifesto durante o catálogo do jogo.
@@ -101,7 +101,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Backend/core/websocket/sessao.gateway.ts`
-* **Ordem de Execução / Dependência:** ⚠️ **FAZ DEPOIS DE MARCOS (INTEGRAÇÃO NO DIA 4)**.  
+* **Ordem de Execução / Dependência:** **FAZ DEPOIS DE MARCOS (INTEGRAÇÃO NO DIA 4)**.  
   * *Dias 1 a 3:* Trabalha no streaming WebSocket 100% em memória (recebe do tablet e envia para a sala web do terapeuta via Socket.IO com callbacks desacoplados).  
   * *Dia 4:* Após Marcos commitar a persistência, João importa `TelemetriaService.persistirLote()` e conecta ao evento.  
   * *Zona Proibida:* É **PROIBIDO** editar arquivos em `Backend/api/sessao/controllers/`, `Backend/api/telemetria/` ou migrations SQL.
@@ -172,7 +172,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Frontend/src/features/sessao/pages/CockpitSessaoPage.tsx`
-* **Ordem de Execução / Dependência:** ⚠️ **INTEGRAÇÃO SEQUENCIAL (Dias 1-3 Slots; Dia 4/5 Importa Luma)**.  
+* **Ordem de Execução / Dependência:** **INTEGRAÇÃO SEQUENCIAL (Dias 1-3 Slots; Dia 4/5 Importa Luma)**.  
   * *Dias 1 a 3:* Cria a casca da página, rota `/sessao/:id/monitoramento`, cabeçalho do paciente e cronômetro com *slots/placeholders*.  
   * *Dia 4/5:* Importa os componentes prontos de telemetria entregues por Luma Maiara.  
   * *Zona Proibida:* É **PROIBIDO** editar arquivos dentro de `Frontend/src/features/sessao/components/telemetria/`.
@@ -243,7 +243,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Frontend/src/features/sessao/components/telemetria/TelemetriaCards.tsx`, `TelemetriaChart.tsx`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE ENTREGAR PRIMEIRO (Dias 1 a 3)**.  
+* **Ordem de Execução / Dependência:** **DEVE ENTREGAR PRIMEIRO (Dias 1 a 3)**.  
   * Constrói os componentes de telemetria isolados em `components/telemetria/` testando com dados mockados.  
   * Entrega no Dia 3/4 para Hermeson importar na página do Cockpit.  
   * *Zona Proibida:* É **PROIBIDO** editar `CockpitSessaoPage.tsx` ou `ControlesClinicos.tsx`.
@@ -262,7 +262,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Frontend/src/features/sessao/components/telemetria/TabletDiagnosticCard.tsx`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE ENTREGAR PRIMEIRO (Dia 3)**. Componente atômico para compor o cockpit.
+* **Ordem de Execução / Dependência:** **DEVE ENTREGAR PRIMEIRO (Dia 3)**. Componente atômico para compor o cockpit.
 * **Requisitos:** RF12, RNF04
 * **Referência Documentação:** RF12, RNF04
 * **Descrição:** Criar componente na barra lateral ou rodapé do Cockpit que exibe a saúde do dispositivo remoto: indicador de latência do WebSocket (ping/pong em milissegundos), status de sinal de rede e nível de bateria do tablet do paciente.
@@ -362,7 +362,7 @@
 * **Tipo:** Docs
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** GitHub Projects (Board, Issues, Labels, Milestones)
-* **Ordem de Execução / Dependência:** ⚠️ **PRIORIDADE MÁXIMA (Dias 1 a 2)**.  
+* **Ordem de Execução / Dependência:** **PRIORIDADE MÁXIMA (Dias 1 a 2)**.  
   * Deve sincronizar o board imediatamente: fechar as issues prontas das sprints passadas e cadastrar os 20 cards da Sprint 9 com seus donos e regras anti-conflito.  
   * *Zona Proibida:* É **PROIBIDO** alterar qualquer código-fonte em `Backend/` ou `Frontend/`.
 * **Requisitos:** Gestão de Projeto

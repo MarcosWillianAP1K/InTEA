@@ -56,12 +56,13 @@ type SessaoComMetricasConsolidadas = Sessao & {
 };
 
 /**
- * Realiza o cálculo matemático seguro de variação absoluta e percentual entre sessões.
- * Trata rigorosamente casos de divisão por zero (base === 0) e valores nulos ou ausentes.
+ * Computes safe absolute and percentage variation deltas between clinical session metrics.
+ * Mathematical Precision: Rigorously handles division by zero (base === 0) and null or missing values.
  *
- * @param base - Valor da primeira sessão (Baseline)
- * @param comparado - Valor da segunda sessão (Mais recente)
- * @param polaridade - "maior_melhor" (ex: foco) ou "menor_melhor" (ex: tempo de reação, erros)
+ * @param base - Numeric value of the reference baseline session (Session A)
+ * @param comparado - Numeric value of the compared session (Session B)
+ * @param polaridade - Clinical goal polarity where 'maior_melhor' or 'menor_melhor'
+ * @returns Calculated delta object with absolute delta, percentage delta, formatted text, and clinical status
  */
 export function calcularDeltaMetrica(
   base: number | null | undefined,
@@ -133,8 +134,11 @@ export interface TabelaComparativaMetricasProps {
 }
 
 /**
- * Componente puro e determinístico para exibição analítica lado a lado das métricas
- * de duas sessões do mesmo jogo terapêutico.
+ * Renders comparative metric progression table between distinct clinical sessions (RF15, RN02).
+ * Longitudinal Analysis: Highlights improvement, stabilization, or regression across therapeutic metrics.
+ *
+ * @param props - Component properties including session data and metrics
+ * @returns Comparison table component
  */
 export function TabelaComparativaMetricas({
   sessaoA,

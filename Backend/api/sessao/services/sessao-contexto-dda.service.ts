@@ -42,8 +42,10 @@ export interface SugestaoContextoDTO {
 
 export class SessaoContextoDdaService {
   /**
-   * Verifica se o cliente Supabase está disponível para consulta real ou se está mockado em testes.
-   * Evita travamento por timeout de DNS quando executado em ambiente de teste com URL placeholder.
+   * Checks whether the Supabase client is available for real querying or running in a mocked test environment.
+   * Testing Guard: Prevents DNS timeout lockups when running in automated test environments with placeholder URLs.
+   *
+   * @returns True if Supabase client can be queried, false otherwise
    */
   private static deveConsultarSupabase(): boolean {
     const isMock = typeof (supabase.from as unknown as { mock?: unknown })?.mock !== 'undefined';
@@ -54,15 +56,12 @@ export class SessaoContextoDdaService {
   }
 
   /**
-   * Converte e valida deterministicamente a escala de estresse informada para os valores canônicos do Contrato 2:
-   * - 1 a 2 -> "baixo"
-   * - 3 -> "medio"
-   * - 4 a 5 -> "alto"
-   * Aceita também strings diretas "baixo", "medio", "médio", "alto".
+   * Converts and deterministically normalizes input stress scale values to canonical Contract 2 strings.
+   * Mapping Scale (RN03): Maps 1-2 to 'baixo', 3 to 'medio', and 4-5 to 'alto', also accepting canonical string literals.
    *
-   * @param valor - Entrada numérica ou textual de estresse.
-   * @returns Nível de estresse canônico ("baixo" | "medio" | "alto").
-   * @throws Error se o valor for inválido ou fora do domínio permitido.
+   * @param valor - Numeric or textual stress rating input
+   * @returns Canonical stress level ('baixo' | 'medio' | 'alto')
+   * @throws Error if the value is invalid or outside the allowed domain (1-5)
    */
   static validarENormalizarEstresse(valor: unknown): NivelEstresseCanonico {
     if (valor === undefined || valor === null || valor === '') {
@@ -96,11 +95,11 @@ export class SessaoContextoDdaService {
   }
 
   /**
-   * Valida e sanitiza o array de gatilhos sensoriais a evitar.
-   * Remove valores duplicados e strings vazias.
+   * Validates and sanitizes the list of sensory triggers to avoid during gameplay.
+   * Data Sanitization: Strips whitespace, removes empty entries, and eliminates duplicate items.
    *
-   * @param gatilhos - Entrada em formato array ou string única.
-   * @returns Array de strings sanitizadas.
+   * @param gatilhos - Array or single string input containing sensory triggers
+   * @returns Array of unique, sanitized sensory trigger strings
    */
   static validarGatilhos(gatilhos: unknown): string[] {
     if (!gatilhos) return [];
@@ -130,10 +129,11 @@ export class SessaoContextoDdaService {
   }
 
   /**
-   * Consulta os gatilhos sensoriais registrados no prontuário do paciente (dados_clinicos e paciente_gatilho).
+   * Retrieves sensory triggers registered in the patient's electronic health record.
+   * Clinical Record Integration (RF16, RN04): Queries both dados_clinicos (JSONB) and paciente_gatilho junction tables.
    *
-   * @param pacienteId - UUID do paciente.
-   * @returns Lista consolidada e única de gatilhos cadastrados.
+   * @param pacienteId - UUID of the target patient
+   * @returns Consolidated unique list of registered sensory triggers
    */
   static async obterGatilhosPaciente(pacienteId: string): Promise<string[]> {
     if (!pacienteId) return [];
@@ -182,10 +182,11 @@ export class SessaoContextoDdaService {
   }
 
   /**
-   * Consulta o objetivo clínico padrão declarado no manifesto do jogo selecionado.
+   * Queries the default clinical objective declared in the selected game's manifest.
+   * Game Manifest Reference (Contrato 1): Falls back to safe default 'foco_atencional' when undefined.
    *
-   * @param jogoId - UUID do jogo selecionado.
-   * @returns String com o objetivo clínico padrão ou fallback seguro 'foco_atencional'.
+   * @param jogoId - UUID of the selected therapeutic game
+   * @returns String with default clinical objective from manifest or fallback
    */
   static async obterObjetivoPadraoJogo(jogoId: string): Promise<string> {
     if (!jogoId) return 'foco_atencional';
@@ -215,15 +216,12 @@ export class SessaoContextoDdaService {
   }
 
   /**
-   * Implementa o Fallback Clínico Parametrizado previsto na Figura 5 (Diagrama de Atividade):
-   * Quando o terapeuta não customiza o contexto pré-sessão ou solicita fallback padrão:
-   * - Consulta automaticamente os gatilhos cadastrados no prontuário do paciente;
-   * - Define nivel_estresse_inicial como 'baixo' (escala 1);
-   * - Assume o objetivo clínico padrão declarado no manifesto do jogo selecionado.
+   * Implements the Parametrized Clinical Fallback defined in the Figure 5 activity diagram.
+   * Fallback Rule (RN03): Pulls patient triggers, sets stress to 'baixo', and assumes game manifest objective when skipped.
    *
-   * @param pacienteId - UUID do paciente.
-   * @param jogoId - UUID do jogo selecionado.
-   * @returns Pacote de contexto paciente preenchido com dados homologados.
+   * @param pacienteId - UUID of the target patient
+   * @param jogoId - UUID of the selected therapeutic game
+   * @returns Populated Contract 2 patient context package with homologated defaults
    */
   static async aplicarFallbackClinico(
     pacienteId: string,
@@ -242,15 +240,14 @@ export class SessaoContextoDdaService {
   }
 
   /**
-   * Valida, normaliza e injeta o contexto pré-sessão em conformidade estrita com o Contrato 2 e as RN01/RN03:
-   * - Se modo_livre (RN01): bloqueia com erro 400 tentativas de injetar contexto clínico;
-   * - Se sessao_clinica: valida e normaliza os campos ou aplica fallback clínico parametrizado.
+   * Validates, normalizes, and injects pre-session DDA clinical context in strict compliance with Contract 2 and RN01/RN03.
+   * Free Mode Guard (RN01): Rejects calibration attempts with HTTP 400 for free play sessions without a patient.
    *
-   * @param entrada - Dados de contexto passados na requisição.
-   * @param pacienteId - UUID do paciente (obrigatório se sessão clínica).
-   * @param jogoId - UUID do jogo selecionado.
-   * @param modoSessao - 'sessao_clinica' ou 'modo_livre'.
-   * @returns Objeto ContextoPacienteContrato2 ou null (em modo livre).
+   * @param entrada - Raw pre-session context payload submitted with request
+   * @param pacienteId - UUID of the patient (mandatory for clinical sessions)
+   * @param jogoId - UUID of the selected therapeutic game
+   * @param modoSessao - Operational mode ('sessao_clinica' or 'modo_livre')
+   * @returns Normalized Contract 2 context object or null for free mode
    */
   static async validarEFormatarContexto(
     entrada: EntradaContextoDDA | undefined,
@@ -322,13 +319,14 @@ export class SessaoContextoDdaService {
   }
 
   /**
-   * Monta o pacote estruturado do Contrato 2 (contextoPreSessao.json).
+   * Assembles the structured Contract 2 payload for dispatch to the game client.
+   * Contract 2 Envelope: Bundles session token, therapist ID, patient ID, and normalized clinical context.
    *
-   * @param tokenSessao - Código de pareamento (PIN ou token da sessão).
-   * @param terapeutaId - UUID do terapeuta responsável.
-   * @param pacienteId - UUID do paciente atendido.
-   * @param contextoPaciente - Contexto clínico normalizado.
-   * @returns Pacote do Contrato 2 ou null caso não haja contexto (modo livre).
+   * @param tokenSessao - Pairing PIN or session token
+   * @param terapeutaId - UUID of the responsible therapist
+   * @param pacienteId - UUID of the patient (or null for free mode)
+   * @param contextoPaciente - Normalized clinical context object
+   * @returns Complete Contract 2 payload or null when no context exists
    */
   static montarPacoteContrato2(
     tokenSessao: string,
@@ -347,11 +345,11 @@ export class SessaoContextoDdaService {
   }
 
   /**
-   * Retorna os gatilhos cadastrados na anamnese e a última calibração utilizada
-   * para abastecer com sugestão inteligente o formulário do modal no Frontend.
+   * Fetches registered baseline triggers and previous session calibration to prepopulate the pre-session modal.
+   * Smart Suggestion (RF12, RF17): Prioritizes the most recent completed session or falls back to patient anamnesis.
    *
-   * @param pacienteId - UUID do paciente.
-   * @returns SugestaoContextoDTO com estresse, gatilhos e objetivo sugeridos.
+   * @param pacienteId - UUID of the patient
+   * @returns Suggested DDA context DTO containing stress, triggers, objective, and data source
    */
   static async obterContextoSugerido(pacienteId: string): Promise<SugestaoContextoDTO> {
     const gatilhos = await SessaoContextoDdaService.obterGatilhosPaciente(pacienteId);

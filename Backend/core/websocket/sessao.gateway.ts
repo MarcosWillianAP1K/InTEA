@@ -164,7 +164,11 @@ export class SessaoGateway {
   }
 
   /**
-   * Inicializa o gateway WebSocket singleton para o namespace /sessao.
+   * Initializes the singleton WebSocket gateway for the `/sessao` namespace.
+   * Real-Time Telemetry (RF10, RF13): Configures connection handlers, pairing rooms, and telemetry channels.
+   *
+   * @param io - Root Socket.IO server instance
+   * @returns Initialized SessaoGateway singleton instance
    */
   static inicializar(io: SocketIOServer): SessaoGateway {
     SessaoGateway.instance = new SessaoGateway(io);

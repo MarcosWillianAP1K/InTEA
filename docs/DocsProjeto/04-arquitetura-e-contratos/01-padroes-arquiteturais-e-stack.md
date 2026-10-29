@@ -94,7 +94,7 @@ Frontend/src/
 │   └── web.socket.ts                     # Singleton SessionSocketManager (Socket.IO Client) e hooks reativos
 ├── routes/                               # Central de rotas SPA (React Router DOM v7) com ProtectedRoute
 ├── layout/                               # Cascas estruturais: SidebarLayout.tsx e FocusLayout.tsx (RNF07)
-├── features/                             # ★ MÓDULOS VERTICAIS POR DOMÍNIO CLÍNICO
+├── features/                             # MÓDULOS VERTICAIS POR DOMÍNIO CLÍNICO
 │   ├── autenticacao/                     # Autenticação, recuperação de sessão e permissões
 │   │   ├── pages/                        # LoginPage.tsx
 │   │   ├── hooks/                        # useAuth.ts

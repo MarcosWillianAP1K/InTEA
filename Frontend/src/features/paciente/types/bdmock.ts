@@ -1006,8 +1006,8 @@ export const MOCK_SERIE_BOOLEANA: SerieMetricaJogo = {
 };
 
 /**
- * Fixture de teste para validar violação estrita da RN02:
- * Métrica sem tipo ou com tipo não homologado no manifesto.
+ * Test fixture to validate strict violation of RN02:
+ * Metric lacking a type or declared with a non-homologated metric type in game manifest.
  */
 export const MOCK_SERIE_INVALIDA_RN02: SerieMetricaJogo = {
   id_metrica: "metrica_sem_tipo_rn02",
@@ -1145,10 +1145,12 @@ export const MOCK_RESPOSTA_HISTORICO_PACIENTE: RespostaHistoricoPaciente = MOCK_
 
 
 /**
- * ============================================================================
- * FUNÇÕES MOCK PARA HISTÓRICO LONGITUDINAL (RF15, RF19)
- * Fallback resiliente para paciente.service.ts
- * ============================================================================
+ * Mock fixture resolver for longitudinal patient history and engagement (RF15, RF19).
+ * Testing Fallback: Returns simulated engagement time series and game metrics when backend is offline.
+ *
+ * @param pacienteId - UUID of the target patient
+ * @param filtros - Optional history filters including game ID and date range
+ * @returns Mocked longitudinal patient history response
  */
 export function buscarHistoricoPacienteMock(
   pacienteId: string,
