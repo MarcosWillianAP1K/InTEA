@@ -57,6 +57,12 @@ function SafeNavigateHandler({ to }: { to: string | null }) {
  * ============================================================================
  */
 
+/**
+ * Modal dialog for session initialization, pairing code generation, and DDA context injection.
+ * Pre-Session Handshake (RF10, RF12, RF17, RN01): Orchestrates patient selection, game pairing, and Contract 2 setup.
+ *
+ * @returns Pre-session orchestrator modal component
+ */
 export function ModalPreSessao() {
   // Sincronização em tempo real entre WebSocket e store global
   useSessionSync();
@@ -426,7 +432,7 @@ export function ModalPreSessao() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="modo-livre">
-                      🎮 Modo Livre (Partida Avulsa — Sem Paciente)
+                      Modo Livre (Partida Avulsa — Sem Paciente)
                     </SelectItem>
                     {listaPacientes.map((p) => (
                       <SelectItem key={p.id} value={p.id}>

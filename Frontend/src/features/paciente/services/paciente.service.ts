@@ -371,7 +371,12 @@ export const pacienteService = {
   },
 
   /**
-   * Consulta o historico geral de engajamento e catalogo de jogos do paciente (RF15, RF19).
+   * Queries general patient engagement history and game catalog metrics (RF15, RF19).
+   * Longitudinal Record (RF15): Supports temporal range filters, metric aggregates, and fallback to mock data.
+   *
+   * @param pacienteId - UUID of the target patient
+   * @param filtros - Optional date range query filters
+   * @returns Consolidated engagement history and game summary
    */
   buscarHistoricoGeral: async (
     pacienteId: string,
@@ -413,7 +418,13 @@ export const pacienteService = {
   },
 
   /**
-   * Consulta series temporais de metricas e sessoes de um jogo especifico do paciente (RF15, RN02).
+   * Queries metric time series and session history for a specific game played by the patient (RF15, RN02).
+   * Metric Evolution (RF15): Retrieves typed metrics from game manifest and maps trend series over time.
+   *
+   * @param pacienteId - UUID of the target patient
+   * @param jogoId - UUID of the selected therapeutic game
+   * @param filtros - Optional date range query filters
+   * @returns Detailed game performance metrics and session time series
    */
   buscarHistoricoJogo: async (
     pacienteId: string,

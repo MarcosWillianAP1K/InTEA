@@ -35,6 +35,13 @@ export interface GerenciadorAnotacoesProntuarioProps {
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
+/**
+ * Longitudinal clinical notes manager for patient medical records with chronological timeline (RF16).
+ * Medical Record Management (RF16, RF19, RN04, RN05): Provides search, author filtering, and soft-delete/reactivation.
+ *
+ * @param props - Component properties with patient UUID and authorization context
+ * @returns Medical record notes management dashboard component
+ */
 export function GerenciadorAnotacoesProntuario({
   pacienteId,
   usuarioLogadoId,

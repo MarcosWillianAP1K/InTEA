@@ -17,10 +17,11 @@ export interface SuperAdminGuardProps {
 }
 
 /**
- * Guardião de Rota: Restringe o acesso exclusivamente a usuários com privilégios SuperAdmin (RF07).
- * - Não autenticado: Redireciona para /login.
- * - Usuário comum (sem flag is_super_admin): Redireciona para /painel.
- * - SuperAdmin: Renderiza os nós filhos ou <Outlet />.
+ * Route guard component that restricts access exclusively to users with SuperAdmin privileges (RF07).
+ * Role-Based Access Control (RF07): Unauthenticated users are redirected to /login, non-admins to /painel.
+ *
+ * @param props - Guard properties including optional children and fallback redirect path
+ * @returns Protected child components, Outlet, or Navigate redirection
  */
 export function SuperAdminGuard({
   children,
@@ -46,7 +47,10 @@ export function SuperAdminGuard({
 }
 
 /**
- * Módulo de Sub-rotas Administrativas (/admin/*).
+ * Module sub-routes component for administrative features (/admin/*).
+ * Administrative Layout: Wraps all admin pages inside SuperAdminGuard protection.
+ *
+ * @returns Administrative Routes component tree
  */
 export function AdminRoutes() {
   return (

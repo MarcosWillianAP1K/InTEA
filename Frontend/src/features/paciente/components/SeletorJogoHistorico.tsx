@@ -28,6 +28,13 @@ export interface SeletorJogoHistoricoProps {
   className?: string;
 }
 
+/**
+ * Interactive game selector bar for filtering longitudinal patient metrics by therapeutic game (RF15).
+ * Game Catalog Navigation: Displays game badges and triggers session series filtering.
+ *
+ * @param props - Component properties including available games list and onSelect callback
+ * @returns Game selector bar component
+ */
 export const SeletorJogoHistorico: React.FC<SeletorJogoHistoricoProps> = ({
   jogos,
   jogoSelecionadoId,

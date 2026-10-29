@@ -30,9 +30,9 @@ export const ENDPOINTS = {
     TERAPEUTAS: (id: string) => `/paciente/${id}/terapeutas`,
     TERAPEUTA_BY_ID: (id: string, terapeutaId: string) =>
       `/paciente/${id}/terapeutas/${terapeutaId}`,
-    /** RF15, RF19 - Historico geral de engajamento + catalogo de jogos do paciente */
+    /** RF15, RF19 - General patient engagement history + game catalog */
     HISTORICO: (id: string) => `/paciente/${id}/historico`,
-    /** RF15 - Historico detalhado com series temporais por jogo especifico */
+    /** RF15 - Detailed history with time series per specific game */
     HISTORICO_JOGO: (id: string, jogoId: string) =>
       `/paciente/${id}/historico/jogo/${jogoId}`,
   },

@@ -42,6 +42,15 @@ import { LinhaDoTempoSessoes } from "../components/LinhaDoTempoSessoes";
  * ============================================================================
  */
 
+/**
+ * Maps raw backend session models to formatted timeline items with clinical status filters (RF15).
+ * Free-Mode Exclusion (RN01): Strips out ad-hoc free mode sessions from clinical longitudinal timeline.
+ *
+ * @param listaSessoes - Array of session entities from API
+ * @param filtrosAtivos - Currently applied clinical history filters
+ * @param jogoIdFiltro - Optional specific game ID filter
+ * @returns Array of mapped and sanitized timeline session items
+ */
 function mapearSessoesParaLinhaDoTempo(
   listaSessoes: Sessao[],
   filtrosAtivos: FiltrosHistorico,
@@ -128,6 +137,12 @@ function mesclarSessoesSemDuplicatas(
   });
 }
 
+/**
+ * Longitudinal clinical medical record view presenting patient evolution, metric trends, and notes (RF15).
+ * Medical Record Evolution (RF15, RF16, RF19): Coordinates timeline, polymorphic charts, and notes tabs.
+ *
+ * @returns Patient medical record and history page component
+ */
 export function HistoricoPacientePage() {
   const { id: pacienteId } = useParams<{ id: string }>();
   const navigate = useNavigate();

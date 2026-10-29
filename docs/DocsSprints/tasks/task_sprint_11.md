@@ -33,7 +33,7 @@
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Database/migrations/013_indices_historico_longitudinal.sql`, `Database/database.sql`, `Backend/api/paciente/models/historico.model.ts`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Cria os índices de alta performance no PostgreSQL e a modelagem tipada TypeScript para que os serviços de agregação de engajamento e séries especializadas consultem dados sem gargalos de I/O.
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Cria os índices de alta performance no PostgreSQL e a modelagem tipada TypeScript para que os serviços de agregação de engajamento e séries especializadas consultem dados sem gargalos de I/O.
 * **Requisitos:** RF15, RNF05, RN01, RN04, RN05
 * **Referência Documentação:** RF15 (Prontuário Longitudinal), Seção 5.7 (DER), AGENTS.md (Seção 6.2)
 * **Descrição:** Criar migração SQL idempotente `013_indices_historico_longitudinal.sql` e atualizar o schema mestre `Database/database.sql`. Adicionar índices compostos B-Tree parciais otimizados:
@@ -92,7 +92,7 @@
   * `Frontend/src/features/paciente/types/historico.types.ts`  
   * `Frontend/src/features/paciente/types/bdmock.ts`  
   * `Frontend/src/features/paciente/__test__/GraficoPolimorficoMetrica.test.tsx`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE ENTREGAR PRIMEIRO (Dias 2 a 4 — Desenvolvimento isolado de componentes atômicos)**.  
+* **Ordem de Execução / Dependência:** **DEVE ENTREGAR PRIMEIRO (Dias 2 a 4 — Desenvolvimento isolado de componentes atômicos)**.  
   * *Dias 2 a 3:* Criação das tipagens estritas em `historico.types.ts`, fixtures no `bdmock.ts` e subcomponentes visuais puros em SVG nativo.  
   * *Dia 4:* Composição dos cards de engajamento e container de evolução por jogo com testes unitários no Vitest.  
   * *Entrega no Dia 4/5:* Disponibilização para importação nos slots da Página de Histórico do Paciente.  

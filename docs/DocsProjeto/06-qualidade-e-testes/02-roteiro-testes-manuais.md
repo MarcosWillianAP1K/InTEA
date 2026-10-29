@@ -20,7 +20,7 @@ O **Roteiro de Testes Manuais** estabelece o protocolo de validação de ponta a
 
 ---
 
-## 2. Matriz Geral dos 49 Casos de Teste Formais
+## 2. Matriz Geral dos 61 Casos de Teste Formais
 
 | Código | Módulo / Domínio | Título do Caso de Teste | Requisitos Validados | Status |
 | :---: | :--- | :--- | :--- | :---: |
@@ -73,6 +73,18 @@ O **Roteiro de Testes Manuais** estabelece o protocolo de validação de ponta a
 | **CT-S20** | Sessão | Registro de Parecer e Anotações Pós-Sessão | RF16, RF21 | `[ ]` |
 | **CT-S21** | Sessão | Imutabilidade e Bloqueio de Hard Delete | RN05 | `[ ]` |
 | **CT-S22** | Sessão | Exportação de Relatório Clínico em PDF | RF20 | `[ ]` |
+| **CT-S23** | Histórico | Consulta do Histórico Longitudinal com Engajamento Geral | RF15, RNF04 | `[ ]` |
+| **CT-S24** | Histórico | Troca do Seletor de Jogo Retorna Série Temporal Específica | RF15, RNF04 | `[ ]` |
+| **CT-S25** | Histórico | Filtragem por Intervalo de Datas e Paginação | RF19 | `[ ]` |
+| **CT-S26** | Histórico | Rejeição de Métrica sem Tipagem no Manifesto (422) | RN02 | `[ ]` |
+| **CT-S27** | Histórico | Bloqueio de Acesso ao Histórico sem Vínculo Ativo (403) | RN04 | `[ ]` |
+| **CT-S28** | Histórico | Supressão Comprovada de Sessões em Modo Livre | RN01, RF15 | `[ ]` |
+| **CT-S29** | Anotações | Registro de Anotação Clínica com Autoria Indelével | RF16, RF21, RN04 | `[ ]` |
+| **CT-S30** | Anotações | Bloqueio de Edição e Exclusão por Terapeuta não Autor | RF21, RN04 | `[ ]` |
+| **CT-S31** | Anotações | Filtragem Longitudinal, Soft Delete e Reativação de Nota | RF19, RN05 | `[ ]` |
+| **CT-S32** | Contexto DDA | Configuração Personalizada de Contexto Pré-Sessão | RF17, RN03, Contrato 2 | `[ ]` |
+| **CT-S33** | Contexto DDA | Início de Sessão com Fallback Clínico Parametrizado | RF17, Figura 5 | `[ ]` |
+| **CT-S34** | Modo Livre | Rejeição de Contexto Clínico ou Anotação em Modo Livre | RN01 | `[ ]` |
 
 ---
 
@@ -103,8 +115,38 @@ O **Roteiro de Testes Manuais** estabelece o protocolo de validação de ponta a
 * **Entrada:** Inspeção DDL da tabela no banco PostgreSQL.
 * **Resultado Esperado:** `sessao_id UUID PRIMARY KEY REFERENCES sessao(id)`, ausência de colunas duplicadas `paciente_id` e `terapeuta_id`.
 
+### CT-S29 — Registro de Anotação Clínica com Autoria Indelével do Autor (RF16, RF21)
+* **Objetivo:** Garantir que o nome, conselho profissional (CREFITO/CRP) e especialidade do terapeuta autor acompanhem a nota clínica, banindo UUIDs crus na interface.
+* **Entrada:** `POST /api/anotacao` enviando `paciente_id`, `sessao_id` e `conteudo`.
+* **Resultado Esperado:** HTTP `201 Created` e retorno do bloco `autor: { id, nome, registro_profissional, crefito, especialidade }`.
+
+### CT-S30 — Bloqueio de Edição e Exclusão por Terapeuta não Autor (RF21, RN04)
+* **Objetivo:** Impedir adulteração ou exclusão de anotações médicas por outros terapeutas da clínica.
+* **Entrada:** `PATCH /api/anotacao/:id` ou `DELETE /api/anotacao/:id` acionado por terapeuta distinto do autor original.
+* **Resultado Esperado:** HTTP `403 Forbidden` com preservação inalterada do texto e status no banco relacional.
+
+### CT-S31 — Filtragem Longitudinal, Soft Delete e Reativação de Anotação (RF19, RN05)
+* **Objetivo:** Validar o ciclo de vida completo: filtros combinados, inativação lógica segura e restauração com `soft_delete: false`.
+* **Entrada:** `GET /api/anotacao/paciente/:id` com query params, seguido de `DELETE /:id` e `PATCH /:id/reativar`.
+* **Resultado Esperado:** HTTP `200 OK` em todas as etapas, com o registro mantido no banco e reativado sob auditoria.
+
+### CT-S32 — Configuração Personalizada do Contexto DDA Pré-Sessão (RF17, RN03, Contrato 2)
+* **Objetivo:** Validar o envio de estresse (escala 1 a 5), gatilhos sensoriais e objetivo clínico, entregando o pacote ao socket antes do 1º evento de telemetria.
+* **Entrada:** `POST /api/sessao/iniciar` com `contexto_dda_json` estruturado.
+* **Resultado Esperado:** HTTP `201 Created`, mapeamento determinístico para escala canônica e transmissão prévia no handshake (RN03).
+
+### CT-S33 — Início de Sessão com Fallback Clínico Parametrizado (RF17, Figura 5)
+* **Objetivo:** Validar a herança automática de gatilhos do prontuário (`dados_clinicos` / `paciente_gatilho`) e estresse baixo quando o terapeuta aciona os parâmetros padrão.
+* **Entrada:** `POST /api/sessao/iniciar` com `usar_fallback_padrao: true` ou parâmetros omitidos.
+* **Resultado Esperado:** HTTP `201 Created`, calibração do Agente de IA com `nivel_estresse_inicial: "baixo"` e gatilhos da anamnese.
+
+### CT-S34 — Rejeição de Injeção de Contexto ou Anotação em Modo Livre (RN01)
+* **Objetivo:** Garantir que partidas recreativas não possam ser contaminadas com contexto clínico de pacientes ou registros em prontuário.
+* **Entrada:** `POST /api/sessao/iniciar` ou `POST /api/anotacao` vinculados a sessões com `modo_sessao: "modo_livre"`.
+* **Resultado Esperado:** HTTP `400 Bad Request` com recusa formal e proteção de privacidade dos prontuários.
+
 ---
 
 ## 4. Guia de Homologação Manual para o Usuário
 
-Para o passo a passo completo de execução com exemplos de payloads JSON para cada um dos 49 casos, consulte o documento integral em [`docs/roteiro-testes.md`](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/roteiro-testes.md).
+Para o passo a passo completo de execução com exemplos de payloads JSON para cada um dos 61 casos, consulte o documento integral em [`docs/roteiro-testes.md`](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/roteiro-testes.md).

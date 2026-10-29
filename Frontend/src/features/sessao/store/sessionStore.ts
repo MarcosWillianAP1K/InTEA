@@ -125,7 +125,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Confirma o handshake do dispositivo remoto e transiciona para 'pareado' (RF10) */
+  /** Confirms remote device handshake and transitions status to 'pareado' (RF10). */
   confirmarConexaoDispositivo: (dispositivo: DispositivoConectadoPayload) => {
     const currentPareamento = get().pareamento;
     if (!currentPareamento) return;
@@ -252,7 +252,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Transiciona para 'expirada' quando o token de pareamento ultrapassa o TTL de 15 minutos (RNF03) */
+  /** Transitions session state to 'expirada' when pairing token exceeds 15-minute TTL (RNF03). */
   expirarToken: () => {
     set({
       status: "expirada",
@@ -260,7 +260,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Define uma mensagem de erro no store, salva o status anterior e transiciona para o estado 'erro' */
+  /** Sets an error message in store, preserves previous status, and transitions to 'erro' state. */
   setErro: (mensagem: string | null) => {
     if (mensagem) {
       const currentStatus = get().status;

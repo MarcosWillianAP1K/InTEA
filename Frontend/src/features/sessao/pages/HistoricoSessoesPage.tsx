@@ -121,10 +121,11 @@ export function HistoricoSessoesPage() {
   }, [sessoes, busca]);
 
   /**
-   * Mapeamento fiel das variantes da Pill Status historico (Figma 79:662):
-   * - Completo: Verde #6FFBBE
-   * - Falha: Vermelho #BA1A1A
-   * - Incompleto: Cinza #E1E1E1
+   * Renders color-coded status badge pill according to Figma design system tokens (Figma 79:662).
+   * Status Visualization: Maps 'finalizada'/'concluida' to green, 'cancelada' to red, and pending to neutral grey.
+   *
+   * @param status - Raw session status string
+   * @returns Formatted status badge element
    */
   function renderBadgeStatus(status: string) {
     switch (status) {

@@ -97,7 +97,7 @@ flowchart TD
 * **Tipo:** Feature
 * **Responsável:** Marcos Willian (`@MarcosWillianAP1K`)
 * **Fronteira de Arquivos:** `Database/migrations/015_vinculo_multiterapeuta_e_auditoria_acesso.sql`, `Database/database.sql`, `Backend/api/paciente/models/paciente.model.ts`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Estabelece as garantias de banco de dados e métodos de model para a gestão multi-terapeuta.
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Estabelece as garantias de banco de dados e métodos de model para a gestão multi-terapeuta.
 * **Requisitos:** RF08, RF18, RN04, RN05, RNF05
 * **Referência Documentação:** Projeto_de_InTEA.pdf (Tabela 1 — Sprint 13, Seção 5.1 RF08/RF18, Figura 20 — Tabela associativa `terapeuta_paciente`, Seção 7.13), AGENTS.md (Seção 6.9)
 * **Descrição:** Criar a migração SQL idempotente `015_vinculo_multiterapeuta_e_auditoria_acesso.sql` e sincronizar `Database/database.sql`:
@@ -183,7 +183,7 @@ flowchart TD
 * **Tipo:** Feature
 * **Responsável:** João Marcos (`@JM3L0`)
 * **Fronteira de Arquivos:** `Backend/api/sessao/services/sessao-concorrencia.service.ts`, `Backend/api/sessao/dtos/sessao.dto.ts`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2 — Módulo isolado)**. Cria o serviço de verificação de concorrência em arquivo próprio sem conflitar com outros desenvolvedores.  
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 2 — Módulo isolado)**. Cria o serviço de verificação de concorrência em arquivo próprio sem conflitar com outros desenvolvedores.  
   * *Zona Proibida:* Não editar arquivos de `Backend/api/paciente/` ou `Database/`.
 * **Requisitos:** RF13, RF18, RF21, RN01, RN04
 * **Referência Documentação:** Projeto_de_InTEA.pdf (Tabela 1 — Sprint 13: Concorrência e Regras Multi-terapeuta; Seção 7.13), AGENTS.md (Seção 6.9)
@@ -265,7 +265,7 @@ flowchart TD
 * **Tipo:** Feature
 * **Responsável:** Hermeson Alves (`@Hermeson69`)
 * **Fronteira de Arquivos:** `Frontend/src/features/paciente/services/paciente.service.ts`, `Frontend/src/features/paciente/types/paciente.types.ts`, `Frontend/src/features/paciente/types/bdmock.ts`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Expõe os métodos tipados de serviço e mocks para gerenciamento da Equipe Multidisciplinar do paciente.
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Expõe os métodos tipados de serviço e mocks para gerenciamento da Equipe Multidisciplinar do paciente.
 * **Requisitos:** RF18, RN04
 * **Referência Documentação:** Projeto_de_InTEA.pdf (Seção 5.1 RF18, Seção 7.7 e Seção 7.13), `docs/api-pacientes-jogos.md`
 * **Descrição:** Expandir `paciente.types.ts`, `bdmock.ts` e `paciente.service.ts` para suportar o fluxo completo de acompanhamento multidisciplinar (**RF18**):
@@ -302,7 +302,7 @@ flowchart TD
 * **Tipo:** Feature
 * **Responsável:** Hermeson Alves (`@Hermeson69`)
 * **Fronteira de Arquivos:** `Frontend/src/features/paciente/pages/PerfilPacientePage.tsx`, `Frontend/src/features/paciente/pages/HistoricoPacientePage.tsx`
-* **Ordem de Execução / Dependência:** ⚠️ **INTEGRAÇÃO SEQUENCIAL — FAZ DEPOIS DE (Cards 4.1 e 4.2 do próprio Hermeson e Card 4.3 de Marcos — Dias 4 a 5)**.  
+* **Ordem de Execução / Dependência:** **INTEGRAÇÃO SEQUENCIAL — FAZ DEPOIS DE (Cards 4.1 e 4.2 do próprio Hermeson e Card 4.3 de Marcos — Dias 4 a 5)**.  
   * Aloca os componentes `<PainelEquipeMultidisciplinar />`, `<ModalVincularEspecialista />` e `<BadgeAutoriaMultidisciplinar />` nos slots de `PerfilPacientePage.tsx` e `HistoricoPacientePage.tsx`.  
   * *Regra Anti-Conflito:* Somente Hermeson edita `PerfilPacientePage.tsx` e `HistoricoPacientePage.tsx` na Sprint 13.
 * **Requisitos:** RF15, RF18, RN04, RNF07
@@ -343,7 +343,7 @@ flowchart TD
 * **Tipo:** Feature
 * **Responsável:** Hermeson Alves (`@Hermeson69`)
 * **Fronteira de Arquivos:** `Frontend/src/features/paciente/components/PainelEquipeMultidisciplinar.tsx`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2 — Componente atômico puro)**.  
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 2 — Componente atômico puro)**.  
   * Constrói o componente isoladamente orientado a props e o integra no Dia 4 na `PerfilPacientePage.tsx`.
 * **Requisitos:** RF18, RN04, RNF07
 * **Referência Documentação:** Projeto_de_InTEA.pdf (Seção 5.1 RF18, Seção 7.7 — Orientação clínica sobre nomenclatura da equipe, Figura 16), AGENTS.md (Seção 6.3 e Seção 6.9)
@@ -365,7 +365,7 @@ flowchart TD
 * **Tipo:** Feature
 * **Responsável:** Hermeson Alves (`@Hermeson69`)
 * **Fronteira de Arquivos:** `Frontend/src/features/paciente/components/ModalVincularEspecialista.tsx`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 2 a 3 — Componente modal puro)**.  
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 2 a 3 — Componente modal puro)**.  
   * Constrói o diálogo modal isolado e o integra no Dia 4 na `PerfilPacientePage.tsx`.
 * **Requisitos:** RF18, RF19, RN04, RNF07
 * **Referência Documentação:** Projeto_de_InTEA.pdf (Seção 5.1 RF18, Seção 5.3 RN04), AGENTS.md (Seção 6.3 e Seção 6.9)
@@ -429,7 +429,7 @@ flowchart TD
 * **Tipo:** Docs
 * **Responsável:** Raildom Silva (`@Raildom`)
 * **Fronteira de Arquivos:** Quadro GitHub Projects do InTEA, `docs/DocsSprints/visao_geral.md`
-* **Ordem de Execução / Dependência:** ⚠️ **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Organiza o quadro Kanban para que os 5 integrantes iniciem a Sprint 13 com suas tarefas atribuídas.
+* **Ordem de Execução / Dependência:** **DEVE FAZER PRIMEIRO (Dias 1 a 2)**. Organiza o quadro Kanban para que os 5 integrantes iniciem a Sprint 13 com suas tarefas atribuídas.
 * **Requisitos:** Governança de Engenharia de Software, Rastreabilidade 1:1
 * **Referência Documentação:** AGENTS.md (Seção 5.5 — Regra 4 e Seção 6.4 — Item 5), `docs/DocsProjeto/05-sprints-e-evolucao/06-governanca-kanban-e-tasks.md`
 * **Descrição:** Executar o ritual de governança do GitHub Projects na abertura da Sprint 13:

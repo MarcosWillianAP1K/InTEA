@@ -43,6 +43,13 @@ export interface LinhaDoTempoSessoesProps {
 /**
  * Formata segundos em texto amigável de duração (ex: "18m 45s" ou "12m").
  */
+/**
+ * Formats duration in seconds into localized human-readable time representation.
+ * Duration Formatting: Displays minutes and seconds ("X min Y s") or "0 s" for zero/empty durations.
+ *
+ * @param segundos - Total duration in seconds
+ * @returns Formatted duration string
+ */
 function formatarDuracao(segundos?: number): string {
   if (!segundos || segundos <= 0) return "< 1 min";
   const m = Math.floor(segundos / 60);
@@ -54,6 +61,13 @@ function formatarDuracao(segundos?: number): string {
 
 /**
  * Formata data e hora ISO para o padrão pt-BR.
+ */
+/**
+ * Formats an ISO date string into separated date and time string parts.
+ * Date Formatting: Produces localized date (DD/MM/YYYY) and 24-hour time (HH:mm).
+ *
+ * @param dataIso - ISO 8601 formatted date string
+ * @returns Object containing formatted date and time strings
  */
 function formatarDataHora(dataIso?: string): { data: string; hora: string } {
   if (!dataIso) return { data: "Data não registrada", hora: "" };
@@ -75,6 +89,13 @@ function formatarDataHora(dataIso?: string): { data: string; hora: string } {
   }
 }
 
+/**
+ * Renders chronological session timeline with clinical status badges and comparison selectors (RF15).
+ * Session History (RF15, RF19): Visualizes sequential interventions and enables pairwise session comparison.
+ *
+ * @param props - Component properties containing session history items and selection callbacks
+ * @returns Interactive chronological timeline component
+ */
 export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
   sessoes,
   isLoading = false,

@@ -26,6 +26,13 @@ export interface GraficoPolimorficoMetricaProps {
  * RNF04 (Feedback e Ergonomia), RNF07 (Acessibilidade)
  * ============================================================================
  */
+/**
+ * Polymorphic telemetry metric visualization chart dynamically adapting to metric data types (RF15, RN02).
+ * Manifest-Driven Rendering (RN02): Renders continuous line plots or discrete step charts according to metric type.
+ *
+ * @param props - Component properties with series data, unit labels, and metric definitions
+ * @returns Polymorphic metric chart component
+ */
 export function GraficoPolimorficoMetrica({
   serie,
   titulo,

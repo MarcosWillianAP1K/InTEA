@@ -17,10 +17,11 @@ export interface RedefinicaoSenhaResultado {
 
 export class RecuperacaoService {
   /**
-   * Dispara o envio de e-mail de recuperação com link mágico assinado pelo Supabase Auth.
-   * Regra Anti-Enumeração (RNF03): Sempre retorna confirmação de sucesso para evitar enumeração de contas.
+   * Triggers the delivery of a password recovery email with a magic link signed by Supabase Auth.
+   * Anti-Enumeration Rule (RNF03): Always returns success confirmation to prevent account enumeration attacks.
    *
-   * @param email - Endereço de e-mail institucional do terapeuta
+   * @param email - Institutional email address of the therapist
+   * @returns Operation confirmation payload
    */
   static async solicitarRecuperacao(email: string): Promise<RecuperacaoSolicitacaoResultado> {
     const emailLimpo = email.trim().toLowerCase();
@@ -43,11 +44,12 @@ export class RecuperacaoService {
   }
 
   /**
-   * Valida o token efêmero de uso único e aplica a nova senha criptografada no Supabase Auth.
-   * Retorna erro com status 410 (Gone) se o token for inválido ou já tiver expirado (após 30 minutos).
+   * Validates the single-use ephemeral token and applies the new encrypted password in Supabase Auth.
+   * Expiration Rule (RNF03): Throws 410 (Gone) if the token is invalid or has expired (TTL 30 minutes).
    *
-   * @param token - Token efêmero de recuperação ou JWT de sessão de recuperação
-   * @param novaSenha - Nova senha em texto claro (mínimo de 6 caracteres)
+   * @param token - Ephemeral recovery token or recovery session JWT
+   * @param novaSenha - New plaintext password (minimum 6 characters)
+   * @returns Confirmation message on password reset
    */
   static async redefinirSenha(token: string, novaSenha: string): Promise<RedefinicaoSenhaResultado> {
     const tokenLimpo = token.trim();

@@ -143,7 +143,11 @@ export class AdminService {
   // ============================================================================
 
   /**
-   * Lista todas as clínicas parceiras com paginação e contagens agregadas.
+   * Lists all partner clinic institutions with pagination, search, and status filters.
+   * Institutional Management (RF07): Supports case-insensitive searching on name and CNPJ.
+   *
+   * @param filtros - Query filters including search term, active status, page, and limit
+   * @returns Paginated list of clinics and pagination metadata
    */
   static async listarClinicas(
     filtros: FiltrosClinicaDTO = {}
@@ -187,7 +191,11 @@ export class AdminService {
   }
 
   /**
-   * Busca os detalhes de uma clínica pelo seu UUID.
+   * Retrieves detailed profile data of a clinic by its unique identifier.
+   * Identification Validation: Enforces UUID format compliance and returns 404 when not found.
+   *
+   * @param id - UUID of the clinic institution
+   * @returns Clinic entity details
    */
   static async buscarClinicaPorId(id: string): Promise<Clinica> {
     if (!validarUUID(id)) {
@@ -213,7 +221,11 @@ export class AdminService {
   }
 
   /**
-   * Cadastra uma nova instituição parceira no ecossistema InTEA.
+   * Registers a new partner clinic institution in the InTEA ecosystem.
+   * Uniqueness Constraint (RN04): Enforces unique CNPJ registration when provided and validates name length.
+   *
+   * @param dto - Clinic registration payload containing name and optional CNPJ
+   * @returns Newly created clinic entity
    */
   static async criarClinica(dto: CriarClinicaDTO): Promise<Clinica> {
     if (!dto.nome || typeof dto.nome !== 'string' || dto.nome.trim().length < 3) {
@@ -253,7 +265,12 @@ export class AdminService {
   }
 
   /**
-   * Atualiza informações cadastrais de uma clínica.
+   * Updates demographic, identification, or status attributes of an existing clinic.
+   * Concurrency & Integrity: Checks for CNPJ collision with other clinics and updates timestamp.
+   *
+   * @param id - UUID of the clinic to update
+   * @param dto - Partial update payload with name, CNPJ, or active status
+   * @returns Updated clinic entity
    */
   static async atualizarClinica(id: string, dto: AtualizarClinicaDTO): Promise<Clinica> {
     await this.buscarClinicaPorId(id);
@@ -308,14 +325,22 @@ export class AdminService {
   }
 
   /**
-   * Ativa uma clínica parceira permitindo operações no sistema.
+   * Activates a partner clinic institution, restoring its system operational access.
+   * Institutional Access: Sets status_ativo = true for the specified clinic.
+   *
+   * @param id - UUID of the clinic to activate
+   * @returns Activated clinic entity
    */
   static async ativarClinica(id: string): Promise<Clinica> {
     return this.atualizarClinica(id, { status_ativo: true });
   }
 
   /**
-   * Desativa uma clínica parceira (bloqueio institucional suave).
+   * Deactivates a partner clinic institution through soft institutional blocking.
+   * Soft Suspension (RN05): Retains all associated data while setting status_ativo = false.
+   *
+   * @param id - UUID of the clinic to deactivate
+   * @returns Deactivated clinic entity
    */
   static async desativarClinica(id: string): Promise<Clinica> {
     return this.atualizarClinica(id, { status_ativo: false });
@@ -326,7 +351,11 @@ export class AdminService {
   // ============================================================================
 
   /**
-   * Lista todos os terapeutas cadastrados com filtros institucionais.
+   * Lists registered therapist accounts across clinics with institutional filters and pagination.
+   * Multi-Tenant Administration (RF07): Joins clinic names and filters by clinic ID, active status, or SuperAdmin role.
+   *
+   * @param filtros - Query filters including search term, clinic UUID, active flag, and pagination
+   * @returns Paginated list of therapist profiles with joined clinic details
    */
   static async listarTerapeutas(
     filtros: FiltrosTerapeutaAdminDTO = {}
@@ -381,7 +410,11 @@ export class AdminService {
   }
 
   /**
-   * Busca perfil de um terapeuta pelo UUID.
+   * Retrieves the full administrative profile of a therapist by UUID.
+   * Access Guard: Joins associated clinic information and validates UUID formatting.
+   *
+   * @param id - UUID of the therapist
+   * @returns Detailed therapist administrative entity
    */
   static async buscarTerapeutaPorId(id: string): Promise<TerapeutaAdminInfo> {
     if (!validarUUID(id)) {
@@ -407,7 +440,12 @@ export class AdminService {
   }
 
   /**
-   * Atualização de configurações institucionais do terapeuta pelo SuperAdmin.
+   * Updates administrative settings and institutional affiliations for a therapist.
+   * Privilege Delegation: Allows SuperAdmin to change clinic link, professional registration, or grant SuperAdmin role.
+   *
+   * @param id - UUID of the therapist to update
+   * @param dto - Administrative update payload
+   * @returns Updated therapist profile
    */
   static async atualizarTerapeuta(
     id: string,
@@ -472,14 +510,22 @@ export class AdminService {
   }
 
   /**
-   * Ativa a conta institucional de um terapeuta.
+   * Activates a therapist user account, enabling login and clinical record access.
+   * Account Lifecycle: Sets status_ativo = true on the therapist entity.
+   *
+   * @param id - UUID of the therapist to activate
+   * @returns Activated therapist profile
    */
   static async ativarTerapeuta(id: string): Promise<TerapeutaAdminInfo> {
     return this.atualizarTerapeuta(id, { status_ativo: true });
   }
 
   /**
-   * Desativa a conta institucional de um terapeuta (impede logins e acessos a prontuários).
+   * Deactivates a therapist account to immediately block logins and access to patient records.
+   * Soft Blocking: Revokes operational privileges while preserving all historical clinical records.
+   *
+   * @param id - UUID of the therapist to deactivate
+   * @returns Deactivated therapist profile
    */
   static async desativarTerapeuta(id: string): Promise<TerapeutaAdminInfo> {
     return this.atualizarTerapeuta(id, { status_ativo: false });
@@ -490,7 +536,11 @@ export class AdminService {
   // ============================================================================
 
   /**
-   * Consulta a trilha de auditoria clínica consolidada por clínica ou globalmente.
+   * Queries consolidated clinical and session audit logs globally or scoped by clinic.
+   * Institutional Audit Trail (RF08, RNF06): Aggregates actions and active therapist count across the selected window.
+   *
+   * @param filtros - Consolidated audit filters including clinic ID, therapist ID, date range, action, and pagination
+   * @returns Structured audit report with log events, aggregate statistics, and metadata
    */
   static async consultarAuditoriaConsolidada(
     filtros: FiltrosAuditoriaConsolidadaDTO = {}

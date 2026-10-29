@@ -24,7 +24,11 @@ export interface CardsEngajamentoGeralProps {
 }
 
 /**
- * Converte segundos para formato humanizado e legível clinicamente (ex: "4h 30m" ou "22m 30s").
+ * Converts seconds into a human-readable, clinically friendly time string (e.g. "4h 30m" or "22m 30s").
+ * Clinical Formatting: Displays hours, minutes, and seconds adaptively according to total duration.
+ *
+ * @param segundos - Total duration in seconds
+ * @returns Human-readable duration string
  */
 export function formatarTempoSegundos(totalSegundos: number): string {
   if (!totalSegundos || totalSegundos <= 0) return "0 min";
@@ -48,6 +52,13 @@ export function formatarTempoSegundos(totalSegundos: number): string {
  * Conformidade: RF15 (Prontuário Longitudinal), RN01 (Expurgo Modo Livre),
  * RNF04 (Feedback e Ergonomia), RNF07 (Acessibilidade)
  * ============================================================================
+ */
+/**
+ * Renders patient engagement overview cards with metrics, trends, and clinical indicators (RF15).
+ * Dashboard Visualization (RF15, RF19): Displays total sessions, play time, and average stress.
+ *
+ * @param props - Component properties containing engagement metrics and loading state
+ * @returns React component rendering engagement indicator cards
  */
 export function CardsEngajamentoGeral({
   engajamento,

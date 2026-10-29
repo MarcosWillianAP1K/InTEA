@@ -18,8 +18,11 @@ import type {
 import { authService } from "../services/auth.service";
 
 /**
- * Normaliza eventual estrutura aninhada `{ user: { ... } }` persistida no localStorage
- * garantindo que `state.user` tenha sempre as propriedades na raiz (`id`, `nome`, `email`).
+ * Normalizes nested `{ user: { ... } }` structures persisted in localStorage.
+ * State Consistency: Guarantees `state.user` exposes root properties (`id`, `nome`, `email`, `is_super_admin`).
+ *
+ * @param raw - Raw user object or localStorage rehydrated state
+ * @returns Flattened UsuarioAutenticado object or null
  */
 function normalizarUsuarioStore(raw: unknown): UsuarioAutenticado | null {
   if (!raw || typeof raw !== "object") return null;

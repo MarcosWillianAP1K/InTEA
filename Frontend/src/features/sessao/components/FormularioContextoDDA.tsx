@@ -50,6 +50,13 @@ export const OBJETIVOS_CLINICOS = [
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
+/**
+ * Renders Dynamic Difficulty Adjustment (DDA) calibration form for pre-session configuration.
+ * Clinical Calibration (RF12, RF17, RN03): Binds initial stress scale (1-5), sensory triggers, and clinical objectives.
+ *
+ * @param props - Form properties containing current calibration parameters and update callbacks
+ * @returns DDA context configuration form component
+ */
 export function FormularioContextoDDA({
   nivelEstresse,
   onNivelEstresseChange,

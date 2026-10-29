@@ -190,7 +190,10 @@ export function CockpitSessaoPage() {
     toast.info("Comando de pausa enviado ao jogo remoto.");
   };
 
-  /** Envia comando de retomada ao store e ao jogo remoto via WebSocket (RF21) */
+  /**
+   * Dispatches session resumption command to store and remote game client via WebSocket (RF21).
+   * Session Control (RF13, RF21): Unpauses clinical timer and signals game client to resume rendering.
+   */
   const handleRetomar = () => {
     retomarSessao();
     SessionSocketManager.getInstance().enviarComando({
