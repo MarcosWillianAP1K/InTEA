@@ -526,13 +526,13 @@ flowchart TD
 ### Front: Filtro por Especialista da Equipe na Linha do Tempo Longitudinal de Sessões (Tipo: Feature)
 
 * **Tipo:** Feature
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Luma Maiara (@lumamaiara)
 * **Fronteira de Arquivos:** `Frontend/src/features/paciente/components/FiltrosHistoricoAvancado.tsx`, `Frontend/src/features/paciente/components/LinhaDoTempoSessoes.tsx`, `Frontend/src/features/paciente/__test__/LinhaDoTempoFiltroEspecialista.test.tsx`
 * **Ordem de Execução / Dependência:** Independente (Ergonomia Analítica Multi-terapeuta no Histórico).
 * **Requisitos:** RF15, RF18, RF19, RNF07
 * **Referência Documentação:** Projeto_de_InTEA.pdf (Seção 5.1 RF15, RF18 e RF19; Figura 13)
 * **Descrição:** Adicionar um seletor de filtro por `"Especialista Responsável"` dentro de `FiltrosHistoricoAvancado.tsx` e `LinhaDoTempoSessoes.tsx`, permitindo que o profissional filtre a linha do tempo de sessões do paciente para visualizar ou `"Todas as Sessões da Equipe Multidisciplinar"` ou apenas as intervenções conduzidas por um especialista específico (ex.: apenas sessões da Terapia Ocupacional ou apenas da Fonoaudiologia).
 * **Critérios de Aceite:**
-  * [ ] Seletor de especialista populado dinamicamente a partir dos terapeutas presentes no histórico do paciente.
-  * [ ] Filtragem reativa imediata na `LinhaDoTempoSessoes` preservando os demais filtros de jogo e período (**RF19**).
-  * [ ] Teste unitário em `LinhaDoTempoFiltroEspecialista.test.tsx` aprovado no Vitest.
+  * [x] Seletor de especialista populado dinamicamente a partir dos terapeutas presentes no histórico do paciente.
+  * [x] Filtragem reativa imediata na `LinhaDoTempoSessoes` preservando os demais filtros de jogo e período (**RF19**).
+  * [x] Teste unitário em `LinhaDoTempoFiltroEspecialista.test.tsx` aprovado no Vitest.

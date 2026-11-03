@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Calendar, Filter, RotateCcw } from "lucide-react";
+import { Calendar, Filter, RotateCcw, UserCheck } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/button";
-import type { FiltrosHistorico } from "../types/historico.types";
+import type { FiltrosHistorico, EspecialistaHistorico } from "../types/historico.types";
 
 /**
  * ============================================================================
@@ -19,6 +19,8 @@ export interface FiltrosHistoricoAvancadoProps {
   filtros: FiltrosHistorico;
   /** Callback disparado ao alterar o período ou as datas personalizadas */
   onAlterarFiltros: (novosFiltros: FiltrosHistorico) => void;
+  /** Lista opcional de especialistas vinculados para filtragem da equipe multidisciplinar (Issue #187) */
+  especialistas?: EspecialistaHistorico[];
   /** Indicador de carregamento para desativar controles durante fetch */
   isLoading?: boolean;
   /** Classes CSS adicionais */
@@ -73,6 +75,7 @@ function calcularDataInicio(opcao: OpcaoConfig, dataReferencia: Date = new Date(
 export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> = ({
   filtros,
   onAlterarFiltros,
+  especialistas,
   isLoading = false,
   className,
 }) => {
@@ -141,6 +144,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
     setDataFimInput("");
     onAlterarFiltros({
       ...filtros,
+      terapeutaId: undefined,
       periodo: "30d",
       dataInicio: defaultDataInicio,
       dataFim: defaultDataFim,
@@ -166,7 +170,7 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
         </div>
 
         {/* Botão de Reset */}
-        {(filtros.periodo !== "30d" || filtros.dataInicio || filtros.dataFim) && (
+        {(filtros.periodo !== "30d" || filtros.dataInicio || filtros.dataFim || filtros.terapeutaId) && (
           <Button
             type="button"
             variant="ghost"
@@ -211,6 +215,40 @@ export const FiltrosHistoricoAvancado: React.FC<FiltrosHistoricoAvancadoProps> =
           );
         })}
       </div>
+
+      {/* Seletor de Especialista da Equipe Multidisciplinar (Issue #187, RF18, RF19) */}
+      {especialistas && especialistas.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-border/60">
+          <label
+            htmlFor="filtro-especialista-responsavel"
+            className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 shrink-0"
+          >
+            <UserCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            <span>Especialista Responsável:</span>
+          </label>
+          <select
+            id="filtro-especialista-responsavel"
+            value={filtros.terapeutaId || ""}
+            onChange={(e) =>
+              onAlterarFiltros({
+                ...filtros,
+                terapeutaId: e.target.value || undefined,
+              })
+            }
+            disabled={isLoading}
+            data-testid="select-filtro-especialista"
+            className="min-h-11 px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer flex-1 max-w-md"
+            aria-label="Filtrar por Especialista Responsável"
+          >
+            <option value="">Todas as Sessões da Equipe Multidisciplinar</option>
+            {especialistas.map((esp) => (
+              <option key={esp.id} value={esp.id}>
+                {esp.nome}{esp.especialidade ? ` (${esp.especialidade})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Painel Expansível de Intervalo Personalizado (RF19) */}
       {isPersonalizadoAtivo && (

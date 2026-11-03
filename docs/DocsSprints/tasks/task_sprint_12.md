@@ -253,17 +253,17 @@
 ### Front: Auto-Save Local de Rascunho (Draft Persistence) no Editor de Anotações Clínicas (Tipo: Feature)
 
 * **Tipo:** Feature
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Luma Maiara (@lumamaiara)
 * **Fronteira de Arquivos:** `Frontend/src/features/anotacao/hooks/useAnotacaoDraft.ts`, `Frontend/src/features/anotacao/components/GerenciadorAnotacoesProntuario.tsx`, `Frontend/src/features/anotacao/__test__/useAnotacaoDraft.test.ts`
 * **Ordem de Execução / Dependência:** Independente (Reforço de Ergonomia Clínica no Frontend).
 * **Requisitos:** RF16, RNF07
 * **Referência Documentação:** Projeto_de_InTEA.pdf (Seção 2 — Redução da Sobrecarga Cognitiva do Terapeuta), AGENTS.md (Seção 6.3 — Item 4)
 * **Descrição:** Criar o custom hook `useAnotacaoDraft(pacienteId, sessaoId)` com debounce de 500ms para salvar automaticamente no `sessionStorage` o rascunho textual da anotação clínica enquanto o terapeuta digita. Caso o navegador sofra recarregamento acidental (F5) ou troca momentânea de aba antes do clique em "Salvar", o texto em edição é restaurado automaticamente com badge informativo `"Rascunho restaurado"`, sendo limpo imediatamente após a confirmação de persistência na API (`201 Created`).
 * **Critérios de Aceite:**
-  * [ ] Hook `useAnotacaoDraft` implementado em TypeScript estrito (sem `any`) com limpeza (`cleanup`) de timers de debounce no `useEffect`.
-  * [ ] Restauração automática do texto não salvo ao reabrir o prontuário do mesmo `pacienteId` / `sessaoId`.
-  * [ ] Expurgo imediato da chave no `sessionStorage` após o salvamento com sucesso na API ou clique em "Descartar rascunho".
-  * [ ] Suíte de testes unitários em `useAnotacaoDraft.test.ts` aprovada com 100% de cobertura no Vitest.
+  * [x] Hook `useAnotacaoDraft` implementado em TypeScript estrito (sem `any`) com limpeza (`cleanup`) de timers de debounce no `useEffect`.
+  * [x] Restauração automática do texto não salvo ao reabrir o prontuário do mesmo `pacienteId` / `sessaoId`.
+  * [x] Expurgo imediato da chave no `sessionStorage` após o salvamento com sucesso na API ou clique em "Descartar rascunho".
+  * [x] Suíte de testes unitários em `useAnotacaoDraft.test.ts` aprovada com 100% de cobertura no Vitest.
 
 ---
 
