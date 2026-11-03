@@ -176,7 +176,7 @@ describe("Card 3.4 — Testes do Cockpit de Monitoramento da Sessão (Hermeson A
 
     expect(useSessionStore.getState().status).toBe("finalizada");
     expect(toast.info).toHaveBeenCalledWith(
-      "Partida em Modo Livre concluída sem persistência em prontuário (RN01)."
+      "Partida em Modo Livre concluída sem persistência em prontuário."
     );
     expect(mockNavigate).toHaveBeenCalledWith("/games");
   });

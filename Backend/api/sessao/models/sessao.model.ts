@@ -16,6 +16,7 @@ export const STATUS_SESSAO = {
   AGUARDANDO_PAREAMENTO: 'aguardando_pareamento',
   CONECTADO: 'conectado',
   EM_ANDAMENTO: 'em_andamento',
+  PAUSADA: 'pausada',
   FINALIZADA: 'finalizada',
   EXPIRADA: 'expirada',
   CANCELADA: 'cancelada',
@@ -274,11 +275,14 @@ export class SessaoModel {
             STATUS_SESSAO.EXPIRADA,
             STATUS_SESSAO.INTERROMPIDA_POR_QUEDA,
           ]);
+        } else if (s === 'pausada') {
+          query = query.eq('status_sessao', STATUS_SESSAO.PAUSADA);
         } else if (s === 'pendente' || s === 'pendentes' || s === 'incompleto') {
           query = query.in('status_sessao', [
             STATUS_SESSAO.AGUARDANDO_PAREAMENTO,
             STATUS_SESSAO.CONECTADO,
             STATUS_SESSAO.EM_ANDAMENTO,
+            STATUS_SESSAO.PAUSADA,
           ]);
         } else if (Object.values(STATUS_SESSAO).includes(s as StatusSessao)) {
           query = query.eq('status_sessao', s);

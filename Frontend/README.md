@@ -85,7 +85,7 @@ Frontend/src/
 │   │   ├── endpoints.ts                  # Constantes tipadas de todas as rotas REST (/auth, /paciente, /sessao, etc.)
 │   │   └── http-client.ts                # Cliente HTTP com injeção automática de Bearer JWT e refresh de 401
 │   └── web.socket.ts                     # Singleton SessionSocketManager (Socket.IO Client) e hooks reativos
-├── features/                             # ★ MÓDULOS VERTICAIS POR DOMÍNIO DE NEGÓCIO
+├── features/                             # MÓDULOS VERTICAIS POR DOMÍNIO DE NEGÓCIO
 │   ├── autenticacao/                     # Autenticação, registro e sessão do terapeuta
 │   │   ├── pages/                        # LoginPage.tsx
 │   │   ├── hooks/                        # useAuth.ts
@@ -146,7 +146,7 @@ Frontend/src/
    - Normalizam na fronteira do cliente eventuais diferenças de formato da API (`snake_case` $\rightarrow$ `camelCase`) sem exigir chaves duplicadas no Backend.
 3. **Stores Globais com Zustand (`features/*/store/`):**
    - `useAuthStore`: sessão autenticada do terapeuta e tokens JWT persistidos em `localStorage`.
-   - `useSessionStore`: máquina de estados da sessão clínica (`ocioso` $\rightarrow$ `configurando` $\rightarrow$ `aguardando_dispositivo` $\rightarrow$ `em_andamento` $\rightarrow$ `pausado` $\rightarrow$ `finalizado`), parâmetros DDA e telemetria.
+   - `useSessionStore`: máquina de estados da sessão clínica (`ocioso` $\rightarrow$ `configurando` $\rightarrow$ `aguardando_dispositivo` $\rightarrow$ `em_andamento` $\rightarrow$ `pausada` $\rightarrow$ `finalizada`), parâmetros DDA e telemetria.
    - `usePacienteStore`: estado reativo dos pacientes da clínica sincronizado com `pacienteService`.
    - `useSettingStore`: preferências de tema e idioma persistidas em `localStorage`.
 4. **Custom Hooks (`features/*/hooks/`):**

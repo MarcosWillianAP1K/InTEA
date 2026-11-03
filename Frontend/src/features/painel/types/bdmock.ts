@@ -50,6 +50,20 @@ export const MOCK_DASHBOARD_METRICAS: DashboardMetricas = {
 
 export const MOCK_SESSOES_RECENTES: SessaoRecenteResumo[] = [
   {
+    id: "44444444-4444-4444-8444-444444444444",
+    pacienteId: "164a2d30-2ca1-464f-9b55-9070f06b2058",
+    pacienteNome: "Raildom da Rocha Silva",
+    jogoId: "11111111-1111-4111-8111-111111111111",
+    jogoNome: "Aventura das Cores",
+    jogoIcone: "Gamepad2",
+    dataHora: new Date(Date.now() - 14 * 60 * 1000).toISOString(),
+    duracaoSegundos: 840,
+    status: "em_andamento",
+    nivelEstresseMedio: 22.0,
+    engajamentoScore: 94.0,
+    ddaIntervencoes: 2,
+  },
+  {
     id: "s1111111-1111-4111-8111-111111111111",
     pacienteId: "p1111111-1111-4111-8111-111111111111",
     pacienteNome: "Arthur Silveira",

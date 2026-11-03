@@ -27,7 +27,11 @@ export interface RespostaExportacaoProntuario {
 }
 
 /**
- * Mascara o CPF conforme as diretrizes da LGPD (RNF06): ***.XXX.***-XX.
+ * Masks a CPF number in compliance with LGPD data protection guidelines (RNF06).
+ * Anonymization Rule: Preserves partial digits while redacting the majority as ***.XXX.***-XX.
+ *
+ * @param cpf - Raw CPF string
+ * @returns Masked CPF string
  */
 export function mascararCpfLgpd(cpf?: string | null): string {
   if (!cpf) return '***.***.***-**';
@@ -39,7 +43,11 @@ export function mascararCpfLgpd(cpf?: string | null): string {
 }
 
 /**
- * Escapa caracteres especiais de strings literais para a sintaxe PostScript / PDF.
+ * Escapes special characters from literal strings for raw PostScript and PDF 1.4 syntax.
+ * Binary Safety: Handles parentheses, backslashes, and carriage returns to prevent document corruption.
+ *
+ * @param str - Plaintext string to escape
+ * @returns PostScript-safe escaped string
  */
 function escaparStringPdf(str: string): string {
   return str
@@ -52,7 +60,11 @@ function escaparStringPdf(str: string): string {
 }
 
 /**
- * Constrói um documento PDF 1.4 válido em formato binário (Buffer) sem dependências externas.
+ * Assembles a valid PDF 1.4 document into a binary Buffer without external heavy dependencies.
+ * Lightweight Architecture: Manually builds standard catalog, pages, font dictionaries, and cross-reference tables.
+ *
+ * @param linhas - Formatted text lines to include in the document body
+ * @returns Raw binary Buffer containing the compiled PDF
  */
 function compilarPdfBinario(linhas: string[]): Buffer {
   let streamTexto = 'BT\n';
@@ -154,11 +166,12 @@ function compilarPdfBinario(linhas: string[]): Buffer {
 
 export class PacienteExportarHistoricoService {
   /**
-   * Exporta o prontuário longitudinal consolidado do paciente em formato PDF.
+   * Exports the patient's consolidated longitudinal medical record in PDF format.
+   * Clinical Record Export (RF20, RN04): Enforces institutional therapist-patient link before generating PDF.
    *
-   * @param pacienteId - UUID do paciente alvo.
-   * @param usuarioAutenticado - Dados do terapeuta extraídos do token JWT.
-   * @returns Resultado contendo o Buffer do PDF ou erro semântico.
+   * @param pacienteId - UUID of the target patient
+   * @param usuarioAutenticado - Authenticated therapist claims extracted from JWT
+   * @returns Service result containing binary PDF Buffer or error details
    */
   static async exportarProntuario(
     pacienteId: string,
@@ -321,7 +334,12 @@ export class PacienteExportarHistoricoService {
   }
 
   /**
-   * Verifica o vínculo institucional do terapeuta com o paciente (RN04).
+   * Verifies the institutional association between the requesting therapist and the target patient.
+   * Authorization Guard (RN04): Allows SuperAdmins or linked clinic therapists while blocking unauthorized access.
+   *
+   * @param pacienteId - UUID of the target patient
+   * @param usuario - Authenticated therapist profile
+   * @returns Boolean indicating whether access is authorized
    */
   private static async verificarVinculo(terapeutaId: string, paciente: Paciente): Promise<boolean> {
     // 1. Checa se já veio pré-carregado no relacionamento
@@ -353,7 +371,11 @@ export class PacienteExportarHistoricoService {
   }
 
   /**
-   * Recupera dados do terapeuta solicitante para o bloco de assinatura.
+   * Retrieves profile data of the requesting therapist for the clinical signature block.
+   * Clinical Provenance: Fetches therapist name, professional registration, CREFITO, and email.
+   *
+   * @param terapeutaId - UUID of the therapist
+   * @returns Therapist profile object or null
    */
   private static async buscarDadosTerapeuta(terapeutaId: string): Promise<{
     nome: string;
@@ -389,7 +411,11 @@ export class PacienteExportarHistoricoService {
   }
 
   /**
-   * Recupera informações institucionais da clínica.
+   * Retrieves institutional clinic information associated with the therapist.
+   * Multi-Tenant Header: Fetches clinic name, CNPJ, and active status for report branding.
+   *
+   * @param clinicaId - UUID of the clinic institution
+   * @returns Clinic data or null
    */
   private static async buscarDadosClinica(clinicaId?: string | null): Promise<{
     nome: string;
@@ -421,7 +447,12 @@ export class PacienteExportarHistoricoService {
   }
 
   /**
-   * Busca as últimas anotações clínicas ativas do paciente (excluindo soft delete).
+   * Queries the latest active clinical notes for the patient, excluding soft-deleted records.
+   * History Integrity (RN05): Orders notes chronologically with author details.
+   *
+   * @param pacienteId - UUID of the patient
+   * @param limite - Maximum number of notes to retrieve
+   * @returns Array of clinical note records
    */
   private static async buscarAnotacoesClinicas(pacienteId: string): Promise<{ conteudo: string; created_at: string }[]> {
     try {

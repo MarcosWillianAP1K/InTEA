@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS public.clinica (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome VARCHAR(255) NOT NULL,
     cnpj VARCHAR(20) UNIQUE,
+    status_ativo BOOLEAN DEFAULT TRUE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
 );
@@ -64,7 +65,7 @@ CREATE TABLE IF NOT EXISTS public.paciente (
     nome VARCHAR(255) NOT NULL,
     data_nascimento DATE NOT NULL,
     telefone VARCHAR(20),
-    cpf VARCHAR(14) UNIQUE,
+    cpf VARCHAR(255) UNIQUE, -- Suporta armazenamento cifrado AES-256-GCM (RNF06)
     cep VARCHAR(10),
     cidade VARCHAR(255),
     estado VARCHAR(100),
@@ -85,7 +86,7 @@ CREATE TABLE IF NOT EXISTS public.responsavel (
     nome VARCHAR(255) NOT NULL,
     cpf VARCHAR(14) UNIQUE,
     data_nascimento DATE,
-    telefone VARCHAR(20) NOT NULL,
+    telefone VARCHAR(255) NOT NULL, -- Suporta armazenamento cifrado AES-256-GCM (RNF06)
     email VARCHAR(255),
     parentesco VARCHAR(50), -- Ex: Mãe, Pai, Tutor legal, Avó
     cep VARCHAR(10),
@@ -209,12 +210,13 @@ CREATE TABLE IF NOT EXISTS public.sessao (
         (modo_sessao = 'sessao_clinica' AND paciente_id IS NOT NULL)
     ),
 
-    -- Máquina de Estados da Sessão e Pareamento Remoto
+    -- Máquina de Estados da Sessão e Pareamento Remoto (RF12, RF21)
     CONSTRAINT chk_status_sessao CHECK (
         status_sessao IN (
             'aguardando_pareamento',
             'conectado',
             'em_andamento',
+            'pausada',
             'finalizada',
             'expirada',
             'cancelada',
@@ -388,6 +390,10 @@ CREATE INDEX IF NOT EXISTS idx_telemetria_dados_gin ON public.telemetria_evento 
 CREATE INDEX IF NOT EXISTS idx_sessao_paciente_engajamento ON public.sessao (paciente_id, status_sessao, data_hora_fim DESC) WHERE paciente_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_sessao_paciente_jogo_fim ON public.sessao (paciente_id, jogo_id, data_hora_fim DESC) WHERE status_sessao = 'finalizada' AND paciente_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_relatorio_dados_ia_gin ON public.relatorio_sessao USING gin (dados_ia_json);
+
+-- Índices Otimizados para Anotações Clínicas e Contexto DDA (Sprint 12 - RF16, RF21, RN04, RN05)
+CREATE INDEX IF NOT EXISTS idx_anotacao_paciente_autor_data ON public.anotacao_clinica(paciente_id, terapeuta_id, created_at DESC) WHERE soft_delete = false;
+CREATE INDEX IF NOT EXISTS idx_anotacao_sessao_soft_delete ON public.anotacao_clinica(sessao_id, created_at DESC) WHERE soft_delete = false;
 
 -- Trigger para atualizacao automatica de updated_at em sessao
 CREATE OR REPLACE FUNCTION public.fn_sessao_set_updated_at()

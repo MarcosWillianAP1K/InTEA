@@ -2,7 +2,7 @@
 
 > **Projeto:** InTEA — Interface do Terapeuta para Orquestração do Ecossistema de Games Terapêuticos  
 > **Período da Sprint:** 08/10/2026 a 15/10/2026  
-> **Status:** 🚀 Em Andamento / Homologação Final  
+> **Status:** Em Andamento / Homologação Final  
 > **Requisitos Atendidos:** RF14, RF16, RF20, RN01, RN04, RN05, RNF02  
 > **Documento Fonte:** [sprint-10.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-10.md) e [task_sprint_10.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/tasks/task_sprint_10.md)  
 > **Hub de Navegação:** [Índice Geral](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/README.md)

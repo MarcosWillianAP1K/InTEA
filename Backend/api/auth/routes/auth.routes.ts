@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller.js';
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
+import { loginRateLimiter } from '../../../core/middlewares/rate-limit.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/auth
@@ -53,7 +54,7 @@ export const authRoutes = Router();
  *             example:
  *               error: "Esta conta de terapeuta encontra-se inativada. Contate o administrador."
  */
-authRoutes.post('/login', AuthController.login);
+authRoutes.post('/login', loginRateLimiter, AuthController.login);
 
 /**
  * @swagger

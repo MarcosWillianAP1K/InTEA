@@ -50,8 +50,8 @@ export function formatarTempoClinico(totalSegundos: number): string {
 }
 
 /**
- * High-precision clinical session timer hook with persistence and pause handling.
- * Protects against background tab throttling and page reloads via sessionStorage (RF12, RNF04).
+ * High-precision clinical session timer hook with persistence, synchronicity, and pause handling.
+ * Protects against background tab throttling and page reloads via sessionStorage and cross-component sync (RF12, RNF04).
  *
  * @param options - Configuration options for session timer.
  * @returns Timer state, formatted elapsed time, and control methods.
@@ -90,6 +90,9 @@ export function useClinicalTimer(
       if (salvo) {
         const parsed = JSON.parse(salvo) as TimerStorageData;
         if (typeof parsed.timestampInicio === "number" && !isNaN(parsed.timestampInicio)) {
+          if (isPausado !== undefined) {
+            parsed.isPausado = isPausado;
+          }
           return parsed;
         }
       }
@@ -105,8 +108,8 @@ export function useClinicalTimer(
     const inicial: TimerStorageData = {
       timestampInicio: tsInicio,
       tempoAcumuladoPausaMs: 0,
-      timestampUltimaPausa: null,
-      isPausado: false,
+      timestampUltimaPausa: isPausado ? agora : null,
+      isPausado: Boolean(isPausado),
     };
 
     try {
@@ -122,12 +125,15 @@ export function useClinicalTimer(
 
   /**
    * Persists the current timer state (timestamps and pause control) to
-   * sessionStorage, ensuring resilience against page reloads.
+   * sessionStorage and broadcasts to all listening components and tabs.
    */
   const salvarNoStorage = React.useCallback((data: TimerStorageData) => {
     if (typeof window === "undefined") return;
     try {
       window.sessionStorage.setItem(storageKey, JSON.stringify(data));
+      window.dispatchEvent(
+        new CustomEvent("intea:timer_sync", { detail: { storageKey, data } })
+      );
     } catch {
       // ignore
     }
@@ -156,6 +162,52 @@ export function useClinicalTimer(
   const [segundosDecorridos, setSegundosDecorridos] = React.useState<number>(() => {
     return ativo ? calcularSegundos() : 0;
   });
+
+  // Sincronização entre instâncias ativas do timer (Cockpit, Dashboard, Cards) via CustomEvent e StorageEvent
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleSync = (e: Event) => {
+      const customEvent = e as CustomEvent<{ storageKey?: string; data?: TimerStorageData }>;
+      if (customEvent.detail?.storageKey && customEvent.detail.storageKey !== storageKey) {
+        return;
+      }
+      try {
+        const salvo = window.sessionStorage.getItem(storageKey);
+        if (salvo) {
+          const parsed = JSON.parse(salvo) as TimerStorageData;
+          if (typeof parsed.timestampInicio === "number" && !isNaN(parsed.timestampInicio)) {
+            timerDataRef.current = parsed;
+            setSegundosDecorridos(calcularSegundos());
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener("intea:timer_sync", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener("intea:timer_sync", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, [storageKey, calcularSegundos]);
+
+  // Se dataHoraInicioInicial for injetada após a montagem, ancora o timestamp inicial se ainda não persistido
+  React.useEffect(() => {
+    if (!dataHoraInicioInicial) return;
+    const tsInicio = new Date(dataHoraInicioInicial).getTime();
+    if (isNaN(tsInicio) || tsInicio <= 0) return;
+
+    const data = timerDataRef.current;
+    const salvo = typeof window !== "undefined" ? window.sessionStorage.getItem(storageKey) : null;
+    if (!salvo) {
+      data.timestampInicio = tsInicio;
+      salvarNoStorage(data);
+      setSegundosDecorridos(calcularSegundos());
+    }
+  }, [dataHoraInicioInicial, storageKey, salvarNoStorage, calcularSegundos]);
 
   // Trata transição de pausa / despausa
   React.useEffect(() => {

@@ -263,7 +263,8 @@ export class SessaoReconnectionManager {
   }
 
   /**
-   * Limpa todos os temporizadores e estados (essencial para tearDown de testes sem memory leak).
+   * Clears all active disconnection timers and session states.
+   * Test Teardown: Resets reconnecting state trackers to ensure deterministic test runs.
    */
   limparTodos(): void {
     for (const timer of this.temporizadores.values()) {

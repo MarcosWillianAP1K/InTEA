@@ -25,6 +25,13 @@ export const MOCK_ANOTACAO_1: AnotacaoClinica = {
   paciente_nome: "Lucas Gabriel Silveira",
   created_at: "2026-10-17T18:25:00.000Z",
   updated_at: "2026-10-17T18:25:00.000Z",
+  autor: {
+    id: "b3333333-3333-4333-8333-333333333333",
+    nome: "Dra. Luma Maiara",
+    registro_profissional: "CREFITO 12345-TO",
+    crefito: "12345-TO",
+    especialidade: "Terapia Ocupacional e Integração Sensorial",
+  },
 };
 
 export const MOCK_ANOTACAO_2: AnotacaoClinica = {
@@ -40,6 +47,12 @@ export const MOCK_ANOTACAO_2: AnotacaoClinica = {
   paciente_nome: "Sofia Costa Santos",
   created_at: "2026-10-16T14:30:00.000Z",
   updated_at: "2026-10-16T14:30:00.000Z",
+  autor: {
+    id: "a9849163-613f-4492-90cf-89985902d16e",
+    nome: "Dr. Marcos Terapeuta",
+    registro_profissional: "CRP 11/04589",
+    especialidade: "Neuropsicologia Clínica",
+  },
 };
 
 export const MOCK_ANOTACAO_3: AnotacaoClinica = {
@@ -55,6 +68,13 @@ export const MOCK_ANOTACAO_3: AnotacaoClinica = {
   paciente_nome: "Enzo Gabriel Oliveira",
   created_at: "2026-10-15T10:15:00.000Z",
   updated_at: "2026-10-15T10:15:00.000Z",
+  autor: {
+    id: "c4444444-4444-4444-8444-444444444444",
+    nome: "Dr. Hermeson Alves",
+    registro_profissional: "CREFITO 98765-F",
+    crefito: "98765-F",
+    especialidade: "Fisioterapia Neurofuncional",
+  },
 };
 
 export const MOCK_ANOTACAO_INATIVA: AnotacaoClinica = {
@@ -69,6 +89,12 @@ export const MOCK_ANOTACAO_INATIVA: AnotacaoClinica = {
   paciente_nome: "Lucas Gabriel Silveira",
   created_at: "2026-10-10T09:00:00.000Z",
   updated_at: "2026-10-10T09:10:00.000Z",
+  autor: {
+    id: "a9849163-613f-4492-90cf-89985902d16e",
+    nome: "Dr. Marcos Terapeuta",
+    registro_profissional: "CRP 11/04589",
+    especialidade: "Neuropsicologia Clínica",
+  },
 };
 
 export const FIXTURES_ANOTACOES: AnotacaoClinica[] = [
@@ -105,6 +131,30 @@ export async function listarAnotacoesMock(
 
   if (filtro.sessao_id !== undefined) {
     lista = lista.filter((a) => a.sessao_id === filtro.sessao_id);
+  }
+
+  if (filtro.terapeutaId) {
+    lista = lista.filter((a) => a.terapeuta_id === filtro.terapeutaId);
+  }
+
+  if (filtro.busca && filtro.busca.trim()) {
+    const termo = filtro.busca.toLowerCase().trim();
+    lista = lista.filter(
+      (a) =>
+        a.conteudo.toLowerCase().includes(termo) ||
+        (a.autor?.nome && a.autor.nome.toLowerCase().includes(termo)) ||
+        (a.terapeuta_nome && a.terapeuta_nome.toLowerCase().includes(termo)),
+    );
+  }
+
+  if (filtro.dataInicio) {
+    const tInicio = new Date(filtro.dataInicio).getTime();
+    lista = lista.filter((a) => (a.created_at ? new Date(a.created_at).getTime() >= tInicio : true));
+  }
+
+  if (filtro.dataFim) {
+    const tFim = new Date(filtro.dataFim).getTime();
+    lista = lista.filter((a) => (a.created_at ? new Date(a.created_at).getTime() <= tFim : true));
   }
 
   if (filtro.somenteSemSessao) {

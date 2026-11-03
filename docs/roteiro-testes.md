@@ -1756,7 +1756,313 @@ Authorization: Bearer {token}
 
 ---
 
-> **Total atualizado: 55 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 22 Sessão/Pareamento (CT-S01→S22) · 6 Histórico Longitudinal Sprint 11 (CT-S23→S28)
+## Módulo 4 — Anotações Clínicas e Contexto Pré-Sessão DDA (Sprint 12)
+
+### CT-S29 — Registro de Anotação Clínica com Autoria Indelével do Terapeuta (201 Created — RF16 / RF21)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF16 — Bloco de Anotações Clínicas; RF21 — Autoria Obrigatória; RN04 — Vínculo Institucional |
+| **Tipo** | Positivo — caminho feliz clínico |
+| **Precondição** | Terapeuta autenticado (`req.user.id = 44444444-4444-4444-4444-444444444444`) com vínculo ativo ao paciente (`paciente_id = 22222222-2222-2222-2222-222222222222`) na tabela `terapeuta_paciente` |
+
+**Entrada — `POST /api/anotacao`**
+
+```http
+Authorization: Bearer {token-terapeuta-marcos}
+Content-Type: application/json
+```
+
+```json
+{
+  "paciente_id": "22222222-2222-2222-2222-222222222222",
+  "sessao_id": "11111111-1111-1111-1111-111111111111",
+  "conteudo": "Paciente demonstrou excelente autorregulação nas fases com estímulos cromáticos complexos e redução de latência motora."
+}
+```
+
+#### Passos
+
+1. Autenticar o terapeuta com JWT válido na rota `/api/terapeuta/login`.
+2. Executar a requisição `POST /api/anotacao` enviando o payload JSON acima.
+3. Consultar a anotação criada executando `GET /api/anotacao/{id_gerado}`.
+4. Inspecionar o bloco `autor` no JSON de resposta.
+
+#### Resultado Esperado
+
+- HTTP **201 Created** na criação
+- HTTP **200 OK** na consulta por ID
+- Resposta no Envelope Pattern Categorizado contendo `data.anotacao`
+- Campo `terapeuta_id` preenchido compulsoriamente com o UUID do terapeuta do token JWT (`44444444-4444-4444-4444-444444444444`)
+- Objeto sanitizado `autor` presente com:
+  - `autor.id`: `"44444444-4444-4444-4444-444444444444"`
+  - `autor.nome`: `"Dr. Marcos Terapeuta"`
+  - `autor.registro_profissional`: `"12345/PI"`
+  - `autor.crefito`: `"CREFITO-12345"`
+  - `autor.especialidade`: `"Terapia Ocupacional"`
+- A interface não exibe UUIDs crus do profissional, exibindo nome e registro profissional completo (**RF21**)
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S30 — Bloqueio de Edição e Exclusão por Terapeuta não Autor (403 Forbidden — RF21 / RN04)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF21 — Autoria e Integridade de Registros; RN04 — Isolamento Clínico Institucional |
+| **Tipo** | Negativo — segurança e anti-spoofing |
+| **Precondição** | Anotação clínica existente criada pelo terapeuta A (`44444444-4444-4444-4444-444444444444`). Terapeuta B (`55555555-5555-5555-5555-555555555555`) autenticado com vínculo no mesmo paciente |
+
+**Entrada 1 — `PATCH /api/anotacao/{anotacao_id_terapeuta_A}`**
+
+```http
+Authorization: Bearer {token-terapeuta-B}
+Content-Type: application/json
+```
+
+```json
+{
+  "conteudo": "Tentativa indevida de alterar a observação clínica de outro profissional."
+}
+```
+
+**Entrada 2 — `DELETE /api/anotacao/{anotacao_id_terapeuta_A}`**
+
+```http
+Authorization: Bearer {token-terapeuta-B}
+```
+
+#### Passos
+
+1. Obter o UUID de uma anotação cujo autor é o terapeuta A.
+2. Autenticar como terapeuta B (colega de clínica com vínculo ao paciente).
+3. Tentar executar `PATCH /api/anotacao/{id}` alterando o conteúdo.
+4. Tentar executar `DELETE /api/anotacao/{id}` para inativar a nota de outrem.
+5. Inspecionar o banco relacional para confirmar a integridade do texto original.
+
+#### Resultado Esperado
+
+- HTTP **403 Forbidden** em ambas as requisições
+- Mensagem de erro explícita indicando que apenas o autor original possui autorização para editar ou inativar o registro
+- O conteúdo da anotação e o valor de `soft_delete` permanecem inalterados no banco de dados
+- Nenhuma mutação de dados é consumada
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S31 — Filtragem Longitudinal, Soft Delete e Reativação de Anotação (200 OK — RF19 / RN05)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF19 — Filtros Avançados; RN05 — Inalterabilidade e Ciclo de Vida por Soft Delete |
+| **Tipo** | Positivo — governança e recuperação de registros |
+| **Precondição** | Paciente com histórico de 3 anotações clínicas em datas distintas, criadas pelo terapeuta autor autenticado |
+
+**Entrada 1 — `GET /api/anotacao/paciente/{pacienteId}?terapeutaId={autorId}&busca=estresse&page=1&limit=10`**
+
+```http
+Authorization: Bearer {token-terapeuta-autor}
+```
+
+**Entrada 2 — `DELETE /api/anotacao/{anotacaoId}`**
+
+```http
+Authorization: Bearer {token-terapeuta-autor}
+```
+
+**Entrada 3 — `PATCH /api/anotacao/{anotacaoId}/reativar`**
+
+```http
+Authorization: Bearer {token-terapeuta-autor}
+```
+
+#### Passos
+
+1. Executar a consulta com filtros combinados (`terapeutaId`, termo textual `busca="estresse"`, paginação `page=1`, `limit=10`).
+2. Verificar que a API retorna apenas as notas do autor que contêm a palavra "estresse" no Envelope Categorizado (`total`, `pagina`, `limite`).
+3. Executar o soft delete via `DELETE /api/anotacao/{id}`.
+4. Executar `GET /api/anotacao/paciente/{pacienteId}` sem o parâmetro `incluirInativos` e comprovar a ocultação da nota.
+5. Executar `PATCH /api/anotacao/{id}/reativar`.
+6. Confirmar que a anotação retorna ao estado ativo (`soft_delete = false`).
+
+#### Resultado Esperado
+
+- Entrada 1: HTTP **200 OK**, lista contendo estritamente as notas correspondentes aos filtros combinados (**RF19**)
+- Entrada 2: HTTP **200 OK**, com `data.anotacao.soft_delete: true`
+- Entrada 3: HTTP **200 OK**, com `data.anotacao.soft_delete: false` e objeto `autor` preservado
+- O registro nunca é deletado fisicamente do banco de dados, cumprindo integralmente a **RN05**
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S32 — Configuração Personalizada do Contexto DDA Pré-Sessão (201 Created — RF17 / RN03 / Contrato 2)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF17 — Injeção de Contexto Clínico DDA; RN03 — Entrega Prévia à Telemetria; Contrato 2 |
+| **Tipo** | Positivo — calibração pré-sessão customizada |
+| **Precondição** | Terapeuta vinculado ao paciente; jogo cadastrado com manifesto homologado; código PIN legível gerado previamente |
+
+**Entrada — `POST /api/sessao/iniciar`**
+
+```http
+Authorization: Bearer {token-terapeuta}
+Content-Type: application/json
+```
+
+```json
+{
+  "terapeuta_id": "44444444-4444-4444-4444-444444444444",
+  "jogo_id": "8b5a034f-9e77-4ad3-9b6e-1d54e5cf4291",
+  "paciente_id": "22222222-2222-2222-2222-222222222222",
+  "modo_sessao": "sessao_clinica",
+  "codigo_pareamento": "4M5S-8U7B",
+  "contexto_dda_json": {
+    "nivel_estresse_inicial": 4,
+    "gatilhos_sensoriais_evitar": [
+      "Sons Agudos Repentinos",
+      "Transições de Luz Fluorescente"
+    ],
+    "objetivo_clinico": "Foco atencional com modulação para evitar sobrecarga sensorial"
+  }
+}
+```
+
+#### Passos
+
+1. Iniciar a sessão enviando o payload customizado acima com escala de estresse `4`.
+2. Obter o `session_token` e simular a conexão do jogo externo via `POST /api/sessao/parear` ou WebSocket Socket.IO (`entrar_sessao`).
+3. Verificar a carga de contexto DDA entregue no handshake.
+4. Tentar enviar o primeiro evento `sessao:telemetria` e validar a ordem temporal.
+
+#### Resultado Esperado
+
+- HTTP **201 Created** em `/api/sessao/iniciar`
+- A escala de estresse numérica `4` é mapeada deterministicamente para `"alto"` no pacote do Contrato 2
+- O pacote entregue no handshake contém:
+  - `token_sessao`: `"4M5S-8U7B"`
+  - `id_terapeuta`: `"44444444-4444-4444-4444-444444444444"`
+  - `id_paciente`: `"22222222-2222-2222-2222-222222222222"`
+  - `contexto_paciente.nivel_estresse_inicial`: `"alto"`
+  - `contexto_paciente.gatilhos_sensoriais_evitar`: 2 gatilhos informados
+  - `contexto_paciente.objetivo_clinico`: texto informado
+- O pacote de contexto DDA é entregue ao dispositivo **antes** da aceitação do primeiro pacote de telemetria (**RN03**)
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S33 — Início de Sessão com Fallback Clínico Parametrizado (201 Created — RF17 / Figura 5)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF17 — Contexto DDA; Figura 5 — Diagrama de Atividades com Fallback Parametrizado |
+| **Tipo** | Positivo — fallback clínico automático |
+| **Precondição** | Paciente com gatilhos cadastrados na anamnese (`dados_clinicos` contendo `"Sons Altos"` e `"Luz Piscante"`); terapeuta vinculado |
+
+**Entrada — `POST /api/sessao/iniciar`**
+
+```http
+Authorization: Bearer {token-terapeuta}
+Content-Type: application/json
+```
+
+```json
+{
+  "terapeuta_id": "44444444-4444-4444-4444-444444444444",
+  "jogo_id": "8b5a034f-9e77-4ad3-9b6e-1d54e5cf4291",
+  "paciente_id": "22222222-2222-2222-2222-222222222222",
+  "modo_sessao": "sessao_clinica",
+  "codigo_pareamento": "7K9P-2W4X",
+  "contexto_dda_json": {
+    "usar_fallback_padrao": true
+  }
+}
+```
+
+#### Passos
+
+1. Cadastrar previamente gatilhos sensoriais no prontuário do paciente (`dados_clinicos` e `paciente_gatilho`).
+2. Executar `POST /api/sessao/iniciar` acionando `"usar_fallback_padrao": true` (ou omitindo parâmetros DDA).
+3. Consultar a sessão criada no banco de dados e inspecionar o campo `sessao.contexto_dda_json`.
+
+#### Resultado Esperado
+
+- HTTP **201 Created**
+- Aplicação automática do fluxo de fallback da **Figura 5**:
+  - `nivel_estresse_inicial`: normalizado como `"baixo"` (escala padrão 1)
+  - `gatilhos_sensoriais_evitar`: herda automaticamente os gatilhos cadastrados no prontuário do paciente (`"Sons Altos"`, `"Luz Piscante"`)
+  - `objetivo_clinico`: assume o objetivo clínico padrão do manifesto do jogo selecionado
+- O motor de IA é calibrado com segurança sem impor sobrecarga de preenchimento manual ao terapeuta
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S34 — Rejeição de Injeção de Contexto Clínico ou Anotação em Modo Livre (400 Bad Request — RN01)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RN01 — Isolamento Inviolável de Modo Livre; RF11 |
+| **Tipo** | Negativo — preservação da barreira recreativa vs. clínica |
+| **Precondição** | Sessão criada ou configurada como `modo_sessao: "modo_livre"` (`paciente_id = NULL`) |
+
+**Entrada 1 — `POST /api/sessao/iniciar` (Tentativa de injetar paciente ou contexto DDA em Modo Livre)**
+
+```http
+Authorization: Bearer {token-terapeuta}
+Content-Type: application/json
+```
+
+```json
+{
+  "terapeuta_id": "44444444-4444-4444-4444-444444444444",
+  "jogo_id": "8b5a034f-9e77-4ad3-9b6e-1d54e5cf4291",
+  "paciente_id": "22222222-2222-2222-2222-222222222222",
+  "modo_sessao": "modo_livre",
+  "codigo_pareamento": "3X2Y-9Z8W",
+  "contexto_dda_json": {
+    "nivel_estresse_inicial": 2,
+    "gatilhos_sensoriais_evitar": ["Sons Altos"],
+    "objetivo_clinico": "Foco atencional"
+  }
+}
+```
+
+**Entrada 2 — `POST /api/anotacao` (Tentativa de registrar nota clínica em sessão de Modo Livre)**
+
+```http
+Authorization: Bearer {token-terapeuta}
+Content-Type: application/json
+```
+
+```json
+{
+  "sessao_id": "99999999-9999-9999-9999-999999999999",
+  "conteudo": "Tentativa de criar anotação clínica em partida de Modo Livre."
+}
+```
+
+#### Passos
+
+1. Executar a Entrada 1 tentando associar `paciente_id` ou contexto clínico a uma partida declarada como `modo_livre`.
+2. Criar uma sessão válida em modo livre (`paciente_id = null`, sem contexto DDA).
+3. Executar a Entrada 2 tentando registrar uma anotação clínica associada ao UUID dessa sessão livre.
+
+#### Resultado Esperado
+
+- Entrada 1: HTTP **400 Bad Request** com mensagem clara de violação da **RN01** (_"Sessões em modo livre não admitem paciente_id nem calibração clínica DDA"_).
+- Entrada 2: HTTP **400 Bad Request** com mensagem explícita de que sessões em modo livre não persistem anotações em prontuário.
+- Nenhuma entrada de histórico ou contexto clínico é gravada para a partida recreativa, cumprindo estritamente a invariante **RN01**.
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+> **Total atualizado: 61 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 22 Sessão/Pareamento (CT-S01→S22) · 6 Histórico Longitudinal Sprint 11 (CT-S23→S28) · 6 Anotações e Contexto DDA Sprint 12 (CT-S29→S34)
 
 ---
 
@@ -1764,11 +2070,11 @@ Authorization: Bearer {token}
 
 | Protocolo / Código | Semântica | Casos de Teste |
 | :---: | :--- | :--- |
-| **HTTP 200** | Sucesso em consulta, pareamento, validação aprovada, resultados ou modo livre | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12, CT-S01, CT-S02, CT-S06, CT-S10, CT-S14, CT-S15, CT-S16, CT-S22, CT-S23, CT-S24, CT-S25, CT-S28 |
-| **HTTP 201** | Recurso criado (paciente, vínculo, início de sessão, telemetria, anotação clínica) | CT-P01, CT-P11, CT-S07, CT-S08, CT-S09, CT-S20 |
-| **HTTP 400** | Parâmetros inválidos, lote excedido, transição inválida de FSM ou sessão não finalizada | CT-P02, CT-P12, CT-P13, CT-P15, CT-J08, CT-S09, CT-S14, CT-S18, CT-S25 |
+| **HTTP 200** | Sucesso em consulta, pareamento, validação aprovada, resultados ou modo livre | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12, CT-S01, CT-S02, CT-S06, CT-S10, CT-S14, CT-S15, CT-S16, CT-S22, CT-S23, CT-S24, CT-S25, CT-S28, CT-S29, CT-S31, CT-S33 |
+| **HTTP 201** | Recurso criado (paciente, vínculo, início de sessão, telemetria, anotação clínica) | CT-P01, CT-P11, CT-S07, CT-S08, CT-S09, CT-S20, CT-S29, CT-S32, CT-S33 |
+| **HTTP 400** | Parâmetros inválidos, lote excedido, transição inválida de FSM ou sessão não finalizada | CT-P02, CT-P12, CT-P13, CT-P15, CT-J08, CT-S09, CT-S14, CT-S18, CT-S25, CT-S34 |
 | **HTTP 401** | Sem autenticação / Token JWT ausente ou inválido | CT-P08 |
-| **HTTP 403** | Acesso negado por falta de vínculo clínico institucional (RN04) | CT-P07, CT-S14, CT-S17, CT-S27 |
+| **HTTP 403** | Acesso negado por falta de vínculo clínico institucional (RN04) ou autor divergente (RF21) | CT-P07, CT-S14, CT-S17, CT-S27, CT-S30 |
 | **HTTP 404** | Recurso não encontrado (paciente, jogo ou sessão inexistente) | CT-J06, CT-S04 |
 | **HTTP 409** | Conflito de integridade única ou sessão já em andamento | CT-P03, CT-S05 |
 | **HTTP 410** | Token PIN expirado (TTL 15 min) ou sessão terminal | CT-S03 |
@@ -1780,3 +2086,4 @@ Authorization: Bearer {token}
 | **WebSocket** | Presença, queda, reconexão de 60s e interrupção (`sessao:alerta_conexao`) | CT-S01, CT-S06, CT-S13 |
 | **WebSocket** | Sinalização de encerramento de sessão (`sessao_finalizada`) | CT-S14 |
 | **Histórico / RN01** | Supressão de Modo Livre em prontuário longitudinal | CT-S28 |
+| **Anotações / Contexto DDA** | Injeção prévia DDA (RN03), autoria compulsória (RF21) e soft delete (RN05) | CT-S29, CT-S30, CT-S31, CT-S32, CT-S33, CT-S34 |

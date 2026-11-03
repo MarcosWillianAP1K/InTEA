@@ -15,6 +15,7 @@ export type StatusSessao =
   | "aguardando_pareamento"
   | "conectado"
   | "em_andamento"
+  | "pausada"
   | "finalizada"
   | "expirada"
   | "cancelada"
@@ -53,8 +54,16 @@ export interface StatusDispositivo {
   ultimo_heartbeat?: string;
 }
 
+export interface ContextoSugeridoDTO {
+  origem: "ultima_sessao" | "anamnese";
+  estresse_inicial?: number;
+  nivel_estresse_autorrelatado?: "baixo" | "medio" | "alto";
+  gatilhos_a_evitar?: string[];
+  objetivo_terapeutico?: string;
+}
+
 export interface Sessao {
-  [x: string]: any;
+  [x: string]: unknown;
   id: string;
   terapeuta_id: string;
   paciente_id: string | null;
@@ -62,6 +71,8 @@ export interface Sessao {
   session_token: string;
   modo_sessao: ModoSessao;
   status_sessao: StatusSessao;
+  duracao_segundos?: number;
+  tempo_total_segundos?: number;
   contexto_dda_json?: ContextoDDA;
   dispositivo_info?: StatusDispositivo | null;
   data_hora_inicio?: string;
@@ -87,6 +98,7 @@ export interface Sessao {
     id: string;
     nome: string;
     registro_profissional?: string;
+    crefito?: string | null;
   } | null;
 }
 
@@ -96,6 +108,10 @@ export interface IniciarSessaoDTO {
   paciente_id?: string | null;
   modo_sessao?: ModoSessao;
   contexto_dda_json?: ContextoDDA;
+  nivel_estresse_inicial?: number | string;
+  gatilhos_sensoriais_evitar?: string[];
+  objetivo_clinico?: string;
+  usar_fallback_padrao?: boolean;
   codigo_pareamento?: string;
   session_token?: string;
   dispositivo_info?: Record<string, unknown> | null;
@@ -210,6 +226,7 @@ export interface ResultadoSessao {
     id: string;
     nome: string;
     registro_profissional?: string;
+    crefito?: string | null;
   } | null;
   metricas_consolidadas?: MetricasConsolidadas;
   dados_ia?: RelatorioIAResultado | null;
@@ -258,17 +275,20 @@ export interface SalvarAnotacaoPayload {
 export interface ConfiguracaoSessao {
   jogoId: string;
   jogoTitulo: string;
-  pacienteId: string;
+  pacienteId?: string | null;
   pacienteNome: string;
   objetivoClinico?: string;
+  focoTerapeutico?: string;
   gatilhosEvitar?: string[];
   nivelEstresseInicial?: number;
   observacoesIniciais?: string;
   duracaoPlanejadaMinutos?: number;
+  usarFallbackPadrao?: boolean;
 }
 
 export interface DadosPareamento {
   sessionToken: string;
+  codigoFormatado?: string;
   expiraEm: string; // ISO 8601
   tempoValidadeSegundos: number;
   dispositivo?: DispositivoConectadoPayload | null;
@@ -312,6 +332,9 @@ export interface SessionState {
   anotacoesClinicas?: string | null;
   isPausado?: boolean;
   nivelDdaAtual?: number;
+  sessaoId?: string | null;
+  tempoAcumuladoPausaMs?: number;
+  timestampUltimaPausa?: number | null;
 }
 
 export interface SessionActions {
@@ -337,6 +360,7 @@ export interface SessionActions {
   expirarToken: () => void;
   setErro: (mensagem: string | null) => void;
   limparErro: () => void;
+  setSessaoId: (id: string | null) => void;
   restaurarSessao: (dados: Partial<SessionState>) => void;
   reset: () => void;
 }

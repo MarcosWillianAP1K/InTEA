@@ -735,7 +735,12 @@ export class PacienteController {
   }
 
   /**
-   * Alias de compatibilidade para consultas unificadas.
+   * Compatibility alias for unified longitudinal patient history queries.
+   * Route Delegation: Delegates request handling directly to `buscarHistoricoGeral`.
+   *
+   * @param req - Authenticated Express request with patient UUID
+   * @param res - Express response returning consolidated history
+   * @returns Resolves when HTTP response has been sent
    */
   static async buscarHistorico(req: Request, res: Response): Promise<void> {
     return PacienteController.buscarHistoricoGeral(req, res);

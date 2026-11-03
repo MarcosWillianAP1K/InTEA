@@ -12,6 +12,14 @@ export interface AnotacaoTerapeutaInfo {
   nome: string;
 }
 
+export interface AnotacaoAutorInfo {
+  id: string;
+  nome: string;
+  registro_profissional: string | null;
+  crefito: string | null;
+  especialidade: string | null;
+}
+
 export interface AnotacaoClinica {
   id: string;
   terapeuta_id: string;
@@ -19,8 +27,10 @@ export interface AnotacaoClinica {
   sessao_id: string | null;
   conteudo: string;
   soft_delete: boolean;
+  status_ativo?: boolean;
   created_at: string;
   updated_at: string;
+  autor?: AnotacaoAutorInfo;
 }
 
 export interface CriarAnotacaoDTO {
@@ -33,6 +43,57 @@ export interface CriarAnotacaoDTO {
 export interface AtualizarAnotacaoDTO {
   conteudo?: string;
   soft_delete?: boolean;
+}
+
+export interface FiltrosAnotacaoDTO {
+  terapeutaId?: string;
+  sessaoId?: string;
+  somenteSemSessao?: boolean;
+  incluirDeletadas?: boolean;
+  dataInicio?: string;
+  dataFim?: string;
+  busca?: string;
+  page?: number;
+  limit?: number;
+}
+
+function mapearAnotacaoComAutor(raw: Record<string, unknown>): AnotacaoClinica {
+  const { terapeuta, ...resto } = raw;
+  let autor: AnotacaoAutorInfo | undefined = undefined;
+
+  if (terapeuta) {
+    if (Array.isArray(terapeuta) && terapeuta.length > 0) {
+      const t = terapeuta[0] as Record<string, unknown>;
+      autor = {
+        id: String(t.id || ''),
+        nome: String(t.nome || ''),
+        registro_profissional: t.registro_profissional ? String(t.registro_profissional) : null,
+        crefito: t.crefito ? String(t.crefito) : null,
+        especialidade: t.especialidade ? String(t.especialidade) : null,
+      };
+    } else if (typeof terapeuta === 'object') {
+      const t = terapeuta as Record<string, unknown>;
+      autor = {
+        id: String(t.id || ''),
+        nome: String(t.nome || ''),
+        registro_profissional: t.registro_profissional ? String(t.registro_profissional) : null,
+        crefito: t.crefito ? String(t.crefito) : null,
+        especialidade: t.especialidade ? String(t.especialidade) : null,
+      };
+    }
+  } else if (resto.autor && typeof resto.autor === 'object') {
+    autor = resto.autor as AnotacaoAutorInfo;
+  }
+
+  const soft_delete = Boolean(raw.soft_delete);
+  const status_ativo = !Boolean(raw.soft_delete);
+
+  return {
+    ...(resto as unknown as AnotacaoClinica),
+    soft_delete,
+    status_ativo,
+    ...(autor ? { autor } : {}),
+  };
 }
 
 export class AnotacaoClinicaModel {
@@ -52,7 +113,7 @@ export class AnotacaoClinicaModel {
           sessao_id: dto.sessao_id || null,
           conteudo: dto.conteudo.trim(),
         })
-        .select('*')
+        .select('*, terapeuta:terapeuta_id(id, nome, registro_profissional, crefito, especialidade)')
         .single();
 
       if (error || !data) {
@@ -60,7 +121,7 @@ export class AnotacaoClinicaModel {
         return null;
       }
 
-      return data as AnotacaoClinica;
+      return mapearAnotacaoComAutor(data as Record<string, unknown>);
     } catch (err) {
       console.error('[AnotacaoClinicaModel] Exceção ao criar anotação clínica:', err);
       return null;
@@ -68,22 +129,27 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Retrieves an active clinical note by its UUID.
+   * Retrieves an active or specified clinical note by its UUID with author details enriched.
    *
    * @param id - UUID of the clinical note.
-   * @returns The clinical note record or null if not found or soft-deleted.
+   * @param incluirDeletadas - Whether to include soft-deleted records.
+   * @returns The clinical note record or null if not found or filtered.
    */
-  static async buscarPorId(id: string): Promise<AnotacaoClinica | null> {
+  static async buscarPorId(id: string, incluirDeletadas = false): Promise<AnotacaoClinica | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('anotacao_clinica')
-        .select('*')
-        .eq('id', id)
-        .eq('soft_delete', false)
-        .maybeSingle();
+        .select('*, terapeuta:terapeuta_id(id, nome, registro_profissional, crefito, especialidade)')
+        .eq('id', id);
+
+      if (!incluirDeletadas) {
+        query = query.eq('soft_delete', false);
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error || !data) return null;
-      return data as AnotacaoClinica;
+      return mapearAnotacaoComAutor(data as Record<string, unknown>);
     } catch (err) {
       console.error('[AnotacaoClinicaModel] Erro ao buscar anotação por ID:', err);
       return null;
@@ -91,31 +157,59 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Lists active clinical notes for a patient ordered by creation date descending.
+   * Lists clinical notes for a patient with optional advanced filters and pagination.
    *
    * @param pacienteId - UUID of the patient.
    * @param incluirDeletadas - Whether to include soft-deleted records.
    * @param somenteSemSessao - Whether to filter only general patient notes (`sessao_id IS NULL`).
-   * @returns Array of clinical note records.
+   * @param filtros - Optional DTO containing advanced filters (author, session, date range, search).
+   * @returns Array of clinical note records enriched with author information.
    */
   static async listarPorPaciente(
     pacienteId: string,
     incluirDeletadas = false,
-    somenteSemSessao = false
+    somenteSemSessao = false,
+    filtros?: FiltrosAnotacaoDTO
   ): Promise<AnotacaoClinica[]> {
     try {
+      const efetivoIncluirDeletadas = filtros?.incluirDeletadas ?? incluirDeletadas;
+
       let query = supabase
         .from('anotacao_clinica')
-        .select('*')
+        .select('*, terapeuta:terapeuta_id(id, nome, registro_profissional, crefito, especialidade)')
         .eq('paciente_id', pacienteId)
         .order('created_at', { ascending: false });
 
-      if (!incluirDeletadas) {
+      if (!efetivoIncluirDeletadas) {
         query = query.eq('soft_delete', false);
       }
 
-      if (somenteSemSessao) {
+      if (filtros?.somenteSemSessao === true) {
         query = query.is('sessao_id', null);
+      } else if (filtros?.somenteSemSessao === false) {
+        query = query.not('sessao_id', 'is', null);
+      } else if (somenteSemSessao) {
+        query = query.is('sessao_id', null);
+      }
+
+      if (filtros?.terapeutaId) {
+        query = query.eq('terapeuta_id', filtros.terapeutaId);
+      }
+
+      if (filtros?.sessaoId) {
+        query = query.eq('sessao_id', filtros.sessaoId);
+      }
+
+      if (filtros?.dataInicio) {
+        query = query.gte('created_at', filtros.dataInicio);
+      }
+
+      if (filtros?.dataFim) {
+        query = query.lte('created_at', filtros.dataFim);
+      }
+
+      if (filtros?.busca) {
+        query = query.ilike('conteudo', `%${filtros.busca}%`);
       }
 
       const { data, error } = await query;
@@ -125,7 +219,7 @@ export class AnotacaoClinicaModel {
         return [];
       }
 
-      return data as AnotacaoClinica[];
+      return (data as Record<string, unknown>[]).map(mapearAnotacaoComAutor);
     } catch (err) {
       console.error('[AnotacaoClinicaModel] Exceção ao listar anotações por paciente:', err);
       return [];
@@ -133,7 +227,7 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Lists clinical notes associated with a specific session.
+   * Lists clinical notes associated with a specific session enriched with author info.
    *
    * @param sessaoId - UUID of the session.
    * @param incluirDeletadas - Whether to include soft-deleted records.
@@ -143,7 +237,7 @@ export class AnotacaoClinicaModel {
     try {
       let query = supabase
         .from('anotacao_clinica')
-        .select('*')
+        .select('*, terapeuta:terapeuta_id(id, nome, registro_profissional, crefito, especialidade)')
         .eq('sessao_id', sessaoId);
 
       if (!incluirDeletadas) {
@@ -159,7 +253,7 @@ export class AnotacaoClinicaModel {
         return [];
       }
 
-      return data as AnotacaoClinica[];
+      return (data as Record<string, unknown>[]).map(mapearAnotacaoComAutor);
     } catch (err) {
       console.error('[AnotacaoClinicaModel] Exceção ao listar anotações por sessão:', err);
       return [];
@@ -191,7 +285,7 @@ export class AnotacaoClinicaModel {
         .from('anotacao_clinica')
         .update(camposAtualizar)
         .eq('id', id)
-        .select('*')
+        .select('*, terapeuta:terapeuta_id(id, nome, registro_profissional, crefito, especialidade)')
         .single();
 
       if (error || !data) {
@@ -199,7 +293,7 @@ export class AnotacaoClinicaModel {
         return null;
       }
 
-      return data as AnotacaoClinica;
+      return mapearAnotacaoComAutor(data as Record<string, unknown>);
     } catch (err) {
       console.error('[AnotacaoClinicaModel] Exceção ao atualizar anotação clínica:', err);
       return null;
@@ -231,6 +325,36 @@ export class AnotacaoClinicaModel {
     } catch (err) {
       console.error('[AnotacaoClinicaModel] Exceção ao executar soft delete na anotação:', err);
       return false;
+    }
+  }
+
+  /**
+   * Reactivates a soft-deleted clinical note (`soft_delete = false`, RN05).
+   *
+   * @param id - UUID of the clinical note.
+   * @returns Reactivated clinical note record or null on failure.
+   */
+  static async reativar(id: string): Promise<AnotacaoClinica | null> {
+    try {
+      const { data, error } = await supabase
+        .from('anotacao_clinica')
+        .update({
+          soft_delete: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select('*, terapeuta:terapeuta_id(id, nome, registro_profissional, crefito, especialidade)')
+        .single();
+
+      if (error || !data) {
+        console.error('[AnotacaoClinicaModel] Erro ao reativar anotação:', error);
+        return null;
+      }
+
+      return mapearAnotacaoComAutor(data as Record<string, unknown>);
+    } catch (err) {
+      console.error('[AnotacaoClinicaModel] Exceção ao reativar anotação clínica:', err);
+      return null;
     }
   }
 

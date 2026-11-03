@@ -42,6 +42,15 @@ import { LinhaDoTempoSessoes } from "../components/LinhaDoTempoSessoes";
  * ============================================================================
  */
 
+/**
+ * Maps raw backend session models to formatted timeline items with clinical status filters (RF15).
+ * Free-Mode Exclusion (RN01): Strips out ad-hoc free mode sessions from clinical longitudinal timeline.
+ *
+ * @param listaSessoes - Array of session entities from API
+ * @param filtrosAtivos - Currently applied clinical history filters
+ * @param jogoIdFiltro - Optional specific game ID filter
+ * @returns Array of mapped and sanitized timeline session items
+ */
 function mapearSessoesParaLinhaDoTempo(
   listaSessoes: Sessao[],
   filtrosAtivos: FiltrosHistorico,
@@ -83,7 +92,8 @@ function mapearSessoesParaLinhaDoTempo(
 
   return filtradas
     .map((s) => {
-      let duracao = s.duracao_segundos;
+      let duracao: number | undefined =
+        typeof s.duracao_segundos === "number" ? s.duracao_segundos : undefined;
       if ((duracao === undefined || duracao <= 0) && s.data_hora_inicio && s.data_hora_fim) {
         const ini = new Date(s.data_hora_inicio).getTime();
         const fim = new Date(s.data_hora_fim).getTime();
@@ -128,6 +138,12 @@ function mesclarSessoesSemDuplicatas(
   });
 }
 
+/**
+ * Longitudinal clinical medical record view presenting patient evolution, metric trends, and notes (RF15).
+ * Medical Record Evolution (RF15, RF16, RF19): Coordinates timeline, polymorphic charts, and notes tabs.
+ *
+ * @returns Patient medical record and history page component
+ */
 export function HistoricoPacientePage() {
   const { id: pacienteId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -255,7 +271,7 @@ export function HistoricoPacientePage() {
 
         setErroHttp({ status, mensagem: msg });
         if (status === 403) {
-          toast.error("Acesso negado: terapeuta sem vínculo ativo nesta clínica (RN04).");
+          toast.error("Acesso negado: terapeuta sem vínculo ativo nesta clínica.");
         } else {
           toast.error("Não foi possível carregar o histórico clínico.");
         }
@@ -337,7 +353,7 @@ export function HistoricoPacientePage() {
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-foreground">
-              Acesso Negado ao Histórico Clínico (RN04)
+              Acesso Negado ao Histórico Clínico
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Você não possui vínculo ativo com este paciente na clínica atual. Por conformidade com as regras de
@@ -532,7 +548,7 @@ export function HistoricoPacientePage() {
                     Jogos Terapêuticos Experimentados
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    Selecione um jogo no seletor acima para visualizar as curvas de evolução individualizadas (RN02).
+                    Selecione um jogo no seletor acima para visualizar as curvas de evolução individualizadas.
                   </p>
                 </div>
               </div>

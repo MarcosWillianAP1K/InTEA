@@ -222,7 +222,11 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
 
 export const auditoriaAdminService = {
   /**
-   * Lista eventos de auditoria com suporte a busca, filtros e paginação.
+   * Lists audit trail events with support for search, filters, and pagination.
+   * Institutional Audit (RF08, RNF06): Falls back to in-memory audit store if backend is unreachable.
+   *
+   * @param filtros - Search term, action, origin, date range, page, and limit
+   * @returns Paginated audit log response with metadata
    */
   listar: async (filtros?: FiltrosAuditoriaDTO): Promise<RespostaPaginadaAuditoria> => {
     return await withFallback(
@@ -373,7 +377,10 @@ export const auditoriaAdminService = {
   },
 
   /**
-   * Obtém estatísticas consolidadas de conformidade para o cabeçalho.
+   * Retrieves aggregated compliance statistics for the audit dashboard header.
+   * Compliance Overview: Aggregates total events, record accesses, active sessions, and security alerts.
+   *
+   * @returns Consolidated audit statistics
    */
   buscarEstatisticas: async (): Promise<EstatisticasAuditoria> => {
     return await withFallback(
@@ -433,8 +440,11 @@ export const auditoriaAdminService = {
   },
 
   /**
-   * Exporta a lista de eventos de auditoria em formato estruturado CSV.
-   * Adiciona o BOM UTF-8 (\uFEFF) para visualização correta de acentos no Excel.
+   * Exports audit log events into a structured CSV file with UTF-8 BOM encoding for Excel compatibility.
+   * Report Export (RF20): Formats clinical action, therapist, patient, and timestamp fields into downloadable CSV.
+   *
+   * @param eventos - Array of audit events to export
+   * @param nomeArquivo - Optional custom filename for the exported CSV
    */
   exportarCSV: (eventos: EventoAuditoria[], nomeArquivo?: string): void => {
     const cabecalhos = [
@@ -489,7 +499,11 @@ export const auditoriaAdminService = {
   },
 
   /**
-   * Exporta a lista de eventos de auditoria em formato estruturado JSON.
+   * Exports audit log events into a formatted JSON file.
+   * Structured Export (RF20): Generates pretty-printed JSON blob and triggers browser file download.
+   *
+   * @param eventos - Array of audit events to export
+   * @param nomeArquivo - Optional custom filename for the exported JSON
    */
   exportarJSON: (eventos: EventoAuditoria[], nomeArquivo?: string): void => {
     const jsonFormatado = JSON.stringify(eventos, null, 2);

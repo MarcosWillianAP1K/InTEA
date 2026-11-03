@@ -206,6 +206,44 @@ export class AnotacaoSessaoController {
   }
 
   /**
+   * Handles PATCH /api/anotacao/sessao/:id/reativar to reactivate a soft-deleted session note.
+   *
+   * @param req - Authenticated Express request containing note UUID in params.
+   * @param res - Express response returning status 200 with `{ data: { anotacao }, message }`.
+   */
+  static async reativar(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const usuarioLogadoId = req.user?.id;
+      if (!usuarioLogadoId) {
+        res.status(401).json({
+          error: 'Acesso não autorizado: identificação do terapeuta não encontrada no token de autenticação.',
+        });
+        return;
+      }
+
+      const isSuperAdmin = !!req.user?.is_super_admin;
+      const id = String(req.params?.id || '');
+
+      const resultado = await AnotacaoService.reativar(id, usuarioLogadoId, isSuperAdmin);
+
+      if (!resultado.sucesso) {
+        res.status(resultado.status).json({ error: resultado.erro });
+        return;
+      }
+
+      res.status(200).json({
+        data: {
+          anotacao: resultado.dados,
+        },
+        message: 'Anotação clínica reativada com sucesso.',
+      });
+    } catch (error) {
+      console.error('[AnotacaoSessaoController.reativar]', error);
+      res.status(500).json({ error: 'Erro interno ao reativar anotação clínica de sessão.' });
+    }
+  }
+
+  /**
    * Handles DELETE /api/anotacao/sessao/:id/hard to permanently delete a session note for development and testing.
    *
    * @param req - Authenticated Express request containing note ID in URL parameter `:id`.

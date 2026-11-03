@@ -8,6 +8,7 @@ import { telemetriaRoutes } from './telemetria/routes/telemetria.routes.js';
 import { terapeutaRoutes } from './terapeuta/routes/terapeuta.routes.js';
 import { auditoriaRoutes } from './auditoria/routes/auditoria.routes.js';
 import { anotacaoRoutes } from './anotacao/routes/anotacao.routes.js';
+import { adminRoutes } from './admin/routes/admin.routes.js';
 import { inicializarAuditoriaListeners } from './auditoria/listeners/auditoria.listener.js';
 
 // Inicializa listeners orientados a eventos para auditoria assíncrona
@@ -22,7 +23,7 @@ apiRouter.use('/terapeuta', terapeutaRoutes);
 apiRouter.use('/sessao', sessaoRoutes);
 apiRouter.use('/telemetria', telemetriaRoutes);
 apiRouter.use('/auditoria', auditoriaRoutes);
-apiRouter.use('/admin/auditoria', auditoriaRoutes);
+apiRouter.use('/admin', adminRoutes);
 apiRouter.use('/anotacao', anotacaoRoutes);
 apiRouter.use('/exemplo', exemploRoutes);
 apiRouter.use('/jogos', jogosRoutes);

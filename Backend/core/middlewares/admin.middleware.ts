@@ -3,17 +3,23 @@ import { supabase } from '../supabase/supabase.client.js';
 import { AuthenticatedRequest } from './auth.middleware.js';
 
 /**
- * Authorization middleware to restrict endpoints exclusively to Super Administrators.
- * 
- * Verification flow:
- * 1. Requires request to have passed authMiddleware (req.user populated).
- * 2. Verifies therapist account is active (status_ativo = true).
- * 3. Validates user has super admin privileges (via user_metadata or terapeuta table).
- * 4. Returns 403 Forbidden if user is not administrator or is inactive.
+ * ==============================================================================
+ * InTEA: Middleware de Autorização SuperAdmin (RF07, RF08)
+ * ==============================================================================
+ * Fluxo de verificação de permissões administrativas:
+ * 1. Exige autenticação prévia via JWT (req.user populado por authMiddleware).
+ * 2. Verifica se a conta do terapeuta está ativa (status_ativo = true).
+ * 3. Valida se o usuário possui a flag is_super_admin = true.
+ * 4. Retorna HTTP 403 Forbidden caso o usuário não seja superadministrador ou esteja inativo.
+ * ==============================================================================
+ */
+/**
+ * Express middleware that enforces SuperAdmin authorization privileges.
+ * Access Control (RF07, RF08): Validates active therapist status and requires `is_super_admin = true`.
  *
- * @param req - Authenticated Express request containing `req.user`.
- * @param res - Express response.
- * @param next - Advances pipeline execution if authorized.
+ * @param req - Authenticated Express request populated with user claims
+ * @param res - Express response
+ * @param next - Express next middleware function
  */
 export async function adminMiddleware(
   req: AuthenticatedRequest,
@@ -75,11 +81,22 @@ export async function adminMiddleware(
 
     // Autorizado como administrador ativo
     next();
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
     console.error('[adminMiddleware]', error);
     res.status(500).json({
       error: 'Erro interno ao validar privilégios de administrador.',
-      detalhes: error?.message || String(error),
+      detalhes: msg,
     });
   }
 }
+
+/**
+ * Canonical alias for `adminMiddleware` complying with administrative access control standards.
+ * Access Control (RF07): Enforces SuperAdmin privileges for protected administrative routes.
+ *
+ * @param req - Authenticated Express request with user token claims
+ * @param res - Express response
+ * @param next - Express next middleware callback
+ */
+export const superAdminMiddleware = adminMiddleware;

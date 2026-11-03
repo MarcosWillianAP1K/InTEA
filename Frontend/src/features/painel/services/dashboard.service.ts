@@ -74,7 +74,10 @@ function mapearStatusSessaoResumo(status?: string): StatusSessaoResumo {
   if (s === "cancelada" || s === "expirada" || s === "interrompida_por_queda") {
     return "cancelada";
   }
-  if (s === "em_andamento" || s === "conectado" || s === "conectada" || s === "pausada") {
+  if (s === "pausada") {
+    return "pausada";
+  }
+  if (s === "em_andamento" || s === "conectado" || s === "conectada") {
     return "em_andamento";
   }
   return "agendada";

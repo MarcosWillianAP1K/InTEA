@@ -301,7 +301,7 @@ describe("Sprint 11 — Página Mestre e Componentes do Histórico do Paciente (
         expect(screen.getByTestId("estado-erro-403")).toBeDefined();
       });
 
-      expect(screen.getByText(/Acesso Negado ao Histórico Clínico \(RN04\)/i)).toBeDefined();
+      expect(screen.getByText(/Acesso Negado ao Histórico Clínico/i)).toBeDefined();
     });
 
     it("deve alternar para visualização de jogo específico ao clicar no seletor", async () => {

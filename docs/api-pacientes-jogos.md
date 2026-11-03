@@ -1445,6 +1445,7 @@ Todas as respostas seguem formatos previsíveis:
 | :--- | :--- | :---: | :--- | :--- |
 | `GET` | `/api/sessao/codigo-pareamento` | Sim (JWT) | **RF10** | Gera código legível único de pareamento remoto (PIN) |
 | `POST` | `/api/sessao/iniciar` | Sim (JWT + Vínculo) | **RF12**, **RF13**, **RN01**, **RN03**, **RN04** | Inicia nova sessão clínica ou em modo livre, emite token e vincula contexto DDA |
+| `GET` | `/api/sessao/contexto-sugerido/:pacienteId` | Sim (JWT + Vínculo) | **RF12**, **RF17**, **RN04** | Consulta gatilhos sensoriais do paciente e contexto sugerido para o modal pré-sessão |
 | `POST` | `/api/sessao/parear` | Não (Launcher Game) | **RF10**, **RNF03** | Handshake de pareamento remoto do tablet/VR confirmando conexão ativa |
 | `GET` | `/api/sessao/:id` | Sim (JWT) | **RF12**, **RN04** | Consulta dados completos e estado atual da sessão por UUID interno |
 | `GET` | `/api/sessao/token/:token` | Sim (JWT) | **RF10** | Consulta dados da sessão através do código alfanumérico (PIN) |
@@ -1491,7 +1492,8 @@ Todas as respostas seguem formatos previsíveis:
   - **RN01 (Modo Livre vs. Sessão Clínica):**
     - Se `modo_sessao = "sessao_clinica"`, `paciente_id` é obrigatório.
     - Se `modo_sessao = "modo_livre"`, `paciente_id` deve ser nulo.
-  - **RN03 (Contexto DDA Pré-Sessão):** Aceita `contexto_dda_json` com dados de calibração que serão entregues ao jogo no pareamento.
+  - **RN03 (Injeção Prévia de Contexto DDA — Contrato 2):** Valida e estrutura os parâmetros pré-sessão (`nivel_estresse_inicial`, `gatilhos_sensoriais_evitar`, `objetivo_clinico`) em estrita aderência ao **Contrato 2 (`contextoPreSessao.json`)**. Aplica mapeamento determinístico para escala de estresse (1..2 $\rightarrow$ `"baixo"`, 3 $\rightarrow$ `"medio"`, 4..5 $\rightarrow$ `"alto"`). Caso os parâmetros sejam omitidos ou `usar_fallback_padrao: true`, aplica o **Fallback Clínico Parametrizado (Figura 5)** herdando os gatilhos cadastrados do paciente e definindo estresse baixo (`1`). Garante que o pacote DDA seja entregue ao socket/jogo no handshake antes do primeiro evento de telemetria contínua.
+  - **RN01 (Bloqueio em Modo Livre):** Partidas em `modo_livre` não admitem calibração clínica de paciente, rejeitando qualquer tentativa com status **`400 Bad Request`**.
   - Cria a sessão no estado `aguardando_pareamento` com TTL de 15 minutos (**RNF03**).
 - **Request Body (JSON):**
   - Objeto `CriarSessaoDTO`:
@@ -1544,6 +1546,42 @@ Todas as respostas seguem formatos previsíveis:
 
   - **Status `401 Unauthorized`:** Token JWT ausente ou inválido.
   - **Status `403 Forbidden` (RN04):** Terapeuta sem vínculo com o paciente indicado.
+
+---
+
+#### Rota 2.1: Contexto Clínico Sugerido Pré-Sessão (RF12, RF17, RN04)
+
+- **Método:** `GET`
+- **URL:** `/api/sessao/contexto-sugerido/:pacienteId`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Segurança e Regras Clínicas:**
+  - Protegido por `authMiddleware` e `verificarVisibilidadePaciente` (**RN04**).
+  - Consulta os gatilhos sensoriais do prontuário do paciente (`dados_clinicos` e `paciente_gatilho`) e o contexto da última intervenção finalizada.
+  - Abastece o pré-preenchimento do modal de configuração pré-sessão no Frontend (**Figura 11** e **Figura 5**).
+- **Respostas:**
+  - **Status `200 OK`:** Retorna a sugestão clínica categorizada no Envelope Pattern.
+
+    ```json
+    {
+      "data": {
+        "sugestao_contexto": {
+          "nivel_estresse_sugerido": "baixo",
+          "gatilhos_sensoriais_cadastrados": [
+            "Sons Altos ou Repentinos",
+            "Luzes Estroboscópicas / Piscantes"
+          ],
+          "objetivo_clinico_sugerido": "Foco atencional e regulação sensorial",
+          "origem": "anamnese_padrao"
+        }
+      },
+      "message": "Contexto clínico sugerido recuperado com sucesso."
+    }
+    ```
+
+  - **Status `400 Bad Request`:** UUID do paciente inválido.
+  - **Status `401 Unauthorized`:** Token JWT ausente ou expirado.
+  - **Status `403 Forbidden` (RN04):** Terapeuta sem vínculo ativo ou pertencente a outra clínica.
+  - **Status `404 Not Found`:** Paciente não encontrado.
 
 ---
 
@@ -2321,85 +2359,314 @@ Todas as respostas seguem formatos previsíveis:
 
 ## 7. Módulo de Anotações Clínicas e Pareceres (`/api/anotacao`)
 
-O módulo de anotações provê o registro médico-terapêutico estruturado pós-sessão e no prontuário geral do paciente (**RF16**). Garante autoria compulsória extraída do token JWT (**RF21**), isolamento multitenant por clínica (**RN04**) e histórico imutável via soft delete (**RN05**).
+O módulo de anotações provê o registro médico-terapêutico estruturado pós-sessão, em tempo real durante a intervenção ativa no Cockpit (**RF13**, **RF16**) e no prontuário longitudinal do paciente (**RF16**). Garante autoria compulsória extraída do token JWT com `JOIN` relacional dos dados profissionais do terapeuta autor (`nome`, `registro_profissional`, `crefito`, `especialidade` — **RF21**), busca e filtros combinados multidimensionais (**RF19**), isolamento multitenant por clínica (**RN04**), e ciclo de vida controlado por soft delete e reativação auditada (**RN05**).
 
 ### 7.1 Resumo dos Endpoints
 
 | Método | Endpoint | Protegido | Requisito / Regra | Finalidade |
 | :--- | :--- | :---: | :--- | :--- |
-| `POST` | `/api/anotacao/sessao` | Sim (JWT) | **RF16**, **RF21**, **RN04** | Registra anotação clínica vinculada diretamente a uma sessão |
-| `GET` | `/api/anotacao/sessao/:sessaoId` | Sim (JWT) | **RF16**, **RN04** | Lista anotações clínicas vinculadas a uma sessão específica |
-| `PATCH` | `/api/anotacao/sessao/:id` | Sim (JWT) | **RF16**, **RF21** | Edita o conteúdo de anotação de sessão (restrito ao autor) |
-| `DELETE` | `/api/anotacao/sessao/:id` | Sim (JWT) | **RN05**, **RF21** | Exclusão lógica (soft delete) mantendo prontuário imutável |
-| `POST` | `/api/anotacao/paciente` | Sim (JWT) | **RF16**, **RF21**, **RN04** | Registra parecer clínico geral no prontuário do paciente |
-| `GET` | `/api/anotacao/paciente/:pacienteId` | Sim (JWT) | **RF16**, **RN04** | Lista o histórico cronológico de pareceres gerais do paciente |
-| `PATCH` | `/api/anotacao/paciente/:id` | Sim (JWT) | **RF16**, **RF21** | Edita o conteúdo de anotação de paciente (restrito ao autor) |
-| `DELETE` | `/api/anotacao/paciente/:id` | Sim (JWT) | **RN05**, **RF21** | Exclusão lógica (soft delete) de anotação de paciente |
+| `POST` | `/api/anotacao` | Sim (JWT + Vínculo) | **RF13**, **RF16**, **RF21**, **RN04** | Rota unificada: cria anotação para paciente (geral) ou sessão (tempo real no Cockpit) |
+| `GET` | `/api/anotacao/:id` | Sim (JWT + Vínculo) | **RF16**, **RF21**, **RN04** | Consulta unificada de anotação por UUID, retornando objeto sanitizado `autor` |
+| `PATCH` | `/api/anotacao/:id` | Sim (JWT + Vínculo) | **RF16**, **RF21**, **RN04** | Atualiza conteúdo textual da anotação (restrito ao terapeuta autor) |
+| `DELETE` | `/api/anotacao/:id` | Sim (JWT + Vínculo) | **RN05**, **RF21**, **RN04** | Inativação lógica (*soft delete*, `soft_delete: true`) restrita ao autor |
+| `PATCH` | `/api/anotacao/:id/reativar` | Sim (JWT + Vínculo) | **RN05**, **RF21**, **RN04** | Reativação lógica (`soft_delete: false`) restrita ao autor ou SuperAdmin institucional |
+| `DELETE` | `/api/anotacao/:id/hard` | Sim (JWT + Admin) | **RN05** | Exclusão física permanente (exclusivo para testes de CI/CD e SuperAdmin) |
+| `POST` | `/api/anotacao/paciente` | Sim (JWT + Vínculo) | **RF16**, **RF21**, **RN04** | Cria parecer clínico geral vinculado diretamente ao prontuário (`sessao_id = null`) |
+| `GET` | `/api/anotacao/paciente/:pacienteId` | Sim (JWT + Vínculo) | **RF16**, **RF19**, **RF21**, **RN04** | Lista o histórico com filtros avançados (autor, período, busca, sessão e paginação) |
+| `PATCH` | `/api/anotacao/paciente/:id` | Sim (JWT + Vínculo) | **RF16**, **RF21** | Edita anotação do prontuário (alias para `PATCH /api/anotacao/:id`) |
+| `PATCH` | `/api/anotacao/paciente/:id/reativar` | Sim (JWT + Vínculo) | **RN05**, **RF21**, **RN04** | Reativa anotação de prontuário inativada logicamente |
+| `DELETE` | `/api/anotacao/paciente/:id` | Sim (JWT + Vínculo) | **RN05**, **RF21** | Soft delete de anotação de paciente (alias para `DELETE /api/anotacao/:id`) |
+| `POST` | `/api/anotacao/sessao` | Sim (JWT + Vínculo) | **RF16**, **RF21**, **RN04** | Registra anotação clínica vinculada diretamente a uma sessão clínica ativa |
+| `GET` | `/api/anotacao/sessao/:sessaoId` | Sim (JWT + Vínculo) | **RF16**, **RF21**, **RN04** | Lista anotações clínicas de uma sessão ordenadas cronologicamente com `autor` |
+| `PATCH` | `/api/anotacao/sessao/:id` | Sim (JWT + Vínculo) | **RF16**, **RF21** | Edita anotação vinculada a uma sessão (restrito ao autor) |
+| `DELETE` | `/api/anotacao/sessao/:id` | Sim (JWT + Vínculo) | **RN05**, **RF21** | Soft delete de anotação de sessão mantendo o laudo imutável |
 
 ---
 
 ### 7.2 Detalhamento de Rotas — Anotações
 
-#### Rota 1: Criar Anotação de Sessão (RF16, RF21, RN04)
+#### Rota 1: Criar Anotação Clínica Unificada (RF13, RF16, RF21, RN04)
 
 - **Método:** `POST`
-- **URL:** `/api/anotacao/sessao`
+- **URL:** `/api/anotacao` (ou `/api/anotacao/paciente` / `/api/anotacao/sessao`)
 - **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`, `Content-Type: application/json`
+- **Segurança e Regras Clínicas:**
+  - Protegido por `authMiddleware`, `resolverContextoAnotacaoUnificada` e `verificarVisibilidadePaciente` (**RN04**).
+  - **Autoria Obrigatória e Anti-Spoofing (RF21):** O `terapeuta_id` é extraído incondicionalmente do token JWT autenticado (`req.user.id`). Se o corpo da requisição declarar um `terapeuta_id` divergente do token, a API bloqueia a operação imediatamente com status **`403 Forbidden`**.
+  - **Anotações em Tempo Real no Cockpit (RF13, RF16):** Se `sessao_id` for enviado no corpo da requisição, a anotação é indexada à sessão corrente e persiste no banco relacional de forma assíncrona, permitindo consulta imediata no painel pós-sessão (`BlocoAnotacoesClinicas.tsx`).
+  - **Invariante de Modo Livre (RN01):** Rejeita com **`400 Bad Request`** tentativas de criar anotações em sessões recreativas sem paciente associado (`paciente_id = NULL`).
 - **Request Body (JSON):**
 
   ```json
   {
+    "paciente_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
     "sessao_id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
-    "conteudo": "Paciente demonstrou excelente autorregulação nas fases com estímulos cromáticos complexos."
+    "conteudo": "Paciente demonstrou excelente autorregulação nas fases com estímulos cromáticos complexos e redução de latência."
   }
   ```
 
 - **Respostas:**
-  - **Status `201 Created`:** Retorna a anotação criada com `id`, `sessao_id`, `terapeuta_id` (extraído do token) e `created_at`.
-  - **Status `400 Bad Request`:** Conteúdo vazio ou sessão em modo livre (RN01 proíbe anotação clínica sem prontuário).
-  - **Status `401 Unauthorized`:** Não autenticado.
-  - **Status `403 Forbidden`:** Terapeuta não possui vínculo ativo com o paciente da sessão (**RN04**).
-  - **Status `404 Not Found`:** Sessão não encontrada.
+  - **Status `201 Created`:** Anotação registrada com sucesso no Envelope Pattern.
 
-#### Rota 2: Listar Anotações da Sessão (RF16, RN04)
+    ```json
+    {
+      "data": {
+        "anotacao": {
+          "id": "33333333-3333-3333-3333-333333333333",
+          "terapeuta_id": "44444444-4444-4444-4444-444444444444",
+          "paciente_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "sessao_id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
+          "conteudo": "Paciente demonstrou excelente autorregulação nas fases com estímulos cromáticos complexos e redução de latência.",
+          "soft_delete": false,
+          "created_at": "2026-10-24T14:30:00.000Z",
+          "updated_at": "2026-10-24T14:30:00.000Z"
+        }
+      },
+      "message": "Anotação clínica registrada com sucesso."
+    }
+    ```
+
+  - **Status `400 Bad Request`:** Conteúdo vazio ou sessão em Modo Livre (**RN01**).
+  - **Status `401 Unauthorized`:** Token JWT ausente ou inválido.
+  - **Status `403 Forbidden`:** Falta de vínculo clínico ativo com o paciente (**RN04**) ou divergência de terapeuta (**RF21**).
+  - **Status `404 Not Found`:** Sessão ou paciente não encontrado.
+
+---
+
+#### Rota 2: Consultar Anotação por ID (RF16, RF21, RN04)
+
+- **Método:** `GET`
+- **URL:** `/api/anotacao/:id`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Segurança:** Requer vínculo institucional ativo com o paciente da anotação (**RN04**).
+- **Respostas:**
+  - **Status `200 OK`:** Retorna a anotação com o objeto enriquecido `autor` (**RF21**).
+
+    ```json
+    {
+      "data": {
+        "anotacao": {
+          "id": "33333333-3333-3333-3333-333333333333",
+          "terapeuta_id": "44444444-4444-4444-4444-444444444444",
+          "paciente_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "sessao_id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
+          "conteudo": "Paciente demonstrou excelente autorregulação sensorial durante a atividade.",
+          "soft_delete": false,
+          "created_at": "2026-10-24T14:30:00.000Z",
+          "updated_at": "2026-10-24T14:30:00.000Z",
+          "autor": {
+            "id": "44444444-4444-4444-4444-444444444444",
+            "nome": "Dr. Marcos Terapeuta",
+            "registro_profissional": "12345/PI",
+            "crefito": "CREFITO-12345",
+            "especialidade": "Terapia Ocupacional"
+          }
+        }
+      },
+      "message": "Anotação clínica consultada com sucesso."
+    }
+    ```
+
+  - **Status `400 Bad Request`:** UUID inválido na URL.
+  - **Status `401 Unauthorized`:** Não autenticado.
+  - **Status `403 Forbidden`:** Terapeuta sem vínculo com o paciente da nota (**RN04**).
+  - **Status `404 Not Found`:** Anotação inexistente ou inativa.
+
+---
+
+#### Rota 3: Listar Anotações do Paciente com Filtros Avançados (RF16, RF19, RF21, RN04)
+
+- **Método:** `GET`
+- **URL:** `/api/anotacao/paciente/:pacienteId`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Query Parameters Suportados (Filtros Avançados — RF19):**
+  - `terapeutaId` / `terapeuta_id` (`string`, UUID): Filtra notas de um terapeuta autor específico.
+  - `sessaoId` / `sessao_id` (`string`, UUID): Filtra notas vinculadas a uma sessão específica.
+  - `somenteSemSessao` (`boolean`): Se `true`, retorna apenas notas gerais de prontuário (`sessao_id IS NULL`).
+  - `incluirInativos` / `incluirDeletadas` (`boolean`): Se `true`, inclui anotações logicamente inativadas via soft delete (**RN05**).
+  - `dataInicio` / `data_inicio` (`string`, ISO 8601): Data mínima de criação (`created_at >= dataInicio`).
+  - `dataFim` / `data_fim` (`string`, ISO 8601): Data máxima de criação (`created_at <= dataFim`).
+  - `busca` / `q` (`string`): Busca textual case-insensitive no campo `conteudo`.
+  - `page` / `pagina` (`number`, default `1`): Página solicitada.
+  - `limit` / `limite` (`number`, default todos): Limite de itens por página.
+- **Respostas:**
+  - **Status `200 OK`:** Lista paginada no Envelope Pattern Categorizado, com dados completos do autor em cada nota.
+
+    ```json
+    {
+      "data": {
+        "anotacoes": [
+          {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "terapeuta_id": "44444444-4444-4444-4444-444444444444",
+            "paciente_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "sessao_id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
+            "conteudo": "Paciente demonstrou excelente autorregulação nas fases com estímulos cromáticos complexos.",
+            "soft_delete": false,
+            "created_at": "2026-10-24T14:30:00.000Z",
+            "updated_at": "2026-10-24T14:30:00.000Z",
+            "autor": {
+              "id": "44444444-4444-4444-4444-444444444444",
+              "nome": "Dr. Marcos Terapeuta",
+              "registro_profissional": "12345/PI",
+              "crefito": "CREFITO-12345",
+              "especialidade": "Terapia Ocupacional"
+            }
+          }
+        ],
+        "meta": {
+          "total": 1,
+          "pagina": 1,
+          "limite": 10
+        }
+      },
+      "message": "Anotações clínicas do paciente listadas com sucesso."
+    }
+    ```
+
+  - **Status `400 Bad Request`:** Parâmetros de filtro ou UUID de paciente inválidos.
+  - **Status `401 Unauthorized`:** Não autenticado.
+  - **Status `403 Forbidden`:** Falta de vínculo clínico ativo com o paciente (**RN04**).
+  - **Status `404 Not Found`:** Paciente não localizado.
+
+---
+
+#### Rota 4: Listar Anotações da Sessão (RF16, RF21, RN04)
 
 - **Método:** `GET`
 - **URL:** `/api/anotacao/sessao/:sessaoId`
 - **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
 - **Respostas:**
-  - **Status `200 OK`:** Array com anotações ativas da sessão ordenadas cronologicamente.
+  - **Status `200 OK`:** Array com anotações da sessão ordenadas cronologicamente (`created_at ASC`), com `autor` enriquecido.
   - **Status `403 Forbidden`:** Falta de vínculo institucional com o paciente da sessão (**RN04**).
   - **Status `404 Not Found`:** Sessão não encontrada.
 
-#### Rota 3: Editar Conteúdo de Anotação (RF16, RF21)
+---
+
+#### Rota 5: Editar Conteúdo de Anotação (RF16, RF21, RN04)
 
 - **Método:** `PATCH`
-- **URL:** `/api/anotacao/sessao/:id` (ou `/api/anotacao/paciente/:id`)
+- **URL:** `/api/anotacao/:id` (ou `/api/anotacao/paciente/:id`, `/api/anotacao/sessao/:id`)
 - **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`, `Content-Type: application/json`
+- **Regras:**
+  - Permissão restrita exclusivamente ao terapeuta autor da nota (**RF21**).
+  - Se outro profissional (mesmo da mesma clínica) tentar editar, a API bloqueia com **`403 Forbidden`**.
 - **Request Body (JSON):**
 
   ```json
   {
-    "conteudo": "Texto atualizado da anotação clínica com novos apontamentos."
+    "conteudo": "Texto clínico revisado com novas observações e complementação técnica."
   }
   ```
 
 - **Respostas:**
   - **Status `200 OK`:** Anotação atualizada com sucesso.
+
+    ```json
+    {
+      "data": {
+        "anotacao": {
+          "id": "33333333-3333-3333-3333-333333333333",
+          "conteudo": "Texto clínico revisado com novas observações e complementação técnica.",
+          "updated_at": "2026-10-24T14:45:00.000Z"
+        }
+      },
+      "message": "Anotação clínica atualizada com sucesso."
+    }
+    ```
+
   - **Status `400 Bad Request`:** Conteúdo vazio ou inválido.
-  - **Status `403 Forbidden`:** Usuário logado não é o autor original da anotação (**RF21**).
+  - **Status `401 Unauthorized`:** Não autenticado.
+  - **Status `403 Forbidden`:** Usuário logado não é o autor da anotação (**RF21**).
   - **Status `404 Not Found`:** Anotação não encontrada ou inativada.
 
-#### Rota 4: Exclusão Lógica de Anotação (Soft Delete — RN05)
+---
+
+#### Rota 6: Exclusão Lógica de Anotação (Soft Delete — RN05, RF21)
 
 - **Método:** `DELETE`
-- **URL:** `/api/anotacao/sessao/:id` (ou `/api/anotacao/paciente/:id`)
+- **URL:** `/api/anotacao/:id` (ou `/api/anotacao/paciente/:id`, `/api/anotacao/sessao/:id`)
 - **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
-- **Regras:** Seta `soft_delete = true` e preenche `updated_at`. Nenhum dado é apagado fisicamente da base de dados.
+- **Regras:**
+  - Aplica exclusão lógica setando `soft_delete = true` e atualizando `updated_at`.
+  - Nenhum dado é apagado fisicamente da base relacional, garantindo a imutabilidade do prontuário (**RN05**).
+  - Operação permitida **apenas ao terapeuta autor da anotação** (**RF21**).
 - **Respostas:**
-  - **Status `204 No Content`:** Anotação inativada logicamente com sucesso.
-  - **Status `403 Forbidden`:** Apenas o autor original pode inativar a anotação.
+  - **Status `200 OK`:** Confirmação de inativação lógica.
+
+    ```json
+    {
+      "data": {
+        "anotacao": {
+          "id": "33333333-3333-3333-3333-333333333333",
+          "soft_delete": true,
+          "updated_at": "2026-10-24T14:50:00.000Z"
+        }
+      },
+      "message": "Anotação clínica desativada com sucesso (soft delete aplicado)."
+    }
+    ```
+
+  - **Status `401 Unauthorized`:** Não autenticado.
+  - **Status `403 Forbidden`:** Usuário não é o autor da anotação (**RF21**).
   - **Status `404 Not Found`:** Anotação não encontrada.
+
+---
+
+#### Rota 7: Reativação de Anotação Clínica (RN05, RF21, RN04)
+
+- **Método:** `PATCH`
+- **URL:** `/api/anotacao/:id/reativar` (ou `/api/anotacao/paciente/:id/reativar`)
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Regras:**
+  - Restaura o registro da anotação clínica no histórico do paciente setando `soft_delete = false` (**RN05**).
+  - Acesso restrito ao **terapeuta autor original da nota** (**RF21**) ou **SuperAdmin institucional**, exigindo vínculo ativo com o paciente (**RN04**).
+- **Respostas:**
+  - **Status `200 OK`:** Anotação reativada retornando o registro íntegro com os dados do autor.
+
+    ```json
+    {
+      "data": {
+        "anotacao": {
+          "id": "33333333-3333-3333-3333-333333333333",
+          "terapeuta_id": "44444444-4444-4444-4444-444444444444",
+          "paciente_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "sessao_id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
+          "conteudo": "Paciente demonstrou excelente autorregulação nas fases com estímulos cromáticos complexos.",
+          "soft_delete": false,
+          "created_at": "2026-10-24T14:30:00.000Z",
+          "updated_at": "2026-10-24T15:00:00.000Z",
+          "autor": {
+            "id": "44444444-4444-4444-4444-444444444444",
+            "nome": "Dr. Marcos Terapeuta",
+            "registro_profissional": "12345/PI",
+            "crefito": "CREFITO-12345",
+            "especialidade": "Terapia Ocupacional"
+          }
+        }
+      },
+      "message": "Anotação clínica reativada com sucesso."
+    }
+    ```
+
+  - **Status `400 Bad Request`:** UUID inválido.
+  - **Status `401 Unauthorized`:** Não autenticado.
+  - **Status `403 Forbidden`:** Tentativa de reativação por outro profissional que não seja o autor ou SuperAdmin (**RF21**, **RN04**).
+  - **Status `404 Not Found`:** Anotação não encontrada.
+
+---
+
+#### Rota 8: Exclusão Física Permanente (SuperAdmin / Testes)
+
+- **Método:** `DELETE`
+- **URL:** `/api/anotacao/:id/hard`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT_ADMIN>`
+- **Regras:** Remove fisicamente o registro do banco de dados relacional. Exclusivo para perfis com permissão `admin` / SuperAdmin em esteiras de testes e CI/CD.
+- **Respostas:**
+  - **Status `204 No Content`:** Registro expurgado fisicamente.
+  - **Status `401 Unauthorized`:** Não autenticado.
+  - **Status `403 Forbidden`:** Usuário não é SuperAdmin.
+  - **Status `404 Not Found`:** Registro não encontrado.
 
 ---
 
@@ -2483,17 +2750,17 @@ O servidor Socket.IO opera integrado ao backend na porta `3000`, expondo o names
 | **RF12** (Gestão de Sessão) | `POST /api/sessao/iniciar`, `GET /api/sessao/:id`, `PATCH /status` | `200`, `201`, `400`, `404` | Orquestração da FSM e monitoramento ativo do ciclo. |
 | **RF13** (Ciclo e Encerramento) | `PATCH /api/sessao/:id/finalizar`, `DELETE /cancelar` | `200`, `400`, `404` | Encerramento formal, cálculo de duração e trilha de auditoria. |
 | **RF14** (Tela de Resultados) | `GET /api/sessao/:id/resultado` | `200`, `400`, `403`, `404` | Consulta consolidada de resultados, IA (3FN), anotações e paciente. |
-| **RF16** (Bloco de Anotações) | `POST`, `GET`, `PATCH`, `DELETE /api/anotacao/*` | `200`, `201`, `204`, `400`, `403`, `404` | Anotações pós-sessão e prontuário geral com autoria compulsória JWT. |
-| **RF17** (Contexto DDA e Relatório IA) | `PATCH /api/sessao/:id/finalizar`, `GET /api/sessao/:id/resultado` | `200`, `500` | Síntese clínica via IA persistida em `relatorio_sessao` (3FN ancorada em `sessao_id`). |
+| **RF16** (Bloco de Anotações) | `POST`, `GET`, `PATCH`, `DELETE /api/anotacao/*`, `PATCH /reativar` | `200`, `201`, `204`, `400`, `403`, `404` | Anotações pós-sessão, prontuário geral e tempo real no Cockpit com autoria compulsória e objeto autor. |
+| **RF17** (Contexto DDA e Relatório IA) | `POST /iniciar`, `GET /contexto-sugerido`, `PATCH /finalizar`, `GET /resultado` | `200`, `201`, `400`, `403`, `404`, `500` | Injeção prévia DDA (Contrato 2), normalização 1..5, fallback clínico (Fig. 5) e laudo IA 3FN. |
 | **RF18** (Vínculo Multiterapeuta) | `POST`, `DELETE /api/paciente/:id/terapeutas` | `200`, `201`, `400`, `401`, `403`, `404` | Associação de múltiplos terapeutas com barreira clínica multitenant. |
-| **RF19** (Filtros e Busca) | `GET /api/paciente`, `GET /api/jogos` | `200`, `400` | Paginação e busca avançada por idade, objetivo e CPF. |
+| **RF19** (Filtros e Busca) | `GET /api/paciente`, `GET /api/jogos`, `GET /api/anotacao/paciente/:pacienteId` | `200`, `400`, `403`, `404` | Paginação e busca avançada por idade, objetivo, terapeuta autor, período e busca textual em notas. |
 | **RF20** (Exportação de Relatórios) | `GET /api/sessao/:id/exportar` | `200`, `400`, `403`, `404` | Laudo clínico completo formatado com mascaramento LGPD pronto para PDF. |
-| **RF21** (Autoria Obrigatória) | `POST /api/sessao/iniciar`, `sessao:comando` | `201`, `401`, `403` | Bloqueio de comandos remotos emitidos pelo dispositivo do paciente. |
+| **RF21** (Autoria Obrigatória) | `POST /api/anotacao`, `PATCH /api/anotacao/:id`, `DELETE /api/anotacao/:id`, `sessao:comando` | `200`, `201`, `401`, `403` | Autoria indelével via JWT, objeto autor sanitizado e bloqueio anti-spoofing em anotações e comandos. |
 | **RN01** (Modo Livre sem Persistência) | `POST /api/telemetria`, `PATCH /api/sessao/:id/finalizar`, `GET /api/sessao/:id/resultado` | `200` (`persistido: false`, `relatorio: null`) | Supressão mandatória de gravação de telemetria e relatório clínico no prontuário. |
 | **RN02** (Tipagem Estrita de Métrica) | `POST /api/jogos/:id/validar-telemetria` | `200`, `404`, `422` | Rejeição mandatória com status 422 para tipos divergentes. |
-| **RN03** (Contexto DDA Pré-Sessão) | `POST /api/sessao/iniciar`, `POST /api/sessao/parear` | `200`, `201` | Entrega de gatilhos e estresse antes do início da telemetria. |
+| **RN03** (Contexto DDA Pré-Sessão) | `POST /api/sessao/iniciar`, `POST /api/sessao/parear`, `GET /contexto-sugerido` | `200`, `201`, `400`, `403` | Entrega obrigatória de estresse e gatilhos (Contrato 2) antes do primeiro pacote de telemetria contínua. |
 | **RN04** (Visibilidade por Vínculo) | `GET /api/telemetria/sessao/:id`, `GET /api/auditoria/sessao/:id` | `200`, `401`, `403`, `404` | Middleware `verificarVisibilidadePaciente` bloqueia terceiros (403). |
-| **RN05** (Inalterabilidade e Imutabilidade) | `DELETE /api/paciente/:id`, `GET /api/auditoria/sessao/:id` | `200`, `404` | Soft delete em prontuários e imutabilidade de histórico clínico. |
+| **RN05** (Inalterabilidade e Imutabilidade) | `DELETE /api/anotacao/:id`, `PATCH /api/anotacao/:id/reativar`, `DELETE /api/paciente/:id` | `200`, `204`, `403`, `404` | Soft delete clínico (`soft_delete: true`), histórico imutável e reativação restrita (`soft_delete: false`). |
 | **RNF02** (Contrato e Manifesto) | `POST /api/jogos/validar-manifesto` | `200`, `400` | Conformidade com `manifestoGame.json` e documentação OpenAPI. |
 | **RNF03** (Rate Limiting e TTL) | `POST /api/sessao/parear`, `core/websocket/socket.limiter.ts` | `410`, `erro_rate_limit` | Expiração de PIN em 15 min e teto de 20 eventos/s no WebSocket. |
 | **RNF04** (Resiliência de Conexão) | `core/websocket/sessao.reconnection.ts` | `sessao:alerta_conexao`, `interrompida_por_queda` | Janela de tolerância de 60s para reconexão de dispositivo. |
@@ -2502,7 +2769,7 @@ O servidor Socket.IO opera integrado ao backend na porta `3000`, expondo o names
 
 ---
 
-## 9. Como Executar e Acessar o Swagger UI
+## 10. Como Executar e Acessar o Swagger UI
 
 1. **Instalação e Inicialização do Backend:**
 

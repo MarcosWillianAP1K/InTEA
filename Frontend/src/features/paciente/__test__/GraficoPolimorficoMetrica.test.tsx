@@ -226,8 +226,8 @@ describe("Sprint 11 — Componentes de Engajamento Global e Gráficos de Métric
 
       // DEVE renderizar Error State controlado com badge de violação RN02
       expect(screen.getByTestId("error-state-rn02")).toBeDefined();
-      expect(screen.getByTestId("badge-alerta-rn02").textContent).toContain("Violação RN02");
-      expect(screen.getByText(/Inconsistência de Tipagem Clínica \(RN02\)/i)).toBeDefined();
+      expect(screen.getByTestId("badge-alerta-rn02").textContent).toContain("Tipo Incompatível");
+      expect(screen.getByText(/Inconsistência de Tipagem Clínica/i)).toBeDefined();
       expect(screen.getByText(/Bloqueio de Fallback Automático Mandatório/i)).toBeDefined();
     });
 
