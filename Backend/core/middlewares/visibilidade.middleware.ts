@@ -65,7 +65,7 @@ export async function verificarVisibilidadePaciente(
 
     if (pacError) {
       console.error('[verificarVisibilidadePaciente] Erro ao consultar paciente:', pacError);
-      res.status(500).json({ error: 'Erro interno ao validar dados do paciente.', detalhes: pacError.message });
+      res.status(500).json({ error: 'Erro interno ao validar dados do paciente.' });
       return;
     }
 
@@ -89,7 +89,7 @@ export async function verificarVisibilidadePaciente(
 
     if (terError) {
       console.error('[verificarVisibilidadePaciente] Erro ao consultar terapeuta:', terError);
-      res.status(500).json({ error: 'Erro interno ao consultar perfil do terapeuta.', detalhes: terError.message });
+      res.status(500).json({ error: 'Erro interno ao consultar perfil do terapeuta.' });
       return;
     }
 
@@ -125,7 +125,7 @@ export async function verificarVisibilidadePaciente(
 
     if (vinculoError) {
       console.error('[verificarVisibilidadePaciente] Erro ao consultar vínculo:', vinculoError);
-      res.status(500).json({ error: 'Erro interno ao validar vínculo com paciente.', detalhes: vinculoError.message });
+      res.status(500).json({ error: 'Erro interno ao validar vínculo com paciente.' });
       return;
     }
 
@@ -138,11 +138,10 @@ export async function verificarVisibilidadePaciente(
 
     // Vínculo validado com sucesso
     next();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[verificarVisibilidadePaciente] Erro inesperado:', error);
     res.status(500).json({
       error: 'Erro interno ao verificar visibilidade e permissões do paciente.',
-      detalhes: error?.message || String(error),
     });
   }
 }

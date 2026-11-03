@@ -47,13 +47,17 @@ export interface ResponsavelSanitizado {
   principal?: boolean;
 }
 
+import { eventBus } from '../../../core/events/event-bus.js';
+
 export interface TerapeutaSanitizado {
   id: string;
   nome: string;
   email: string | null;
   telefone?: string | null;
+  crefito?: string | null;
   registro_profissional?: string | null;
   especialidade?: string | null;
+  created_at?: string;
 }
 
 /**
@@ -107,17 +111,27 @@ function sanitizarResponsavel(r: unknown): ResponsavelSanitizado | null {
  */
 function sanitizarTerapeuta(t: unknown): TerapeutaSanitizado | null {
   if (!t || typeof t !== 'object') return null;
-  const raw = ('terapeuta' in t && t.terapeuta && typeof t.terapeuta === 'object')
-    ? (t.terapeuta as Record<string, unknown>)
-    : (t as Record<string, unknown>);
+  const outer = t as Record<string, unknown>;
+  const raw = ('terapeuta' in outer && outer.terapeuta && typeof outer.terapeuta === 'object')
+    ? (outer.terapeuta as Record<string, unknown>)
+    : outer;
+
+  const createdAt =
+    typeof outer.created_at === 'string' && outer.created_at
+      ? outer.created_at
+      : typeof raw.created_at === 'string' && raw.created_at
+        ? raw.created_at
+        : undefined;
 
   return {
     id: String(raw.id ?? ''),
     nome: String(raw.nome ?? ''),
     email: raw.email !== undefined && raw.email !== null ? String(raw.email) : null,
     ...(raw.telefone !== undefined ? { telefone: raw.telefone !== null ? String(raw.telefone) : null } : {}),
+    ...(raw.crefito !== undefined ? { crefito: raw.crefito !== null ? String(raw.crefito) : null } : {}),
     ...(raw.registro_profissional !== undefined ? { registro_profissional: raw.registro_profissional !== null ? String(raw.registro_profissional) : null } : {}),
     ...(raw.especialidade !== undefined ? { especialidade: raw.especialidade !== null ? String(raw.especialidade) : null } : {}),
+    ...(createdAt !== undefined ? { created_at: createdAt } : {}),
   };
 }
 
@@ -473,6 +487,29 @@ export class PacienteController {
 
       await PacienteService.vincularTerapeuta(pacienteId, terapeuta_id);
 
+      try {
+        const authReq = req as AuthenticatedRequest;
+        const terapeutaAutorId = authReq.user?.id || terapeuta_id;
+        const ip =
+          (typeof req.headers?.['x-forwarded-for'] === 'string'
+            ? req.headers['x-forwarded-for'].split(',')[0]?.trim()
+            : null) ||
+          req.ip ||
+          null;
+        const userAgent =
+          typeof req.headers?.['user-agent'] === 'string' ? req.headers['user-agent'] : null;
+
+        eventBus.emitir('vinculo:criado', {
+          pacienteId,
+          terapeutaAutorId,
+          terapeutaAlvoId: terapeuta_id,
+          ip,
+          userAgent,
+        });
+      } catch {
+        // Silencioso para não afetar resposta HTTP
+      }
+
       res.status(201).json({
         data: {
           vinculo: {
@@ -494,7 +531,23 @@ export class PacienteController {
         return;
       }
 
-      if (msg.includes('Bloqueio de segurança') || msg.includes('inativo')) {
+      if (msg.includes('Bloqueio de segurança') || msg.includes('clínicas diferentes')) {
+        res.status(403).json({ error: msg });
+        return;
+      }
+
+      if (
+        msg.includes('já está vinculado') ||
+        msg.includes('Conflito de vínculo') ||
+        msg.includes('Vínculo já existente') ||
+        msg.includes('duplicate key') ||
+        msg.includes('23505')
+      ) {
+        res.status(409).json({ error: msg });
+        return;
+      }
+
+      if (msg.includes('inativo')) {
         res.status(400).json({ error: msg });
         return;
       }
@@ -522,8 +575,31 @@ export class PacienteController {
     try {
       const pacienteId = String(req.params.id);
       const terapeutaId = String(req.params.terapeutaId);
+      const authReq = req as AuthenticatedRequest;
 
-      await PacienteService.desvincularTerapeuta(pacienteId, terapeutaId);
+      await PacienteService.desvincularTerapeuta(pacienteId, terapeutaId, authReq.user);
+
+      try {
+        const terapeutaAutorId = authReq.user?.id || terapeutaId;
+        const ip =
+          (typeof req.headers?.['x-forwarded-for'] === 'string'
+            ? req.headers['x-forwarded-for'].split(',')[0]?.trim()
+            : null) ||
+          req.ip ||
+          null;
+        const userAgent =
+          typeof req.headers?.['user-agent'] === 'string' ? req.headers['user-agent'] : null;
+
+        eventBus.emitir('vinculo:removido', {
+          pacienteId,
+          terapeutaAutorId,
+          terapeutaAlvoId: terapeutaId,
+          ip,
+          userAgent,
+        });
+      } catch {
+        // Silencioso para não afetar resposta HTTP
+      }
 
       res.status(200).json({
         data: {
@@ -544,6 +620,16 @@ export class PacienteController {
       const msg = obterMensagemErro(error);
       if (msg.includes('não encontrado')) {
         res.status(404).json({ error: msg });
+        return;
+      }
+
+      if (msg.includes('Acesso negado')) {
+        res.status(403).json({ error: msg });
+        return;
+      }
+
+      if (msg.includes('Operação bloqueada') || msg.includes('único especialista')) {
+        res.status(409).json({ error: msg });
         return;
       }
 

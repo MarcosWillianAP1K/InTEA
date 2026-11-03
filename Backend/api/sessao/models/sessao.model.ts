@@ -4,6 +4,7 @@
 
 import { supabase } from "../../../core/supabase/supabase.client.js";
 import { CriarSessaoDTO, DispositivoInfoDTO, FiltrosSessaoDTO, RespostaListagemSessao } from "../dtos/sessao.dto.js";
+import { TerapeutaResumoPublico } from "../../../core/types/terapeuta-resumo.js";
 
 export const MODO_SESSAO = {
   SESSAO_CLINICA: 'sessao_clinica',
@@ -57,6 +58,7 @@ export interface Sessao {
     nome: string;
     versao: string;
   };
+  terapeuta?: TerapeutaResumoPublico | null;
 }
 
 export class SessaoModel {
@@ -243,7 +245,7 @@ export class SessaoModel {
 
       let query = supabase
         .from('sessao')
-        .select('*, paciente:paciente_id(id, nome, data_nascimento), jogo:jogo_id(id, nome, versao)', { count: 'exact' });
+        .select('*, paciente:paciente_id(id, nome, data_nascimento), jogo:jogo_id(id, nome, versao), terapeuta:terapeuta_id(id, nome, especialidade, crefito, registro_profissional)', { count: 'exact' });
 
       // Filtro de visibilidade institucional (RN04)
       if (filtros.terapeutaId) {

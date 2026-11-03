@@ -1,7 +1,7 @@
 // ==============================================================================
-// InTEA: Controller da Trilha de Auditoria Clínica de Sessão (Sprint 9 - Task 1.3)
+// InTEA: Controller da Trilha de Auditoria Clínica de Sessão e Vínculos (Sprint 9 / Sprint 13)
 // ==============================================================================
-// Conformidade: RF13, RNF06 (LGPD / Segurança), RN04 (Vínculo), RN05 (Imutabilidade), RF21
+// Conformidade: RF08, RF13, RNF06 (LGPD / Segurança), RN04 (Vínculo), RN05 (Imutabilidade), RF21
 // Padrão Arquitetural: Envelope Pattern Categorizado Estrito ({ data: { ... }, message })
 // ==============================================================================
 
@@ -125,7 +125,18 @@ export class AuditoriaController {
   static async listar(req: Request, res: Response): Promise<void> {
     try {
       const usuarioLogado = (req as AuthenticatedRequest).user;
-      const query = req.query as Record<string, string | undefined>;
+      const query = (req.query || {}) as Record<string, string | undefined>;
+
+      const pacienteIdRaw = query.pacienteId || query.paciente_id;
+      const pacienteId =
+        typeof pacienteIdRaw === 'string' && pacienteIdRaw.trim() !== ''
+          ? pacienteIdRaw.trim()
+          : undefined;
+
+      if (pacienteId && !validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O parâmetro pacienteId deve ser um UUID válido.' });
+        return;
+      }
 
       const page = Math.max(1, Number(query.page) || 1);
       const limit = Math.max(1, Math.min(100, Number(query.limit) || 10));
@@ -134,6 +145,7 @@ export class AuditoriaController {
         {
           busca: query.busca,
           terapeutaId: query.terapeutaId,
+          ...(pacienteId ? { pacienteId } : {}),
           tipoAcao: query.tipoAcao,
           dataInicio: query.dataInicio,
           dataFim: query.dataFim,

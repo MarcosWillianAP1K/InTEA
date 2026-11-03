@@ -6,7 +6,7 @@ import { Request, Response } from 'express';
 import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, StatusSessao, Sessao } from '../models/sessao.model.js';
 import { CriarSessaoDTO, ParearSessaoDTO, PareamentoRespostaDTO, FiltrosSessaoDTO } from '../dtos/sessao.dto.js';
 import { SessaoTokenService } from '../services/sessao-token.service.js';
-import { SessaoListarService } from '../services/sessao-listar.service.js';
+import { SessaoListarService, SessaoServiceError } from '../services/sessao-listar.service.js';
 import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { SessaoResultadoService } from '../services/sessao-resultado.service.js';
 import { SessaoExportarService } from '../services/sessao-exportar.service.js';
@@ -82,6 +82,10 @@ export class SessaoController {
         message: 'Sessões listadas com sucesso.',
       });
     } catch (error: unknown) {
+      if (error instanceof SessaoServiceError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
       console.error('[SessaoController.listar]', error);
       res.status(500).json({
         error: 'Erro interno ao listar sessões.',
