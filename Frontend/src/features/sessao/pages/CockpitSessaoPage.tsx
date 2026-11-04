@@ -175,6 +175,8 @@ export function CockpitSessaoPage() {
             }
           }
 
+          const configInicial = sessaoEncontrada.configuracao_inicial_json as Record<string, unknown> | undefined;
+
           restaurarSessao({
             sessaoId: sessaoEncontrada.id,
             status: "em_andamento",
@@ -186,17 +188,19 @@ export function CockpitSessaoPage() {
                 (sessaoEncontrada.modo_sessao === "modo_livre" ? "Modo Livre" : "Paciente Clínico"),
               jogoId: sessaoEncontrada.jogo_id || "",
               jogoTitulo: tituloJogoSessao || "Jogo Terapêutico",
-              estresseInicial: (sessaoEncontrada.configuracao_inicial_json?.estresse_inicial as number) || 1,
-              gatilhosEvitar: (sessaoEncontrada.configuracao_inicial_json?.gatilhos_evitar as string[]) || [],
+              nivelEstresseInicial: (configInicial?.estresse_inicial as number) ?? 1,
+              gatilhosEvitar: (configInicial?.gatilhos_evitar as string[]) ?? [],
             },
             pareamento: {
               sessionToken: sessaoEncontrada.session_token,
-              status: "conectado",
-              conectadoEm: sessaoEncontrada.data_hora_inicio || new Date().toISOString(),
+              expiraEm: new Date(Date.now() + 3600000).toISOString(),
+              tempoValidadeSegundos: 3600,
               dispositivo: {
+                deviceId: "tablet-clinico-01",
                 modelo: "Tablet Clínico Pareado",
                 bateria: 95,
                 latenciaMs: 32,
+                conectadoEm: sessaoEncontrada.data_hora_inicio || new Date().toISOString(),
               },
             },
           });
@@ -239,11 +243,9 @@ export function CockpitSessaoPage() {
   // 5. Cronômetro clínico de alta precisão sincronizado com Dashboard e resiliente (Card 5 - Fix, RF12, RF21)
   const idSessaoEfetivo = paramSessaoId || pareamento?.sessionToken || "sessao-ativa";
   const tokenSessao = pareamento?.sessionToken || paramSessaoId || "sessao-ativa";
-  const dataHoraInicioStore = useSessionStore((state) => state.dataHoraInicio);
   const { tempoFormatado } = useClinicalTimer({
     sessaoId: idSessaoEfetivo,
     ativo: status === "em_andamento",
-    dataHoraInicio: dataHoraInicioStore,
   });
 
   // Determina se a sessão ativa está em Modo Livre (sem paciente associado - RN01)
@@ -264,8 +266,7 @@ export function CockpitSessaoPage() {
     pausarSessao();
     SessionSocketManager.getInstance().enviarComando({
       tipo: "pausar",
-      motivo: "Pausa clínica solicitada pelo terapeuta no Cockpit",
-      timestamp: new Date().toISOString(),
+      sessionToken: tokenSessao,
     });
   };
 
@@ -278,8 +279,7 @@ export function CockpitSessaoPage() {
     retomarSessao();
     SessionSocketManager.getInstance().enviarComando({
       tipo: "retomar",
-      motivo: "Retomada clínica autorizada pelo terapeuta no Cockpit",
-      timestamp: new Date().toISOString(),
+      sessionToken: tokenSessao,
     });
   };
 
@@ -289,16 +289,13 @@ export function CockpitSessaoPage() {
     ajustarDda(nivel);
     SessionSocketManager.getInstance().enviarComando({
       tipo: "ajustar_dda",
-      nivel_estresse_alvo: nivel,
-      timestamp: new Date().toISOString(),
+      sessionToken: tokenSessao,
+      parametros: { nivelDda: nivel },
     });
   };
 
   /** Submits session conclusion, updates state, and routes to results page (RF13, RF20). */
-  const handleConfirmarFinalizacao = async (dados: {
-    motivo: string;
-    observacoesClinicas?: string;
-  }) => {
+  const handleConfirmarFinalizacao = async (anotacoes: string) => {
     if (isModoObservador) return;
     setIsSubmittingFinalizar(true);
 
@@ -307,10 +304,7 @@ export function CockpitSessaoPage() {
 
       if (sessaoIdFinalizacao) {
         try {
-          await sessaoService.finalizar(sessaoIdFinalizacao, {
-            motivo: dados.motivo,
-            observacoes_terapeuta: dados.observacoesClinicas,
-          });
+          await sessaoService.finalizar(sessaoIdFinalizacao, anotacoes);
         } catch {
           // Mantém integridade da experiência
         }
@@ -318,8 +312,7 @@ export function CockpitSessaoPage() {
 
       SessionSocketManager.getInstance().enviarComando({
         tipo: "finalizar",
-        motivo: dados.motivo,
-        timestamp: new Date().toISOString(),
+        sessionToken: tokenSessao,
       });
 
       finalizarSessao();

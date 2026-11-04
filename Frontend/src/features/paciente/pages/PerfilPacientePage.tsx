@@ -16,7 +16,6 @@ import {
   GitCompare,
   Activity,
   Stethoscope,
-  RefreshCw,
 } from "lucide-react";
 import { ModalCompararSessoes } from "../components/ModalCompararSessoes";
 import { PainelEquipeMultidisciplinar } from "../components/PainelEquipeMultidisciplinar";
