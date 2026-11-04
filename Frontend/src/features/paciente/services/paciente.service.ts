@@ -9,6 +9,7 @@ import { http, withFallback, ENDPOINTS } from "@/core/api";
 import type {
   Paciente,
   TerapeutaPaciente,
+  EspecialistaVinculado,
   CriarPacienteDTO,
   AtualizarPacienteDTO,
   FiltroPacienteDTO,
@@ -34,6 +35,7 @@ import {
   inativarPacienteMock,
   reativarPacienteMock,
   listarTerapeutasPacienteMock,
+  listarEspecialistasVinculadosMock,
   vincularTerapeutaMock,
   desvincularTerapeutaMock,
   buscarHistoricoPacienteMock,
@@ -165,6 +167,57 @@ function extrairPaciente(resposta: PacienteRespostaApi | Paciente | null | undef
     }
   }
   return null;
+}
+
+function extrairStatusErro(erro: unknown): number | undefined {
+  if (!erro || typeof erro !== "object") return undefined;
+  const errObj = erro as {
+    status?: number;
+    statusCode?: number;
+    response?: { status?: number };
+  };
+  return errObj.status ?? errObj.statusCode ?? errObj.response?.status;
+}
+
+function criarErroSemantico(mensagem: string, status: number): Error & { status: number } {
+  const err = new Error(mensagem) as Error & { status: number };
+  err.status = status;
+  return err;
+}
+
+function normalizarEspecialistaVinculado(
+  item: TerapeutaPaciente | EspecialistaVinculado,
+): EspecialistaVinculado {
+  if ("terapeuta_id" in item) {
+    const t = item.terapeuta;
+    return {
+      id: t?.id ?? item.terapeuta_id,
+      nome: t?.nome ?? "Especialista da Equipe",
+      email: t?.email ?? null,
+      telefone: t?.telefone ?? null,
+      crp: t?.crp ?? null,
+      crefito: t?.crefito ?? null,
+      registro_profissional: t?.registro_profissional ?? t?.crefito ?? t?.crp ?? null,
+      especialidade: t?.especialidade ?? "Equipe Multidisciplinar",
+      papel_equipe: item.papel_equipe ?? "Equipe Multidisciplinar",
+      created_at: item.created_at,
+      status_ativo: t?.status_ativo ?? true,
+    };
+  }
+  return {
+    id: item.id,
+    nome: item.nome,
+    email: item.email ?? null,
+    telefone: item.telefone ?? null,
+    crp: item.crp ?? null,
+    crefito: item.crefito ?? null,
+    registro_profissional:
+      item.registro_profissional ?? item.crefito ?? item.crp ?? null,
+    especialidade: item.especialidade ?? "Equipe Multidisciplinar",
+    papel_equipe: item.papel_equipe ?? "Equipe Multidisciplinar",
+    created_at: item.created_at,
+    status_ativo: item.status_ativo ?? true,
+  };
 }
 
 export const pacienteService = {
@@ -319,20 +372,110 @@ export const pacienteService = {
   },
 
   /**
-   * Associates a therapist from same clinic with patient (RF18, RF21).
+   * Lists normalized multidisciplinary specialists linked to patient (RF18, RN04).
+   */
+  listarTerapeutasVinculados: async (
+    pacienteId: string,
+  ): Promise<EspecialistaVinculado[]> => {
+    if (!pacienteId || !pacienteId.trim()) return [];
+
+    let erroSemantico: (Error & { status: number }) | null = null;
+
+    const resultado = await withFallback(
+      async () => {
+        try {
+          const resposta = await http.get<
+            | {
+                data:
+                  | Array<TerapeutaPaciente | EspecialistaVinculado>
+                  | { terapeutas: Array<TerapeutaPaciente | EspecialistaVinculado> };
+              }
+            | Array<TerapeutaPaciente | EspecialistaVinculado>
+          >(ENDPOINTS.PACIENTE.TERAPEUTAS(pacienteId));
+
+          let listaBruta: Array<TerapeutaPaciente | EspecialistaVinculado> = [];
+          if (Array.isArray(resposta)) {
+            listaBruta = resposta;
+          } else if (resposta && "data" in resposta && resposta.data) {
+            if (Array.isArray(resposta.data)) {
+              listaBruta = resposta.data;
+            } else if (
+              "terapeutas" in resposta.data &&
+              Array.isArray(resposta.data.terapeutas)
+            ) {
+              listaBruta = resposta.data.terapeutas;
+            }
+          }
+
+          return listaBruta.map(normalizarEspecialistaVinculado);
+        } catch (err) {
+          const status = extrairStatusErro(err);
+          if (status === 403) {
+            erroSemantico = criarErroSemantico(
+              err instanceof Error && err.message
+                ? err.message
+                : "Acesso negado (403): você não possui vínculo ativo na clínica deste paciente.",
+              403,
+            );
+          }
+          throw err;
+        }
+      },
+      async () => {
+        if (erroSemantico) throw erroSemantico;
+        return await listarEspecialistasVinculadosMock(pacienteId);
+      },
+    );
+
+    return resultado;
+  },
+
+  /**
+   * Associates a therapist from same clinic with patient (RF18, RF21, RN04).
    */
   vincularTerapeuta: async (
     pacienteId: string,
-    dto: VincularTerapeutaDTO,
+    terapeutaIdOrDto: string | VincularTerapeutaDTO,
   ): Promise<{ message: string }> => {
+    const terapeutaId =
+      typeof terapeutaIdOrDto === "string"
+        ? terapeutaIdOrDto
+        : terapeutaIdOrDto.terapeuta_id;
+    const payload: VincularTerapeutaDTO = { terapeuta_id: terapeutaId };
+
+    let erroSemantico: (Error & { status: number }) | null = null;
+
     return await withFallback(
       async () => {
-        return await http.post<{ message: string }>(
-          ENDPOINTS.PACIENTE.TERAPEUTAS(pacienteId),
-          dto,
-        );
+        try {
+          return await http.post<{ message: string }>(
+            ENDPOINTS.PACIENTE.TERAPEUTAS(pacienteId),
+            payload,
+          );
+        } catch (err) {
+          const status = extrairStatusErro(err);
+          if (status === 403) {
+            erroSemantico = criarErroSemantico(
+              err instanceof Error && err.message
+                ? err.message
+                : "Acesso negado (403): não é permitido vincular especialistas de outra clínica.",
+              403,
+            );
+          } else if (status === 409) {
+            erroSemantico = criarErroSemantico(
+              err instanceof Error && err.message
+                ? err.message
+                : "Conflito (409): este especialista já integra a Equipe Multidisciplinar do paciente.",
+              409,
+            );
+          }
+          throw err;
+        }
       },
-      () => vincularTerapeutaMock(pacienteId, dto.terapeuta_id),
+      async () => {
+        if (erroSemantico) throw erroSemantico;
+        return await vincularTerapeutaMock(pacienteId, terapeutaId);
+      },
     );
   },
 
@@ -467,13 +610,38 @@ export const pacienteService = {
     pacienteId: string,
     terapeutaId: string,
   ): Promise<{ message: string }> => {
+    let erroSemantico: (Error & { status: number }) | null = null;
+
     return await withFallback(
       async () => {
-        return await http.delete<{ message: string }>(
-          ENDPOINTS.PACIENTE.TERAPEUTA_BY_ID(pacienteId, terapeutaId),
-        );
+        try {
+          return await http.delete<{ message: string }>(
+            ENDPOINTS.PACIENTE.TERAPEUTA_BY_ID(pacienteId, terapeutaId),
+          );
+        } catch (err) {
+          const status = extrairStatusErro(err);
+          if (status === 409) {
+            erroSemantico = criarErroSemantico(
+              err instanceof Error && err.message
+                ? err.message
+                : "Não é possível remover o único especialista vinculado ao paciente. O prontuário exige ao menos 1 responsável ativo.",
+              409,
+            );
+          } else if (status === 403) {
+            erroSemantico = criarErroSemantico(
+              err instanceof Error && err.message
+                ? err.message
+                : "Acesso negado (403): você não possui permissão para desvincular especialistas deste paciente.",
+              403,
+            );
+          }
+          throw err;
+        }
       },
-      () => desvincularTerapeutaMock(pacienteId, terapeutaId),
+      async () => {
+        if (erroSemantico) throw erroSemantico;
+        return await desvincularTerapeutaMock(pacienteId, terapeutaId);
+      },
     );
   },
 };

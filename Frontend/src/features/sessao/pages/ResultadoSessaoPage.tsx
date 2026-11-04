@@ -564,9 +564,30 @@ export function ResultadoSessaoPage({
     0;
   const duracaoFormatada = formatarDuracao(dados.duracao_segundos);
 
-  const anotacaoInicial =
-    dados.anotacoes?.[0]?.conteudo || storeAnotacoes || "";
-  const anotacaoId = dados.anotacoes?.[0]?.id;
+  const anotacaoPrincipal = dados.anotacoes?.[0];
+  const isConduzidaPorOutroEspecialista =
+    Boolean(user?.id) &&
+    Boolean(dados.terapeuta?.id) &&
+    dados.terapeuta?.id !== user?.id;
+
+  const isAutorDiferenteDaNotaPrincipal =
+    Boolean(user?.id) &&
+    Boolean(anotacaoPrincipal?.terapeuta_id) &&
+    anotacaoPrincipal?.terapeuta_id !== user?.id;
+
+  const anotacaoInicial = isAutorDiferenteDaNotaPrincipal
+    ? ""
+    : anotacaoPrincipal?.conteudo || storeAnotacoes || "";
+  const anotacaoId = isAutorDiferenteDaNotaPrincipal
+    ? undefined
+    : anotacaoPrincipal?.id;
+
+  const nomeAutorEditor = isAutorDiferenteDaNotaPrincipal
+    ? user?.nome || nomeTerapeuta
+    : nomeTerapeuta;
+  const registroAutorEditor = isAutorDiferenteDaNotaPrincipal
+    ? user?.registro_profissional || user?.crefito || registroTerapeuta
+    : registroTerapeuta;
 
   // ==========================================================================
   // CONSTRUÇÃO DOS GRÁFICOS PARA TODAS AS MÉTRICAS DO JOGO (COMPARATIVO POR DATA)
@@ -826,13 +847,13 @@ export function ResultadoSessaoPage({
           </div>
         </div>
 
-        {/* Informações do Terapeuta Responsável (RF21) */}
+        {/* Informações do Terapeuta Responsável / Equipe Multidisciplinar (RF21, RN04) */}
         <div
           data-testid="terapeuta-responsavel-header"
-          className="flex flex-col md:items-end justify-center pl-4 md:border-l border-border/80 text-xs text-muted-foreground"
+          className="flex flex-col md:items-end justify-center pl-4 md:border-l border-border/80 text-xs text-muted-foreground gap-0.5"
         >
           <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground/80">
-            Terapeuta Responsável
+            Especialista Condutor (Equipe Multidisciplinar)
           </span>
           <span className="text-sm font-bold text-foreground">
             {nomeTerapeuta}
@@ -840,6 +861,15 @@ export function ResultadoSessaoPage({
           <span className="font-mono text-[11px] text-primary">
             {registroTerapeuta}
           </span>
+          {isConduzidaPorOutroEspecialista && (
+            <Badge
+              data-testid="badge-sessao-outro-especialista"
+              variant="outline"
+              className="mt-1 text-[10px] font-bold bg-indigo-50 text-indigo-700 border-indigo-200"
+            >
+              Sessão conduzida por especialista da equipe
+            </Badge>
+          )}
         </div>
       </header>
 
@@ -1323,8 +1353,42 @@ export function ResultadoSessaoPage({
       </div>
 
       {/* SLOT 4: Bloco de Anotações Clínicas do Terapeuta (RF16, RF21, RN05) */}
-      <section aria-labelledby="titulo-bloco-anotacoes-secao">
+      <section aria-labelledby="titulo-bloco-anotacoes-secao" className="space-y-4">
         <h2 id="titulo-bloco-anotacoes-secao" className="sr-only">Anotações Clínicas</h2>
+
+        {/* Parecer Original em Modo Somente Leitura quando logado como outro membro da Equipe Multidisciplinar */}
+        {isAutorDiferenteDaNotaPrincipal && anotacaoPrincipal && (
+          <div
+            data-testid="parecer-original-somente-leitura"
+            className="rounded-2xl border border-indigo-200 bg-indigo-50/50 dark:bg-indigo-950/30 dark:border-indigo-800 p-5 flex flex-col gap-2.5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-indigo-600 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+                  Parecer Original (Somente Leitura)
+                </Badge>
+                <span className="text-xs font-bold text-foreground">
+                  Autoria: {anotacaoPrincipal.terapeuta_nome || nomeTerapeuta}
+                </span>
+                {anotacaoPrincipal.registro_profissional && (
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    ({anotacaoPrincipal.registro_profissional})
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
+                Protegido contra edição por terceiros (RF16 / RF21)
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap bg-white/80 dark:bg-card/60 rounded-xl p-3.5 border border-indigo-100 dark:border-indigo-900">
+              {anotacaoPrincipal.conteudo}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Como integrante da <strong>Equipe Multidisciplinar</strong>, você pode registrar abaixo uma observação clínica complementar identificada sob sua própria autoria.
+            </p>
+          </div>
+        )}
+
         {anotacoesSlot ? (
           anotacoesSlot
         ) : (
@@ -1334,8 +1398,8 @@ export function ResultadoSessaoPage({
             anotacaoId={anotacaoId}
             anotacaoInicial={anotacaoInicial}
             anotacoesSessao={dados.anotacoes}
-            terapeutaNome={nomeTerapeuta}
-            terapeutaRegistro={registroTerapeuta}
+            terapeutaNome={nomeAutorEditor}
+            terapeutaRegistro={registroAutorEditor}
           />
         )}
       </section>

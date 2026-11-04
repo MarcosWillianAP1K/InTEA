@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -15,14 +15,15 @@ import {
   FileCheck,
   GitCompare,
   Activity,
+  Stethoscope,
 } from "lucide-react";
 import { ModalCompararSessoes } from "../components/ModalCompararSessoes";
-import { PainelEquipeMultidisciplinar, type EspecialistaEquipeItem } from "../components/PainelEquipeMultidisciplinar";
+import { PainelEquipeMultidisciplinar } from "../components/PainelEquipeMultidisciplinar";
 import { ModalVincularEspecialista } from "../components/ModalVincularEspecialista";
 import { BadgeAutoriaMultidisciplinar } from "../components/BadgeAutoriaMultidisciplinar";
 import { pacienteService } from "../services/paciente.service";
+import type { Paciente, EspecialistaVinculado } from "../types/paciente.types";
 import { terapeutaService } from "@/features/terapeuta/services/terapeuta.service";
-import type { Paciente, TerapeutaPaciente } from "../types/paciente.types";
 import type { Terapeuta } from "@/features/terapeuta/types/terapeuta.types";
 import { GerenciadorAnotacoesProntuario } from "@/features/anotacao";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
@@ -31,6 +32,7 @@ import type { Sessao } from "@/features/sessao/types/sessao.types";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -41,44 +43,11 @@ import {
 } from "@/shared/components/ui/table";
 import { toast } from "sonner";
 
-function mapearTerapeutaVinculadoParaItem(
-  t: TerapeutaPaciente | Record<string, unknown>
-): EspecialistaEquipeItem {
-  const item = t as Record<string, unknown>;
-  const terapeuta = (item.terapeuta as Record<string, unknown>) || {};
-  return {
-    id: String(item.id || item.terapeuta_id || terapeuta.id || ""),
-    nome: String(item.nome || terapeuta.nome || "Especialista"),
-    especialidade: (item.especialidade || terapeuta.especialidade || null) as string | null,
-    registro_profissional: (item.registro_profissional ||
-      item.crefito ||
-      item.crp ||
-      terapeuta.registro_profissional ||
-      terapeuta.crefito ||
-      terapeuta.crp ||
-      null) as string | null,
-    crefito: (item.crefito || terapeuta.crefito || null) as string | null,
-    crp: (item.crp || terapeuta.crp || null) as string | null,
-    email: (item.email || terapeuta.email || null) as string | null,
-  };
-}
-
-function mapearTerapeutaClinicaParaItem(t: Terapeuta): EspecialistaEquipeItem {
-  return {
-    id: t.id,
-    nome: t.nome,
-    especialidade: t.especialidade || null,
-    registro_profissional: t.registro_profissional || t.crefito || null,
-    crefito: t.crefito || null,
-    email: t.email || null,
-  };
-}
-
 /**
  * ============================================================================
  * PAGE: PATIENT PROFILE (InTEA)
- * Integration: pacienteService, anotacaoService, sessaoService, terapeutaService
- * Compliance: RF06, RF10, RF18, RF21, RN04, RN05
+ * Integration: pacienteService, anotacaoService, sessaoService
+ * Compliance: RF06, RF10, RF15, RF18, RF21, RN04, RN05, RNF07
  * ============================================================================
  */
 export function PerfilPacientePage() {
@@ -90,465 +59,674 @@ export function PerfilPacientePage() {
   const [sessoesSelecionadas, setSessoesSelecionadas] = useState<string[]>([]);
   const [modalCompararAberto, setModalCompararAberto] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [erroProntuario, setErroProntuario] = useState<string | null>(null);
 
   // Estados da Equipe Multidisciplinar (RF18, RN04)
-  const [equipeEspecialistas, setEquipeEspecialistas] = useState<EspecialistaEquipeItem[]>([]);
-  const [terapeutasClinica, setTerapeutasClinica] = useState<EspecialistaEquipeItem[]>([]);
-  const [loadingEquipe, setLoadingEquipe] = useState(false);
-  const [removendoTerapeutaId, setRemovendoTerapeutaId] = useState<string | null>(null);
-  const [modalVincularAberto, setModalVincularAberto] = useState(false);
-  const [isSubmittingVinculo, setIsSubmittingVinculo] = useState(false);
+  const [especialistas, setEspecialistas] = useState<EspecialistaVinculado[]>([]);
+  const [terapeutasClinica, setTerapeutasClinica] = useState<Terapeuta[]>([]);
+  const [loadingEquipe, setLoadingEquipe] = useState<boolean>(false);
+  const [erroEquipe, setErroEquipe] = useState<string | null>(null);
+  const [alertaConflitoEquipe, setAlertaConflitoEquipe] = useState<string | null>(null);
+  const [modalVincularAberto, setModalVincularAberto] = useState<boolean>(false);
+  const [isSubmittingVinculo, setIsSubmittingVinculo] = useState<boolean>(false);
   const [erroModalVinculo, setErroModalVinculo] = useState<string | null>(null);
+  const [removendoEspecialistaId, setRemovendoEspecialistaId] = useState<string | null>(null);
 
   const user = useAuthStore((s) => s.user);
   const abrirModalPreSessao = useSessionStore((s) => s.abrirModalPreSessao);
   const selecionarPaciente = useSessionStore((s) => s.selecionarPaciente);
 
-  useEffect(() => {
-    if (!id) return;
-
-    let isMounted = true;
-    async function carregarDados() {
+  const carregarEquipeMultidisciplinar = useCallback(
+    async (pacienteId: string, dadosPacienteFallback?: Paciente | null) => {
+      setLoadingEquipe(true);
+      setErroEquipe(null);
       try {
-        setLoading(true);
-        setLoadingEquipe(true);
-        const [dadosPaciente, resSessoes, resEquipe, resClinica] = await Promise.allSettled([
-          pacienteService.buscarPorId(id!),
-          sessaoService.listar({ pacienteId: id! }),
-          pacienteService.listarTerapeutas(id!),
-          terapeutaService.listar(),
+        const buscaVinculados = async () => {
+          if (typeof pacienteService.listarTerapeutasVinculados === "function") {
+            try {
+              const res = await pacienteService.listarTerapeutasVinculados(pacienteId);
+              if (res && res.length > 0) return res;
+            } catch {
+              // fallback
+            }
+          }
+          if (typeof pacienteService.listarTerapeutas === "function") {
+            try {
+              const resOld = await pacienteService.listarTerapeutas(pacienteId);
+              if (resOld && resOld.length > 0) {
+                return resOld.map((v) => ({
+                  id: (v.terapeuta as unknown as { id?: string })?.id ?? v.terapeuta_id,
+                  nome: (v.terapeuta as unknown as { nome?: string })?.nome ?? "Especialista da Equipe",
+                  email: (v.terapeuta as unknown as { email?: string })?.email ?? null,
+                  especialidade: (v.terapeuta as unknown as { especialidade?: string })?.especialidade ?? "Equipe Multidisciplinar",
+                  registro_profissional:
+                    (v.terapeuta as unknown as { registro_profissional?: string })?.registro_profissional ??
+                    (v.terapeuta as unknown as { crefito?: string })?.crefito ??
+                    null,
+                  status_ativo: true,
+                })) as EspecialistaVinculado[];
+              }
+            } catch {
+              // fallback
+            }
+          }
+          return [];
+        };
+
+        const [listaVinculados, listaClinica] = await Promise.all([
+          buscaVinculados(),
+          terapeutaService.listar
+            ? terapeutaService.listar().catch(() => [] as Terapeuta[])
+            : Promise.resolve([] as Terapeuta[]),
         ]);
 
-        if (isMounted) {
-          if (dadosPaciente.status === "fulfilled") {
-            setPaciente(dadosPaciente.value);
-          }
-          if (resSessoes.status === "fulfilled") {
-            setSessoes((resSessoes.value?.data || []).filter((s) => s.status_sessao !== "aguardando_pareamento"));
-          }
-          if (resEquipe.status === "fulfilled") {
-            const formatados = (resEquipe.value || []).map(mapearTerapeutaVinculadoParaItem);
-            setEquipeEspecialistas(formatados);
-          }
-          if (resClinica.status === "fulfilled") {
-            const formatadosClinica = (resClinica.value || []).map(mapearTerapeutaClinicaParaItem);
-            setTerapeutasClinica(formatadosClinica);
-          }
+        setTerapeutasClinica(listaClinica);
+
+        if (listaVinculados && listaVinculados.length > 0) {
+          setEspecialistas(listaVinculados);
+        } else if (dadosPacienteFallback?.terapeutas?.length) {
+          setEspecialistas(
+            dadosPacienteFallback.terapeutas.map((v) => ({
+              id: v.terapeuta?.id ?? v.terapeuta_id,
+              nome: v.terapeuta?.nome ?? "Especialista da Equipe",
+              email: v.terapeuta?.email ?? null,
+              telefone: v.terapeuta?.telefone ?? null,
+              crp: v.terapeuta?.crp ?? null,
+              crefito: v.terapeuta?.crefito ?? null,
+              registro_profissional:
+                v.terapeuta?.registro_profissional ??
+                v.terapeuta?.crefito ??
+                v.terapeuta?.crp ??
+                null,
+              especialidade:
+                v.terapeuta?.especialidade ?? "Equipe Multidisciplinar",
+              papel_equipe: v.papel_equipe ?? "Equipe Multidisciplinar",
+              created_at: v.created_at,
+              status_ativo: v.terapeuta?.status_ativo ?? true,
+            })),
+          );
+        } else {
+          setEspecialistas([]);
         }
-      } catch {
-        toast.error("Erro ao carregar prontuário do paciente.");
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Falha ao carregar os especialistas vinculados ao paciente.";
+        setErroEquipe(msg);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-          setLoadingEquipe(false);
-        }
+        setLoadingEquipe(false);
       }
-    }
+    },
+    [],
+  );
 
-    void carregarDados();
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
-
-  function calcularIdade(dataNasc?: string | null): string {
-    if (!dataNasc) return "N/I";
-    try {
-      const nasc = new Date(dataNasc);
-      const hoje = new Date();
-      let anos = hoje.getFullYear() - nasc.getFullYear();
-      const m = hoje.getMonth() - nasc.getMonth();
-      if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
-        anos--;
-      }
-      return `${Math.max(0, anos)} anos`;
-    } catch {
-      return "N/I";
-    }
-  }
-
-  const handleIniciarSessaoComPaciente = () => {
-    if (!paciente) return;
-    abrirModalPreSessao();
-    selecionarPaciente({ id: paciente.id, nome: paciente.nome });
-  };
-
-  const handleDesvincularEspecialista = async (terapeutaId: string) => {
+  const carregarDados = useCallback(async () => {
     if (!id) return;
     try {
-      setRemovendoTerapeutaId(terapeutaId);
-      await pacienteService.desvincularTerapeuta(id, terapeutaId);
-      toast.success("Especialista desvinculado da equipe clínica com sucesso.");
-      setEquipeEspecialistas((prev) => prev.filter((esp) => esp.id !== terapeutaId));
-    } catch (err: unknown) {
-      const errObj = err as {
-        response?: { status?: number; data?: { error?: string } };
-        status?: number;
-        message?: string;
-      };
-      const status = errObj?.response?.status || errObj?.status;
-      const msg = errObj?.response?.data?.error || errObj?.message || "";
-      if (status === 409 || msg.includes("órfão") || msg.includes("orfao")) {
-        toast.error("Não é possível desvincular: o paciente não pode ficar órfão (Regra RN04).");
-      } else if (status === 403 || msg.includes("Acesso negado")) {
-        toast.error("Acesso negado: terapeutas comuns só podem remover o próprio vínculo (Regra D1).");
-      } else {
-        toast.error(msg || "Falha ao desvincular especialista.");
-      }
+      setLoading(true);
+      setErroProntuario(null);
+      const [dadosPaciente, resSessoes] = await Promise.all([
+        pacienteService.buscarPorId(id),
+        sessaoService.listar({ pacienteId: id }),
+      ]);
+
+      setPaciente(dadosPaciente);
+      setSessoes(
+        (resSessoes?.data || []).filter(
+          (s) => s.status_sessao !== "aguardando_pareamento",
+        ),
+      );
+      await carregarEquipeMultidisciplinar(id, dadosPaciente);
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Erro inesperado ao consultar prontuário do paciente.";
+      setErroProntuario(msg);
+      toast.error(msg);
     } finally {
-      setRemovendoTerapeutaId(null);
+      setLoading(false);
     }
+  }, [id, carregarEquipeMultidisciplinar]);
+
+  useEffect(() => {
+    void carregarDados();
+  }, [carregarDados]);
+
+  const toggleSelecaoSessao = (sessaoId: string) => {
+    setSessoesSelecionadas((prev) => {
+      if (prev.includes(sessaoId)) {
+        return prev.filter((s) => s !== sessaoId);
+      }
+      if (prev.length >= 2) {
+        toast.info("Você já selecionou duas sessões. Desmarque uma para escolher outra.");
+        return prev;
+      }
+      return [...prev, sessaoId];
+    });
   };
 
-  const handleConfirmarVinculo = async (terapeutaId: string) => {
+  const handleIniciarAtendimento = () => {
+    if (!paciente) return;
+
+    const sessaoConcorrenteAtiva = sessoes.find(
+      (s) =>
+        (s.status_sessao === "em_andamento" ||
+          s.status_sessao === "conectado" ||
+          s.status_sessao === "pausada") &&
+        Boolean(user?.id) &&
+        Boolean(s.terapeuta_id) &&
+        s.terapeuta_id !== user?.id,
+    );
+
+    if (sessaoConcorrenteAtiva) {
+      const condutorNome =
+        sessaoConcorrenteAtiva.terapeuta?.nome ||
+        especialistas.find((e) => e.id === sessaoConcorrenteAtiva.terapeuta_id)
+          ?.nome ||
+        "outro especialista da Equipe Multidisciplinar";
+      const msgConflito = `Conflito de sessão ativa (409): Este paciente já está em atendimento conduzido por ${condutorNome}. Você pode acompanhar a sessão em tempo real pelo Cockpit em modo observador.`;
+      setAlertaConflitoEquipe(msgConflito);
+      toast.error(msgConflito);
+      return;
+    }
+
+    const minhaSessaoAtiva = sessoes.find(
+      (s) =>
+        (s.status_sessao === "em_andamento" ||
+          s.status_sessao === "conectado" ||
+          s.status_sessao === "pausada") &&
+        s.terapeuta_id === user?.id,
+    );
+
+    if (minhaSessaoAtiva) {
+      toast.info("Retomando atendimento clínico em andamento.");
+      navigate(`/sessao/${minhaSessaoAtiva.id}/monitoramento`);
+      return;
+    }
+
+    selecionarPaciente({
+      id: paciente.id,
+      nome: paciente.nome,
+    });
+    abrirModalPreSessao();
+  };
+
+  const handleConfirmarVinculoEspecialista = async (terapeutaId: string) => {
     if (!id || !terapeutaId) return;
+
+    setIsSubmittingVinculo(true);
+    setErroModalVinculo(null);
+
     try {
-      setIsSubmittingVinculo(true);
-      setErroModalVinculo(null);
       await pacienteService.vincularTerapeuta(id, { terapeuta_id: terapeutaId });
-      toast.success("Especialista vinculado com sucesso à equipe.");
+      toast.success("Especialista vinculado à equipe multidisciplinar com sucesso!");
       setModalVincularAberto(false);
-      // Recarrega equipe
-      const atualizados = await pacienteService.listarTerapeutas(id);
-      const formatados = (atualizados || []).map(mapearTerapeutaVinculadoParaItem);
-      setEquipeEspecialistas(formatados);
-    } catch (err: unknown) {
-      const errObj = err as {
-        response?: { status?: number; data?: { error?: string } };
-        status?: number;
-        message?: string;
-      };
-      const status = errObj?.response?.status || errObj?.status;
-      const msg = errObj?.response?.data?.error || errObj?.message || "";
-      if (status === 403 || msg.includes("clínica diferente") || msg.includes("clinica diferente")) {
-        setErroModalVinculo("Acesso negado: o terapeuta pertence a outra clínica (RN04).");
-        toast.error("Acesso negado: o terapeuta pertence a outra clínica (RN04).");
-      } else if (status === 409 || msg.includes("já vinculado") || msg.includes("ja vinculado")) {
-        setErroModalVinculo("Este especialista já está vinculado a este prontuário.");
-        toast.error("Este especialista já está vinculado a este prontuário.");
-      } else {
-        setErroModalVinculo(msg || "Falha ao vincular especialista.");
-        toast.error(msg || "Falha ao vincular especialista.");
-      }
+      await carregarEquipeMultidisciplinar(id, paciente);
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Erro ao vincular especialista. Verifique as permissões clínicas.";
+      setErroModalVinculo(msg);
+      toast.error(msg);
     } finally {
       setIsSubmittingVinculo(false);
     }
   };
 
+  const handleDesvincularEspecialista = async (terapeutaId: string) => {
+    if (!id || !terapeutaId) return;
+
+    if (especialistas.length <= 1) {
+      const msgBloqueio =
+        "Regra Anti-Órfão (RN04): O paciente não pode ficar sem nenhum especialista responsável.";
+      setAlertaConflitoEquipe(msgBloqueio);
+      toast.warning(msgBloqueio);
+      return;
+    }
+
+    setRemovendoEspecialistaId(terapeutaId);
+    try {
+      await pacienteService.desvincularTerapeuta(id, terapeutaId);
+      toast.success("Especialista desvinculado da equipe do paciente com sucesso.");
+      await carregarEquipeMultidisciplinar(id, paciente);
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Falha ao desvincular especialista da equipe.";
+      setAlertaConflitoEquipe(msg);
+      toast.error(msg);
+    } finally {
+      setRemovendoEspecialistaId(null);
+    }
+  };
+
+  const calcularIdade = (dataNasc?: string) => {
+    if (!dataNasc) return null;
+    const nasc = new Date(dataNasc);
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - nasc.getFullYear();
+    const m = hoje.getMonth() - nasc.getMonth();
+    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
+      idade--;
+    }
+    return idade;
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center py-20 text-xs text-muted-foreground">
-        Carregando prontuário e histórico do paciente...
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-24 rounded-lg" />
+          <Skeleton className="h-8 w-64 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Skeleton className="h-64 w-full rounded-2xl" />
+          <Skeleton className="h-64 w-full rounded-2xl md:col-span-2" />
+        </div>
+        <Skeleton className="h-72 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (erroProntuario && !paciente) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center flex flex-col items-center gap-4">
+          <AlertCircle className="h-10 w-10 text-destructive" />
+          <h2 className="text-lg font-bold text-destructive">Falha ao Carregar Prontuário</h2>
+          <p className="text-sm text-muted-foreground max-w-md">{erroProntuario}</p>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => navigate("/pacientes")}>
+              Voltar para Pacientes
+            </Button>
+            <Button onClick={() => void carregarDados()}>Tentar Novamente</Button>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!paciente) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center py-20 gap-4 text-center">
-        <AlertCircle className="h-10 w-10 text-amber-500" />
-        <h2 className="text-lg font-bold text-foreground">Paciente não localizado</h2>
-        <p className="text-xs text-muted-foreground max-w-sm">
-          O paciente solicitado não existe ou você não possui vínculo clínico autorizado.
-        </p>
-        <Button onClick={() => navigate("/pacientes")} variant="outline" size="sm">
-          Voltar para Pacientes
-        </Button>
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center flex flex-col items-center gap-4">
+          <User className="h-10 w-10 text-muted-foreground" />
+          <h2 className="text-lg font-bold">Paciente não localizado</h2>
+          <p className="text-sm text-muted-foreground">
+            O identificador informado não corresponde a nenhum paciente ativo cadastrado no sistema.
+          </p>
+          <Button variant="outline" onClick={() => navigate("/pacientes")}>
+            Voltar para Pacientes
+          </Button>
+        </div>
       </div>
     );
   }
 
   const idade = calcularIdade(paciente.data_nascimento);
-  const responsavel = paciente.responsaveis?.[0];
-  const responsavelExtra = paciente.responsaveis?.[1];
-
-  const toggleSelecaoSessao = (sessaoId: string) => {
-    setSessoesSelecionadas((prev) => {
-      if (prev.includes(sessaoId)) {
-        return prev.filter((sessId) => sessId !== sessaoId);
-      }
-      if (prev.length >= 2) {
-        return [prev[1], sessaoId];
-      }
-      return [...prev, sessaoId];
-    });
-  };
 
   return (
-    <div className="flex flex-1 flex-col gap-6 w-full max-w-7xl mx-auto py-2">
-      {/* Botão de Retorno */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/pacientes")}
-          className="gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Voltar para Lista de Pacientes</span>
-        </Button>
-
-        <Button
-          onClick={handleIniciarSessaoComPaciente}
-          className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-md shadow-primary/20 cursor-pointer"
-        >
-          <Play className="h-4 w-4 fill-current" />
-          <span>Iniciar Sessão com este Paciente</span>
-        </Button>
-      </div>
-
-      {/* Banner Principal do Paciente — Figma 150:888 */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 bg-card border border-border p-6 rounded-2xl shadow-xs">
-        <div className="flex items-center gap-4">
-          <div className="h-16 w-16 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-primary font-bold text-xl shrink-0">
-            {(paciente.nome || "PA").slice(0, 2).toUpperCase()}
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+      {/* Topo / Navegação */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/pacientes")}
+            className="h-9 w-9 p-0 rounded-xl"
+            title="Voltar"
+          >
+            <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
                 {paciente.nome}
               </h1>
-              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs">
-                Ativo
+              <Badge variant="outline" className="text-xs bg-muted/50 border-primary/20 text-primary font-semibold">
+                Prontuário: #{paciente.id.slice(0, 8)}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {idade} • Nascido em {paciente.data_nascimento || "N/I"} • CPF: {paciente.cpf || "N/I"}
+              Cadastro Geral e Histórico Clínico do Paciente
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs px-3 py-1 font-semibold text-primary border-primary/30">
-            Prontuário: #{paciente.id ? paciente.id.slice(0, 8) : "N/I"}
-          </Badge>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/pacientes/${paciente.id}/historico`)}
+            className="min-h-11 px-4 text-xs font-semibold gap-1.5 cursor-pointer"
+          >
+            <Clock className="h-4 w-4" />
+            <span>Histórico de Sessões</span>
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={handleIniciarAtendimento}
+            className="min-h-11 px-4 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
+          >
+            <Play className="h-4 w-4 fill-current" />
+            <span>Iniciar Sessão com este Paciente</span>
+          </Button>
         </div>
       </div>
 
-      {/* Grid de 4 Cards Lado a Lado — Figma 150:888 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Dados Básicos */}
-        <div className="rounded-xl border border-border bg-card p-4 shadow-xs flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider border-b border-border/60 pb-2">
-            <User className="h-3.5 w-3.5" />
-            <span>Dados Básicos</span>
-          </div>
-          <div className="space-y-1.5 text-xs">
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Nascimento:</span>
-              <span className="font-medium text-foreground">{paciente.data_nascimento || "N/I"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Telefone:</span>
-              <span className="font-medium text-foreground">{paciente.telefone || "Não informado"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Endereço:</span>
-              <span className="font-medium text-foreground truncate block">
-                {paciente.endereco ? `${paciente.endereco}, ${paciente.numero || "S/N"}` : "Não informado"}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Cidade/Estado:</span>
-              <span className="font-medium text-foreground">
-                {paciente.cidade ? `${paciente.cidade} - ${paciente.estado || "PI"}` : "Teresina - PI"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Responsável Principal */}
-        <div className="rounded-xl border border-border bg-card p-4 shadow-xs flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider border-b border-border/60 pb-2">
-            <Phone className="h-3.5 w-3.5" />
-            <span>Responsável Legal</span>
-          </div>
-          <div className="space-y-1.5 text-xs">
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Nome:</span>
-              <span className="font-medium text-foreground">{responsavel?.nome || "Maria Silva (Mãe)"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Parentesco:</span>
-              <span className="font-medium text-foreground">{responsavel?.parentesco || "Mãe"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Telefone:</span>
-              <span className="font-medium text-foreground">{responsavel?.telefone || "(86) 98844-2211"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[11px]">E-mail:</span>
-              <span className="font-medium text-foreground truncate block">
-                {responsavel?.email || "responsavel@email.com"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Responsável Extra */}
-        <div className="rounded-xl border border-border bg-card p-4 shadow-xs flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider border-b border-border/60 pb-2">
-            <Mail className="h-3.5 w-3.5" />
-            <span>Contato Extra</span>
-          </div>
-          <div className="space-y-1.5 text-xs">
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Nome:</span>
-              <span className="font-medium text-foreground">{responsavelExtra?.nome || "João Silva (Pai)"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Parentesco:</span>
-              <span className="font-medium text-foreground">{responsavelExtra?.parentesco || "Pai"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Telefone:</span>
-              <span className="font-medium text-foreground">{responsavelExtra?.telefone || "(86) 99911-3322"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[11px]">Emergência:</span>
-              <span className="font-medium text-emerald-600 dark:text-emerald-400">Autorizado a retirar</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Gatilhos Sensoriais */}
-        <div className="rounded-xl border border-border bg-card p-4 shadow-xs flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider border-b border-border/60 pb-2">
-            <ShieldAlert className="h-3.5 w-3.5" />
-            <span>Gatilhos Sensoriais</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {["Som Alto", "Luz Intensa", "Mudança Brusca", "Pressão de Tempo"].map((g) => (
-              <Badge
-                key={g}
-                className="bg-[#00288E]/10 text-[#00288E] dark:bg-blue-900/30 dark:text-blue-300 border-[#00288E]/20 text-[11px] font-semibold"
-              >
-                {g}
+      {/* Grid de Informações Principais */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Card: Dados Básicos */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <User className="h-4 w-4 text-primary" />
+                Dados Básicos
+              </h2>
+              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px]">
+                Cadastro Ativo
               </Badge>
-            ))}
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="flex justify-between py-1 border-b border-border/30">
+                <span className="text-muted-foreground">Idade:</span>
+                <span className="font-semibold text-foreground">
+                  {idade !== null ? `${idade} anos` : "Não informada"}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-border/30">
+                <span className="text-muted-foreground">Data de Nascimento:</span>
+                <span className="font-semibold text-foreground">
+                  {paciente.data_nascimento
+                    ? new Date(paciente.data_nascimento).toLocaleDateString("pt-BR")
+                    : "Não informada"}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-border/30">
+                <span className="text-muted-foreground">CPF:</span>
+                <span className="font-mono text-foreground font-semibold">
+                  {paciente.cpf || "Não informado"}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-border/30">
+                <span className="text-muted-foreground">Telefone:</span>
+                <span className="text-foreground font-semibold flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-muted-foreground" />
+                  {paciente.telefone || "Não informado"}
+                </span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-muted-foreground">Localidade:</span>
+                <span className="text-foreground font-semibold">
+                  {paciente.cidade && paciente.estado
+                    ? `${paciente.cidade} - ${paciente.estado}`
+                    : "Não informada"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card: Responsáveis Legais */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-primary" />
+                Responsáveis Legais
+              </h2>
+              <Badge variant="outline" className="text-[11px] font-semibold">
+                {paciente.responsaveis?.length || 0} vinculado(s)
+              </Badge>
+            </div>
+
+            {paciente.responsaveis && paciente.responsaveis.length > 0 ? (
+              <div className="space-y-3">
+                {paciente.responsaveis.map((resp) => (
+                  <div
+                    key={resp.id}
+                    className="p-3 rounded-xl bg-muted/40 border border-border/50 text-xs space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-foreground">{resp.nome}</span>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        {resp.parentesco || "Responsável"}
+                      </Badge>
+                    </div>
+                    {resp.telefone && (
+                      <p className="text-muted-foreground flex items-center gap-1.5">
+                        <Phone className="h-3 w-3" />
+                        {resp.telefone}
+                      </p>
+                    )}
+                    {resp.email && (
+                      <p className="text-muted-foreground flex items-center gap-1.5 truncate">
+                        <Mail className="h-3 w-3" />
+                        {resp.email}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground italic py-4">
+                Nenhum responsável legal cadastrado.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Card: Resumo de Atendimento Clínico */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <FileCheck className="h-4 w-4 text-primary" />
+                Resumo Longitudinal
+              </h2>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Total de Intervenções</p>
+                  <p className="text-xl font-extrabold text-primary">{sessoes.length}</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                  <Clock className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border/50 flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Especialistas Vinculados</p>
+                  <p className="text-xl font-extrabold text-foreground">{especialistas.length}</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-muted text-muted-foreground">
+                  <User className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Seção: Laudo do Paciente */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-xs flex flex-col gap-3">
-        <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <div className="flex items-center gap-2 text-foreground font-bold text-sm">
-            <FileCheck className="h-4 w-4 text-primary" />
-            <span>Laudo e Avaliação Diagnóstica</span>
-          </div>
-          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs">
-            Documento Validado
-          </Badge>
-        </div>
+      {/* Observações Clínicas Relevantes */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-2">
+        <h2 className="text-sm font-bold text-foreground">Diretrizes Sensoriais e Comportamentais</h2>
         <p className="text-xs text-muted-foreground leading-relaxed">
           CID-11: 6A02 (Transtorno do Espectro Autista). Paciente com acompanhamento multidisciplinar ativo.
           Recomenda-se sessões com estímulos cromáticos suaves, ritmo moderado de tarefas e pausas orientadas para regulação sensorial.
         </p>
       </div>
 
-      {/* Seção: Equipe Multidisciplinar (RF18, RN04) */}
+      {/* Seção: Equipe Multidisciplinar (Especialistas Vinculados) — RF18, RN04 */}
+      {alertaConflitoEquipe && (
+        <div
+          role="alert"
+          data-testid="alerta-conflito-equipe"
+          className="rounded-2xl border border-amber-300 bg-amber-50 p-4 flex items-start justify-between gap-3 text-amber-900 text-xs font-semibold shadow-2xs"
+        >
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <span>{alertaConflitoEquipe}</span>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setAlertaConflitoEquipe(null)}
+            className="h-7 px-2 text-xs text-amber-800 hover:bg-amber-100"
+          >
+            Fechar
+          </Button>
+        </div>
+      )}
+
       <PainelEquipeMultidisciplinar
-        especialistas={equipeEspecialistas}
+        especialistas={especialistas}
         usuarioLogadoId={user?.id}
         loading={loadingEquipe}
-        removendoId={removendoTerapeutaId}
+        erro={erroEquipe}
+        removendoId={removendoEspecialistaId}
         onAbrirModalVincular={() => {
           setErroModalVinculo(null);
           setModalVincularAberto(true);
         }}
         onDesvincularEspecialista={handleDesvincularEspecialista}
         onRetry={() => {
-          if (id) {
-            setLoadingEquipe(true);
-            pacienteService
-              .listarTerapeutas(id)
-              .then((lista) => {
-                setEquipeEspecialistas((lista || []).map(mapearTerapeutaVinculadoParaItem));
-              })
-              .catch(() => {
-                toast.error("Falha ao recarregar especialistas da equipe.");
-              })
-              .finally(() => {
-                setLoadingEquipe(false);
-              });
-          }
+          if (id) void carregarEquipeMultidisciplinar(id, paciente);
         }}
       />
 
-      {/* Seção: Gerenciador de Anotações do Prontuário (RF16, RF19, RF21, RN05) */}
-      <GerenciadorAnotacoesProntuario pacienteId={id!} usuarioLogadoId={user?.id} />
+      {/* Seção: Anotações Clínicas do Prontuário (RF16, RN05) */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+        <div className="border-b border-border/60 pb-3">
+          <h2 className="text-sm font-bold text-foreground">
+            Anotações Clínicas e Evolução Comportamental
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Registro indelével da evolução longitudinal do paciente, com salvamento local automático de rascunhos.
+          </p>
+        </div>
 
-      {/* Seção: Histórico de Sessões do Paciente */}
-      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-border bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 font-bold text-sm text-foreground">
-            <Clock className="h-4 w-4 text-primary" />
-            <span>Histórico de Sessões do Paciente</span>
+        <GerenciadorAnotacoesProntuario
+          pacienteId={paciente.id}
+          usuarioLogadoId={user?.id}
+        />
+      </div>
+
+      {/* Seção: Histórico Recente de Sessões */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3">
+          <div>
+            <h2 className="text-sm font-bold text-foreground">
+              Intervenções Recentes
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Selecione até duas sessões para visualização comparativa lado a lado (RF15).
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs text-muted-foreground">{sessoes.length} sessões</span>
+          <div className="flex items-center gap-2">
+            {sessoesSelecionadas.length === 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setModalCompararAberto(true)}
+                className="h-8 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+              >
+                <GitCompare className="h-3.5 w-3.5" />
+                <span>Comparar 2 Sessões</span>
+              </Button>
+            )}
+
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              disabled={sessoesSelecionadas.length !== 2}
-              onClick={() => setModalCompararAberto(true)}
-              className="h-8 px-3 text-xs font-semibold gap-1.5 rounded-xl border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50 cursor-pointer min-h-9"
-              data-testid="botao-comparar-sessoes"
+              onClick={() => navigate(`/pacientes/${paciente.id}/historico`)}
+              className="h-8 text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
-              <GitCompare className="h-4 w-4" />
-              <span>
-                Comparar Sessões {sessoesSelecionadas.length > 0 ? `(${sessoesSelecionadas.length}/2)` : ""}
-              </span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/pacientes/${id}/historico`)}
-              data-testid="btn-analise-longitudinal-sessao"
-              className="h-8 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer min-h-9"
-            >
-              <span>Ver Análise Longitudinal Completa →</span>
+              Ver todas as sessões
             </Button>
           </div>
         </div>
 
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/20 hover:bg-muted/20 border-b border-border">
+            <TableRow className="hover:bg-transparent border-b border-border/60">
               <TableHead className="w-12 text-center text-xs font-bold text-foreground">
                 Sel.
               </TableHead>
               <TableHead className="text-xs font-bold text-foreground">Game Terapêutico</TableHead>
+              <TableHead className="text-xs font-bold text-foreground">Especialista (Equipe Multidisciplinar)</TableHead>
               <TableHead className="text-xs font-bold text-foreground">Data de Realização</TableHead>
               <TableHead className="text-xs font-bold text-foreground">Status</TableHead>
-              <TableHead className="text-xs font-bold text-foreground">Especialista / Autoria</TableHead>
               <TableHead className="text-right text-xs font-bold text-foreground pr-6">Relatório</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sessoes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
-                  Este paciente ainda não possui sessões registradas.
+                <TableCell colSpan={6} className="text-center py-8 text-xs text-muted-foreground">
+                  Nenhuma sessão clínica registrada até o momento.
                 </TableCell>
               </TableRow>
             ) : (
-              sessoes.map((s) => (
+              sessoes.map((s) => {
+                const espVinculado = especialistas.find(
+                  (e) => e.id === s.terapeuta_id,
+                );
+                const nomeEspecialistaSessao =
+                  s.terapeuta?.nome ||
+                  espVinculado?.nome ||
+                  "Especialista da Equipe";
+                const especialidadeSessao =
+                  espVinculado?.especialidade ||
+                  s.terapeuta?.registro_profissional ||
+                  "Equipe Multidisciplinar";
+
+                return (
                 <TableRow key={s.id} className="hover:bg-muted/30 border-b border-border/60">
                   <TableCell className="text-center py-3">
                     <input
                       type="checkbox"
                       checked={sessoesSelecionadas.includes(s.id)}
                       onChange={() => toggleSelecaoSessao(s.id)}
-                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                      aria-label={`Selecionar sessão ${s.id}`}
-                      data-testid={`checkbox-sessao-${s.id}`}
+                      className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                      title="Selecionar para comparação"
                     />
                   </TableCell>
                   <TableCell className="text-xs font-semibold text-foreground py-3">
-                    {s.jogo?.nome || "Jogo Terapêutico"}
+                    {s.jogo?.nome || s.jogo?.titulo || "Jogo Terapêutico"}
+                  </TableCell>
+                  <TableCell
+                    data-testid={`autoria-sessao-${s.id}`}
+                    className="text-xs py-3"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <span className="font-bold text-foreground flex items-center gap-1.5">
+                        <Stethoscope className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                        {nomeEspecialistaSessao}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {especialidadeSessao}
+                      </span>
+                      <BadgeAutoriaMultidisciplinar
+                        autorId={s.terapeuta_id}
+                        autorNome={nomeEspecialistaSessao}
+                        usuarioLogadoId={user?.id}
+                        size="sm"
+                      />
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground py-3">
                     {s.data_hora_inicio ? new Date(s.data_hora_inicio).toLocaleString("pt-BR") : ""}
@@ -575,14 +753,6 @@ export function PerfilPacientePage() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="py-3">
-                    <BadgeAutoriaMultidisciplinar
-                      autorId={s.terapeuta_id}
-                      autorNome={s.terapeuta?.nome || (s.terapeuta_id === user?.id ? user?.nome : "Especialista da Equipe")}
-                      usuarioLogadoId={user?.id}
-                      size="sm"
-                    />
-                  </TableCell>
                   <TableCell className="text-right py-3 pr-6">
                     {s.status_sessao === "em_andamento" || s.status_sessao === "conectado" || s.status_sessao === "pausada" ? (
                       <Button
@@ -607,21 +777,23 @@ export function PerfilPacientePage() {
                     )}
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
       </div>
 
-      {/* Modal de Vinculação de Especialista à Equipe (RF18, RN04) */}
+      {/* Modal de Vinculação de Especialista da Clínica à Equipe Multidisciplinar (RF18, RF19, RN04) */}
       <ModalVincularEspecialista
         isOpen={modalVincularAberto}
         onClose={() => setModalVincularAberto(false)}
         terapeutasDisponiveis={terapeutasClinica}
-        idsJaVinculados={equipeEspecialistas.map((e) => e.id)}
-        onConfirmarVinculo={handleConfirmarVinculo}
+        idsJaVinculados={especialistas.map((e) => e.id)}
+        onConfirmarVinculo={handleConfirmarVinculoEspecialista}
         isSubmitting={isSubmittingVinculo}
         erro={erroModalVinculo}
+        pacienteNome={paciente?.nome}
       />
 
       {/* Modal de Comparação Lado a Lado de Sessões (RF15 / RF19) */}
