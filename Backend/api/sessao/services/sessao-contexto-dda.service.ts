@@ -69,10 +69,10 @@ export interface ContextoSugeridoResposta {
   dados_anamnese: DadosAnamneseContexto;
   ultima_sessao: ResumoUltimaSessaoContexto | null;
   sugestao_ia: SugestaoIaContextoDDA;
-  nivel_estresse_sugerido: NivelEstresseCanonico;
-  gatilhos_sensoriais_cadastrados: string[];
-  objetivo_clinico_sugerido: string;
-  origem: 'anamnese_padrao' | 'ultima_sessao';
+  nivel_estresse_sugerido?: NivelEstresseCanonico;
+  gatilhos_sensoriais_cadastrados?: string[];
+  objetivo_clinico_sugerido?: string;
+  origem?: 'anamnese_padrao' | 'ultima_sessao';
 }
 
 interface RelatorioRow {
@@ -353,127 +353,152 @@ export class SessaoContextoDdaService {
    * Busca dados de anamnese estática cadastrados no prontuário.
    */
   private static async buscarDadosAnamnese(pacienteId: string): Promise<DadosAnamneseContexto> {
-    const { data: dadosClinicos } = await supabase
-      .from('dados_clinicos')
-      .select('diagnostico, gatilhos_sensoriais, observacoes')
-      .eq('paciente_id', pacienteId)
-      .maybeSingle();
+    try {
+      const { data: clinicos, error } = await supabase
+        .from('dados_clinicos')
+        .select('diagnostico_base, gatilhos_sensoriais, observacoes_gerais')
+        .eq('paciente_id', pacienteId)
+        .maybeSingle();
 
-    const diagnostico = (dadosClinicos?.diagnostico as string) || null;
-    const observacoes = (dadosClinicos?.observacoes as string) || null;
-
-    let gatilhosEstaticos: string[] = [];
-    if (dadosClinicos?.gatilhos_sensoriais) {
-      if (Array.isArray(dadosClinicos.gatilhos_sensoriais)) {
-        gatilhosEstaticos = dadosClinicos.gatilhos_sensoriais
-          .map((g: unknown) => (typeof g === 'string' ? g : String((g as Record<string, unknown>)?.nome || '')))
-          .filter(Boolean);
-      } else if (typeof dadosClinicos.gatilhos_sensoriais === 'string') {
-        gatilhosEstaticos = [dadosClinicos.gatilhos_sensoriais];
+      if (error || !clinicos) {
+        return {
+          diagnostico_base: null,
+          gatilhos_estaticos: [],
+          observacoes_gerais: null,
+        };
       }
-    }
 
-    const { data: vinculosGatilho } = await supabase
-      .from('paciente_gatilho')
-      .select('gatilho:gatilhos(nome)')
-      .eq('paciente_id', pacienteId);
-
-    if (vinculosGatilho && Array.isArray(vinculosGatilho)) {
-      for (const vg of vinculosGatilho) {
-        const nomeGatilho = (vg as { gatilho?: { nome?: string } })?.gatilho?.nome;
-        if (nomeGatilho && !gatilhosEstaticos.includes(nomeGatilho)) {
-          gatilhosEstaticos.push(nomeGatilho);
-        }
+      let gatilhosEstaticos: string[] = [];
+      if (Array.isArray(clinicos.gatilhos_sensoriais)) {
+        gatilhosEstaticos = clinicos.gatilhos_sensoriais
+          .map((g: unknown) => (typeof g === 'string' ? g : String((g as { nome?: string })?.nome || '')))
+          .filter((g: string) => g.trim().length > 0);
+      } else if (typeof clinicos.gatilhos_sensoriais === 'string') {
+        gatilhosEstaticos = [clinicos.gatilhos_sensoriais.trim()].filter(Boolean);
       }
-    }
 
-    return {
-      diagnostico_base: diagnostico,
-      gatilhos_estaticos: gatilhosEstaticos,
-      observacoes_gerais: observacoes,
-    };
+      return {
+        diagnostico_base: (clinicos.diagnostico_base as string) || null,
+        gatilhos_estaticos: gatilhosEstaticos,
+        observacoes_gerais: (clinicos.observacoes_gerais as string) || null,
+      };
+    } catch {
+      return {
+        diagnostico_base: null,
+        gatilhos_estaticos: [],
+        observacoes_gerais: null,
+      };
+    }
   }
 
-  /**
-   * Busca o último relatório ativo do paciente.
-   */
-  private static async buscarUltimoRelatorioAtivo(pacienteId: string): Promise<ResumoUltimaSessaoContexto | null> {
-    const { data: sessaoRaw } = await supabase
-      .from('sessao')
-      .select(`
-        id,
-        jogo_id,
-        status_sessao,
-        modo_sessao,
-        data_hora_fim,
-        jogo:jogo_id ( id, nome ),
-        relatorio_sessao!inner (
-          sessao_id,
-          conteudo,
-          dados_ia_json,
-          soft_delete
-        )
-      `)
-      .eq('paciente_id', pacienteId)
-      .eq('modo_sessao', 'sessao_clinica')
-      .eq('status_sessao', 'finalizada')
-      .eq('relatorio_sessao.soft_delete', false)
-      .order('data_hora_fim', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  private static async buscarUltimoRelatorioAtivo(
+    pacienteId: string
+  ): Promise<(ResumoUltimaSessaoContexto & { dados_ia_json: RelatorioIAContrato }) | null> {
+    try {
+      const { data, error } = await supabase
+        .from('sessao')
+        .select(`
+          id,
+          jogo_id,
+          status_sessao,
+          modo_sessao,
+          data_hora_fim,
+          jogo:jogo_id (id, nome),
+          relatorio_sessao (
+            sessao_id,
+            conteudo,
+            dados_ia_json,
+            soft_delete
+          )
+        `)
+        .eq('paciente_id', pacienteId)
+        .eq('status_sessao', 'finalizada')
+        .eq('modo_sessao', 'sessao_clinica')
+        .not('data_hora_fim', 'is', null)
+        .order('data_hora_fim', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (!sessaoRaw) {
+      if (error || !data) {
+        return null;
+      }
+
+      const row = data as unknown as SessaoComRelatorioContextoRow;
+      const relatorios = Array.isArray(row.relatorio_sessao)
+        ? row.relatorio_sessao
+        : (row.relatorio_sessao ? [row.relatorio_sessao] : []);
+
+      const relatorioAtivo = relatorios.find((r) => r.soft_delete !== true);
+      if (!relatorioAtivo || !relatorioAtivo.dados_ia_json) {
+        return null;
+      }
+
+      const jogoInfo = Array.isArray(row.jogo) ? row.jogo[0] : row.jogo;
+      const jogoNome = jogoInfo?.nome || 'Jogo Terapêutico';
+      const dadosIA = relatorioAtivo.dados_ia_json;
+
+      const intervencoesDDA = typeof dadosIA.resumo?.intervencoes_dda === 'number'
+        ? dadosIA.resumo.intervencoes_dda
+        : 0;
+
+      const taxaConclusao = typeof dadosIA.resumo?.taxa_conclusao === 'number'
+        ? dadosIA.resumo.taxa_conclusao
+        : 100;
+
+      return {
+        sessao_id: row.id,
+        jogo_id: row.jogo_id,
+        jogo_nome: jogoNome,
+        data_hora_fim: row.data_hora_fim || new Date().toISOString(),
+        intervencoes_dda: intervencoesDDA,
+        taxa_conclusao: taxaConclusao,
+        dados_ia_json: dadosIA,
+      };
+    } catch {
       return null;
     }
-
-    const sessaoTyped = sessaoRaw as unknown as SessaoComRelatorioContextoRow;
-    const jogoObj = Array.isArray(sessaoTyped.jogo) ? sessaoTyped.jogo[0] : sessaoTyped.jogo;
-    const jogoNome = jogoObj?.nome || 'Jogo Terapêutico';
-
-    const relatorioObj = Array.isArray(sessaoTyped.relatorio_sessao)
-      ? sessaoTyped.relatorio_sessao[0]
-      : sessaoTyped.relatorio_sessao;
-
-    const dadosIa = relatorioObj?.dados_ia_json;
-    const intervencoesDDA = Number(dadosIa?.metricas_consolidadas?.intervencoes_dda ?? 0);
-    const taxaConclusao = Number(dadosIa?.metricas_consolidadas?.taxa_conclusao_cenario_pct ?? 100);
-
-    return {
-      sessao_id: sessaoTyped.id,
-      jogo_id: sessaoTyped.jogo_id,
-      jogo_nome: jogoNome,
-      data_hora_fim: sessaoTyped.data_hora_fim || new Date().toISOString(),
-      intervencoes_dda: intervencoesDDA,
-      taxa_conclusao: taxaConclusao,
-    };
   }
 
-  /**
-   * Gera a sugestão de contexto calibrado por IA.
-   */
   private static gerarSugestaoIA(
     anamnese: DadosAnamneseContexto,
-    ultimaSessao: ResumoUltimaSessaoContexto | null
+    ultimaSessao: (ResumoUltimaSessaoContexto & { dados_ia_json: RelatorioIAContrato }) | null
   ): SugestaoIaContextoDDA {
+    // Cenário 1: Empty State (paciente novo sem sessões finalizadas prévias)
     if (!ultimaSessao) {
       return {
         nivel_estresse_sugerido: 1,
         gatilhos_recomendados: [...anamnese.gatilhos_estaticos],
         justificativa_baseada_ultima_sessao:
-          'Primeira intervenção ou ausência de sessão clínica finalizada recente. Recomenda-se iniciar no nível basal com estresse 1.',
+          'Primeiro atendimento clínico do paciente. Sugestão calibrada com base nos gatilhos basais da anamnese clínica.',
       };
     }
 
+    // Cenário 2: Paciente com sessão prévia consolidada
+    const dadosIA = ultimaSessao.dados_ia_json;
     const intervencoesDDA = ultimaSessao.intervencoes_dda;
     const taxaConclusao = ultimaSessao.taxa_conclusao;
+    const analisesTexto = Array.isArray(dadosIA.analises_ia)
+      ? dadosIA.analises_ia.join(' ').toLowerCase()
+      : '';
 
-    const textoObs = (anamnese.observacoes_gerais || '').toLowerCase();
-    const sobrecargaSonora = textoObs.includes('som') || textoObs.includes('auditivo') || textoObs.includes('ruído');
-    const sobrecargaVisual = textoObs.includes('luz') || textoObs.includes('visual') || textoObs.includes('cor');
+    // Avaliação de sobrecargas sensoriais específicas nas análises e métricas da IA
+    const sobrecargaSonora =
+      analisesTexto.includes('som') ||
+      analisesTexto.includes('ruído') ||
+      analisesTexto.includes('auditivo') ||
+      analisesTexto.includes('tolerância sonora');
+
+    const sobrecargaVisual =
+      analisesTexto.includes('luz') ||
+      analisesTexto.includes('brilho') ||
+      analisesTexto.includes('visual') ||
+      analisesTexto.includes('estrobosc') ||
+      analisesTexto.includes('fixação visual');
 
     const altaIntervencaoDDA = intervencoesDDA >= 3 || taxaConclusao < 70;
     const moderadaIntervencaoDDA = intervencoesDDA >= 2 || taxaConclusao < 85;
 
+    // Combina gatilhos basais com recomendações dinâmicas
     const conjuntoGatilhos = new Set<string>(anamnese.gatilhos_estaticos);
 
     if (sobrecargaSonora || altaIntervencaoDDA) {
@@ -490,6 +515,7 @@ export class SessaoContextoDdaService {
 
     const gatilhosRecomendados = Array.from(conjuntoGatilhos);
 
+    // Determinação do nível de estresse sugerido (1 = calmo/leve, 2 = moderado, 3 = alerta/alto)
     let nivelEstresseSugerido = 1;
     let justificativa: string;
 
