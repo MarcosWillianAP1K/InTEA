@@ -281,7 +281,7 @@ export function ModalPreSessao() {
     try {
       // Persistência no banco de dados com injeção estruturada do Contrato 2 (RN03)
       const isModoLivre = !pacienteId || pacienteId === "modo-livre";
-      await sessaoService.iniciarSessao({
+      const sessaoCriada = await sessaoService.iniciarSessao({
         jogo_id: config?.jogoId || "jogo-1",
         paciente_id: isModoLivre ? null : pacienteId,
         modo_sessao: isModoLivre ? "modo_livre" : "sessao_clinica",
@@ -307,6 +307,10 @@ export function ModalPreSessao() {
           : undefined,
         status_sessao: "em_andamento",
       });
+
+      if (sessaoCriada?.id) {
+        useSessionStore.setState({ sessaoId: sessaoCriada.id });
+      }
     } catch {
       // Em modo de testes ou fallback resiliente, prossegue com o fluxo
     } finally {

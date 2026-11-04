@@ -1,4 +1,3 @@
-import React from "react";
 import { UserPlus, UserCheck, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 

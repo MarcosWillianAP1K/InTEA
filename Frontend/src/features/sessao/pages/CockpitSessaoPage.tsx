@@ -12,6 +12,8 @@ import { TelemetriaCards } from "@/features/sessao/components/telemetria/Telemet
 import { TelemetriaChart } from "@/features/sessao/components/telemetria/TelemetriaChart";
 import { TabletDiagnosticCard } from "@/features/sessao/components/telemetria/TabletDiagnosticCard";
 import { sessaoService } from "@/features/sessao/services/sessaoService";
+import { pacienteService } from "@/features/paciente/services/paciente.service";
+import { jogosService } from "@/features/jogos/services/jogosService";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { toast } from "sonner";
@@ -57,16 +59,22 @@ export function CockpitSessaoPage() {
     async function sincronizarSessaoCockpit() {
       if (!paramSessaoId) return;
 
-      // Se a sessão já estiver ativa no Zustand com os dados consistentes, evita re-fetch cíclico
-      if (
-        status === "em_andamento" &&
-        (pareamento?.sessionToken === paramSessaoId || config?.jogoTitulo)
-      ) {
+      const storeSessaoId = useSessionStore.getState().sessaoId;
+      const storeToken = useSessionStore.getState().pareamento?.sessionToken;
+      const storeConfig = useSessionStore.getState().config;
+      const storeStatus = useSessionStore.getState().status;
+
+      // Se a sessão já estiver ativa no Zustand com os dados consistentes para este exato ID/Token, evita re-fetch cíclico
+      const jaSincronizadoComEsteId =
+        (storeSessaoId === paramSessaoId || storeToken === paramSessaoId) &&
+        Boolean(storeConfig?.jogoTitulo && storeConfig?.pacienteNome);
+
+      if (storeStatus === "em_andamento" && jaSincronizadoComEsteId) {
         return;
       }
 
       try {
-        // Busca a sessão no backend/mock por ID ou Token de Pareamento
+        // Busca a sessão no backend/API (BD) por ID ou Token de Pareamento
         let sessaoEncontrada = await sessaoService.buscarPorId(paramSessaoId);
         if (!sessaoEncontrada) {
           sessaoEncontrada = await sessaoService.buscarPorToken(paramSessaoId);
@@ -75,7 +83,11 @@ export function CockpitSessaoPage() {
         if (!ativo) return;
 
         if (!sessaoEncontrada) {
-          toast.error("Sessão clínica não localizada.");
+          // Se já está ativo na store com título e paciente (ex: fluxo de testes locais ou mock ativo), mantém
+          if (storeStatus === "em_andamento" && storeConfig?.jogoTitulo) {
+            return;
+          }
+          toast.error("Sessão clínica não localizada no banco de dados.");
           navigate("/painel");
           return;
         }
@@ -100,12 +112,41 @@ export function CockpitSessaoPage() {
           return;
         }
 
-        // Sessão válida em andamento: hidrata o store e sincroniza controles
-        const nomePaciente =
+        // Resolução do Nome do Paciente a partir do BD
+        let nomePaciente =
           sessaoEncontrada.paciente?.nome ||
-          (sessaoEncontrada.modo_sessao === "modo_livre" ? "Modo Livre" : "Paciente em Atendimento");
-        const tituloJogo =
-          sessaoEncontrada.jogo?.titulo || sessaoEncontrada.jogo?.nome || "Aventura das Cores";
+          (sessaoEncontrada.modo_sessao === "modo_livre" ? "Modo Livre" : "");
+        if (!nomePaciente && sessaoEncontrada.paciente_id) {
+          try {
+            const pacDb = await pacienteService.buscarPorId(sessaoEncontrada.paciente_id);
+            if (pacDb?.nome) {
+              nomePaciente = pacDb.nome;
+            }
+          } catch {
+            // Continua com fallback gracioso
+          }
+        }
+        if (!nomePaciente) {
+          nomePaciente = sessaoEncontrada.modo_sessao === "modo_livre" ? "Modo Livre" : "Paciente Clínico";
+        }
+
+        // Resolução do Título do Jogo a partir do BD
+        let tituloJogo =
+          sessaoEncontrada.jogo?.nome || sessaoEncontrada.jogo?.titulo || "";
+        if (!tituloJogo && sessaoEncontrada.jogo_id) {
+          try {
+            const jogoDb = await jogosService.buscarPorId(sessaoEncontrada.jogo_id);
+            if (jogoDb?.titulo || jogoDb?.nome) {
+              tituloJogo = jogoDb.titulo || jogoDb.nome || "";
+            }
+          } catch {
+            // Continua com fallback gracioso
+          }
+        }
+        if (!tituloJogo) {
+          tituloJogo = "Jogo Terapêutico";
+        }
+
         const ddaJson = sessaoEncontrada.contexto_dda_json as Record<string, unknown> | undefined;
 
         restaurarSessao({
@@ -116,8 +157,8 @@ export function CockpitSessaoPage() {
             pacienteNome: nomePaciente,
             jogoId: sessaoEncontrada.jogo_id,
             jogoTitulo: tituloJogo,
-            objetivoClinico: (ddaJson?.objetivo_clinico as string) || "Atenção Compartilhada",
-            focoTerapeutico: (ddaJson?.objetivo_clinico as string) || "Atenção Compartilhada",
+            objetivoClinico: (ddaJson?.objetivo_clinico as string) || "Foco Atencional",
+            focoTerapeutico: (ddaJson?.objetivo_clinico as string) || "Foco Atencional",
           },
           pareamento: {
             sessionToken: sessaoEncontrada.session_token,
@@ -134,7 +175,7 @@ export function CockpitSessaoPage() {
             },
           },
           dataHoraInicio: sessaoEncontrada.data_hora_inicio || new Date().toISOString(),
-          nivelDdaAtual: Number(ddaJson?.nivel_dificuldade_inicial ?? ddaJson?.estresse_inicial ?? 2),
+          nivelDdaAtual: Number(ddaJson?.nivel_dificuldade_inicial ?? ddaJson?.estresse_inicial ?? 1),
           isPausado:
             sessaoEncontrada.status_sessao === "pausada"
               ? true
@@ -155,7 +196,7 @@ export function CockpitSessaoPage() {
     return () => {
       ativo = false;
     };
-  }, [paramSessaoId, status, pareamento, config, restaurarSessao, navigate]);
+  }, [paramSessaoId, restaurarSessao, navigate]);
 
   // 3. Telemetria em tempo real
   const { metricas, historico } = useLiveTelemetry({
@@ -254,7 +295,7 @@ export function CockpitSessaoPage() {
     }
   };
 
-  const nomePaciente = config?.pacienteNome || "Paciente em Atendimento";
+  const nomePaciente = config?.pacienteNome || (isModoLivre ? "Modo Livre" : "Paciente Clínico");
   const tituloJogo = config?.jogoTitulo || "Jogo Terapêutico";
   const dispositivo = pareamento?.dispositivo;
 
