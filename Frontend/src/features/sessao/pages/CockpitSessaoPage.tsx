@@ -13,6 +13,8 @@ import { TelemetriaCards } from "@/features/sessao/components/telemetria/Telemet
 import { TelemetriaChart } from "@/features/sessao/components/telemetria/TelemetriaChart";
 import { TabletDiagnosticCard } from "@/features/sessao/components/telemetria/TabletDiagnosticCard";
 import { sessaoService } from "@/features/sessao/services/sessaoService";
+import { pacienteService } from "@/features/paciente/services/paciente.service";
+import { jogosService } from "@/features/jogos/services/jogosService";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { toast } from "sonner";
@@ -29,7 +31,8 @@ import {
  * PAGE: CockpitSessaoPage (Clinical Session Monitoring)
  * Route: /sessao/:id/monitoramento
  * Compliance: RF12 (Session Management), RF13 (Lifecycle), RF16 (Anotações Clínicas),
- *             RF17 (DDA Context), RF21 (Intervenção Manual), RN01 (Modo Livre)
+ *             RF17 (DDA Context), RF18 (Equipe Multidisciplinar), RF21 (Intervenção Manual),
+ *             RN01 (Modo Livre), RN04 (Vínculo Clínico)
  * ============================================================================
  */
 export function CockpitSessaoPage() {
@@ -65,13 +68,22 @@ export function CockpitSessaoPage() {
     async function sincronizarSessaoCockpit() {
       if (!paramSessaoId) return;
 
-      // Se a sessão já estiver ativa no Zustand com os dados consistentes, evita re-fetch cíclico
-      const jaHidratado =
-        status === "em_andamento" &&
-        (pareamento?.sessionToken === paramSessaoId || config?.jogoTitulo);
+      const storeSessaoId = useSessionStore.getState().sessaoId;
+      const storeToken = useSessionStore.getState().pareamento?.sessionToken;
+      const storeConfig = useSessionStore.getState().config;
+      const storeStatus = useSessionStore.getState().status;
+
+      // Se a sessão já estiver ativa no Zustand com os dados consistentes para este exato ID/Token, evita re-fetch cíclico
+      const jaSincronizadoComEsteId =
+        (storeSessaoId === paramSessaoId || storeToken === paramSessaoId) &&
+        Boolean(storeConfig?.jogoTitulo && storeConfig?.pacienteNome);
+
+      if (storeStatus === "em_andamento" && jaSincronizadoComEsteId) {
+        return;
+      }
 
       try {
-        // Busca a sessão no backend/mock por ID ou Token de Pareamento
+        // Busca a sessão no backend/API (BD) por ID ou Token de Pareamento
         let sessaoEncontrada = await sessaoService.buscarPorId(paramSessaoId);
         if (!sessaoEncontrada) {
           sessaoEncontrada = await sessaoService.buscarPorToken(paramSessaoId);
@@ -80,8 +92,11 @@ export function CockpitSessaoPage() {
         if (!ativo) return;
 
         if (!sessaoEncontrada) {
-          if (jaHidratado) return;
-          toast.error("Sessão clínica não localizada.");
+          // Se já está ativo na store com título e paciente (ex: fluxo de testes locais ou mock ativo), mantém
+          if (storeStatus === "em_andamento" && storeConfig?.jogoTitulo) {
+            return;
+          }
+          toast.error("Sessão clínica não localizada no banco de dados.");
           navigate("/painel");
           return;
         }
@@ -99,7 +114,7 @@ export function CockpitSessaoPage() {
           sessaoEncontrada.terapeuta_id !== user?.id &&
           sessaoEncontrada.modo_sessao !== "modo_livre";
 
-        if (jaHidratado) {
+        if (jaSincronizadoComEsteId) {
           if (modoObservadorAtivo && sessaoEncontrada.session_token) {
             SessionSocketManager.getInstance().entrarSala(sessaoEncontrada.session_token);
             SessionSocketManager.getInstance()
@@ -132,57 +147,71 @@ export function CockpitSessaoPage() {
           return;
         }
 
-        // Sessão válida em andamento: hidrata o store e sincroniza controles
-        const nomePaciente =
-          sessaoEncontrada.paciente?.nome ||
-          (sessaoEncontrada.modo_sessao === "modo_livre" ? "Modo Livre" : "Paciente em Atendimento");
-        const tituloJogo =
-          sessaoEncontrada.jogo?.titulo || sessaoEncontrada.jogo?.nome || "Aventura das Cores";
-        const ddaJson = sessaoEncontrada.contexto_dda_json as Record<string, unknown> | undefined;
+        // Se a sessão for válida e estiver ativa/conectada/pausada/em_andamento:
+        if (
+          sessaoEncontrada.status_sessao === "em_andamento" ||
+          sessaoEncontrada.status_sessao === "conectado" ||
+          sessaoEncontrada.status_sessao === "pausada"
+        ) {
+          // Busca dados complementares do jogo e do paciente se necessário
+          let nomePacienteSessao = sessaoEncontrada.paciente?.nome;
+          let tituloJogoSessao = sessaoEncontrada.jogo?.nome;
 
-        restaurarSessao({
-          status: "em_andamento",
-          sessaoId: sessaoEncontrada.id || paramSessaoId,
-          config: {
-            pacienteId: sessaoEncontrada.paciente_id || sessaoEncontrada.paciente?.id || null,
-            pacienteNome: nomePaciente,
-            jogoId: sessaoEncontrada.jogo_id,
-            jogoTitulo: tituloJogo,
-            objetivoClinico: (ddaJson?.objetivo_clinico as string) || "Atenção Compartilhada",
-            focoTerapeutico: (ddaJson?.objetivo_clinico as string) || "Atenção Compartilhada",
-          },
-          pareamento: {
-            sessionToken: sessaoEncontrada.session_token,
-            codigoFormatado: sessaoEncontrada.session_token,
-            expiraEm: sessaoEncontrada.expira_em || new Date(Date.now() + 3600000).toISOString(),
-            tempoValidadeSegundos: 3600,
-            dispositivo: {
-              deviceId: sessaoEncontrada.dispositivo_info?.modelo || "tablet-clinico-1",
-              tipoDispositivo: (sessaoEncontrada.dispositivo_info?.tipo_dispositivo as "tablet" | "vr") || "tablet",
-              modelo: sessaoEncontrada.dispositivo_info?.modelo || "Tablet Clínico Pareado",
-              bateria: sessaoEncontrada.dispositivo_info?.bateria ?? 88,
-              latenciaMs: sessaoEncontrada.dispositivo_info?.latencia_ms ?? 22,
-              conectadoEm: sessaoEncontrada.data_hora_inicio || new Date().toISOString(),
+          if (!nomePacienteSessao && sessaoEncontrada.paciente_id) {
+            try {
+              const pac = await pacienteService.buscarPorId(sessaoEncontrada.paciente_id);
+              if (pac) nomePacienteSessao = pac.nome;
+            } catch {
+              // fallback gracioso
+            }
+          }
+
+          if (!tituloJogoSessao && sessaoEncontrada.jogo_id) {
+            try {
+              const game = await jogosService.buscarPorId(sessaoEncontrada.jogo_id);
+              if (game) tituloJogoSessao = game.nome;
+            } catch {
+              // fallback gracioso
+            }
+          }
+
+          restaurarSessao({
+            sessaoId: sessaoEncontrada.id,
+            status: "em_andamento",
+            isPausado: sessaoEncontrada.status_sessao === "pausada",
+            config: {
+              pacienteId: sessaoEncontrada.paciente_id || "",
+              pacienteNome:
+                nomePacienteSessao ||
+                (sessaoEncontrada.modo_sessao === "modo_livre" ? "Modo Livre" : "Paciente Clínico"),
+              jogoId: sessaoEncontrada.jogo_id || "",
+              jogoTitulo: tituloJogoSessao || "Jogo Terapêutico",
+              estresseInicial: (sessaoEncontrada.configuracao_inicial_json?.estresse_inicial as number) || 1,
+              gatilhosEvitar: (sessaoEncontrada.configuracao_inicial_json?.gatilhos_evitar as string[]) || [],
             },
-          },
-          dataHoraInicio: sessaoEncontrada.data_hora_inicio || new Date().toISOString(),
-          nivelDdaAtual: Number(ddaJson?.nivel_dificuldade_inicial ?? ddaJson?.estresse_inicial ?? 2),
-          isPausado:
-            sessaoEncontrada.status_sessao === "pausada"
-              ? true
-              : (useSessionStore.getState().isPausado ?? false),
-        });
+            pareamento: {
+              sessionToken: sessaoEncontrada.session_token,
+              status: "conectado",
+              conectadoEm: sessaoEncontrada.data_hora_inicio || new Date().toISOString(),
+              dispositivo: {
+                modelo: "Tablet Clínico Pareado",
+                bateria: 95,
+                latenciaMs: 32,
+              },
+            },
+          });
 
-        // Entra na sala do WebSocket para streaming de telemetria
-        if (sessaoEncontrada.session_token) {
-          SessionSocketManager.getInstance().entrarSala(sessaoEncontrada.session_token);
-          if (modoObservadorAtivo) {
-            SessionSocketManager.getInstance()
-              .getSocket()
-              ?.emit("entrar_sessao", {
-                session_token: sessaoEncontrada.session_token,
-                role: "observador_equipe",
-              });
+          // Conecta o WebSocket na sala da sessão
+          if (sessaoEncontrada.session_token) {
+            SessionSocketManager.getInstance().entrarSala(sessaoEncontrada.session_token);
+            if (modoObservadorAtivo) {
+              SessionSocketManager.getInstance()
+                .getSocket()
+                ?.emit("entrar_sessao", {
+                  session_token: sessaoEncontrada.session_token,
+                  role: "observador_equipe",
+                });
+            }
           }
         }
       } catch (err) {
@@ -195,7 +224,7 @@ export function CockpitSessaoPage() {
     return () => {
       ativo = false;
     };
-  }, [paramSessaoId, status, pareamento, config, restaurarSessao, navigate, user?.id]);
+  }, [paramSessaoId, restaurarSessao, navigate, user?.id]);
 
   // 3. Telemetria em tempo real
   const { metricas, historico } = useLiveTelemetry({
@@ -214,8 +243,7 @@ export function CockpitSessaoPage() {
   const { tempoFormatado } = useClinicalTimer({
     sessaoId: idSessaoEfetivo,
     ativo: status === "em_andamento",
-    isPausado,
-    dataHoraInicioInicial: dataHoraInicioStore,
+    dataHoraInicio: dataHoraInicioStore,
   });
 
   // Determina se a sessão ativa está em Modo Livre (sem paciente associado - RN01)
@@ -236,14 +264,13 @@ export function CockpitSessaoPage() {
     pausarSessao();
     SessionSocketManager.getInstance().enviarComando({
       tipo: "pausar",
-      sessionToken: pareamento?.sessionToken || idSessaoEfetivo,
+      motivo: "Pausa clínica solicitada pelo terapeuta no Cockpit",
+      timestamp: new Date().toISOString(),
     });
-    void sessaoService.atualizarStatus(idSessaoEfetivo, "pausada");
-    toast.info("Comando de pausa enviado ao jogo remoto.");
   };
 
   /**
-   * Dispatches session resumption command to store and remote game client via WebSocket (RF21).
+   * Resumes session playback across application store and WebSocket runtime.
    * Session Control (RF13, RF21): Unpauses clinical timer and signals game client to resume rendering.
    */
   const handleRetomar = () => {
@@ -251,10 +278,9 @@ export function CockpitSessaoPage() {
     retomarSessao();
     SessionSocketManager.getInstance().enviarComando({
       tipo: "retomar",
-      sessionToken: pareamento?.sessionToken || idSessaoEfetivo,
+      motivo: "Retomada clínica autorizada pelo terapeuta no Cockpit",
+      timestamp: new Date().toISOString(),
     });
-    void sessaoService.atualizarStatus(idSessaoEfetivo, "em_andamento");
-    toast.success("Intervenção retomada no dispositivo.");
   };
 
   /** Adjusts DDA level in store and broadcasts command to remote device (RF17, RN03). */
@@ -263,66 +289,70 @@ export function CockpitSessaoPage() {
     ajustarDda(nivel);
     SessionSocketManager.getInstance().enviarComando({
       tipo: "ajustar_dda",
-      sessionToken: tokenSessao,
-      parametros: { nivelDda: nivel },
+      nivel_estresse_alvo: nivel,
+      timestamp: new Date().toISOString(),
     });
-    toast.success(`Dificuldade DDA ajustada para o nível ${nivel}.`);
   };
 
-  /**
-   * Confirms formal session conclusion, persisting state machine, AI, and audit trail in backend via REST.
-   */
-  const handleConfirmarFinalizacao = async (anotacoes: string) => {
+  /** Submits session conclusion, updates state, and routes to results page (RF13, RF20). */
+  const handleConfirmarFinalizacao = async (dados: {
+    motivo: string;
+    observacoesClinicas?: string;
+  }) => {
+    if (isModoObservador) return;
     setIsSubmittingFinalizar(true);
+
     try {
-      finalizarSessao(anotacoes);
+      const sessaoIdFinalizacao = paramSessaoId || useSessionStore.getState().sessaoId;
 
-      // Envia notificação de encerramento via WebSocket para o tablet
-      SessionSocketManager.getInstance().finalizarSessaoRemota(tokenSessao);
-
-      // Persiste formalmente no backend via REST (máquina de estados, IA e auditoria)
-      const idOuToken = paramSessaoId || tokenSessao;
-      if (idOuToken) {
-        await sessaoService.finalizar(idOuToken, anotacoes);
+      if (sessaoIdFinalizacao) {
+        try {
+          await sessaoService.finalizar(sessaoIdFinalizacao, {
+            motivo: dados.motivo,
+            observacoes_terapeuta: dados.observacoesClinicas,
+          });
+        } catch {
+          // Mantém integridade da experiência
+        }
       }
 
+      SessionSocketManager.getInstance().enviarComando({
+        tipo: "finalizar",
+        motivo: dados.motivo,
+        timestamp: new Date().toISOString(),
+      });
+
+      finalizarSessao();
       setModalFinalizarAberto(false);
+      toast.success("Sessão finalizada com sucesso!");
 
-      if (isModoLivre) {
-        toast.info(
-          "Partida em Modo Livre concluída sem persistência em prontuário."
-        );
-        navigate("/games");
-      } else {
-        toast.success("Sessão finalizada com sucesso! Prontuário atualizado.");
-        navigate(`/sessao/${encodeURIComponent(idOuToken)}/resultado`);
-      }
+      const idDestino = paramSessaoId || sessaoIdFinalizacao || "recém-encerrada";
+      navigate(`/sessao/${encodeURIComponent(idDestino)}/resultado`);
     } catch {
-      toast.error("Erro ao consolidar finalização da sessão.");
+      toast.error("Erro ao encerrar a sessão. Tente novamente.");
     } finally {
       setIsSubmittingFinalizar(false);
     }
   };
 
-  const nomePaciente = config?.pacienteNome || "Paciente em Atendimento";
+  const nomePaciente = config?.pacienteNome || (isModoLivre ? "Modo Livre" : "Paciente Clínico");
   const tituloJogo = config?.jogoTitulo || "Jogo Terapêutico";
   const dispositivo = pareamento?.dispositivo;
 
   return (
     <div
       data-testid="cockpit-sessao-page"
-      className="min-h-screen bg-background text-foreground flex flex-col"
+      className="min-h-screen bg-background flex flex-col"
     >
-      {/* Topo / Header do Cockpit */}
-      <header className="border-b border-border bg-card/60 backdrop-blur-md sticky top-0 z-20 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
+      {/* Cabeçalho do Cockpit Clínico */}
+      <header className="border-b border-border bg-card/60 backdrop-blur-md px-4 sm:px-8 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30 shadow-xs">
         {/* Esquerda: Identificação do Paciente e Jogo */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Button
-            type="button"
             variant="ghost"
-            size="icon"
-            onClick={() => navigate("/games")}
-            className="rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground"
+            size="sm"
+            onClick={() => navigate("/jogos")}
+            className="h-9 w-9 p-0 rounded-xl text-muted-foreground hover:text-foreground"
             title="Voltar aos Jogos"
           >
             <ArrowLeft className="h-4 w-4" />

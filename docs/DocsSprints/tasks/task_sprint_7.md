@@ -423,6 +423,9 @@
 
 ## 4. Diretrizes Clínicas da Terapeuta
 
+> [!NOTE]
+> As tarefas **Perfil Família com Limite de Tempo e Modo Livre** e **Suporte a Jogos em Realidade Virtual VR** foram transferidas para [StandAlone.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/StandAlone.md) para execução posterior ou em projeto separado.
+
 ---
 
 ### Front: Humanização de Termos - Substituição de Co-Terapeuta (Tipo: Feature)
@@ -434,19 +437,6 @@
 * **Critérios de Aceite:**
   * [x] Rótulos e textos da interface atualizados sem termos estigmatizantes.
   * [x] Permissões de sistema mantidas normalmente por baixo dos panos.
-
----
-
-### Back/Front: Perfil Família com Limite de Tempo e Modo Livre (Tipo: Feature)
-
-* **Tipo:** Feature
-* **Requisitos:** RF11 (Modo Livre)
-* **Referência Documentação:** Orientação Terapeuta & Marcos, RF11
-* **Descrição:** Criar perfil de acesso para a família que permite acessar a biblioteca de jogos unicamente em Modo Livre (sem DDA e sem prontuário clínico), com controle de limite de tempo de tela.
-* **Critérios de Aceite:**
-  * [ ] Perfil família não tem acesso a prontuários e laudos confidenciais.
-  * [ ] Jogos executam em Modo Livre sem gravar telemetria clínica.
-  * [ ] Temporizador bloqueia o jogo ao atingir o tempo estipulado.
 
 ---
 
@@ -471,18 +461,6 @@
 * **Critérios de Aceite:**
   * [ ] Rejeição de jogos que declarem mecânicas competitivas eliminatórias.
   * [ ] Catálogo focado em estímulos positivos e adaptativos.
-
----
-
-### Docs/Back: Suporte a Jogos em Realidade Virtual VR (Tipo: Feature)
-
-* **Tipo:** Feature
-* **Requisitos:** RNF02 (Modularidade por Contrato)
-* **Referência Documentação:** Orientação Terapeuta & Marcos, RNF02
-* **Descrição:** Adequar a arquitetura de contratos do manifesto e o fluxo de pareamento para permitir integração com jogos executados em dispositivos de Realidade Virtual (VR/XR).
-* **Critérios de Aceite:**
-  * [ ] Manifesto suporta especificação de plataforma VR.
-  * [ ] Contrato documentado com exemplo de métricas imersivas.
 
 ---
 

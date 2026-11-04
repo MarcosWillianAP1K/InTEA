@@ -4,6 +4,7 @@
 
 import { supabase } from "../../../core/supabase/supabase.client.js";
 import { CriarSessaoDTO, DispositivoInfoDTO, FiltrosSessaoDTO, RespostaListagemSessao } from "../dtos/sessao.dto.js";
+import { TerapeutaResumoPublico } from "../../../core/types/terapeuta-resumo.js";
 
 export const MODO_SESSAO = {
   SESSAO_CLINICA: 'sessao_clinica',
@@ -24,6 +25,9 @@ export const STATUS_SESSAO = {
 } as const;
 
 export type StatusSessao = (typeof STATUS_SESSAO)[keyof typeof STATUS_SESSAO];
+
+export const SELECT_SESSAO_RELACIONAL =
+  '*, paciente:paciente_id(id, nome, data_nascimento), jogo:jogo_id(id, nome, versao), terapeuta:terapeuta_id(id, nome, especialidade, crefito, registro_profissional)';
 
 export interface ContextoDDA {
   estresse_inicial?: number;
@@ -57,6 +61,7 @@ export interface Sessao {
     nome: string;
     versao: string;
   };
+  terapeuta?: TerapeutaResumoPublico | null;
 }
 
 export class SessaoModel {
@@ -105,7 +110,7 @@ export class SessaoModel {
     try {
       const { data, error } = await supabase
         .from('sessao')
-        .select('*')
+        .select(SELECT_SESSAO_RELACIONAL)
         .eq('id', id)
         .single();
 
@@ -127,7 +132,7 @@ export class SessaoModel {
       // 1. Busca direta pelo token fornecido
       const { data, error } = await supabase
         .from('sessao')
-        .select('*')
+        .select(SELECT_SESSAO_RELACIONAL)
         .eq('session_token', tokenLimpo)
         .maybeSingle();
 
@@ -146,7 +151,7 @@ export class SessaoModel {
       if (tokenFormatado) {
         const { data: dataFormatada, error: errFormatada } = await supabase
           .from('sessao')
-          .select('*')
+          .select(SELECT_SESSAO_RELACIONAL)
           .eq('session_token', tokenFormatado)
           .maybeSingle();
 
@@ -243,7 +248,7 @@ export class SessaoModel {
 
       let query = supabase
         .from('sessao')
-        .select('*, paciente:paciente_id(id, nome, data_nascimento), jogo:jogo_id(id, nome, versao)', { count: 'exact' });
+        .select('*, paciente:paciente_id(id, nome, data_nascimento), jogo:jogo_id(id, nome, versao), terapeuta:terapeuta_id(id, nome, especialidade, crefito, registro_profissional)', { count: 'exact' });
 
       // Filtro de visibilidade institucional (RN04)
       if (filtros.terapeutaId) {

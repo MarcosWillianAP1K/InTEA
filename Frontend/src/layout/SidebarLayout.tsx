@@ -9,6 +9,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/shared/components/ui/sidebar";
+import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import { ModalPreSessao } from "@/features/sessao/components/ModalPreSessao";
@@ -86,7 +87,9 @@ export function SidebarLayout({
           </header>
 
           <main className="relative flex flex-1 min-h-0 flex-col overflow-y-auto overflow-x-hidden p-4 sm:p-6">
-            {children ?? <Outlet />}
+            <ErrorBoundary>
+              {children ?? <Outlet />}
+            </ErrorBoundary>
           </main>
         </div>
       </SidebarInset>

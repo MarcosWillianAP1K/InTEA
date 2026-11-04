@@ -33,6 +33,7 @@ export interface EspecialistaClinicaItem {
   email?: string | null;
   crefito?: string | null;
   crp?: string | null;
+  conselho?: string | null;
   registro_profissional?: string | null;
   especialidade?: string | null;
   status_ativo?: boolean;
@@ -59,6 +60,18 @@ export interface ModalVincularEspecialistaProps {
   erroModal?: string | null;
   /** Nome opcional do paciente para contextualização no cabeçalho */
   pacienteNome?: string;
+}
+
+function resolverRegistroProfissional(
+  especialista: EspecialistaClinicaItem,
+): string {
+  return (
+    especialista.registro_profissional?.trim() ||
+    especialista.conselho?.trim() ||
+    especialista.crefito?.trim() ||
+    especialista.crp?.trim() ||
+    "Registro ativo"
+  );
 }
 
 export const ModalVincularEspecialista: React.FC<
@@ -104,6 +117,7 @@ export const ModalVincularEspecialista: React.FC<
       const especialidade = (t.especialidade || "").toLowerCase();
       const crefito = (t.crefito || "").toLowerCase();
       const crp = (t.crp || "").toLowerCase();
+      const conselho = (t.conselho || "").toLowerCase();
       const registro = (t.registro_profissional || "").toLowerCase();
       const email = (t.email || "").toLowerCase();
 
@@ -112,6 +126,7 @@ export const ModalVincularEspecialista: React.FC<
         especialidade.includes(termo) ||
         crefito.includes(termo) ||
         crp.includes(termo) ||
+        conselho.includes(termo) ||
         registro.includes(termo) ||
         email.includes(termo)
       );
@@ -122,6 +137,11 @@ export const ModalVincularEspecialista: React.FC<
     if (!selecionadoId || isSubmitting) return;
     await onConfirmarVinculo(selecionadoId);
   };
+
+  const confirmarDesabilitado =
+    !selecionadoId ||
+    isSubmitting ||
+    idsJaVinculados.includes(selecionadoId);
 
   return (
     <Dialog
@@ -143,7 +163,7 @@ export const ModalVincularEspecialista: React.FC<
             </div>
             <div>
               <DialogTitle className="text-xl font-extrabold text-gray-900">
-                Vincular Especialista à Equipe Multidisciplinar
+                Vincular Especialista da Clínica à Equipe Multidisciplinar
               </DialogTitle>
               <DialogDescription className="text-xs font-medium text-gray-500 mt-0.5">
                 {pacienteNome
@@ -173,7 +193,7 @@ export const ModalVincularEspecialista: React.FC<
             type="text"
             value={termoBusca}
             onChange={(e) => setTermoBusca(e.target.value)}
-            placeholder="Buscar por nome, especialidade ou conselho (CREFITO/CRP)..."
+            placeholder="Buscar por nome, especialidade ou registro (CREFITO/CRP)..."
             aria-label="Buscar especialista da clínica"
             data-testid="input-busca-especialista"
             className="w-full min-h-11 pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/70 text-sm text-gray-900 font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
@@ -202,20 +222,18 @@ export const ModalVincularEspecialista: React.FC<
             especialistasFiltrados.map((terapeuta) => {
               const jaVinculado = idsJaVinculados.includes(terapeuta.id);
               const isSelecionado = selecionadoId === terapeuta.id;
-              const registro =
-                terapeuta.registro_profissional ||
-                terapeuta.crefito ||
-                terapeuta.crp ||
-                "Registro ativo";
+              const registro = resolverRegistroProfissional(terapeuta);
 
               return (
-                <button
+                <div
                   key={terapeuta.id}
-                  type="button"
-                  disabled={jaVinculado || isSubmitting}
-                  onClick={() => setSelecionadoId(terapeuta.id)}
                   data-testid={`opcao-especialista-${terapeuta.id}`}
-                  className={`w-full min-h-14 text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                  onClick={() => {
+                    if (!jaVinculado && !isSubmitting) {
+                      setSelecionadoId(terapeuta.id);
+                    }
+                  }}
+                  className={`w-full min-h-14 text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer ${
                     jaVinculado
                       ? "border-gray-100 bg-gray-50 opacity-65 cursor-not-allowed"
                       : isSelecionado
@@ -251,17 +269,35 @@ export const ModalVincularEspecialista: React.FC<
                   </div>
 
                   {!jaVinculado && (
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                        isSelecionado
-                          ? "bg-indigo-600 text-white"
-                          : "border-2 border-gray-300 bg-white"
-                      }`}
-                    >
-                      {isSelecionado && <CheckCircle2 className="w-4 h-4" />}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        variant={isSelecionado ? "default" : "outline"}
+                        size="sm"
+                        disabled={isSubmitting}
+                        aria-pressed={isSelecionado}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelecionadoId(terapeuta.id);
+                        }}
+                        className={`min-h-11 min-w-11 text-xs font-semibold rounded-xl ${
+                          isSelecionado
+                            ? "bg-indigo-600 text-white"
+                            : "border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                        }`}
+                      >
+                        {isSelecionado ? (
+                          <span className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Selecionado
+                          </span>
+                        ) : (
+                          "Selecionar"
+                        )}
+                      </Button>
                     </div>
                   )}
-                </button>
+                </div>
               );
             })
           )}
@@ -280,10 +316,10 @@ export const ModalVincularEspecialista: React.FC<
           </Button>
           <Button
             type="button"
-            disabled={!selecionadoId || isSubmitting}
+            disabled={confirmarDesabilitado}
             onClick={handleConfirmar}
             data-testid="btn-confirmar-vinculo"
-            className="min-h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-2"
+            className="min-h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? (
               <>

@@ -12,6 +12,7 @@
 import { supabase } from '../../../core/supabase/supabase.client.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { RelatorioIAContrato } from '../../sessao/models/relatorio.model.js';
+import { TerapeutaResumoPublico } from '../../../core/types/terapeuta-resumo.js';
 
 /**
  * Consolidated universal patient engagement metrics shared across all therapeutic games.
@@ -53,6 +54,7 @@ export interface SessaoHistoricoItem {
   duracao_segundos: number;
   conteudo_relatorio: string | null;
   dados_ia_json: RelatorioIAContrato | Record<string, unknown>;
+  terapeuta?: TerapeutaResumoPublico | null;
 }
 
 /**
@@ -83,6 +85,7 @@ interface SessaoComRelatorioRow {
   data_hora_inicio: string;
   data_hora_fim: string | null;
   relatorio_sessao?: RelatorioSessaoRegistro | RelatorioSessaoRegistro[] | null;
+  terapeuta?: TerapeutaResumoPublico | TerapeutaResumoPublico[] | null;
 }
 
 interface JogoInfoRow {
@@ -219,6 +222,13 @@ export class HistoricoSessaoModel {
           status_sessao,
           data_hora_inicio,
           data_hora_fim,
+          terapeuta:terapeuta_id (
+            id,
+            nome,
+            especialidade,
+            crefito,
+            registro_profissional
+          ),
           relatorio_sessao (
             sessao_id,
             conteudo,
@@ -278,6 +288,8 @@ export class HistoricoSessaoModel {
           }
         }
 
+        const terapeutaInfo = Array.isArray(row.terapeuta) ? row.terapeuta[0] : row.terapeuta;
+
         historicoItens.push({
           sessao_id: row.id,
           terapeuta_id: row.terapeuta_id,
@@ -290,6 +302,17 @@ export class HistoricoSessaoModel {
           duracao_segundos: duracaoSegundos,
           conteudo_relatorio: relatorio?.conteudo ?? null,
           dados_ia_json: relatorio?.dados_ia_json ?? {},
+          ...(terapeutaInfo
+            ? {
+                terapeuta: {
+                  id: terapeutaInfo.id,
+                  nome: terapeutaInfo.nome,
+                  especialidade: terapeutaInfo.especialidade ?? null,
+                  crefito: terapeutaInfo.crefito ?? null,
+                  registro_profissional: terapeutaInfo.registro_profissional ?? null,
+                },
+              }
+            : {}),
         });
       }
 

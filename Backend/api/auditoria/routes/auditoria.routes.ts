@@ -1,5 +1,5 @@
 // ==============================================================================
-// InTEA: Rotas da Trilha de Auditoria Clínica de Sessão (Sprint 9 - Task 1.3)
+// InTEA: Rotas da Trilha de Auditoria Clínica de Sessão e Vínculos (Sprint 9 / Sprint 13)
 // ==============================================================================
 // Conformidade: RF13, RNF06 (LGPD / Segurança), RN04, RN05, RF21, RF07, RF08
 // Padrão Arquitetural: Envelope Pattern Categorizado Estrito ({ data: { ... }, message })
@@ -29,6 +29,61 @@ export const auditoriaRoutes = Router();
  *       500:
  *         description: Erro interno ao obter estatísticas
  */
+/**
+ * @openapi
+ * /api/auditoria/prontuario:
+ *   get:
+ *     tags:
+ *       - Auditoria
+ *     summary: Consulta registros de auditoria de acessos ao prontuário médico (RF08, RNF06)
+ *     description: Retorna acessos a dados de pacientes filtráveis por período e por terapeuta com status 200.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: terapeuta_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtrar por UUID do terapeuta
+ *       - in: query
+ *         name: paciente_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtrar por UUID do paciente
+ *       - in: query
+ *         name: periodo
+ *         schema:
+ *           type: string
+ *           enum: [hoje, 7d, 30d]
+ *         description: Janela temporal pré-definida
+ *       - in: query
+ *         name: data_inicio
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Data inicial do período
+ *       - in: query
+ *         name: data_fim
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Data final do período
+ *     responses:
+ *       200:
+ *         description: Registros de auditoria recuperados com sucesso
+ *       401:
+ *         description: Não autenticado
+ *       500:
+ *         description: Erro interno ao consultar auditoria de prontuário
+ */
+auditoriaRoutes.get(
+  '/prontuario',
+  authMiddleware,
+  AuditoriaController.consultarAcessosProntuario
+);
+
 auditoriaRoutes.get(
   '/estatisticas',
   authMiddleware,
@@ -104,13 +159,21 @@ auditoriaRoutes.get(
  *           type: string
  *         description: Termo de busca textual
  *       - in: query
+ *         name: pacienteId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente para filtrar eventos clínicos e de vínculo da equipe (RF08)
+ *       - in: query
  *         name: tipoAcao
  *         schema:
  *           type: string
- *         description: Filtro de ação clínica
+ *         description: Filtro de ação clínica (ex. vinculo_equipe_criado, vinculo_equipe_removido)
  *     responses:
  *       200:
  *         description: Lista de eventos de auditoria retornada com sucesso
+ *       400:
+ *         description: Parâmetro pacienteId inválido (não é um UUID válido)
  *       401:
  *         description: Não autenticado
  *       500:
@@ -118,6 +181,12 @@ auditoriaRoutes.get(
  */
 auditoriaRoutes.get(
   '/',
+  authMiddleware,
+  AuditoriaController.listar
+);
+
+auditoriaRoutes.get(
+  '/vinculo',
   authMiddleware,
   AuditoriaController.listar
 );

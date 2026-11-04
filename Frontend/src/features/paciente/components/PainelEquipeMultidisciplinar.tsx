@@ -23,11 +23,13 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import type { EspecialistaVinculado } from "../types/paciente.types";
 
+export type EspecialistaEquipeItem = EspecialistaVinculado;
+
 export interface PainelEquipeMultidisciplinarProps {
   /** Lista de especialistas vinculados à equipe multidisciplinar do paciente */
   especialistas: EspecialistaVinculado[];
   /** ID do especialista autenticado na sessão atual para destaque "Você (Logado)" */
-  usuarioLogadoId?: string;
+  usuarioLogadoId?: string | null;
   /** Estado de carregamento assíncrono (Skeleton Loader) */
   loading?: boolean;
   /** Mensagem de erro caso a busca de vínculos falhe */
@@ -35,11 +37,13 @@ export interface PainelEquipeMultidisciplinarProps {
   /** ID do especialista que está sendo desvinculado no momento (trava de clique duplo) */
   removendoId?: string | null;
   /** Callback para abrir o modal de vinculação de especialista da clínica */
-  onAbrirModalVincular: () => void;
+  onAbrirModalVincular?: () => void;
   /** Callback disparada ao solicitar desvinculação de um especialista */
-  onDesvincularEspecialista: (terapeutaId: string) => void | Promise<void>;
+  onDesvincularEspecialista?: (terapeutaId: string) => void | Promise<void>;
   /** Callback opcional de retentativa em caso de erro de rede */
   onRetry?: () => void;
+  /** Classes CSS adicionais */
+  className?: string;
 }
 
 /**
@@ -66,6 +70,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
   onAbrirModalVincular,
   onDesvincularEspecialista,
   onRetry,
+  className = "",
 }) => {
   const isUnicoEspecialista = especialistas.length <= 1;
 
@@ -73,7 +78,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
     <section
       aria-label="Equipe Multidisciplinar (Especialistas Vinculados)"
       data-testid="painel-equipe-multidisciplinar"
-      className="bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-100"
+      className={`bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-100 ${className}`.trim()}
     >
       {/* Cabeçalho da Seção */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -100,9 +105,9 @@ export const PainelEquipeMultidisciplinar: React.FC<
 
         <Button
           type="button"
-          onClick={onAbrirModalVincular}
-          data-testid="btn-abrir-modal-vincular"
-          className="min-h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm flex items-center gap-2 shrink-0"
+          onClick={() => onAbrirModalVincular?.()}
+          data-testid="btn-adicionar-especialista"
+          className="min-h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm flex items-center gap-2 shrink-0 cursor-pointer"
         >
           <UserPlus className="w-4 h-4" />
           Adicionar Especialista
@@ -112,22 +117,24 @@ export const PainelEquipeMultidisciplinar: React.FC<
       {/* 1. Estado de Carregamento (Skeleton Loader) */}
       {loading && (
         <div
+          role="status"
+          aria-busy="true"
           data-testid="painel-equipe-skeleton"
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
           {[1, 2].map((item) => (
             <div
               key={item}
-              className="flex items-center justify-between gap-4 p-4 rounded-2xl border border-gray-100 bg-gray-50/50"
+              className="flex items-center justify-between gap-4 p-4 rounded-2xl border border-gray-100 bg-gray-50/50 animate-pulse"
             >
               <div className="flex items-center gap-3.5 flex-1">
-                <Skeleton className="w-12 h-12 rounded-2xl shrink-0" />
+                <Skeleton className="w-12 h-12 rounded-2xl shrink-0 bg-muted" />
                 <div className="space-y-2 flex-1">
-                  <Skeleton className="h-4 w-44 rounded-md" />
-                  <Skeleton className="h-3.5 w-32 rounded-md" />
+                  <Skeleton className="h-4 w-44 rounded-md bg-muted" />
+                  <Skeleton className="h-3.5 w-32 rounded-md bg-muted" />
                 </div>
               </div>
-              <Skeleton className="h-11 w-28 rounded-xl shrink-0" />
+              <Skeleton className="h-11 w-28 rounded-xl shrink-0 bg-muted" />
             </div>
           ))}
         </div>
@@ -137,7 +144,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
       {!loading && erro && (
         <div
           role="alert"
-          data-testid="painel-equipe-erro"
+          data-testid="painel-equipe-error"
           className="rounded-2xl border border-red-200 bg-red-50/80 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
         >
           <div className="flex items-start gap-3">
@@ -155,7 +162,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
               variant="outline"
               onClick={onRetry}
               data-testid="btn-retentar-equipe"
-              className="min-h-11 border-red-200 bg-white text-red-700 hover:bg-red-50 font-bold rounded-xl px-4 shrink-0"
+              className="min-h-11 border-red-200 bg-white text-red-700 hover:bg-red-50 font-bold rounded-xl px-4 shrink-0 cursor-pointer"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Tentar Novamente
@@ -167,7 +174,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
       {/* 3. Estado Vazio (Empty State) */}
       {!loading && !erro && especialistas.length === 0 && (
         <div
-          data-testid="painel-equipe-vazio"
+          data-testid="painel-equipe-empty"
           className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-8 text-center"
         >
           <Stethoscope className="w-10 h-10 text-gray-300 mx-auto mb-2.5" />
@@ -199,6 +206,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
             const especialidadeExibicao =
               esp.especialidade || "Equipe Multidisciplinar";
             const isRemovendoEste = removendoId === esp.id;
+            const desabilitado = isUnicoEspecialista || Boolean(removendoId);
 
             return (
               <div
@@ -228,7 +236,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
                       </span>
                       {isUsuarioLogado && (
                         <Badge
-                          data-testid={`badge-voce-logado-${esp.id}`}
+                          data-testid="badge-voce-logado"
                           className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
                         >
                           <ShieldCheck className="w-3 h-3" />
@@ -261,15 +269,20 @@ export const PainelEquipeMultidisciplinar: React.FC<
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={isUnicoEspecialista || Boolean(removendoId)}
+                    disabled={desabilitado}
                     title={
                       isUnicoEspecialista
-                        ? "O paciente deve possuir ao menos 1 especialista vinculado"
+                        ? "O paciente deve possuir ao menos 1 especialista vinculado (Regra Anti-Órfão RN04)"
                         : `Remover vínculo de ${esp.nome}`
                     }
-                    onClick={() => onDesvincularEspecialista(esp.id)}
+                    aria-label={`Desvincular ${esp.nome}`}
+                    onClick={() => {
+                      if (!desabilitado) {
+                        onDesvincularEspecialista?.(esp.id);
+                      }
+                    }}
                     data-testid={`btn-desvincular-${esp.id}`}
-                    className={`min-h-11 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 ${
+                    className={`min-h-11 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer ${
                       isUnicoEspecialista
                         ? "border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed opacity-70"
                         : "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 bg-white"
@@ -280,7 +293,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
                     ) : (
                       <UserMinus className="w-4 h-4" />
                     )}
-                    <span>Desvincular</span>
+                    <span>{isRemovendoEste ? "Removendo..." : "Desvincular"}</span>
                   </Button>
                 </div>
               </div>
