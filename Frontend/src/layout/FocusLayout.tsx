@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { ArrowLeft, Shield } from "lucide-react";
+import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 
 export interface FocusLayoutProps {
   children?: ReactNode;
@@ -64,7 +65,9 @@ export function FocusLayout({
         </header>
       )}
       <div className="flex flex-1 flex-col w-full">
-        {children ?? <Outlet />}
+        <ErrorBoundary>
+          {children ?? <Outlet />}
+        </ErrorBoundary>
       </div>
     </div>
   );

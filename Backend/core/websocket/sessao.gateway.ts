@@ -9,11 +9,35 @@ import { SocketRateLimiter } from './socket.limiter.js';
 import { SessaoModel, STATUS_SESSAO } from '../../api/sessao/models/sessao.model.js';
 import { AuditoriaService } from '../../api/auditoria/services/auditoria.service.js';
 
+export type RoleSocket = 'terapeuta' | 'dispositivo' | 'observador_equipe' | string;
+
 export interface EntrarSessaoPayload {
   session_token: string;
-  role?: 'terapeuta' | 'dispositivo' | string;
+  role?: RoleSocket;
   jogo_id?: string;
   dispositivo_info?: Record<string, unknown>;
+  terapeuta_id?: string;
+  nome?: string;
+  especialidade?: string;
+  registro_conselho?: string;
+}
+
+export interface EspecialistaConectado {
+  socket_id: string;
+  role: 'terapeuta' | 'observador_equipe' | string;
+  terapeuta_id?: string;
+  nome?: string;
+  especialidade?: string;
+  registro_conselho?: string;
+  conectado_em: string;
+}
+
+export interface EquipePresencaEvento {
+  session_token: string;
+  total_especialistas: number;
+  total_observadores: number;
+  especialistas: EspecialistaConectado[];
+  timestamp: string;
 }
 
 export interface DispositivoConectadoEvento {
@@ -138,12 +162,14 @@ export interface RespostaComandoAck {
   timestamp?: string;
   erro?: string;
   codigo?: string;
+  codigo_detalhado?: string;
 }
 
 export interface ResultadoValidacaoComando {
   valido: boolean;
   erro?: string;
   codigo?: string;
+  codigoDetalhado?: string;
   comandoNormalizado?: ComandoClinicoEventoNormalizado;
 }
 
@@ -153,6 +179,7 @@ export class SessaoGateway {
   private io: SocketIOServer;
   private sessaoNamespace: Namespace;
   private presencas: Map<string, DispositivoPresenca> = new Map();
+  private especialistasPorSala: Map<string, Map<string, EspecialistaConectado>> = new Map();
   private reconnectionManager: SessaoReconnectionManager = SessaoReconnectionManager.obterInstancia();
   private rateLimiter: SocketRateLimiter = SocketRateLimiter.obterInstancia();
 
@@ -190,6 +217,7 @@ export class SessaoGateway {
    */
   resetarPresencas(): void {
     this.presencas.clear();
+    this.especialistasPorSala.clear();
     this.reconnectionManager.limparTodos();
     this.rateLimiter.limparTodos();
   }
@@ -285,21 +313,34 @@ export class SessaoGateway {
     type EntradaPayload = {
       session_token?: string;
       sessionToken?: string;
-      role?: 'terapeuta' | 'dispositivo' | string;
+      role?: RoleSocket;
       jogo_id?: string;
       jogoId?: string;
       dispositivo_info?: Record<string, unknown>;
       dispositivoInfo?: Record<string, unknown>;
+      terapeuta_id?: string;
+      terapeutaId?: string;
+      nome?: string;
+      especialidade?: string;
+      registro_conselho?: string;
+      registroConselho?: string;
     };
 
-    const handlerEntrada = (payload: EntradaPayload) => {
+    const handlerEntrada = (payload: EntradaPayload, ack?: (res: unknown) => void) => {
       const token = payload?.session_token || payload?.sessionToken || '';
       this.lidarEntradaSessao(socket, {
         session_token: token,
         role: payload?.role,
         jogo_id: payload?.jogo_id || payload?.jogoId,
         dispositivo_info: payload?.dispositivo_info || payload?.dispositivoInfo,
+        terapeuta_id: payload?.terapeuta_id || payload?.terapeutaId,
+        nome: payload?.nome,
+        especialidade: payload?.especialidade,
+        registro_conselho: payload?.registro_conselho || payload?.registroConselho,
       });
+      if (typeof ack === 'function') {
+        ack({ sucesso: true, session_token: token });
+      }
     };
 
     socket.on('entrar_sessao', handlerEntrada);
@@ -336,6 +377,9 @@ export class SessaoGateway {
     socket.on('enviar_comando', (payload: unknown, ack?: (res: RespostaComandoAck) => void) => {
       this.lidarComandoClinico(socket, payload, ack);
     });
+    socket.on('comando_clinico', (payload: unknown, ack?: (res: RespostaComandoAck) => void) => {
+      this.lidarComandoClinico(socket, payload, ack);
+    });
 
     // 6. Detecção de perda de conexão / fechamento de janela
     socket.on('disconnect', (motivo: string) => {
@@ -360,6 +404,7 @@ export class SessaoGateway {
 
     socket.data.sessionToken = tokenNormalizado;
     socket.data.role = role;
+    socket.data.terapeutaId = payload.terapeuta_id;
     socket.join(sala);
 
     // Confirmação de entrada na sala
@@ -369,6 +414,27 @@ export class SessaoGateway {
       session_token: tokenNormalizado,
       role
     });
+
+    // Rastreia especialistas da equipe multidisciplinar (terapeuta condutor ou observador_equipe)
+    if (role === 'terapeuta' || role === 'observador_equipe') {
+      let mapa = this.especialistasPorSala.get(tokenNormalizado);
+      if (!mapa) {
+        mapa = new Map();
+        this.especialistasPorSala.set(tokenNormalizado, mapa);
+      }
+
+      mapa.set(socket.id, {
+        socket_id: socket.id,
+        role,
+        terapeuta_id: payload.terapeuta_id,
+        nome: payload.nome,
+        especialidade: payload.especialidade,
+        registro_conselho: payload.registro_conselho,
+        conectado_em: new Date().toISOString(),
+      });
+
+      this.emitirPresencaEquipe(tokenNormalizado);
+    }
 
     // Se o cliente conectando for o dispositivo do jogo:
     if (role === 'dispositivo') {
@@ -507,6 +573,18 @@ export class SessaoGateway {
       this.emitirGlobal(sala, 'sessao:alerta_conexao', alerta);
     }
 
+    // Se o socket desconectado era um especialista (terapeuta condutor ou observador_equipe)
+    if (token) {
+      const mapa = this.especialistasPorSala.get(token);
+      if (mapa && mapa.has(socket.id)) {
+        mapa.delete(socket.id);
+        if (mapa.size === 0) {
+          this.especialistasPorSala.delete(token);
+        }
+        this.emitirPresencaEquipe(token);
+      }
+    }
+
     // Limpa rastreio de taxa do socket desconectado (Card 2.4)
     this.rateLimiter.removerIdentificador(socket.id);
   }
@@ -520,6 +598,40 @@ export class SessaoGateway {
     const tokenNormalizado = this.normalizarToken(sessionToken);
     const presenca = this.presencas.get(tokenNormalizado);
     return presenca ? { ...presenca } : null;
+  }
+
+  /**
+   * Emite para a sala da sessão o evento equipe_presenca_atualizada com
+   * o total e a lista de especialistas (terapeuta e observadores) acompanhando a sessão.
+   */
+  emitirPresencaEquipe(sessionToken: string): void {
+    const tokenNormalizado = this.normalizarToken(sessionToken);
+    const sala = `session_${tokenNormalizado}`;
+    const mapa = this.especialistasPorSala.get(tokenNormalizado);
+    const especialistas = mapa ? Array.from(mapa.values()) : [];
+
+    const totalEspecialistas = especialistas.length;
+    const totalObservadores = especialistas.filter((e) => e.role === 'observador_equipe').length;
+
+    const evento: EquipePresencaEvento = {
+      session_token: tokenNormalizado,
+      total_especialistas: totalEspecialistas,
+      total_observadores: totalObservadores,
+      especialistas,
+      timestamp: new Date().toISOString(),
+    };
+
+    this.sessaoNamespace.to(sala).emit('equipe_presenca_atualizada', evento);
+    this.emitirGlobal(sala, 'equipe_presenca_atualizada', evento);
+  }
+
+  /**
+   * Retorna os especialistas conectados a uma sala de sessão.
+   */
+  obterEspecialistasConectados(sessionToken: string): EspecialistaConectado[] {
+    const tokenNormalizado = this.normalizarToken(sessionToken);
+    const mapa = this.especialistasPorSala.get(tokenNormalizado);
+    return mapa ? Array.from(mapa.values()) : [];
   }
 
   /**
@@ -822,6 +934,16 @@ export class SessaoGateway {
       };
     }
 
+    // Permissão: observadores da equipe multidisciplinar possuem acesso exclusivamente de leitura (RF18, RF21)
+    if (socket.data.role === 'observador_equipe') {
+      return {
+        valido: false,
+        erro: 'Observadores da equipe possuem acesso exclusivamente de leitura e não possuem autorização para emitir comandos clínicos',
+        codigo: 'PERMISSAO_NEGADA',
+        codigoDetalhado: 'PERMISSAO_NEGADA_OBSERVADOR'
+      };
+    }
+
     // Validação e normalização do tipo de comando (suporta nomes canônicos e aliases do frontend)
     const comandoBruto = (payload.tipo_comando || payload.comando || payload.acao || payload.tipo) as string | undefined;
 
@@ -913,7 +1035,8 @@ export class SessaoGateway {
       const erroResposta: RespostaComandoAck = {
         sucesso: false,
         erro: validacao.erro || 'Falha ao processar comando clínico',
-        codigo: validacao.codigo || 'COMANDO_REJEITADO'
+        codigo: validacao.codigo || 'COMANDO_REJEITADO',
+        codigo_detalhado: validacao.codigoDetalhado
       };
 
       socket.emit('erro_comando', erroResposta);

@@ -51,6 +51,14 @@ export function useSessionPersistence() {
       const salvo = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
       if (salvo && status === "ocioso") {
         const parsed: DadosPersistenciaSessao = JSON.parse(salvo);
+        // Purga sessões com dummy ID mock ou idade superior a 12 horas
+        const isMockInvalido = parsed.sessaoId === "44444444-4444-4444-8444-444444444444";
+        const idadeMs = parsed.salvoEm ? Date.now() - new Date(parsed.salvoEm).getTime() : Infinity;
+        if (isMockInvalido || idadeMs > 12 * 60 * 60 * 1000) {
+          window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+          return;
+        }
+
         if (parsed.status === "em_andamento" || parsed.status === "pareado") {
           restaurarSessao({
             status: parsed.status,

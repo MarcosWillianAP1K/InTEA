@@ -136,6 +136,7 @@ export function PainelPage() {
             jogoTitulo={sessaoEmAndamento.jogoNome}
             dataHoraInicio={sessaoEmAndamento.dataHora}
             status={sessaoEmAndamento.status}
+            duracaoSegundos={sessaoEmAndamento.duracaoSegundos}
             onAcessarCockpit={() =>
               navigate(`/sessao/${encodeURIComponent(sessaoEmAndamento.id)}/monitoramento`)
             }
@@ -393,3 +394,4 @@ export function PainelPage() {
 }
 
 export default PainelPage;
+

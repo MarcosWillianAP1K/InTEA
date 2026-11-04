@@ -1,7 +1,7 @@
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Gamepad2, Clock, FileText, Activity } from "lucide-react";
-import { useClinicalTimer } from "../hooks/useClinicalTimer";
+import { useClinicalTimer, formatarTempoClinico } from "../hooks/useClinicalTimer";
 import { useSessionStore } from "../store/sessionStore";
 
 /**
@@ -19,6 +19,7 @@ export interface CardSessaoAtivaProps {
   pacienteId?: string | null;
   jogoTitulo: string;
   tempoFormatado?: string;
+  duracaoSegundos?: number;
   dataHoraInicio?: string;
   status?: string;
   isPausado?: boolean;
@@ -41,6 +42,7 @@ export function CardSessaoAtiva({
   pacienteId,
   jogoTitulo,
   tempoFormatado: tempoFormatadoProp,
+  duracaoSegundos,
   dataHoraInicio,
   status = "em_andamento",
   isPausado: isPausadoProp,
@@ -66,9 +68,10 @@ export function CardSessaoAtiva({
     ativo: isAtivo,
     isPausado,
     dataHoraInicioInicial: dataHoraInicio,
+    duracaoInicialSegundos: duracaoSegundos,
   });
 
-  const tempoExibido = tempoFormatadoProp || timer.tempoFormatado;
+  const tempoExibido = tempoFormatadoProp || (status === "pausada" && typeof duracaoSegundos === "number" && duracaoSegundos > 0 ? formatarTempoClinico(duracaoSegundos) : timer.tempoFormatado);
 
   return (
     <div
@@ -189,3 +192,5 @@ export function CardSessaoAtiva({
 }
 
 export default CardSessaoAtiva;
+
+

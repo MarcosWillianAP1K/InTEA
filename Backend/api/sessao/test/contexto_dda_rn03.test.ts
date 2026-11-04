@@ -360,6 +360,18 @@ describe('SessaoController — Iniciar, Parear e Sugestão DDA (Integração HTT
   describe('GET /api/sessao/contexto-sugerido/:pacienteId', () => {
     it('deve retornar 200 OK com as sugestões clínicas de gatilhos e estresse para o paciente', async () => {
       vi.spyOn(SessaoContextoDdaService, 'obterContextoSugerido').mockResolvedValue({
+        paciente_id: pacienteId,
+        dados_anamnese: {
+          diagnostico_base: null,
+          gatilhos_estaticos: ['som_agudo', 'toque_repentino'],
+          observacoes_gerais: null,
+        },
+        ultima_sessao: null,
+        sugestao_ia: {
+          nivel_estresse_sugerido: 1,
+          gatilhos_recomendados: ['som_agudo', 'toque_repentino'],
+          justificativa_baseada_ultima_sessao: 'Anamnese padrão.',
+        },
         nivel_estresse_sugerido: 'baixo',
         gatilhos_sensoriais_cadastrados: ['som_agudo', 'toque_repentino'],
         objetivo_clinico_sugerido: 'foco_atencional',

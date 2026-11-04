@@ -6,6 +6,7 @@ export interface UseClinicalTimerOptions {
   isPausado?: boolean;
   intervaloMs?: number;
   dataHoraInicioInicial?: string | null;
+  duracaoInicialSegundos?: number;
   onTick?: (segundos: number) => void;
 }
 
@@ -65,6 +66,7 @@ export function useClinicalTimer(
     isPausado = false,
     intervaloMs = 1000,
     dataHoraInicioInicial,
+    duracaoInicialSegundos,
     onTick,
   } = options;
 
@@ -101,9 +103,10 @@ export function useClinicalTimer(
     }
 
     const agora = Date.now();
-    const tsInicio = dataHoraInicioInicial
-      ? new Date(dataHoraInicioInicial).getTime() || agora
-      : agora;
+    const duracaoMs = typeof duracaoInicialSegundos === "number" && duracaoInicialSegundos > 0 ? duracaoInicialSegundos * 1000 : null;
+    const tsInicio = duracaoMs !== null
+      ? agora - duracaoMs
+      : (dataHoraInicioInicial ? new Date(dataHoraInicioInicial).getTime() || agora : agora);
 
     const inicial: TimerStorageData = {
       timestampInicio: tsInicio,

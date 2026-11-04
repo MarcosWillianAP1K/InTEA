@@ -1,12 +1,13 @@
 // ==============================================================================
-// InTEA: Controller da Trilha de Auditoria Clínica de Sessão (Sprint 9 - Task 1.3)
+// InTEA: Controller da Trilha de Auditoria Clínica de Sessão e Vínculos (Sprint 9 / Sprint 13)
 // ==============================================================================
-// Conformidade: RF13, RNF06 (LGPD / Segurança), RN04 (Vínculo), RN05 (Imutabilidade), RF21
+// Conformidade: RF08, RF13, RNF06 (LGPD / Segurança), RN04 (Vínculo), RN05 (Imutabilidade), RF21
 // Padrão Arquitetural: Envelope Pattern Categorizado Estrito ({ data: { ... }, message })
 // ==============================================================================
 
 import { Request, Response } from 'express';
 import { AuditoriaService } from '../services/auditoria.service.js';
+import { AuditoriaProntuarioService } from '../auditoria-prontuario.service.js';
 import { AuditoriaSessao } from '../models/auditoria.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { validarUUID } from '../../../core/utils/validators.js';
@@ -125,7 +126,18 @@ export class AuditoriaController {
   static async listar(req: Request, res: Response): Promise<void> {
     try {
       const usuarioLogado = (req as AuthenticatedRequest).user;
-      const query = req.query as Record<string, string | undefined>;
+      const query = (req.query || {}) as Record<string, string | undefined>;
+
+      const pacienteIdRaw = query.pacienteId || query.paciente_id;
+      const pacienteId =
+        typeof pacienteIdRaw === 'string' && pacienteIdRaw.trim() !== ''
+          ? pacienteIdRaw.trim()
+          : undefined;
+
+      if (pacienteId && !validarUUID(pacienteId)) {
+        res.status(400).json({ error: 'O parâmetro pacienteId deve ser um UUID válido.' });
+        return;
+      }
 
       const page = Math.max(1, Number(query.page) || 1);
       const limit = Math.max(1, Math.min(100, Number(query.limit) || 10));
@@ -134,6 +146,7 @@ export class AuditoriaController {
         {
           busca: query.busca,
           terapeutaId: query.terapeutaId,
+          ...(pacienteId ? { pacienteId } : {}),
           tipoAcao: query.tipoAcao,
           dataInicio: query.dataInicio,
           dataFim: query.dataFim,
@@ -306,4 +319,54 @@ export class AuditoriaController {
       res.status(500).json({ error: 'Erro interno ao registrar evento de auditoria' });
     }
   }
+
+  /**
+   * Consulta registros de auditoria de acessos ao prontuário médico com suporte a filtro por período e terapeuta (RF08, RNF06).
+   */
+  static async consultarAcessosProntuario(req: Request, res: Response): Promise<void> {
+    try {
+      const {
+        paciente_id,
+        pacienteId,
+        terapeuta_id,
+        terapeutaId,
+        operacao,
+        data_inicio,
+        dataInicio,
+        data_fim,
+        dataFim,
+        periodo,
+        page,
+        limit,
+      } = req.query as Record<string, string | undefined>;
+
+      const resultado = await AuditoriaProntuarioService.consultarAcessos({
+        paciente_id: paciente_id || pacienteId,
+        terapeuta_id: terapeuta_id || terapeutaId,
+        operacao,
+        data_inicio: data_inicio || dataInicio,
+        data_fim: data_fim || dataFim,
+        periodo,
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 10,
+      });
+
+      res.status(200).json({
+        data: {
+          acessos: resultado.data,
+          meta: {
+            total: resultado.total,
+            pagina: resultado.page,
+            limite: resultado.limit,
+            total_paginas: resultado.totalPages,
+          },
+        },
+        message: 'Registros de auditoria de prontuário recuperados com sucesso.',
+      });
+    } catch (error) {
+      console.error('[AuditoriaController] Erro ao consultar acessos a prontuário:', error);
+      res.status(500).json({ error: 'Erro interno ao consultar auditoria de prontuário' });
+    }
+  }
 }
+

@@ -286,7 +286,7 @@ export function TabelaAuditoria({
       {/* Barra de Filtros, Busca e Exportação (Padrão InTEA) */}
       <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between bg-card border border-border p-4 rounded-xl shadow-xs">
         {/* Campo de Busca Textual */}
-        <div className="relative flex-1 min-w-[240px]">
+        <div className="relative flex-1 min-w-60">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={busca}
@@ -516,7 +516,7 @@ export function TabelaAuditoria({
                       <div className="flex flex-col gap-1 items-start">
                         {renderBadgeAcao(evento.acao)}
                         {evento.descricao && (
-                          <span className="text-[11px] text-muted-foreground line-clamp-1 max-w-[280px]">
+                          <span className="text-[11px] text-muted-foreground line-clamp-1 max-w-70">
                             {evento.descricao}
                           </span>
                         )}

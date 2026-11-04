@@ -170,6 +170,74 @@ export class JogoModel {
           }
         ]
       }
+    },
+    {
+      id: 4,
+      nome: 'Visita ao Dentista',
+      descricao: 'Simulação de rotina prática para dessensibilização sensorial odontológica, estimulando previsibilidade e autorregulação em consultas reais.',
+      versao: '1.0.0',
+      status_jogo: 'ativo',
+      manifesto_json: {
+        id_jogo: 'visita-ao-dentista',
+        nome: 'Visita ao Dentista',
+        versao: '1.0.0',
+        objetivo_clinico: 'simulacao_rotina',
+        foco_pedagogico: 'atividades_vida_diaria',
+        cooperativo: true,
+        adaptativo: true,
+        mecanicas: ['dessensibilizacao_sistematica', 'estimulo_positivo', 'adaptativo'],
+        metricas_suportadas: [
+          {
+            id_metrica: 'tempo_tolerancia',
+            tipo_metrica: 'numerica',
+            unidade: 'segundos'
+          },
+          {
+            id_metrica: 'nivel_ansiedade',
+            tipo_metrica: 'categorica',
+            valores: ['baixo', 'moderado', 'alto']
+          },
+          {
+            id_metrica: 'conclusao_etapas',
+            tipo_metrica: 'numerica',
+            unidade: 'etapas'
+          }
+        ]
+      }
+    },
+    {
+      id: 5,
+      nome: 'Ida ao Supermercado / Atacadão',
+      descricao: 'Treino prático de compras e interação em ambientes de grande porte, promovendo autonomia, planejamento de lista e tolerância a estímulos cotidianos.',
+      versao: '1.0.0',
+      status_jogo: 'ativo',
+      manifesto_json: {
+        id_jogo: 'ida-ao-supermercado',
+        nome: 'Ida ao Supermercado / Atacadão',
+        versao: '1.0.0',
+        objetivo_clinico: 'simulacao_rotina',
+        foco_pedagogico: 'atividades_vida_diaria',
+        cooperativo: true,
+        adaptativo: true,
+        mecanicas: ['planejamento_executivo', 'estimulo_positivo', 'adaptativo'],
+        metricas_suportadas: [
+          {
+            id_metrica: 'itens_coletados',
+            tipo_metrica: 'numerica',
+            unidade: 'itens'
+          },
+          {
+            id_metrica: 'tolerancia_estimulos',
+            tipo_metrica: 'categorica',
+            valores: ['baixa', 'moderada', 'alta']
+          },
+          {
+            id_metrica: 'tempo_fila_espera',
+            tipo_metrica: 'numerica',
+            unidade: 'segundos'
+          }
+        ]
+      }
     }
   ];
 
@@ -255,7 +323,14 @@ export class JogoModel {
 
     if (filtros.objetivo && filtros.objetivo !== 'todos' && filtros.objetivo !== 'all') {
       lista = lista.filter(
-        j => j.manifesto_json?.objetivo_clinico === filtros.objetivo
+        j =>
+          j.manifesto_json?.objetivo_clinico === filtros.objetivo ||
+          (filtros.objetivo === 'simulacao_rotina' &&
+            (j.manifesto_json?.objetivo_clinico === 'simulacao_rotina' ||
+             j.manifesto_json?.foco_pedagogico === 'atividades_vida_diaria')) ||
+          (filtros.objetivo === 'atividades_vida_diaria' &&
+            (j.manifesto_json?.objetivo_clinico === 'simulacao_rotina' ||
+             j.manifesto_json?.foco_pedagogico === 'atividades_vida_diaria'))
       );
     }
 
