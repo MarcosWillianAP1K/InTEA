@@ -278,7 +278,7 @@ describe("Card 3.1 & 3.4 — Testes da Página Mestre de Resultados da Sessão (
     await act(async () => {});
 
     expect(screen.getByTestId("badge-modo-livre")).toBeDefined();
-    expect(screen.getByText("Modo Livre (RN01)")).toBeDefined();
+    expect(screen.getByTestId("badge-modo-livre").textContent).toBe("Modo Livre");
     expect(screen.getByText("Modo Livre (Sem Prontuário)")).toBeDefined();
   });
 

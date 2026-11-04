@@ -15,6 +15,7 @@ import {
   resolverContextoSessao,
   resolverContextoAnotacaoUnificada,
   resolverContextoAnotacaoPorId,
+  resolverContextoAnotacaoParaReativar,
 } from '../middlewares/anotacao-contexto.middleware.js';
 
 export const anotacaoRoutes = Router();
@@ -201,6 +202,65 @@ anotacaoRoutes.patch(
   resolverContextoAnotacaoPorId,
   verificarVisibilidadePaciente,
   AnotacaoPacienteController.atualizar
+);
+
+/**
+ * @swagger
+ * /api/anotacao/{id}/reativar:
+ *   patch:
+ *     summary: Reativa uma anotação clínica inativada (soft_delete = false)
+ *     description: Restaura o registro da anotação clínica no histórico do paciente (RN05). Acesso restrito ao terapeuta autor da nota (RF21) ou SuperAdmin institucional, com vínculo ativo ao paciente (RN04).
+ *     tags: [Anotações Clínicas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da anotação clínica a ser reativada
+ *     responses:
+ *       200:
+ *         description: Anotação clínica reativada com sucesso
+ *         content:
+ *           application/json:
+ *             example:
+ *               data:
+ *                 anotacao:
+ *                   id: "33333333-3333-3333-3333-333333333333"
+ *                   terapeuta_id: "44444444-4444-4444-4444-444444444444"
+ *                   paciente_id: "22222222-2222-2222-2222-222222222222"
+ *                   sessao_id: null
+ *                   conteudo: "Paciente demonstrou excelente autorregulação sensorial."
+ *                   soft_delete: false
+ *                   created_at: "2026-10-15T18:00:00Z"
+ *                   updated_at: "2026-10-15T18:10:00Z"
+ *                   autor:
+ *                     id: "44444444-4444-4444-4444-444444444444"
+ *                     nome: "Dr. Marcos Terapeuta"
+ *                     registro_profissional: "12345/PI"
+ *                     crefito: "CREFITO-12345"
+ *                     especialidade: "Terapia Ocupacional"
+ *               message: "Anotação clínica reativada com sucesso."
+ *       400:
+ *         description: ID inválido
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Acesso negado — apenas o autor ou SuperAdmin com vínculo ativo pode reativar (RF21, RN04)
+ *       404:
+ *         description: Anotação não encontrada
+ *       500:
+ *         description: Erro interno ao reativar anotação clínica
+ */
+anotacaoRoutes.patch(
+  '/:id/reativar',
+  authMiddleware,
+  resolverContextoAnotacaoParaReativar,
+  verificarVisibilidadePaciente,
+  AnotacaoPacienteController.reativar
 );
 
 /**
@@ -463,6 +523,41 @@ anotacaoRoutes.patch(
 
 /**
  * @swagger
+ * /api/anotacao/paciente/{id}/reativar:
+ *   patch:
+ *     summary: Reativa uma anotação clínica geral de paciente (soft_delete = false)
+ *     description: Restaura o registro da anotação clínica de paciente preservando a imutabilidade do histórico (RN05). Restrito ao autor ou SuperAdmin com vínculo ativo (RF21, RN04).
+ *     tags: [Anotações Clínicas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da anotação
+ *     responses:
+ *       200:
+ *         description: Anotação reativada com sucesso
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Apenas o autor ou SuperAdmin pode reativar
+ *       404:
+ *         description: Anotação não encontrada
+ */
+anotacaoRoutes.patch(
+  '/paciente/:id/reativar',
+  authMiddleware,
+  resolverContextoAnotacaoParaReativar,
+  verificarVisibilidadePaciente,
+  AnotacaoPacienteController.reativar
+);
+
+/**
+ * @swagger
  * /api/anotacao/paciente/{id}:
  *   delete:
  *     summary: Exclusão lógica (soft delete) de anotação de paciente
@@ -707,6 +802,41 @@ anotacaoRoutes.patch(
   resolverContextoSessao,
   verificarVisibilidadePaciente,
   AnotacaoSessaoController.atualizar
+);
+
+/**
+ * @swagger
+ * /api/anotacao/sessao/{id}/reativar:
+ *   patch:
+ *     summary: Reativa uma anotação clínica vinculada a sessão (soft_delete = false)
+ *     description: Restaura o registro da anotação de sessão clínica (RN05). Restrito ao autor ou SuperAdmin com vínculo ativo (RF21, RN04).
+ *     tags: [Anotações Clínicas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID da anotação de sessão
+ *     responses:
+ *       200:
+ *         description: Anotação de sessão reativada com sucesso
+ *       401:
+ *         description: Não autorizado
+ *       403:
+ *         description: Apenas o autor ou SuperAdmin pode reativar
+ *       404:
+ *         description: Anotação não encontrada
+ */
+anotacaoRoutes.patch(
+  '/sessao/:id/reativar',
+  authMiddleware,
+  resolverContextoAnotacaoParaReativar,
+  verificarVisibilidadePaciente,
+  AnotacaoSessaoController.reativar
 );
 
 /**

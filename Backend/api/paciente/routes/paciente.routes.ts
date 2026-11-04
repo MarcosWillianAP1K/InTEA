@@ -755,16 +755,17 @@ pacienteRoutes.get('/:id/terapeutas', authMiddleware, verificarVisibilidadePacie
  *         content:
  *           application/json:
  *             example:
- *               message: "Terapeuta vinculado ao paciente com sucesso"
+ *               message: "Terapeuta vinculado ao paciente com sucesso."
  *               data:
- *                 paciente_id: "123e4567-e89b-12d3-a456-426614174000"
- *                 terapeuta_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *                 vinculo:
+ *                   paciente_id: "123e4567-e89b-12d3-a456-426614174000"
+ *                   terapeuta_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
  *       400:
- *         description: Terapeuta de clínica diferente, paciente inativo ou IDs inválidos
+ *         description: Paciente/terapeuta inativo ou IDs inválidos
  *         content:
  *           application/json:
  *             example:
- *               error: "O campo 'terapeuta_id' é obrigatório e deve ser um UUID válido."
+ *               error: "O campo \"terapeuta_id\" deve ser um UUID válido."
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
  *         content:
@@ -776,19 +777,25 @@ pacienteRoutes.get('/:id/terapeutas', authMiddleware, verificarVisibilidadePacie
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado: terapeuta não possui vínculo com este paciente (RN04)."
+ *               error: "Bloqueio de segurança: Não é permitido vincular terapeutas de clínicas diferentes."
  *       404:
  *         description: Paciente ou terapeuta não encontrado
  *         content:
  *           application/json:
  *             example:
- *               error: "Paciente ou terapeuta não encontrado."
+ *               error: "Terapeuta não encontrado para vinculação."
+ *       409:
+ *         description: Conflito de vínculo (terapeuta já vinculado ao paciente)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Conflito de vínculo: o terapeuta informado já está vinculado a este paciente."
  *       500:
  *         description: Erro interno do servidor
  *         content:
  *           application/json:
  *             example:
- *               error: "Erro interno ao vincular terapeuta ao paciente."
+ *               error: "Erro ao vincular terapeuta ao paciente."
  */
 pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaciente, PacienteController.vincularTerapeuta);
 
@@ -796,7 +803,7 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
  * @swagger
  * /api/paciente/{id}/terapeutas/{terapeutaId}:
  *   delete:
- *     summary: Remove o vínculo de um terapeuta com o paciente
+ *     summary: Remove o vínculo de um terapeuta com o paciente (auto-remoção ou SuperAdmin, com trava anti-órfão)
  *     tags: [Paciente]
  *     security:
  *       - bearerAuth: []
@@ -819,7 +826,12 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
  *         content:
  *           application/json:
  *             example:
- *               message: "Vínculo do terapeuta com o paciente removido com sucesso"
+ *               message: "Vínculo do terapeuta com o paciente removido com sucesso."
+ *               data:
+ *                 vinculo:
+ *                   paciente_id: "123e4567-e89b-12d3-a456-426614174000"
+ *                   terapeuta_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+ *                   status: "removido"
  *       400:
  *         description: Parâmetros UUID inválidos
  *         content:
@@ -833,23 +845,29 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado (sem vínculo ativo com o paciente ou clínica divergente - RN04)
+ *         description: Acesso negado (sem vínculo ativo ou tentativa de remover outro colega sem perfil SuperAdmin - RN04 / D1)
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado: terapeuta não possui vínculo com este paciente (RN04)."
+ *               error: "Acesso negado: apenas o próprio especialista ou um SuperAdmin pode remover este vínculo da equipe."
  *       404:
- *         description: Paciente não encontrado
+ *         description: Paciente ou vínculo não encontrado
  *         content:
  *           application/json:
  *             example:
- *               error: "Paciente não encontrado."
+ *               error: "Vínculo não encontrado para este paciente e terapeuta."
+ *       409:
+ *         description: Conflito de integridade clínica (tentativa de remover o último especialista ativo vinculado ao paciente)
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: "Operação bloqueada: não é permitido remover o único especialista vinculado ao paciente. Vincule outro profissional da clínica antes de realizar a transferência."
  *       500:
  *         description: Erro interno do servidor
  *         content:
  *           application/json:
  *             example:
- *               error: "Erro interno ao desvincular terapeuta."
+ *               error: "Erro ao remover vínculo do terapeuta."
  */
 pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, verificarVisibilidadePaciente, PacienteController.desvincularTerapeuta);
 

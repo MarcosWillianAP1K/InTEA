@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import { useSessionPersistence } from "@/features/sessao/hooks/useSessionPersistence";
@@ -7,10 +7,13 @@ import { useClinicalTimer } from "@/features/sessao/hooks/useClinicalTimer";
 import { SessionSocketManager } from "@/core/web.socket";
 import { ControlesClinicos } from "@/features/sessao/components/ControlesClinicos";
 import { ModalFinalizarSessao } from "../components/ModalFinalizarSessao";
+import { ModalAnotacaoSessaoAtiva } from "../components/ModalAnotacaoSessaoAtiva";
 import { TelemetriaCards } from "@/features/sessao/components/telemetria/TelemetriaCards";
 import { TelemetriaChart } from "@/features/sessao/components/telemetria/TelemetriaChart";
 import { TabletDiagnosticCard } from "@/features/sessao/components/telemetria/TabletDiagnosticCard";
 import { sessaoService } from "@/features/sessao/services/sessaoService";
+import { pacienteService } from "@/features/paciente/services/paciente.service";
+import { jogosService } from "@/features/jogos/services/jogosService";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { toast } from "sonner";
@@ -24,7 +27,8 @@ import {
  * ============================================================================
  * PAGE: CockpitSessaoPage (Clinical Session Monitoring)
  * Route: /sessao/:id/monitoramento
- * Compliance: RF12 (Session Management), RF13 (Lifecycle), RF17 (DDA Context), RF21
+ * Compliance: RF12 (Session Management), RF13 (Lifecycle), RF16 (Anotações Clínicas),
+ *             RF17 (DDA Context), RF21 (Intervenção Manual), RN01 (Modo Livre)
  * ============================================================================
  */
 export function CockpitSessaoPage() {
@@ -45,44 +49,203 @@ export function CockpitSessaoPage() {
   const retomarSessao = useSessionStore((state) => state.retomarSessao);
   const ajustarDda = useSessionStore((state) => state.ajustarDda);
   const finalizarSessao = useSessionStore((state) => state.finalizarSessao);
+  const restaurarSessao = useSessionStore((state) => state.restaurarSessao);
+
+  // Sincronização do Cockpit com a Sessão Clínica (Backend / API / BD)
+  // REGRA CLÍNICA: O Cockpit DEVE aparecer SOMENTE quando a sessão está em andamento (RN01, RF12, RF13)
+  useEffect(() => {
+    let ativo = true;
+
+    async function sincronizarSessaoCockpit() {
+      if (!paramSessaoId) return;
+
+      const storeSessaoId = useSessionStore.getState().sessaoId;
+      const storeToken = useSessionStore.getState().pareamento?.sessionToken;
+      const storeConfig = useSessionStore.getState().config;
+      const storeStatus = useSessionStore.getState().status;
+
+      // Se a sessão já estiver ativa no Zustand com os dados consistentes para este exato ID/Token, evita re-fetch cíclico
+      const jaSincronizadoComEsteId =
+        (storeSessaoId === paramSessaoId || storeToken === paramSessaoId) &&
+        Boolean(storeConfig?.jogoTitulo && storeConfig?.pacienteNome);
+
+      if (storeStatus === "em_andamento" && jaSincronizadoComEsteId) {
+        return;
+      }
+
+      try {
+        // Busca a sessão no backend/API (BD) por ID ou Token de Pareamento
+        let sessaoEncontrada = await sessaoService.buscarPorId(paramSessaoId);
+        if (!sessaoEncontrada) {
+          sessaoEncontrada = await sessaoService.buscarPorToken(paramSessaoId);
+        }
+
+        if (!ativo) return;
+
+        if (!sessaoEncontrada) {
+          // Se já está ativo na store com título e paciente (ex: fluxo de testes locais ou mock ativo), mantém
+          if (storeStatus === "em_andamento" && storeConfig?.jogoTitulo) {
+            return;
+          }
+          toast.error("Sessão clínica não localizada no banco de dados.");
+          navigate("/painel");
+          return;
+        }
+
+        // Se a sessão já foi finalizada, o Cockpit não deve aparecer: redireciona para a tela de resultado
+        if (sessaoEncontrada.status_sessao === "finalizada") {
+          toast.info("Esta sessão clínica já foi finalizada. Redirecionando para o relatório.");
+          navigate(`/sessao/${encodeURIComponent(sessaoEncontrada.id || paramSessaoId)}/resultado`);
+          return;
+        }
+
+        // Se a sessão estiver cancelada ou expirada, volta ao painel
+        if (
+          sessaoEncontrada.status_sessao === "cancelada" ||
+          sessaoEncontrada.status_sessao === "expirada" ||
+          sessaoEncontrada.status_sessao === "interrompida_por_queda"
+        ) {
+          toast.warning(
+            `Sessão com status '${sessaoEncontrada.status_sessao}'. O Cockpit está disponível apenas para sessões em andamento.`
+          );
+          navigate("/painel");
+          return;
+        }
+
+        // Resolução do Nome do Paciente a partir do BD
+        let nomePaciente =
+          sessaoEncontrada.paciente?.nome ||
+          (sessaoEncontrada.modo_sessao === "modo_livre" ? "Modo Livre" : "");
+        if (!nomePaciente && sessaoEncontrada.paciente_id) {
+          try {
+            const pacDb = await pacienteService.buscarPorId(sessaoEncontrada.paciente_id);
+            if (pacDb?.nome) {
+              nomePaciente = pacDb.nome;
+            }
+          } catch {
+            // Continua com fallback gracioso
+          }
+        }
+        if (!nomePaciente) {
+          nomePaciente = sessaoEncontrada.modo_sessao === "modo_livre" ? "Modo Livre" : "Paciente Clínico";
+        }
+
+        // Resolução do Título do Jogo a partir do BD
+        let tituloJogo =
+          sessaoEncontrada.jogo?.nome || sessaoEncontrada.jogo?.titulo || "";
+        if (!tituloJogo && sessaoEncontrada.jogo_id) {
+          try {
+            const jogoDb = await jogosService.buscarPorId(sessaoEncontrada.jogo_id);
+            if (jogoDb?.titulo || jogoDb?.nome) {
+              tituloJogo = jogoDb.titulo || jogoDb.nome || "";
+            }
+          } catch {
+            // Continua com fallback gracioso
+          }
+        }
+        if (!tituloJogo) {
+          tituloJogo = "Jogo Terapêutico";
+        }
+
+        const ddaJson = sessaoEncontrada.contexto_dda_json as Record<string, unknown> | undefined;
+
+        restaurarSessao({
+          status: "em_andamento",
+          sessaoId: sessaoEncontrada.id || paramSessaoId,
+          config: {
+            pacienteId: sessaoEncontrada.paciente_id || sessaoEncontrada.paciente?.id || null,
+            pacienteNome: nomePaciente,
+            jogoId: sessaoEncontrada.jogo_id,
+            jogoTitulo: tituloJogo,
+            objetivoClinico: (ddaJson?.objetivo_clinico as string) || "Foco Atencional",
+            focoTerapeutico: (ddaJson?.objetivo_clinico as string) || "Foco Atencional",
+          },
+          pareamento: {
+            sessionToken: sessaoEncontrada.session_token,
+            codigoFormatado: sessaoEncontrada.session_token,
+            expiraEm: sessaoEncontrada.expira_em || new Date(Date.now() + 3600000).toISOString(),
+            tempoValidadeSegundos: 3600,
+            dispositivo: {
+              deviceId: sessaoEncontrada.dispositivo_info?.modelo || "tablet-clinico-1",
+              tipoDispositivo: (sessaoEncontrada.dispositivo_info?.tipo_dispositivo as "tablet" | "vr") || "tablet",
+              modelo: sessaoEncontrada.dispositivo_info?.modelo || "Tablet Clínico Pareado",
+              bateria: sessaoEncontrada.dispositivo_info?.bateria ?? 88,
+              latenciaMs: sessaoEncontrada.dispositivo_info?.latencia_ms ?? 22,
+              conectadoEm: sessaoEncontrada.data_hora_inicio || new Date().toISOString(),
+            },
+          },
+          dataHoraInicio: sessaoEncontrada.data_hora_inicio || new Date().toISOString(),
+          nivelDdaAtual: Number(ddaJson?.nivel_dificuldade_inicial ?? ddaJson?.estresse_inicial ?? 1),
+          isPausado:
+            sessaoEncontrada.status_sessao === "pausada"
+              ? true
+              : (useSessionStore.getState().isPausado ?? false),
+        });
+
+        // Entra na sala do WebSocket para streaming de telemetria
+        if (sessaoEncontrada.session_token) {
+          SessionSocketManager.getInstance().entrarSala(sessaoEncontrada.session_token);
+        }
+      } catch (err) {
+        console.error("Erro ao sincronizar sessão no Cockpit:", err);
+      }
+    }
+
+    void sincronizarSessaoCockpit();
+
+    return () => {
+      ativo = false;
+    };
+  }, [paramSessaoId, restaurarSessao, navigate]);
 
   // 3. Telemetria em tempo real
   const { metricas, historico } = useLiveTelemetry({
     habilitado: status === "em_andamento",
   });
 
-  // 4. Modal de encerramento
+  // 4. Modais (Encerramento e Anotações Clínicas em Tempo Real)
   const [modalFinalizarAberto, setModalFinalizarAberto] = useState(false);
   const [isSubmittingFinalizar, setIsSubmittingFinalizar] = useState(false);
+  const [modalAnotacaoAberto, setModalAnotacaoAberto] = useState(false);
 
-  // 5. Cronômetro clínico de alta precisão resiliente contra throttling e F5 (Card 5 - Fix)
+  // 5. Cronômetro clínico de alta precisão sincronizado com Dashboard e resiliente (Card 5 - Fix, RF12, RF21)
+  const idSessaoEfetivo = paramSessaoId || pareamento?.sessionToken || "sessao-ativa";
   const tokenSessao = pareamento?.sessionToken || paramSessaoId || "sessao-ativa";
+  const dataHoraInicioStore = useSessionStore((state) => state.dataHoraInicio);
   const { tempoFormatado } = useClinicalTimer({
-    sessaoId: tokenSessao,
+    sessaoId: idSessaoEfetivo,
     ativo: status === "em_andamento",
     isPausado,
+    dataHoraInicioInicial: dataHoraInicioStore,
   });
+
+  // Determina se a sessão ativa está em Modo Livre (sem paciente associado - RN01)
+  const isModoLivre = !config?.pacienteId;
 
   // Handlers de intervenção clínica imediata
 
-
-  /** Dispatches pause command to store and remote game via WebSocket (RF21 — Manual Intervention). */
+  /** Dispatches pause command to store, remote game via WebSocket, and backend REST (RF21 — Manual Intervention). */
   const handlePausar = () => {
     pausarSessao();
     SessionSocketManager.getInstance().enviarComando({
       tipo: "pausar",
-      sessionToken: tokenSessao,
+      sessionToken: pareamento?.sessionToken || idSessaoEfetivo,
     });
+    void sessaoService.atualizarStatus(idSessaoEfetivo, "pausada");
     toast.info("Comando de pausa enviado ao jogo remoto.");
   };
 
-  /** Envia comando de retomada ao store e ao jogo remoto via WebSocket (RF21) */
+  /**
+   * Dispatches session resumption command to store and remote game client via WebSocket (RF21).
+   * Session Control (RF13, RF21): Unpauses clinical timer and signals game client to resume rendering.
+   */
   const handleRetomar = () => {
     retomarSessao();
     SessionSocketManager.getInstance().enviarComando({
       tipo: "retomar",
-      sessionToken: tokenSessao,
+      sessionToken: pareamento?.sessionToken || idSessaoEfetivo,
     });
+    void sessaoService.atualizarStatus(idSessaoEfetivo, "em_andamento");
     toast.success("Intervenção retomada no dispositivo.");
   };
 
@@ -116,12 +279,9 @@ export function CockpitSessaoPage() {
 
       setModalFinalizarAberto(false);
 
-      // Validação RN01 (Modo Livre vs Sessão Clínica com Paciente)
-      const isModoLivre = !config?.pacienteId;
-
       if (isModoLivre) {
         toast.info(
-          "Partida em Modo Livre concluída sem persistência em prontuário (RN01)."
+          "Partida em Modo Livre concluída sem persistência em prontuário."
         );
         navigate("/games");
       } else {
@@ -135,7 +295,7 @@ export function CockpitSessaoPage() {
     }
   };
 
-  const nomePaciente = config?.pacienteNome || "Paciente em Atendimento";
+  const nomePaciente = config?.pacienteNome || (isModoLivre ? "Modo Livre" : "Paciente Clínico");
   const tituloJogo = config?.jogoTitulo || "Jogo Terapêutico";
   const dispositivo = pareamento?.dispositivo;
 
@@ -171,7 +331,7 @@ export function CockpitSessaoPage() {
                 variant="outline"
                 className="text-2xs bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary-foreground dark:border-primary/40"
               >
-                Prontuário Ativo
+                {isModoLivre ? "Modo Livre" : "Prontuário Ativo"}
               </Badge>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -232,6 +392,8 @@ export function CockpitSessaoPage() {
             onRetomar={handleRetomar}
             onAjustarDda={handleAjustarDda}
             onAbrirModalFinalizar={() => setModalFinalizarAberto(true)}
+            onAbrirAnotacoes={() => setModalAnotacaoAberto(true)}
+            isModoLivre={isModoLivre}
           />
         </section>
 
@@ -257,6 +419,16 @@ export function CockpitSessaoPage() {
         </section>
       </main>
 
+      {/* Modal de Anotações Clínicas em Tempo Real */}
+      <ModalAnotacaoSessaoAtiva
+        aberto={modalAnotacaoAberto}
+        onFechar={() => setModalAnotacaoAberto(false)}
+        sessaoId={paramSessaoId || tokenSessao}
+        pacienteId={config?.pacienteId}
+        pacienteNome={config?.pacienteNome}
+        isModoLivre={isModoLivre}
+      />
+
       {/* Modal de Confirmação de Finalização */}
       <ModalFinalizarSessao
         aberto={modalFinalizarAberto}
@@ -268,4 +440,5 @@ export function CockpitSessaoPage() {
     </div>
   );
 }
+
 export default CockpitSessaoPage;

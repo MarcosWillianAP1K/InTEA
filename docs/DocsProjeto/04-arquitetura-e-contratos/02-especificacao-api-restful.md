@@ -82,7 +82,8 @@ Governa a orquestração do pareamento remoto, máquina de estados e laudos anal
 
 | Método | Endpoint | Middlewares de Segurança | Regra de Autorização |
 | :---: | :--- | :--- | :--- |
-| `POST` | `/api/sessao/iniciar` | `authMiddleware` | Cria sessão, valida paciente, gera PIN de 15 min e injeta contexto (**RN03**). |
+| `POST` | `/api/sessao/iniciar` | `authMiddleware, verificarVisibilidadePaciente` | Cria sessão, valida paciente, gera PIN de 15 min e injeta contexto DDA Contrato 2 (**RN01**, **RN03**). |
+| `GET` | `/api/sessao/contexto-sugerido/:pacienteId` | `authMiddleware, verificarVisibilidadePaciente` | Consulta gatilhos sensoriais da anamnese e histórico para calibração pré-sessão (**RF12**, **RF17**, **RN04**). |
 | `GET` | `/api/sessao/:id` | `authMiddleware, sessaoMiddleware` | Consulta dados da sessão com proteção anti-IDOR (**RN01**, **RN04**). |
 | `PATCH` | `/api/sessao/:id/finalizar` | `authMiddleware, sessaoMiddleware` | Finaliza formalmente a intervenção, registrando o encerramento. |
 | `DELETE`| `/api/sessao/:id/cancelar` | `authMiddleware, sessaoMiddleware` | Cancela sessão em andamento e fecha as salas de WebSocket. |
@@ -93,15 +94,18 @@ Governa a orquestração do pareamento remoto, máquina de estados e laudos anal
 ---
 
 ### 3.4. Módulo Anotações de Prontuário (`/api/anotacao`)
-Prontuário livre e evoluções de acompanhamento clínico com proteção estrita de autoria:
+Prontuário livre e evoluções de acompanhamento clínico com proteção estrita de autoria, busca longitudinal multidimensional e reativação:
 
 | Método | Endpoint | Middlewares de Segurança | Regra de Autorização |
 | :---: | :--- | :--- | :--- |
-| `GET` | `/api/anotacao/:id` | `authMiddleware, resolverContextoAnotacaoPorId, verificarVisibilidadePaciente` | Consulta unificada na raiz sem queries redundantes no banco. |
-| `POST` | `/api/anotacao` | `authMiddleware` | Cria anotação vinculando incondicionalmente `req.user.id` (**RF21**). |
-| `PATCH` | `/api/anotacao/:id` | `authMiddleware, resolverContextoAnotacaoPorId` | Edição permitida **exclusivamente ao terapeuta autor** da anotação. |
-| `DELETE`| `/api/anotacao/:id` | `authMiddleware, resolverContextoAnotacaoPorId` | Soft delete clínico (`soft_delete = true`, 204 No Content, **RN05**). |
-| `DELETE`| `/api/anotacao/:id/hard` | `authMiddleware, adminMiddleware` | **Exclusivo SuperAdmin:** Remoção física em suítes de testes de CI/CD. |
+| `GET` | `/api/anotacao/:id` | `authMiddleware, resolverContextoAnotacaoPorId, verificarVisibilidadePaciente` | Consulta unificada com dados sanitizados do autor (`autor: { id, nome, registro, especialidade }` — **RF21**, **RN04**). |
+| `POST` | `/api/anotacao` | `authMiddleware, resolverContextoAnotacaoUnificada, verificarVisibilidadePaciente` | Cria anotação para paciente ou sessão (tempo real no Cockpit) vinculando `req.user.id` (**RF13**, **RF16**, **RF21**). |
+| `GET` | `/api/anotacao/paciente/:pacienteId` | `authMiddleware, resolverContextoPaciente, verificarVisibilidadePaciente` | Histórico longitudinal paginado com filtros avançados: `terapeutaId`, `sessaoId`, `dataInicio`, `dataFim`, `busca` (**RF16**, **RF19**, **RF21**, **RN04**). |
+| `GET` | `/api/anotacao/sessao/:sessaoId` | `authMiddleware, resolverContextoSessao, verificarVisibilidadePaciente` | Lista cronológica de anotações registradas na sessão ativa com dados do autor (**RF16**, **RF21**, **RN04**). |
+| `PATCH` | `/api/anotacao/:id` | `authMiddleware, resolverContextoAnotacaoPorId, verificarVisibilidadePaciente` | Edição de conteúdo permitida **exclusivamente ao terapeuta autor** da anotação (**RF21**). |
+| `DELETE`| `/api/anotacao/:id` | `authMiddleware, resolverContextoAnotacaoPorId, verificarVisibilidadePaciente` | Soft delete clínico (`soft_delete = true`, **RN05**) restrito ao terapeuta autor (**RF21**). |
+| `PATCH` | `/api/anotacao/:id/reativar` | `authMiddleware, resolverContextoAnotacaoParaReativar, verificarVisibilidadePaciente` | Reativação lógica (`soft_delete = false`) restrita ao autor da nota ou SuperAdmin (**RN05**, **RF21**, **RN04**). |
+| `DELETE`| `/api/anotacao/:id/hard` | `authMiddleware, adminMiddleware, resolverContextoAnotacaoPorId` | **Exclusivo SuperAdmin:** Remoção física permanente em suítes de testes de CI/CD. |
 
 ---
 

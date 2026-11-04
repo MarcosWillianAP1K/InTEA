@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { useSessionStore } from "../store/sessionStore";
 import { SessionSocketManager } from "@/core/web.socket";
 import type { SessionState } from "../types";
@@ -12,6 +12,9 @@ export interface DadosPersistenciaSessao {
   dataHoraInicio?: string | null;
   nivelDdaAtual?: number;
   isPausado?: boolean;
+  sessaoId?: string | null;
+  tempoAcumuladoPausaMs?: number;
+  timestampUltimaPausa?: number | null;
   salvoEm: string;
 }
 
@@ -35,6 +38,9 @@ export function useSessionPersistence() {
   const dataHoraInicio = useSessionStore((state) => state.dataHoraInicio);
   const nivelDdaAtual = useSessionStore((state) => state.nivelDdaAtual);
   const isPausado = useSessionStore((state) => state.isPausado);
+  const sessaoId = useSessionStore((state) => state.sessaoId);
+  const tempoAcumuladoPausaMs = useSessionStore((state) => state.tempoAcumuladoPausaMs);
+  const timestampUltimaPausa = useSessionStore((state) => state.timestampUltimaPausa);
   const restaurarSessao = useSessionStore((state) => state.restaurarSessao);
 
   // 1. Hidratação inicial ao montar (ex: após F5)
@@ -45,6 +51,14 @@ export function useSessionPersistence() {
       const salvo = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
       if (salvo && status === "ocioso") {
         const parsed: DadosPersistenciaSessao = JSON.parse(salvo);
+        // Purga sessões com dummy ID mock ou idade superior a 12 horas
+        const isMockInvalido = parsed.sessaoId === "44444444-4444-4444-8444-444444444444";
+        const idadeMs = parsed.salvoEm ? Date.now() - new Date(parsed.salvoEm).getTime() : Infinity;
+        if (isMockInvalido || idadeMs > 12 * 60 * 60 * 1000) {
+          window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+          return;
+        }
+
         if (parsed.status === "em_andamento" || parsed.status === "pareado") {
           restaurarSessao({
             status: parsed.status,
@@ -53,6 +67,9 @@ export function useSessionPersistence() {
             dataHoraInicio: parsed.dataHoraInicio,
             nivelDdaAtual: parsed.nivelDdaAtual ?? 1,
             isPausado: parsed.isPausado ?? false,
+            sessaoId: parsed.sessaoId ?? null,
+            tempoAcumuladoPausaMs: parsed.tempoAcumuladoPausaMs ?? 0,
+            timestampUltimaPausa: parsed.timestampUltimaPausa ?? null,
           });
 
           // Reconecta socket à sala se houver token
@@ -81,6 +98,9 @@ export function useSessionPersistence() {
           dataHoraInicio,
           nivelDdaAtual,
           isPausado,
+          sessaoId,
+          tempoAcumuladoPausaMs,
+          timestampUltimaPausa,
           salvoEm: new Date().toISOString(),
         };
         window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
@@ -90,7 +110,7 @@ export function useSessionPersistence() {
     } catch {
       // Falha graciosa ao gravar
     }
-  }, [status, config, pareamento, dataHoraInicio, nivelDdaAtual, isPausado]);
+  }, [status, config, pareamento, dataHoraInicio, nivelDdaAtual, isPausado, sessaoId, tempoAcumuladoPausaMs, timestampUltimaPausa]);
 
   // 3. Alerta de beforeunload se a sessão estiver em andamento
   useEffect(() => {
@@ -110,19 +130,7 @@ export function useSessionPersistence() {
     };
   }, [status]);
 
-  /**
-   * Removes persisted active session from sessionStorage upon completion or cancellation.
-   */
-  const limparPersistencia = useCallback(() => {
-    if (typeof window !== "undefined") {
-      window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
-    }
-  }, []);
-
   return {
-    limparPersistencia,
-    isSessaoPersistida: Boolean(
-      typeof window !== "undefined" && window.sessionStorage.getItem(SESSION_STORAGE_KEY)
-    ),
+    isCached: status === "em_andamento" || status === "pareado",
   };
 }

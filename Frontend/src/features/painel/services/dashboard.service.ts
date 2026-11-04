@@ -36,6 +36,7 @@ interface RawSessaoApiItem {
   data_hora_inicio?: string;
   data_hora_fim?: string | null;
   duracao_segundos?: number;
+  contexto_dda_json?: Record<string, unknown> | null;
   paciente?: {
     id: string;
     nome?: string;
@@ -74,13 +75,20 @@ function mapearStatusSessaoResumo(status?: string): StatusSessaoResumo {
   if (s === "cancelada" || s === "expirada" || s === "interrompida_por_queda") {
     return "cancelada";
   }
-  if (s === "em_andamento" || s === "conectado" || s === "conectada" || s === "pausada") {
+  if (s === "pausada") {
+    return "pausada";
+  }
+  if (s === "em_andamento" || s === "conectado" || s === "conectada") {
     return "em_andamento";
   }
   return "agendada";
 }
 
 function calcularDuracaoSegundos(sessao: RawSessaoApiItem): number {
+  const ctx = (sessao.contexto_dda_json as Record<string, unknown>) || {};
+  if (typeof ctx.duracao_pausada_segundos === "number" && ctx.duracao_pausada_segundos > 0) {
+    return ctx.duracao_pausada_segundos;
+  }
   if (typeof sessao.duracao_segundos === "number" && sessao.duracao_segundos > 0) {
     return sessao.duracao_segundos;
   }
@@ -304,3 +312,4 @@ export const dashboardService = {
 
 export const painelService = dashboardService;
 export default dashboardService;
+

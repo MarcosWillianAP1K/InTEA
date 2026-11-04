@@ -17,7 +17,8 @@ import type { Request, Response, NextFunction } from 'express';
  */
 
 /**
- * Origens confiáveis padrão do ecossistema InTEA em desenvolvimento e homologação.
+ * Default trusted origins for the InTEA ecosystem across development and staging environments.
+ * Baseline CORS Policy: Includes local development Vite and Node.js default ports.
  */
 export const ORIGENS_PADRAO_DESENVOLVIMENTO: readonly string[] = [
   'http://localhost:5173',
@@ -27,14 +28,21 @@ export const ORIGENS_PADRAO_DESENVOLVIMENTO: readonly string[] = [
 ];
 
 /**
- * Normaliza uma string de URL de origem removendo barra final e espaços.
+ * Normalizes an origin URL string by trimming whitespace and trailing slashes.
+ * String Sanitation: Produces standard origin representation for accurate matching.
+ *
+ * @param origem - Raw origin URL string (e.g. "http://localhost:5173/")
+ * @returns Normalized origin string without trailing slash
  */
 export function normalizarOrigem(origem: string): string {
   return origem.trim().replace(/\/+$/, '');
 }
 
 /**
- * Recupera a lista completa de origens autorizadas com base nas variáveis de ambiente.
+ * Retrieves the complete list of authorized origins from environment variables and defaults.
+ * Multi-Tenant Security: Merges FRONTEND_URL, CORS_ALLOWED_ORIGINS, and standard localhost ports.
+ *
+ * @returns Array of unique authorized origin strings
  */
 export function obterOrigensAutorizadas(): string[] {
   const origens: Set<string> = new Set();
@@ -62,12 +70,12 @@ export function obterOrigensAutorizadas(): string[] {
 }
 
 /**
- * Verifica se uma origem HTTP solicitante é autorizada pelas políticas estritas de CORS.
- * - Requisições sem header Origin (ex: chamadas nativas de tablets, curl, server-to-server) são aceitas.
- * - Requisições de navegadores web com Origin DEVEM constar na lista branca explícita.
+ * Verifies whether a requesting HTTP origin is authorized under strict CORS policies.
+ * Origin Verification (RNF03): Allows same-origin/internal requests while rejecting untrusted domains.
  *
- * @param origin - Header Origin enviado pelo navegador.
- * @param origensPermitidas - Lista opcional de origens para sobrescrita em testes.
+ * @param origin - Request Origin header value sent by browser
+ * @param origensPermitidas - Optional list of authorized origins for testing overrides
+ * @returns True if permitted, false if rejected
  */
 export function validarOrigemCORS(
   origin: string | undefined,
@@ -85,8 +93,8 @@ export function validarOrigemCORS(
 }
 
 /**
- * Configuração e instância do Helmet para o InTEA.
- * Aplica políticas rígidas de isolamento de frames e CSP restritiva.
+ * Helmet security configuration and middleware instance for InTEA HTTP services.
+ * HTTP Hardening (RNF03): Enforces strict CSP, HSTS, frameguard, and MIME sniffing protection.
  */
 export const securityHeadersMiddleware = helmet({
   // Bloqueia categoricamente clickjacking e injeção em iframes de terceiros (Critério de Aceite 3)
@@ -128,7 +136,8 @@ export const securityHeadersMiddleware = helmet({
 });
 
 /**
- * Opções padronizadas de CORS com validação estrita de origens.
+ * Standardized CORS options with strict origin validation and credentials support.
+ * Cross-Origin Protection: Configures exposed headers, allowed methods, and origin verification.
  */
 export const corsOptions: CorsOptions = {
   origin: (
@@ -157,13 +166,19 @@ export const corsOptions: CorsOptions = {
 };
 
 /**
- * Middleware de CORS configurado com proteção contra origens não autorizadas.
+ * Configured CORS middleware protecting endpoints against unauthorized cross-origin requests.
+ * Access Control: Rejects non-whitelisted cross-origin calls with appropriate headers.
  */
 export const corsMiddleware = cors(corsOptions);
 
 /**
- * Middleware para tratamento seguro de rejeições de CORS.
- * Captura erros de origem não autorizada e retorna HTTP 403 Forbidden padronizado.
+ * Error handling middleware for CORS rejections.
+ * Secure Error Handling: Traps unauthorized origin errors and returns standard JSON 403 response.
+ *
+ * @param err - Error instance caught from middleware pipeline
+ * @param req - Express request
+ * @param res - Express response
+ * @param next - Express next function
  */
 export function corsErrorHandler(
   err: unknown,

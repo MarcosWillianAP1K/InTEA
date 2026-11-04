@@ -14,6 +14,7 @@ export type RoleSocket = 'terapeuta' | 'dispositivo' | 'observador_equipe' | str
 export interface EntrarSessaoPayload {
   session_token: string;
   role?: RoleSocket;
+  jogo_id?: string;
   dispositivo_info?: Record<string, unknown>;
   terapeuta_id?: string;
   nome?: string;
@@ -190,7 +191,11 @@ export class SessaoGateway {
   }
 
   /**
-   * Inicializa o gateway WebSocket singleton para o namespace /sessao.
+   * Initializes the singleton WebSocket gateway for the `/sessao` namespace.
+   * Real-Time Telemetry (RF10, RF13): Configures connection handlers, pairing rooms, and telemetry channels.
+   *
+   * @param io - Root Socket.IO server instance
+   * @returns Initialized SessaoGateway singleton instance
    */
   static inicializar(io: SocketIOServer): SessaoGateway {
     SessaoGateway.instance = new SessaoGateway(io);
@@ -309,6 +314,8 @@ export class SessaoGateway {
       session_token?: string;
       sessionToken?: string;
       role?: RoleSocket;
+      jogo_id?: string;
+      jogoId?: string;
       dispositivo_info?: Record<string, unknown>;
       dispositivoInfo?: Record<string, unknown>;
       terapeuta_id?: string;
@@ -324,6 +331,7 @@ export class SessaoGateway {
       this.lidarEntradaSessao(socket, {
         session_token: token,
         role: payload?.role,
+        jogo_id: payload?.jogo_id || payload?.jogoId,
         dispositivo_info: payload?.dispositivo_info || payload?.dispositivoInfo,
         terapeuta_id: payload?.terapeuta_id || payload?.terapeutaId,
         nome: payload?.nome,
@@ -430,6 +438,25 @@ export class SessaoGateway {
 
     // Se o cliente conectando for o dispositivo do jogo:
     if (role === 'dispositivo') {
+      // Validação de jogo e injeção do pacote de pré-contexto DDA diretamente para o game (RN03)
+      SessaoModel.buscarPorToken(tokenNormalizado).then(sessaoBanco => {
+        if (sessaoBanco) {
+          if (payload.jogo_id && payload.jogo_id !== sessaoBanco.jogo_id) {
+            socket.emit('erro_sessao', {
+              error: 'O jogo conectado não corresponde ao jogo selecionado pelo terapeuta para esta sessão.',
+            });
+            return;
+          }
+
+          socket.emit('contexto_dda_inicial', {
+            session_token: tokenNormalizado,
+            contexto: sessaoBanco.contexto_dda_json || {},
+          });
+        }
+      }).catch(err => {
+        console.error('[SessaoGateway] Erro ao recuperar contexto DDA para envio inicial:', err);
+      });
+
       this.reconnectionManager.registrarReconexao(tokenNormalizado);
       const presencaExistente = this.presencas.get(tokenNormalizado);
       const agora = Date.now();
@@ -1040,6 +1067,27 @@ export class SessaoGateway {
         sucesso: true,
         comando: comando.tipo_comando,
         timestamp: comando.timestamp
+      });
+    }
+
+    // Se o comando for de pausa ou retomada, sincroniza a máquina de estados no banco (RF12, RF21)
+    const buscarSessao = async (tokenOuId: string) => {
+      const sessaoPorToken = await SessaoModel.buscarPorToken(tokenOuId);
+      if (sessaoPorToken) return sessaoPorToken;
+      return await SessaoModel.buscarPorId(tokenOuId);
+    };
+
+    if (comando.tipo_comando === 'pausar_jogo') {
+      void buscarSessao(comando.session_token).then((sessao) => {
+        if (sessao && (sessao.status_sessao === STATUS_SESSAO.EM_ANDAMENTO || sessao.status_sessao === STATUS_SESSAO.CONECTADO)) {
+          void SessaoModel.atualizarStatus(sessao.id, STATUS_SESSAO.PAUSADA);
+        }
+      });
+    } else if (comando.tipo_comando === 'retomar_jogo') {
+      void buscarSessao(comando.session_token).then((sessao) => {
+        if (sessao && sessao.status_sessao === STATUS_SESSAO.PAUSADA) {
+          void SessaoModel.atualizarStatus(sessao.id, STATUS_SESSAO.EM_ANDAMENTO);
+        }
       });
     }
   }

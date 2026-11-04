@@ -26,6 +26,9 @@ const initialState: SessionState = {
   anotacoesClinicas: null,
   isPausado: false,
   nivelDdaAtual: 1,
+  sessaoId: null,
+  tempoAcumuladoPausaMs: 0,
+  timestampUltimaPausa: null,
 };
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
@@ -122,7 +125,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Confirma o handshake do dispositivo remoto e transiciona para 'pareado' (RF10) */
+  /** Confirms remote device handshake and transitions status to 'pareado' (RF10). */
   confirmarConexaoDispositivo: (dispositivo: DispositivoConectadoPayload) => {
     const currentPareamento = get().pareamento;
     if (!currentPareamento) return;
@@ -188,17 +191,33 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   /** Pauses timer and signals remote game that intervention is suspended (RF21). */
   pausarSessao: () => {
-    set({ isPausado: true });
+    const agora = Date.now();
+    set({
+      isPausado: true,
+      timestampUltimaPausa: agora,
+    });
   },
 
-  /** Resumes timer and restarts intervention flow after pause (RF21). */
+  /** Resumes timer and restarts intervention flow after pause without accumulating paused time (RF21). */
   retomarSessao: () => {
-    set({ isPausado: false });
+    const agora = Date.now();
+    const ultima = get().timestampUltimaPausa;
+    const dormido = ultima ? agora - ultima : 0;
+    set({
+      isPausado: false,
+      timestampUltimaPausa: null,
+      tempoAcumuladoPausaMs: (get().tempoAcumuladoPausaMs || 0) + dormido,
+    });
   },
 
   /** Updates DDA level (1-5) sent to remote game for difficulty adaptation (RF17, RN03). */
   ajustarDda: (novoNivel: number) => {
     set({ nivelDdaAtual: Math.min(5, Math.max(1, novoNivel)) });
+  },
+
+  /** Sets the active session ID explicitly for synchronization across cards and Cockpit. */
+  setSessaoId: (id: string | null) => {
+    set({ sessaoId: id });
   },
 
   /** Saves therapist preliminary clinical notes during session (RF17). */
@@ -233,7 +252,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Transiciona para 'expirada' quando o token de pareamento ultrapassa o TTL de 15 minutos (RNF03) */
+  /** Transitions session state to 'expirada' when pairing token exceeds 15-minute TTL (RNF03). */
   expirarToken: () => {
     set({
       status: "expirada",
@@ -241,7 +260,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Define uma mensagem de erro no store, salva o status anterior e transiciona para o estado 'erro' */
+  /** Sets an error message in store, preserves previous status, and transitions to 'erro' state. */
   setErro: (mensagem: string | null) => {
     if (mensagem) {
       const currentStatus = get().status;

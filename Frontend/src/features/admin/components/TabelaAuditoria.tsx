@@ -51,6 +51,13 @@ export interface TabelaAuditoriaProps {
   onRecarregar?: () => void | Promise<void>;
 }
 
+/**
+ * Renders the administrative audit log table with column filtering and details drawer (RF08).
+ * Institutional Audit Trail (RF08, RNF06): Displays timestamp, therapist, action, IP, and parameters.
+ *
+ * @param props - Table properties containing audit events, pagination, and selection callbacks
+ * @returns Interactive audit table component
+ */
 export function TabelaAuditoria({
   eventos,
   loading = false,
@@ -204,7 +211,11 @@ export function TabelaAuditoria({
   };
 
   /**
-   * Padrão Canônico de Badges e Status do InTEA (Figma Pílulas)
+   * Renders color-coded badge pill for clinical audit actions conforming to Figma design specifications.
+   * Visual Governance (RF08): Distinguishes session lifecycle, medical record access, and security alerts.
+   *
+   * @param acao - Audit action identifier
+   * @returns Styled badge element
    */
   const renderBadgeAcao = (acao: string) => {
     switch (acao) {
@@ -275,7 +286,7 @@ export function TabelaAuditoria({
       {/* Barra de Filtros, Busca e Exportação (Padrão InTEA) */}
       <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between bg-card border border-border p-4 rounded-xl shadow-xs">
         {/* Campo de Busca Textual */}
-        <div className="relative flex-1 min-w-[240px]">
+        <div className="relative flex-1 min-w-60">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={busca}
@@ -505,7 +516,7 @@ export function TabelaAuditoria({
                       <div className="flex flex-col gap-1 items-start">
                         {renderBadgeAcao(evento.acao)}
                         {evento.descricao && (
-                          <span className="text-[11px] text-muted-foreground line-clamp-1 max-w-[280px]">
+                          <span className="text-[11px] text-muted-foreground line-clamp-1 max-w-70">
                             {evento.descricao}
                           </span>
                         )}

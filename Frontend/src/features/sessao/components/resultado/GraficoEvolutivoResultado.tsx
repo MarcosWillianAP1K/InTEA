@@ -68,6 +68,13 @@ function formatarDataTentativa(iso?: string, fallbackRotulo?: string): string {
   return fallbackRotulo || "";
 }
 
+/**
+ * Renders multimodal chart visualizing telemetric evolution across the session timeline.
+ * Telemetry Visualization (RF14, RNF02): Plots heart rate, attention index, and DDA adaptation levels.
+ *
+ * @param props - Chart properties with telemetry time series points and display toggles
+ * @returns Interactive SVG/Canvas telemetry chart component
+ */
 export function GraficoEvolutivoResultado({
   tentativas = [],
   tempoMedioReferencia,
@@ -239,7 +246,7 @@ export function GraficoEvolutivoResultado({
                 variant="outline"
                 className="text-2xs font-semibold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
               >
-                Modo Livre: Sem DDA (RN01)
+                Modo Livre: Sem DDA
               </Badge>
             ) : (
               <Badge

@@ -210,12 +210,13 @@ CREATE TABLE IF NOT EXISTS public.sessao (
         (modo_sessao = 'sessao_clinica' AND paciente_id IS NOT NULL)
     ),
 
-    -- Máquina de Estados da Sessão e Pareamento Remoto
+    -- Máquina de Estados da Sessão e Pareamento Remoto (RF12, RF21)
     CONSTRAINT chk_status_sessao CHECK (
         status_sessao IN (
             'aguardando_pareamento',
             'conectado',
             'em_andamento',
+            'pausada',
             'finalizada',
             'expirada',
             'cancelada',
@@ -473,6 +474,10 @@ CREATE INDEX IF NOT EXISTS idx_sessao_paciente_engajamento ON public.sessao (pac
 CREATE INDEX IF NOT EXISTS idx_sessao_paciente_jogo_fim ON public.sessao (paciente_id, jogo_id, data_hora_fim DESC) WHERE status_sessao = 'finalizada' AND paciente_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_relatorio_dados_ia_gin ON public.relatorio_sessao USING gin (dados_ia_json);
 
+-- Índices Otimizados para Anotações Clínicas e Contexto DDA (Sprint 12 - RF16, RF21, RN04, RN05)
+CREATE INDEX IF NOT EXISTS idx_anotacao_paciente_autor_data ON public.anotacao_clinica(paciente_id, terapeuta_id, created_at DESC) WHERE soft_delete = false;
+CREATE INDEX IF NOT EXISTS idx_anotacao_sessao_soft_delete ON public.anotacao_clinica(sessao_id, created_at DESC) WHERE soft_delete = false;
+
 -- Trigger para atualizacao automatica de updated_at em sessao
 CREATE OR REPLACE FUNCTION public.fn_sessao_set_updated_at()
 RETURNS TRIGGER AS $$
@@ -678,3 +683,90 @@ VALUES
     ('Análise do Comportamento Aplicada (ABA)', 'Intervenções baseadas em princípios comportamentais para ensino de novas habilidades.'),
     ('Funções Executivas e Resolução de Problemas', 'Planejamento, controle inibitório, memória de trabalho e raciocínio lógico.')
 ON CONFLICT (nome) DO NOTHING;
+
+
+-- ==============================================================================
+-- 23. VÍNCULO MULTITERAPEUTA, AUDITORIA DE VÍNCULOS E FUNÇÃO ANTI-ÓRFÃO (Sprint 13 - Migration 017)
+-- Conformidade: RF08, RF18, RN04, RN05, RNF05
+-- Auditoria de RLS (AGENTS.md §6.2.3): RLS removido na Migration 010; o Backend
+-- opera via service_role com validação institucional em Serviço/Middleware (RN04).
+-- ==============================================================================
+
+-- 1. Índice Reverso de Vínculo Multiterapeuta (Busca por Paciente -> Equipe)
+CREATE INDEX IF NOT EXISTS idx_terapeuta_paciente_paciente_id
+    ON public.terapeuta_paciente(paciente_id, terapeuta_id);
+
+-- 2. Tabela Imutável de Auditoria de Vínculos e Acessos da Equipe (RF08, RN04, RN05)
+CREATE TABLE IF NOT EXISTS public.auditoria_vinculo_acesso (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    paciente_id UUID NOT NULL REFERENCES public.paciente(id) ON DELETE RESTRICT,
+    terapeuta_autor_id UUID NOT NULL REFERENCES public.terapeuta(id) ON DELETE RESTRICT,
+    terapeuta_alvo_id UUID NOT NULL REFERENCES public.terapeuta(id) ON DELETE RESTRICT,
+    acao VARCHAR(40) NOT NULL CHECK (acao IN ('vinculo_equipe_criado', 'vinculo_equipe_removido')),
+    ip VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+-- 3. Trigger de Imutabilidade Estrita (RN05 / RNF05)
+CREATE OR REPLACE FUNCTION public.impedir_modificacao_auditoria_vinculo()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Operacao proibida: Registros da trilha de auditoria de vinculos sao estritamente imutaveis (RN05 / RNF05).'
+        USING ERRCODE = '23505';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_mutacao_auditoria_vinculo ON public.auditoria_vinculo_acesso;
+CREATE TRIGGER trg_bloqueio_mutacao_auditoria_vinculo
+    BEFORE UPDATE OR DELETE ON public.auditoria_vinculo_acesso
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_modificacao_auditoria_vinculo();
+
+-- 4. Índices de Otimização da Trilha de Auditoria de Vínculos (RNF05)
+CREATE INDEX IF NOT EXISTS idx_auditoria_vinculo_paciente_created
+    ON public.auditoria_vinculo_acesso(paciente_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_vinculo_autor
+    ON public.auditoria_vinculo_acesso(terapeuta_autor_id);
+CREATE INDEX IF NOT EXISTS idx_auditoria_vinculo_acao
+    ON public.auditoria_vinculo_acesso(acao);
+
+-- 5. Função Atômica Anti-Órfão com Lock Pessimista (RN04, RF08)
+CREATE OR REPLACE FUNCTION public.desvincular_terapeuta_seguro(
+    p_paciente_id UUID,
+    p_terapeuta_id UUID
+) RETURNS TEXT AS $$
+DECLARE
+    v_existe_vinculo BOOLEAN;
+    v_ativos_restantes INTEGER;
+BEGIN
+    -- Trava pessimista na linha do paciente para impedir condição de corrida
+    PERFORM 1 FROM public.paciente WHERE id = p_paciente_id FOR UPDATE;
+
+    SELECT EXISTS (
+        SELECT 1 FROM public.terapeuta_paciente
+        WHERE paciente_id = p_paciente_id AND terapeuta_id = p_terapeuta_id
+    ) INTO v_existe_vinculo;
+
+    IF NOT v_existe_vinculo THEN
+        RETURN 'nao_vinculado';
+    END IF;
+
+    SELECT COUNT(*)::INTEGER
+    INTO v_ativos_restantes
+    FROM public.terapeuta_paciente tp
+    JOIN public.terapeuta t ON t.id = tp.terapeuta_id
+    WHERE tp.paciente_id = p_paciente_id
+      AND tp.terapeuta_id <> p_terapeuta_id
+      AND t.status_ativo = TRUE;
+
+    IF v_ativos_restantes <= 0 THEN
+        RETURN 'ultimo_ativo';
+    END IF;
+
+    DELETE FROM public.terapeuta_paciente
+    WHERE paciente_id = p_paciente_id AND terapeuta_id = p_terapeuta_id;
+
+    RETURN 'removido';
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;

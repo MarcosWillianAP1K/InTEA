@@ -444,101 +444,11 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
 // TESTES DE INTEGRAÇÃO: POST /api/paciente E EQUIPE MULTIDISCIPLINAR (RN04)
 // ==============================================================================
 
-function criarMockReqResPaciente(opcoes: {
-  body?: any;
-  params?: any;
-  query?: Record<string, string | undefined>;
-  user?: any;
-  headers?: any;
-}) {
-  let statusCode = 200;
-  let jsonResult: any = null;
-  let sent = false;
-
-  const req: any = {
-    body: opcoes.body || {},
-    params: opcoes.params || {},
-    query: opcoes.query || {},
-    headers: opcoes.headers || { authorization: 'Bearer token-teste' },
-    user: opcoes.user || null,
-  };
-
-  const res: any = {
-    status(code: number) {
-      statusCode = code;
-      return this;
-    },
-    json(data: any) {
-      jsonResult = data;
-      sent = true;
-      return this;
-    },
-    send(data?: any) {
-      jsonResult = data;
-      sent = true;
-      return this;
-    },
-  };
-
-  return {
-    req,
-    res,
-    getStatus: () => statusCode,
-    getJson: () => jsonResult,
-    isSent: () => sent,
-  };
-}
-
-function executarPipelinePaciente(
-  handlers: Array<(req: any, res: any, next: (err?: any) => void) => Promise<void> | void>,
-  req: any,
-  res: any
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    let idx = 0;
-
-    const originalJson = res.json?.bind(res);
-    const originalSend = res.send?.bind(res);
-
-    res.json = (data: any) => {
-      const ret = originalJson ? originalJson(data) : res;
-      resolve();
-      return ret;
-    };
-
-    res.send = (data?: any) => {
-      const ret = originalSend ? originalSend(data) : res;
-      resolve();
-      return ret;
-    };
-
-    function next(err?: any) {
-      if (err) return reject(err);
-      if (idx < handlers.length) {
-        const handler = handlers[idx++];
-        Promise.resolve(handler(req, res, next)).catch(reject);
-      } else {
-        resolve();
-      }
-    }
-
-    next();
-  });
-}
-
-function obterHandlersPaciente(
-  router: any,
-  path: string,
-  method: string
-): Array<(req: any, res: any, next: (err?: any) => void) => Promise<void> | void> {
-  const layer = router.stack.find(
-    (l: any) => l.route?.path === path && l.route?.methods?.[method.toLowerCase()]
-  );
-  if (!layer?.route?.stack) {
-    throw new Error(`Rota ${method.toUpperCase()} ${path} não encontrada no router`);
-  }
-  return layer.route.stack.map((s: any) => s.handle);
-}
+import {
+  criarMockReqResPaciente,
+  executarPipelinePaciente,
+  obterHandlersPaciente,
+} from './helpers/pipeline.js';
 
 describe('POST /api/paciente — Forçamento de clinica_id e Auto-Vínculo (RN04)', () => {
   const terapeutaId = '11111111-1111-4111-a111-111111111111';
@@ -1058,10 +968,10 @@ describe('Equipe Multidisciplinar (GET, POST, DELETE /api/paciente/:id/terapeuta
       return {} as any;
     });
 
-    vi.spyOn(PacienteModel, 'desvincularTerapeuta').mockResolvedValue(undefined);
+    vi.spyOn(PacienteModel, 'desvincularTerapeuta').mockResolvedValue('removido');
 
     const mockHttp = criarMockReqResPaciente({
-      params: { id: pacienteId, terapeutaId: outroTerapeutaId },
+      params: { id: pacienteId, terapeutaId: terapeutaLogadoId },
     });
 
     await executarPipelinePaciente(handlers, mockHttp.req, mockHttp.res);

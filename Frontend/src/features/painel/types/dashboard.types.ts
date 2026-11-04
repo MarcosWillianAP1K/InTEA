@@ -26,6 +26,7 @@ export interface DashboardMetricas {
 export type StatusSessaoResumo =
   | "agendada"
   | "em_andamento"
+  | "pausada"
   | "finalizada"
   | "cancelada";
 

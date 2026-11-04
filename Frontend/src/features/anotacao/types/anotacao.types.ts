@@ -7,6 +7,14 @@
  * ============================================================================
  */
 
+export interface AnotacaoAutorInfo {
+  id: string;
+  nome: string;
+  registro_profissional?: string | null;
+  crefito?: string | null;
+  especialidade?: string | null;
+}
+
 export interface AnotacaoClinica {
   id: string; // UUID
   terapeuta_id: string; // UUID do terapeuta autor
@@ -19,6 +27,7 @@ export interface AnotacaoClinica {
   paciente_nome?: string;
   created_at?: string;
   updated_at?: string;
+  autor?: AnotacaoAutorInfo | null;
 }
 
 export interface CriarAnotacaoDTO {
@@ -37,8 +46,12 @@ export interface AtualizarAnotacaoDTO {
 export interface FiltroAnotacaoDTO {
   paciente_id?: string;
   sessao_id?: string;
+  terapeutaId?: string;
   incluirInativos?: boolean;
   somenteSemSessao?: boolean;
+  dataInicio?: string;
+  dataFim?: string;
+  busca?: string;
   page?: number;
   limit?: number;
 }

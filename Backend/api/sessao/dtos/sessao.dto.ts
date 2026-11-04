@@ -1,3 +1,11 @@
+import type {
+  ContextoPacienteContrato2,
+  PacoteContrato2,
+  SugestaoContextoDTO,
+} from '../services/sessao-contexto-dda.service.js';
+
+export type { ContextoPacienteContrato2, PacoteContrato2, SugestaoContextoDTO };
+
 export interface DispositivoInfoDTO {
   tipo_dispositivo?: 'tablet' | 'vr' | 'pc' | 'mobile' | string;
   modelo?: string;
@@ -38,6 +46,7 @@ export interface PareamentoRespostaDTO {
   jogo_id?: string;
   paciente_id?: string | null;
   contexto_dda: Record<string, unknown>;
+  contexto_pre_sessao?: PacoteContrato2 | null;
   websocket: {
     url: string;
     canal: string;

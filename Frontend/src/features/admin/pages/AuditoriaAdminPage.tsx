@@ -29,6 +29,12 @@ import { toast } from "sonner";
  *               RN04 (Isolamento Institucional), RN05 (Imutabilidade Forense).
  * ============================================================================
  */
+/**
+ * Administrative page view providing institutional compliance auditing (RF07, RF08).
+ * SuperAdmin Dashboard: Features metric counters, audit log table, CSV/JSON export, and drawer inspection.
+ *
+ * @returns Administrative audit dashboard page component
+ */
 export function AuditoriaAdminPage() {
   const navigate = useNavigate();
 

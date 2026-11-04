@@ -32,6 +32,20 @@ export interface EventosDoSistema {
     ip: string | null;
     userAgent: string | null;
   };
+  'vinculo:criado': {
+    pacienteId: string;
+    terapeutaAutorId: string;
+    terapeutaAlvoId: string;
+    ip: string | null;
+    userAgent: string | null;
+  };
+  'vinculo:removido': {
+    pacienteId: string;
+    terapeutaAutorId: string;
+    terapeutaAlvoId: string;
+    ip: string | null;
+    userAgent: string | null;
+  };
 }
 
 export class InTeaEventBus extends EventEmitter {

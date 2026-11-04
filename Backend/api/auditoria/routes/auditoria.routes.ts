@@ -1,5 +1,5 @@
 // ==============================================================================
-// InTEA: Rotas da Trilha de Auditoria Clínica de Sessão (Sprint 9 - Task 1.3)
+// InTEA: Rotas da Trilha de Auditoria Clínica de Sessão e Vínculos (Sprint 9 / Sprint 13)
 // ==============================================================================
 // Conformidade: RF13, RNF06 (LGPD / Segurança), RN04, RN05, RF21, RF07, RF08
 // Padrão Arquitetural: Envelope Pattern Categorizado Estrito ({ data: { ... }, message })
@@ -159,13 +159,21 @@ auditoriaRoutes.get(
  *           type: string
  *         description: Termo de busca textual
  *       - in: query
+ *         name: pacienteId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do paciente para filtrar eventos clínicos e de vínculo da equipe (RF08)
+ *       - in: query
  *         name: tipoAcao
  *         schema:
  *           type: string
- *         description: Filtro de ação clínica
+ *         description: Filtro de ação clínica (ex. vinculo_equipe_criado, vinculo_equipe_removido)
  *     responses:
  *       200:
  *         description: Lista de eventos de auditoria retornada com sucesso
+ *       400:
+ *         description: Parâmetro pacienteId inválido (não é um UUID válido)
  *       401:
  *         description: Não autenticado
  *       500:
@@ -173,6 +181,12 @@ auditoriaRoutes.get(
  */
 auditoriaRoutes.get(
   '/',
+  authMiddleware,
+  AuditoriaController.listar
+);
+
+auditoriaRoutes.get(
+  '/vinculo',
   authMiddleware,
   AuditoriaController.listar
 );

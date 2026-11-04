@@ -36,6 +36,13 @@ export function formatarDuracaoClinica(segundos: number): string {
 }
 
 
+/**
+ * Renders summary metric cards summarizing key session performance indicators (RF14).
+ * Outcome Indicators (RF14): Shows session duration, mean heart rate, cognitive score, and trigger occurrences.
+ *
+ * @param props - Component properties with consolidated metric values and baseline comparison
+ * @returns Grid of key performance indicator cards
+ */
 export function MetricasConsolidadasCards({
   metricas,
   isLoading = false,
@@ -241,7 +248,7 @@ export function MetricasConsolidadasCards({
                 variant="outline"
                 className="text-2xs font-semibold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 shrink-0"
               >
-                Inativo (RN01)
+                Inativo (Modo Livre)
               </Badge>
             ) : (
               <Badge

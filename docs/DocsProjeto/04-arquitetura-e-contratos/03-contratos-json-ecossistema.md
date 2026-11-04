@@ -100,23 +100,30 @@ flowchart LR
 
 ---
 
-## 4. Contrato 3: Injeção de Contexto Pré-Sessão para DDA (`contextoPreSessao.json`)
+## 4. Contrato 2 / Contrato 3: Injeção de Contexto Pré-Sessão para DDA (`contextoPreSessao.json`)
 
-* **Finalidade:** Envio do estado basal da criança para calibração inicial do motor de inteligência artificial.
-* **Emissor:** InTEA Backend $\rightarrow$ **Receptor:** Agente de IA.
-* **Canal:** Requisição HTTP REST / Webhook antes da liberação do streaming de jogo (**RN03**).
-* **Regra de Negócio (**RN03**):** O DDA não pode processar telemetria sem antes ter recebido este pacote.
+> [!NOTE]
+> **Identificação Canônica:** No documento mestre [Projeto_de_InTEA.pdf](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/Projeto_de_InTEA.pdf) (Seção 7.4.2), este contrato é formalmente denominado **Contrato 2** do ecossistema terapêutico. No diagrama macro de fluxo de dados, corresponde ao **Contrato 3** (troca de mensagens de pré-sessão entre o painel InTEA e o motor de Inteligência Artificial DDA).
 
-### Esquema do JSON de Contexto Pré-Sessão:
+* **Finalidade:** Envio do estado basal e sensório-motor da criança para calibração inicial do motor de DDA (Dynamic Difficulty Adjustment) do Agente de IA.
+* **Emissor:** InTEA Backend $\rightarrow$ **Receptor:** Agente de IA e Jogo Remoto pareado (Tablet/VR).
+* **Canal:** Handshake de pareamento (`POST /api/sessao/parear`), canal WebSocket dedicado (`SessaoGateway` nos eventos `entrar_sessao` / `dispositivo_conectado` / `contexto_dda_inicial`) e persistência em `sessao.contexto_dda_json`.
+* **Regra de Negócio Crítica (**RN03**):** O motor de inteligência artificial e o jogo remoto estão terminantemente proibidos de processar qualquer pacote de telemetria contínua sem que o pacote estruturado deste contrato tenha sido validado e entregue previamente.
+* **Invariante de Modo Livre (**RN01**):** Em sessões de Modo Livre (`paciente_id = NULL`), o sistema suprime qualquer injeção de contexto DDA e rejeita tentativas com status **`400 Bad Request`**.
+
+### Esquema do JSON de Contexto Pré-Sessão (`contextoPreSessao.json`):
 ```json
 {
   "token_sessao": "a1b2c3d4-token",
-  "id_terapeuta": "terapeuta-99",
-  "id_paciente": "paciente-99",
+  "id_terapeuta": "44444444-4444-4444-4444-444444444444",
+  "id_paciente": "22222222-2222-2222-2222-222222222222",
   "contexto_paciente": {
     "nivel_estresse_inicial": "medio",
-    "gatilhos_sensoriais_evitar": ["luz_piscante", "som_agudo"],
-    "objetivo_clinico": "foco_atencional"
+    "gatilhos_sensoriais_evitar": [
+      "Sons Altos ou Repentinos",
+      "Luzes Estroboscópicas / Piscantes"
+    ],
+    "objetivo_clinico": "Foco atencional e regulação sensorial"
   }
 }
 ```
@@ -124,12 +131,51 @@ flowchart LR
 ### Dicionário de Campos:
 | Campo | Tipo | Obrigatório | Descrição |
 | :--- | :---: | :---: | :--- |
-| `token_sessao` | `string` | Sim | Código PIN da sessão inicializada. |
-| `id_terapeuta` | `string (UUID)` | Sim | Identificador do terapeuta autor da orquestração (**RF21**). |
-| `id_paciente` | `string (UUID)` | Sim | Identificador do paciente atendido (nulo em modo livre — **RN01**). |
-| `nivel_estresse_inicial` | `string` | Sim | Escala clínica: `baixo`, `medio` ou `alto`. |
-| `gatilhos_sensoriais_evitar` | `array[string]` | Sim | Lista de estímulos a serem suprimidos pelo jogo (luz, som). |
-| `objetivo_clinico` | `string` | Sim | Meta terapêutica da intervenção (ex.: `foco_atencional`, `linguagem`). |
+| `token_sessao` | `string` | Sim | Código PIN/token da sessão clínica inicializada. |
+| `id_terapeuta` | `string (UUID)` | Sim | Identificador do terapeuta autor da intervenção (**RF21**). |
+| `id_paciente` | `string (UUID)` | Sim | UUID do paciente atendido (rejeitado em modo livre — **RN01**). |
+| `contexto_paciente.nivel_estresse_inicial` | `string` | Sim | Escala canônica normalizada: `"baixo"`, `"medio"` ou `"alto"`. |
+| `contexto_paciente.gatilhos_sensoriais_evitar` | `array[string]` | Sim | Lista de estímulos sensoriais a serem suprimidos pelo jogo. |
+| `contexto_paciente.objetivo_clinico` | `string` | Sim | Meta terapêutica da intervenção cadastrada ou herdada. |
+
+---
+
+### 4.1. Mapeamento Determinístico da Escala de Estresse (Sprint 12)
+
+Para garantir flexibilidade ergonômica ao terapeuta na interface web (**Figura 11**) e rigor semântico no motor de inteligência artificial, o serviço `SessaoContextoDdaService` aplica conversão determinística:
+
+| Entrada na API / Frontend | Escala Numérica | Nível Canônico Contrato 2 | Semântica e Modulação DDA |
+| :---: | :---: | :---: | :--- |
+| `1` ou `2` ou `"baixo"` | $1 \le x \le 2$ | **`"baixo"`** | Paciente calmo, responsivo e regulado. O motor de jogo inicia com estímulos padrão completos. |
+| `3` ou `"medio"` / `"médio"` | $x = 3$ | **`"medio"`** | Paciente com saturação sensorial moderada. IA atenua velocidade de transições e saturação de cores. |
+| `4` ou `5` ou `"alto"` | $4 \le x \le 5$ | **`"alto"`** | Paciente desregulado, com hiperreatividade ou crise iminente. IA suprime sons agudos e reduz ritmo. |
+| *Outros valores* | Fora de `1..5` | **Erro `400 Bad Request`** | Rejeição imediata por violação de domínio clínico. |
+
+---
+
+### 4.2. Mecanismo de Fallback Clínico Parametrizado (Figura 5 — Diagrama de Atividades)
+
+O fluxo da **Figura 5** do documento mestre define que a parametrização manual de contexto DDA pelo terapeuta é uma comodidade clínica opcional. Caso o profissional opte por iniciar rapidamente a intervenção selecionando `"Usar Parâmetros Padrão Homologados (Fallback)"` (`usar_fallback_padrao: true`) ou omita campos no formulário:
+
+```mermaid
+flowchart TD
+    Inicio(["Terapeuta inicia Sessão Clínica"]) --> ChecaCustom{"Terapeuta customizou Contexto DDA?"}
+    ChecaCustom -- "Sim (Manual)" --> Valida["SessaoContextoDdaService: Normaliza estresse 1..5 e valida gatilhos"]
+    ChecaCustom -- "Não (Fallback da Figura 5)" --> ConsultaBD["Consulta automática ao Prontuário do Paciente"]
+    ConsultaBD --> PegaGatilhos["Recupera dados_clinicos.gatilhos_sensoriais + paciente_gatilho"]
+    ConsultaBD --> PegaManifesto["Recupera objetivo_clinico padrão do manifestoGame.json"]
+    ConsultaBD --> DefineEstresse["Define nivel_estresse_inicial = 'baixo' (escala 1)"]
+    PegaGatilhos --> MontaContrato["Monta Pacote Estruturado do Contrato 2"]
+    PegaManifesto --> MontaContrato
+    DefineEstresse --> MontaContrato
+    Valida --> MontaContrato
+    MontaContrato --> Handshake["Entrega via Handshake / WebSocket antes da Telemetria (RN03)"]
+```
+
+1. **Gatilhos Sensoriais:** O serviço consulta o cadastro do paciente em `dados_clinicos` (campo JSONB `gatilhos_sensoriais`) e na tabela `paciente_gatilho` (via `JOIN` com a tabela `gatilhos`), consolidando uma lista única e sanitizada;
+2. **Nível de Estresse:** Assume o valor basal conservador `nivel_estresse_inicial: "baixo"` (`1`);
+3. **Objetivo Clínico:** Herda o objetivo primário registrado no manifesto homologado do jogo selecionado (`manifestoGame.json`), com fallback seguro para `"foco_atencional"`;
+4. **Persistência e Rastreabilidade:** O pacote consolidado é gravado em `sessao.contexto_dda_json` e fica registrado no histórico longitudinal do atendimento.
 
 ---
 

@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Gamepad2, LayoutDashboard, Users, UserCheck, History, Settings, ShieldCheck } from "lucide-react";
+import {
+  Gamepad2,
+  LayoutDashboard,
+  Users,
+  UserCheck,
+  History,
+  Settings,
+  ShieldCheck,
+} from "lucide-react";
 
 import { NavProjects } from "./nav-projects";
 import { NavHeader } from "./nav-header";

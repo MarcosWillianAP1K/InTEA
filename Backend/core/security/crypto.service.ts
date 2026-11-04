@@ -15,8 +15,10 @@ export class CryptoService {
   private static readonly SALT = 'intea-lgpd-prontuario-salt-2026';
 
   /**
-   * Obtém chave simétrica de 256 bits (32 bytes) a partir da variável de ambiente LGPD_ENCRYPTION_KEY.
-   * Derivada de forma determinística via scryptSync para resistência contra força bruta.
+   * Retrieves or derives a 256-bit symmetric encryption key from the environment.
+   * Cryptographic Hardening (RNF06): Uses scryptSync derivation with a fixed salt for brute-force resistance.
+   *
+   * @returns 32-byte cryptographic key Buffer
    */
   private static obterChave(): Buffer {
     const segredo =
@@ -26,10 +28,11 @@ export class CryptoService {
   }
 
   /**
-   * Cifra um texto em repouso utilizando AES-256-GCM com autenticação de integridade.
-   * Formato serializado: enc:v1:<iv_hex>:<authTag_hex>:<ciphertext_hex>
+   * Encrypts sensitive data at rest using AES-256-GCM with authenticated integrity checks.
+   * Serialization Format: Returns `enc:v1:<iv_hex>:<authTag_hex>:<ciphertext_hex>`.
    *
-   * @param textoClaro - Dado clínico sensível em texto claro
+   * @param textoClaro - Sensitive clinical plaintext to encrypt
+   * @returns Encrypted and formatted ciphertext string
    */
   static cifrar(textoClaro: string): string {
     if (!textoClaro || typeof textoClaro !== 'string') return textoClaro;
@@ -49,10 +52,11 @@ export class CryptoService {
   }
 
   /**
-   * Decifra um payload em repouso e valida a autenticidade dos dados via tag GCM.
-   * Caso os dados tenham sofrido adulteração física ou chave inválida, rejeita com erro seguro.
+   * Decrypts ciphertext at rest and validates payload authenticity using the GCM authentication tag.
+   * Tamper Detection (RNF06): Throws a security error if the ciphertext, IV, or auth tag was altered.
    *
-   * @param payloadCifrado - String cifrada no formato enc:v1:...
+   * @param payloadCifrado - Formatted ciphertext string (enc:v1:...)
+   * @returns Decrypted plaintext string
    */
   static decifrar(payloadCifrado: string): string {
     if (!payloadCifrado || typeof payloadCifrado !== 'string') return payloadCifrado;
@@ -82,21 +86,33 @@ export class CryptoService {
   }
 
   /**
-   * Verifica se o dado já se encontra cifrado pelo prefixo de versão do InTEA.
+   * Checks whether the provided data string has already been encrypted with the InTEA versioned prefix.
+   * Envelope Inspection: Checks for presence of `enc:v1:` prefix.
+   *
+   * @param valor - Text string to inspect
+   * @returns True if already encrypted, false otherwise
    */
   static isCifrado(texto: string): boolean {
     return typeof texto === 'string' && texto.startsWith(`${this.PREFIX}:`);
   }
 
   /**
-   * Cifra condicionalmente apenas se o dado ainda não estiver cifrado.
+   * Conditionally encrypts clinical data only if it is not already encrypted.
+   * Idempotent Encryption: Avoids double encryption of previously stored fields.
+   *
+   * @param valor - Sensitive data string or null/undefined
+   * @returns Encrypted string or original value if empty or already encrypted
    */
   static cifrarSeNaoCifrado(texto: string): string {
     return this.isCifrado(texto) ? texto : this.cifrar(texto);
   }
 
   /**
-   * Decifra condicionalmente apenas se o dado estiver cifrado.
+   * Conditionally decrypts a value only if it contains the InTEA encryption envelope.
+   * Transparent Read: Returns plaintext unmodified if the value was unencrypted.
+   *
+   * @param valor - Potentially encrypted ciphertext string
+   * @returns Decrypted plaintext string
    */
   static decifrarSeCifrado(texto: string): string {
     return this.isCifrado(texto) ? this.decifrar(texto) : texto;
@@ -107,7 +123,11 @@ export class CryptoService {
   // ============================================================================
 
   /**
-   * Mascara CPF para conformidade com a LGPD (ex: 123.456.789-00 -> ***.***.***-00).
+   * Masks a CPF string in compliance with LGPD data privacy regulations (e.g. `***.***.***-00`).
+   * Privacy Protection (RNF06): Redacts demographic digits while preserving formatting.
+   *
+   * @param cpf - Raw or partially formatted CPF string
+   * @returns Masked CPF string
    */
   static mascararCPF(cpf: string | null | undefined): string {
     if (!cpf) return '';
@@ -118,7 +138,11 @@ export class CryptoService {
   }
 
   /**
-   * Mascara telefone para exibição segura em logs (ex: (11) 98765-4321 -> (11) *****-4321).
+   * Masks a telephone number for safe log and telemetry displays (e.g. `(11) *****-4321`).
+   * Telemetry Privacy: Masks middle digits while preserving area code and last 4 digits.
+   *
+   * @param tel - Raw telephone string
+   * @returns Masked telephone string
    */
   static mascararTelefone(telefone: string | null | undefined): string {
     if (!telefone) return '';
@@ -130,7 +154,11 @@ export class CryptoService {
   }
 
   /**
-   * Mascara nome pessoal (ex: Marcos Willian -> M***** W******).
+   * Masks personal individual names for privacy-safe logs (e.g. `John Doe -> J*** D**`).
+   * Identity Redaction: Preserves first initial of each name component while masking the rest.
+   *
+   * @param nome - Full personal name string
+   * @returns Masked name string
    */
   static mascararNome(nome: string | null | undefined): string {
     if (!nome) return '';
@@ -141,7 +169,11 @@ export class CryptoService {
   }
 
   /**
-   * Mascara e-mail (ex: marcos@intea.com.br -> m****s@intea.com.br).
+   * Masks an email address for safe audit display (e.g. `marcos@intea.com.br -> m****s@intea.com.br`).
+   * Audit Redaction: Retains first and last letters of username along with full domain.
+   *
+   * @param email - Raw email address string
+   * @returns Masked email string
    */
   static mascararEmail(email: string | null | undefined): string {
     if (!email || !email.includes('@')) return '*****@*****';
@@ -153,8 +185,11 @@ export class CryptoService {
   }
 
   /**
-   * Anonimiza recursivamente payloads e estruturas de dados antes de enviar a logs de console/arquivo.
-   * Impede vazamento inadvertido de dados clínicos ou identificadores pessoais (LGPD).
+   * Recursively traverses and redacts sensitive clinical and demographic attributes from objects before logging.
+   * Leak Prevention (RNF06): Automatically masks CPF, email, password, token, and health notes.
+   *
+   * @param obj - Arbitrary object or payload to sanitize
+   * @returns Sanitized clone safe for persistent logging
    */
   static anonimizarParaLogs(dado: unknown): unknown {
     if (dado === null || dado === undefined) return dado;
@@ -204,7 +239,8 @@ export class CryptoService {
 }
 
 /**
- * Utilitário de log seguro anonimizado para a aplicação (RNF06).
+ * Privacy-safe structured logging utility for application components (RNF06).
+ * Automatic Redaction: Sanitizes all arguments through `anonimizarParaLogs` before delegating to console.
  */
 export const secureLogger = {
   info: (mensagem: string, payload?: unknown) => {

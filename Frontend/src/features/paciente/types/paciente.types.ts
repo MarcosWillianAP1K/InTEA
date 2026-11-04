@@ -82,7 +82,7 @@ export interface TerapeutaPaciente {
 }
 
 /**
- * Entidade Canônica de Paciente mapeada no banco de dados Supabase e API REST.
+ * Canonical Patient domain entity mapped to Supabase database schema and REST API.
  */
 export interface Paciente {
   id: string; // UUID v4
@@ -266,7 +266,11 @@ export interface Patient {
 }
 
 /**
- * Converte a entidade Paciente (modelo de API/banco) para o ViewModel Patient (modelo de UI).
+ * Converts a backend Paciente domain entity to the frontend UI Patient view model.
+ * View Model Adaptation: Computes age from birth date, formats guardian display, and maps clinical status.
+ *
+ * @param p - Raw Paciente entity received from backend REST API
+ * @returns Formatted Patient view model ready for UI component rendering
  */
 export function pacienteToPatient(paciente: Paciente): Patient {
   const responsavelPrincipal = paciente.responsaveis?.[0];

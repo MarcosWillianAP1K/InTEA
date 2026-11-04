@@ -12,8 +12,8 @@ import { MODO_SESSAO } from '../../sessao/models/sessao.model.js';
 let ouvintesRegistrados = false;
 
 /**
- * Initializes domain event listeners for the session lifecycle, silently and
- * asynchronously recording immutable audit logs (RF13, RNF06, RN05).
+ * Initializes domain event listeners for the session and team link lifecycle, silently and
+ * asynchronously recording immutable audit logs (RF08, RF13, RNF06, RN05).
  *
  * @returns Void.
  */
@@ -85,6 +85,38 @@ export function inicializarAuditoriaListeners(): void {
       });
     } catch (err) {
       console.error('[AuditoriaListener] Falha ao processar evento sessao:pareada:', err);
+    }
+  });
+
+  // 4. Escuta criação de vínculo de equipe multidisciplinar (RF08)
+  eventBus.ouvir('vinculo:criado', async (dados) => {
+    try {
+      await AuditoriaService.registrarVinculoSilencioso({
+        paciente_id: dados.pacienteId,
+        terapeuta_autor_id: dados.terapeutaAutorId,
+        terapeuta_alvo_id: dados.terapeutaAlvoId,
+        acao: 'vinculo_equipe_criado',
+        ip: dados.ip,
+        user_agent: dados.userAgent,
+      });
+    } catch (err) {
+      console.error('[AuditoriaListener] Falha ao processar evento vinculo:criado:', err);
+    }
+  });
+
+  // 5. Escuta remoção de vínculo de equipe multidisciplinar (RF08)
+  eventBus.ouvir('vinculo:removido', async (dados) => {
+    try {
+      await AuditoriaService.registrarVinculoSilencioso({
+        paciente_id: dados.pacienteId,
+        terapeuta_autor_id: dados.terapeutaAutorId,
+        terapeuta_alvo_id: dados.terapeutaAlvoId,
+        acao: 'vinculo_equipe_removido',
+        ip: dados.ip,
+        user_agent: dados.userAgent,
+      });
+    } catch (err) {
+      console.error('[AuditoriaListener] Falha ao processar evento vinculo:removido:', err);
     }
   });
 }
