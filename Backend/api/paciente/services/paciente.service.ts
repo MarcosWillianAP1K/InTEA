@@ -13,6 +13,8 @@ import {
   RespostaListagemPaciente,
   ResponsavelVinculado,
   TerapeutaVinculado,
+  EspecialistaVinculado,
+  ResultadoDesvinculo,
 } from '../models/paciente.model.js';
 import { TerapeutaModel } from '../../terapeuta/models/terapeuta.model.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
@@ -358,16 +360,47 @@ export class PacienteService {
       throw new PacienteServiceError('O campo "terapeuta_id" deve ser um UUID válido.', 400);
     }
 
-    await PacienteModel.vincularTerapeuta(pacienteId, terapeutaId);
+    try {
+      await PacienteModel.vincularTerapeuta(pacienteId, terapeutaId);
+    } catch (err: unknown) {
+      if (err instanceof PacienteServiceError) {
+        throw err;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('não encontrado')) {
+        throw new PacienteServiceError(msg, 404);
+      }
+      if (msg.includes('Bloqueio de segurança') || msg.includes('clínicas diferentes')) {
+        throw new PacienteServiceError(msg, 403);
+      }
+      if (
+        msg.includes('já está vinculado') ||
+        msg.includes('Conflito de vínculo') ||
+        msg.includes('Vínculo já existente') ||
+        msg.includes('duplicate key') ||
+        msg.includes('23505')
+      ) {
+        throw new PacienteServiceError(msg, 409);
+      }
+      if (msg.includes('inativo')) {
+        throw new PacienteServiceError(msg, 400);
+      }
+      throw err;
+    }
   }
 
   /**
-   * Removes association between a therapist and a patient.
+   * Removes association between a therapist and a patient, enforcing self-removal/SuperAdmin (D1) and anti-orphan rules.
    *
    * @param pacienteId - Patient UUID.
    * @param terapeutaId - Therapist UUID.
+   * @param usuarioLogado - Optional authenticated user enforcing D1 permission rule.
    */
-  static async desvincularTerapeuta(pacienteId: string, terapeutaId: string): Promise<void> {
+  static async desvincularTerapeuta(
+    pacienteId: string,
+    terapeutaId: string,
+    usuarioLogado?: UsuarioAutenticado
+  ): Promise<void> {
     if (!pacienteId || !validarUUID(pacienteId)) {
       throw new PacienteServiceError('O parâmetro "id" deve ser um UUID válido.', 400);
     }
@@ -376,7 +409,46 @@ export class PacienteService {
       throw new PacienteServiceError('O parâmetro "terapeutaId" deve ser um UUID válido.', 400);
     }
 
-    await PacienteModel.desvincularTerapeuta(pacienteId, terapeutaId);
+    if (usuarioLogado && usuarioLogado.id) {
+      const isSuperAdmin =
+        usuarioLogado.is_super_admin === true ||
+        usuarioLogado.user_metadata?.is_super_admin === true;
+
+      if (!isSuperAdmin && usuarioLogado.id !== terapeutaId) {
+        throw new PacienteServiceError(
+          'Acesso negado: apenas o próprio especialista ou um SuperAdmin pode remover este vínculo da equipe.',
+          403
+        );
+      }
+    }
+
+    let resultado: ResultadoDesvinculo | void;
+    try {
+      resultado = await PacienteModel.desvincularTerapeuta(pacienteId, terapeutaId);
+    } catch (err: unknown) {
+      if (err instanceof PacienteServiceError) {
+        throw err;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('não encontrado')) {
+        throw new PacienteServiceError(msg, 404);
+      }
+      throw err;
+    }
+
+    if (resultado === 'nao_vinculado') {
+      throw new PacienteServiceError(
+        'Vínculo não encontrado para este paciente e terapeuta.',
+        404
+      );
+    }
+
+    if (resultado === 'ultimo_ativo') {
+      throw new PacienteServiceError(
+        'Operação bloqueada: não é permitido remover o único especialista vinculado ao paciente. Vincule outro profissional da clínica antes de realizar a transferência.',
+        409
+      );
+    }
   }
 
   /**
@@ -385,12 +457,23 @@ export class PacienteService {
    * @param pacienteId - Patient UUID.
    * @returns Array of linked therapists.
    */
-  static async listarTerapeutas(pacienteId: string): Promise<TerapeutaVinculado[]> {
+  static async listarTerapeutas(pacienteId: string): Promise<EspecialistaVinculado[]> {
     if (!pacienteId || !validarUUID(pacienteId)) {
       throw new PacienteServiceError('O parâmetro ID deve ser um UUID válido.', 400);
     }
 
-    return (await PacienteModel.listarTerapeutasVinculados(pacienteId)) as TerapeutaVinculado[];
+    try {
+      return await PacienteModel.listarTerapeutasVinculados(pacienteId);
+    } catch (err: unknown) {
+      if (err instanceof PacienteServiceError) {
+        throw err;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('não encontrado')) {
+        throw new PacienteServiceError(msg, 404);
+      }
+      throw err;
+    }
   }
 
   /**

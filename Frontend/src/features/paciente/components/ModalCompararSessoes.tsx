@@ -116,7 +116,7 @@ export function ModalCompararSessoes({
   return (
     <Dialog open={isOpen} onOpenChange={(aberto) => !aberto && onClose()}>
       <DialogContent
-        className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 sm:p-8"
+        className="w-full sm:max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 sm:p-8"
         role="dialog"
         aria-modal="true"
         aria-labelledby="dialog-title-comparar"

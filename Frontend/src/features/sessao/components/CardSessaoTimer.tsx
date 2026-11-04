@@ -85,6 +85,7 @@ export function CardSessaoTimer({
     ativo: isEmAndamento,
     isPausado: isSessaoPausada,
     dataHoraInicioInicial: dataHoraInicio,
+    duracaoInicialSegundos: duracaoSegundos,
   });
 
   const tempoExibido =
