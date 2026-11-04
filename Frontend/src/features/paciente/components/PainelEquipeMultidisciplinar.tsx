@@ -106,11 +106,11 @@ export const PainelEquipeMultidisciplinar: React.FC<
         <Button
           type="button"
           onClick={() => onAbrirModalVincular?.()}
-          data-testid="btn-adicionar-especialista"
+          data-testid="btn-abrir-modal-vincular"
           className="min-h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm flex items-center gap-2 shrink-0 cursor-pointer"
         >
           <UserPlus className="w-4 h-4" />
-          Adicionar Especialista
+          <span data-testid="btn-adicionar-especialista">Adicionar Especialista</span>
         </Button>
       </div>
 
@@ -236,11 +236,11 @@ export const PainelEquipeMultidisciplinar: React.FC<
                       </span>
                       {isUsuarioLogado && (
                         <Badge
-                          data-testid="badge-voce-logado"
+                          data-testid={`badge-voce-logado-${esp.id}`}
                           className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
                         >
                           <ShieldCheck className="w-3 h-3" />
-                          Você (Logado)
+                          <span data-testid="badge-voce-logado">Você (Logado)</span>
                         </Badge>
                       )}
                     </div>
@@ -272,7 +272,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
                     disabled={desabilitado}
                     title={
                       isUnicoEspecialista
-                        ? "O paciente deve possuir ao menos 1 especialista vinculado (Regra Anti-Órfão RN04)"
+                        ? "O paciente deve possuir ao menos 1 especialista vinculado"
                         : `Remover vínculo de ${esp.nome}`
                     }
                     aria-label={`Desvincular ${esp.nome}`}

@@ -264,6 +264,7 @@ export function CockpitSessaoPage() {
   const handlePausar = () => {
     if (isModoObservador) return;
     pausarSessao();
+    toast.info("Comando de pausa enviado ao jogo remoto.");
     SessionSocketManager.getInstance().enviarComando({
       tipo: "pausar",
       sessionToken: tokenSessao,
@@ -277,6 +278,7 @@ export function CockpitSessaoPage() {
   const handleRetomar = () => {
     if (isModoObservador) return;
     retomarSessao();
+    toast.success("Intervenção retomada no dispositivo.");
     SessionSocketManager.getInstance().enviarComando({
       tipo: "retomar",
       sessionToken: tokenSessao,
@@ -315,12 +317,17 @@ export function CockpitSessaoPage() {
         sessionToken: tokenSessao,
       });
 
-      finalizarSessao();
+      finalizarSessao(anotacoes);
       setModalFinalizarAberto(false);
-      toast.success("Sessão finalizada com sucesso!");
 
-      const idDestino = paramSessaoId || sessaoIdFinalizacao || "recém-encerrada";
-      navigate(`/sessao/${encodeURIComponent(idDestino)}/resultado`);
+      if (isModoLivre) {
+        toast.info("Partida em Modo Livre concluída sem persistência em prontuário.");
+        navigate("/games");
+      } else {
+        toast.success("Sessão finalizada com sucesso! Prontuário atualizado.");
+        const idDestino = paramSessaoId || sessaoIdFinalizacao || "recém-encerrada";
+        navigate(`/sessao/${encodeURIComponent(idDestino)}/resultado`);
+      }
     } catch {
       toast.error("Erro ao encerrar a sessão. Tente novamente.");
     } finally {

@@ -210,35 +210,39 @@ export function PerfilPacientePage() {
   const handleIniciarAtendimento = () => {
     if (!paciente) return;
 
-    const sessaoEmAndamento = sessoes.find(
+    const sessaoConcorrenteAtiva = sessoes.find(
       (s) =>
-        s.status_sessao === "em_andamento" ||
-        s.status_sessao === "conectado" ||
-        s.status_sessao === "pausada",
+        (s.status_sessao === "em_andamento" ||
+          s.status_sessao === "conectado" ||
+          s.status_sessao === "pausada") &&
+        Boolean(user?.id) &&
+        Boolean(s.terapeuta_id) &&
+        s.terapeuta_id !== user?.id,
     );
 
-    if (sessaoEmAndamento) {
-      const condutorOutro =
-        sessaoEmAndamento.terapeuta_id &&
-        sessaoEmAndamento.terapeuta_id !== user?.id;
-      const nomeCondutor =
-        sessaoEmAndamento.terapeuta?.nome ||
-        especialistas.find((e) => e.id === sessaoEmAndamento.terapeuta_id)?.nome ||
-        "outro especialista da equipe";
+    if (sessaoConcorrenteAtiva) {
+      const condutorNome =
+        sessaoConcorrenteAtiva.terapeuta?.nome ||
+        especialistas.find((e) => e.id === sessaoConcorrenteAtiva.terapeuta_id)
+          ?.nome ||
+        "outro especialista da Equipe Multidisciplinar";
+      const msgConflito = `Conflito de sessão ativa (409): Este paciente já está em atendimento conduzido por ${condutorNome}. Você pode acompanhar a sessão em tempo real pelo Cockpit em modo observador.`;
+      setAlertaConflitoEquipe(msgConflito);
+      toast.error(msgConflito);
+      return;
+    }
 
-      if (condutorOutro) {
-        setAlertaConflitoEquipe(
-          `Conflito 409: O paciente já possui um atendimento ativo conduzido por ${nomeCondutor}. Você pode acompanhar a sessão em tempo real pelo Cockpit em modo observador.`,
-        );
-        toast.warning(
-          `Atendimento ativo em andamento por ${nomeCondutor}. Redirecionando para o Cockpit em modo observador.`,
-        );
-        navigate(`/sessao/${sessaoEmAndamento.id}/monitoramento`);
-        return;
-      }
+    const minhaSessaoAtiva = sessoes.find(
+      (s) =>
+        (s.status_sessao === "em_andamento" ||
+          s.status_sessao === "conectado" ||
+          s.status_sessao === "pausada") &&
+        s.terapeuta_id === user?.id,
+    );
 
+    if (minhaSessaoAtiva) {
       toast.info("Retomando atendimento clínico em andamento.");
-      navigate(`/sessao/${sessaoEmAndamento.id}/monitoramento`);
+      navigate(`/sessao/${minhaSessaoAtiva.id}/monitoramento`);
       return;
     }
 
@@ -256,7 +260,7 @@ export function PerfilPacientePage() {
     setErroModalVinculo(null);
 
     try {
-      await pacienteService.vincularTerapeuta(id, terapeutaId);
+      await pacienteService.vincularTerapeuta(id, { terapeuta_id: terapeutaId });
       toast.success("Especialista vinculado à equipe multidisciplinar com sucesso!");
       setModalVincularAberto(false);
       await carregarEquipeMultidisciplinar(id, paciente);
@@ -411,7 +415,7 @@ export function PerfilPacientePage() {
             className="min-h-11 px-4 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
           >
             <Play className="h-4 w-4 fill-current" />
-            <span>Iniciar Sessão Clínica</span>
+            <span>Iniciar Sessão com este Paciente</span>
           </Button>
         </div>
       </div>

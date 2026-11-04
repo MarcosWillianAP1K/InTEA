@@ -163,7 +163,7 @@ export const ModalVincularEspecialista: React.FC<
             </div>
             <div>
               <DialogTitle className="text-xl font-extrabold text-gray-900">
-                Vincular Especialista da Clínica à Equipe Multidisciplinar
+                Vincular Especialista da Clínica
               </DialogTitle>
               <DialogDescription className="text-xs font-medium text-gray-500 mt-0.5">
                 {pacienteNome
@@ -190,7 +190,8 @@ export const ModalVincularEspecialista: React.FC<
         <div className="relative mt-2">
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
-            type="text"
+            type="search"
+            role="searchbox"
             value={termoBusca}
             onChange={(e) => setTermoBusca(e.target.value)}
             placeholder="Buscar por nome, especialidade ou registro (CREFITO/CRP)..."
@@ -318,6 +319,7 @@ export const ModalVincularEspecialista: React.FC<
             type="button"
             disabled={confirmarDesabilitado}
             onClick={handleConfirmar}
+            aria-label="Confirmar Vínculo"
             data-testid="btn-confirmar-vinculo"
             className="min-h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
