@@ -17,6 +17,11 @@ import {
   Activity,
 } from "lucide-react";
 import { ModalCompararSessoes } from "../components/ModalCompararSessoes";
+import { PainelEquipeMultidisciplinar, type EspecialistaEquipeItem } from "../components/PainelEquipeMultidisciplinar";
+import { ModalVincularEspecialista } from "../components/ModalVincularEspecialista";
+import { BadgeAutoriaMultidisciplinar } from "../components/BadgeAutoriaMultidisciplinar";
+import { http } from "@/core/api/http-client";
+import { ENDPOINTS } from "@/core/api/endpoints";
 import { pacienteService } from "../services/paciente.service";
 import type { Paciente } from "../types/paciente.types";
 import { GerenciadorAnotacoesProntuario } from "@/features/anotacao";
@@ -129,6 +134,67 @@ export function PerfilPacientePage() {
       </div>
     );
   }
+
+  const handleDesvincularEspecialista = async (terapeutaId: string) => {
+    if (!id) return;
+    try {
+      setRemovendoTerapeutaId(terapeutaId);
+      await pacienteService.desvincularTerapeuta(id, terapeutaId);
+      toast.success("Especialista desvinculado da equipe clínica com sucesso.");
+      // Atualiza lista local
+      setEquipeEspecialistas((prev) => prev.filter((esp) => esp.id !== terapeutaId));
+    } catch (err: any) {
+      const status = err?.response?.status || err?.status;
+      const msg = err?.response?.data?.error || err?.message || "";
+      if (status === 409 || msg.includes("órfão") || msg.includes("orfao")) {
+        toast.error("Não é possível desvincular: o paciente não pode ficar órfão (Regra RN04).");
+      } else if (status === 403 || msg.includes("Acesso negado")) {
+        toast.error("Acesso negado: terapeutas comuns só podem remover o próprio vínculo (Regra D1).");
+      } else {
+        toast.error(msg || "Falha ao desvincular especialista.");
+      }
+    } finally {
+      setRemovendoTerapeutaId(null);
+    }
+  };
+
+  const handleConfirmarVinculo = async (terapeutaId: string) => {
+    if (!id || !terapeutaId) return;
+    try {
+      setIsSubmittingVinculo(true);
+      setErroModalVinculo(null);
+      await pacienteService.vincularTerapeuta(id, { terapeuta_id: terapeutaId });
+      toast.success("Especialista vinculado com sucesso à equipe.");
+      setModalVincularAberto(false);
+      // Recarrega equipe
+      const atualizados = await pacienteService.listarTerapeutas(id);
+      const formatados: EspecialistaEquipeItem[] = (atualizados || []).map((t: any) => ({
+        id: t.id || t.terapeuta_id,
+        nome: t.nome || t.terapeuta?.nome || "Especialista",
+        especialidade: t.especialidade || t.terapeuta?.especialidade || null,
+        registro_profissional: t.registro_profissional || t.crefito || t.crp || t.terapeuta?.crefito || null,
+        crefito: t.crefito || t.terapeuta?.crefito || null,
+        crp: t.crp || t.terapeuta?.crp || null,
+        email: t.email || t.terapeuta?.email || null,
+      }));
+      setEquipeEspecialistas(formatados);
+    } catch (err: any) {
+      const status = err?.response?.status || err?.status;
+      const msg = err?.response?.data?.error || err?.message || "";
+      if (status === 403 || msg.includes("clínica diferente") || msg.includes("clinica diferente")) {
+        setErroModalVinculo("Acesso negado: o terapeuta pertence a outra clínica (RN04).");
+        toast.error("Acesso negado: o terapeuta pertence a outra clínica (RN04).");
+      } else if (status === 409 || msg.includes("já vinculado") || msg.includes("ja vinculado")) {
+        setErroModalVinculo("Este especialista já está vinculado a este prontuário.");
+        toast.error("Este especialista já está vinculado a este prontuário.");
+      } else {
+        setErroModalVinculo(msg || "Falha ao vincular especialista.");
+        toast.error(msg || "Falha ao vincular especialista.");
+      }
+    } finally {
+      setIsSubmittingVinculo(false);
+    }
+  };
 
   const idade = calcularIdade(paciente.data_nascimento);
   const responsavel = paciente.responsaveis?.[0];
@@ -319,6 +385,33 @@ export function PerfilPacientePage() {
         </p>
       </div>
 
+      {/* Seção: Equipe Multidisciplinar (RF18, RN04) */}
+      <PainelEquipeMultidisciplinar
+        especialistas={equipeEspecialistas}
+        usuarioLogadoId={user?.id}
+        loading={loadingEquipe}
+        removendoId={removendoTerapeutaId}
+        onAbrirModalVincular={() => {
+          setErroModalVinculo(null);
+          setModalVincularAberto(true);
+        }}
+        onDesvincularEspecialista={handleDesvincularEspecialista}
+        onRetry={() => {
+          if (id) {
+            pacienteService.listarTerapeutas(id).then((lista: any) => {
+              setEquipeEspecialistas(
+                (lista || []).map((t: any) => ({
+                  id: t.id || t.terapeuta_id,
+                  nome: t.nome || t.terapeuta?.nome || "Especialista",
+                  especialidade: t.especialidade || t.terapeuta?.especialidade || null,
+                  registro_profissional: t.registro_profissional || t.crefito || t.crp || null,
+                }))
+              );
+            });
+          }
+        }}
+      />
+
       {/* Seção: Gerenciador de Anotações do Prontuário (RF16, RF19, RF21, RN05) */}
       <GerenciadorAnotacoesProntuario pacienteId={id!} usuarioLogadoId={user?.id} />
 
@@ -366,6 +459,7 @@ export function PerfilPacientePage() {
               <TableHead className="text-xs font-bold text-foreground">Game Terapêutico</TableHead>
               <TableHead className="text-xs font-bold text-foreground">Data de Realização</TableHead>
               <TableHead className="text-xs font-bold text-foreground">Status</TableHead>
+              <TableHead className="text-xs font-bold text-foreground">Especialista / Autoria</TableHead>
               <TableHead className="text-right text-xs font-bold text-foreground pr-6">Relatório</TableHead>
             </TableRow>
           </TableHeader>
@@ -417,6 +511,14 @@ export function PerfilPacientePage() {
                       </Badge>
                     )}
                   </TableCell>
+                  <TableCell className="py-3">
+                    <BadgeAutoriaMultidisciplinar
+                      autorId={s.terapeuta_id}
+                      autorNome={s.terapeuta?.nome || (s.terapeuta_id === user?.id ? user?.nome : "Especialista da Equipe")}
+                      usuarioLogadoId={user?.id}
+                      size="sm"
+                    />
+                  </TableCell>
                   <TableCell className="text-right py-3 pr-6">
                     {s.status_sessao === "em_andamento" || s.status_sessao === "conectado" || s.status_sessao === "pausada" ? (
                       <Button
@@ -446,6 +548,17 @@ export function PerfilPacientePage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Modal de Vinculação de Especialista à Equipe (RF18, RN04) */}
+      <ModalVincularEspecialista
+        isOpen={modalVincularAberto}
+        onClose={() => setModalVincularAberto(false)}
+        terapeutasDisponiveis={terapeutasClinica}
+        idsJaVinculados={equipeEspecialistas.map((e) => e.id)}
+        onConfirmarVinculo={handleConfirmarVinculo}
+        isSubmitting={isSubmittingVinculo}
+        erro={erroModalVinculo}
+      />
 
       {/* Modal de Comparação Lado a Lado de Sessões (RF15 / RF19) */}
       <ModalCompararSessoes
