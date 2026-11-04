@@ -74,9 +74,27 @@ export interface TerapeutaVinculado {
   status_ativo?: boolean;
 }
 
+/**
+ * Contrato canônico de Especialista integrante da Equipe Multidisciplinar vinculada ao paciente (RF18, RN04).
+ */
+export interface EspecialistaVinculado {
+  id: string;
+  nome: string;
+  email?: string | null;
+  telefone?: string | null;
+  crp?: string | null;
+  crefito?: string | null;
+  registro_profissional?: string | null;
+  especialidade?: string | null;
+  papel_equipe?: string | null;
+  created_at?: string;
+  status_ativo?: boolean;
+}
+
 export interface TerapeutaPaciente {
   terapeuta_id: string;
   paciente_id: string;
+  papel_equipe?: string | null;
   created_at?: string;
   terapeuta?: TerapeutaVinculado;
 }
