@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -15,10 +15,16 @@ import {
   FileCheck,
   GitCompare,
   Activity,
+  Stethoscope,
+  RefreshCw,
 } from "lucide-react";
 import { ModalCompararSessoes } from "../components/ModalCompararSessoes";
+import { PainelEquipeMultidisciplinar } from "../components/PainelEquipeMultidisciplinar";
+import { ModalVincularEspecialista } from "../components/ModalVincularEspecialista";
 import { pacienteService } from "../services/paciente.service";
-import type { Paciente } from "../types/paciente.types";
+import type { Paciente, EspecialistaVinculado } from "../types/paciente.types";
+import { terapeutaService } from "@/features/terapeuta/services/terapeuta.service";
+import type { Terapeuta } from "@/features/terapeuta/types/terapeuta.types";
 import { GerenciadorAnotacoesProntuario } from "@/features/anotacao";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { sessaoService } from "@/features/sessao/services/sessaoService";
@@ -26,6 +32,7 @@ import type { Sessao } from "@/features/sessao/types/sessao.types";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -51,39 +58,191 @@ export function PerfilPacientePage() {
   const [sessoesSelecionadas, setSessoesSelecionadas] = useState<string[]>([]);
   const [modalCompararAberto, setModalCompararAberto] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [erroProntuario, setErroProntuario] = useState<string | null>(null);
+
+  // Estados da Equipe Multidisciplinar (RF18, RN04)
+  const [especialistas, setEspecialistas] = useState<EspecialistaVinculado[]>([]);
+  const [terapeutasClinica, setTerapeutasClinica] = useState<Terapeuta[]>([]);
+  const [loadingEquipe, setLoadingEquipe] = useState<boolean>(false);
+  const [erroEquipe, setErroEquipe] = useState<string | null>(null);
+  const [alertaConflitoEquipe, setAlertaConflitoEquipe] = useState<string | null>(null);
+  const [modalVincularAberto, setModalVincularAberto] = useState<boolean>(false);
+  const [isSubmittingVinculo, setIsSubmittingVinculo] = useState<boolean>(false);
+  const [erroModalVinculo, setErroModalVinculo] = useState<string | null>(null);
+  const [removendoEspecialistaId, setRemovendoEspecialistaId] = useState<string | null>(null);
 
   const user = useAuthStore((s) => s.user);
   const abrirModalPreSessao = useSessionStore((s) => s.abrirModalPreSessao);
   const selecionarPaciente = useSessionStore((s) => s.selecionarPaciente);
 
-  useEffect(() => {
-    if (!id) return;
-
-    let isMounted = true;
-    async function carregarDados() {
+  const carregarEquipeMultidisciplinar = useCallback(
+    async (pacienteId: string, dadosPacienteFallback?: Paciente | null) => {
+      setLoadingEquipe(true);
+      setErroEquipe(null);
       try {
-        setLoading(true);
-        const [dadosPaciente, resSessoes] = await Promise.all([
-          pacienteService.buscarPorId(id!),
-          sessaoService.listar({ pacienteId: id! }),
+        const [listaVinculados, listaClinica] = await Promise.all([
+          pacienteService.listarTerapeutasVinculados
+            ? pacienteService.listarTerapeutasVinculados(pacienteId)
+            : Promise.resolve([]),
+          terapeutaService.listar
+            ? terapeutaService.listar().catch(() => [] as Terapeuta[])
+            : Promise.resolve([] as Terapeuta[]),
         ]);
 
-        if (isMounted) {
-          setPaciente(dadosPaciente);
-          setSessoes((resSessoes?.data || []).filter((s) => s.status_sessao !== "aguardando_pareamento"));
-        }
-      } catch {
-        toast.error("Erro ao carregar prontuário do paciente.");
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    }
+        setTerapeutasClinica(listaClinica);
 
+        if (listaVinculados && listaVinculados.length > 0) {
+          setEspecialistas(listaVinculados);
+        } else if (dadosPacienteFallback?.terapeutas?.length) {
+          setEspecialistas(
+            dadosPacienteFallback.terapeutas.map((v) => ({
+              id: v.terapeuta?.id ?? v.terapeuta_id,
+              nome: v.terapeuta?.nome ?? "Especialista da Equipe",
+              email: v.terapeuta?.email ?? null,
+              telefone: v.terapeuta?.telefone ?? null,
+              crp: v.terapeuta?.crp ?? null,
+              crefito: v.terapeuta?.crefito ?? null,
+              registro_profissional:
+                v.terapeuta?.registro_profissional ??
+                v.terapeuta?.crefito ??
+                v.terapeuta?.crp ??
+                null,
+              especialidade:
+                v.terapeuta?.especialidade ?? "Equipe Multidisciplinar",
+              papel_equipe: v.papel_equipe ?? "Equipe Multidisciplinar",
+              created_at: v.created_at,
+              status_ativo: v.terapeuta?.status_ativo ?? true,
+            })),
+          );
+        } else {
+          setEspecialistas([]);
+        }
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Falha ao carregar os especialistas vinculados ao paciente.";
+        setErroEquipe(msg);
+      } finally {
+        setLoadingEquipe(false);
+      }
+    },
+    [],
+  );
+
+  const carregarDados = useCallback(async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      setErroProntuario(null);
+      const [dadosPaciente, resSessoes] = await Promise.all([
+        pacienteService.buscarPorId(id),
+        sessaoService.listar({ pacienteId: id }),
+      ]);
+
+      setPaciente(dadosPaciente);
+      setSessoes(
+        (resSessoes?.data || []).filter(
+          (s) => s.status_sessao !== "aguardando_pareamento",
+        ),
+      );
+      await carregarEquipeMultidisciplinar(id, dadosPaciente);
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Erro ao carregar prontuário do paciente.";
+      setErroProntuario(msg);
+      toast.error("Erro ao carregar prontuário do paciente.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, carregarEquipeMultidisciplinar]);
+
+  useEffect(() => {
     void carregarDados();
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
+  }, [carregarDados]);
+
+  const handleConfirmarVinculoEspecialista = async (terapeutaId: string) => {
+    if (!id) return;
+    setIsSubmittingVinculo(true);
+    setErroModalVinculo(null);
+    setAlertaConflitoEquipe(null);
+    try {
+      await pacienteService.vincularTerapeuta(id, { terapeuta_id: terapeutaId });
+
+      const atualizados = pacienteService.listarTerapeutasVinculados
+        ? await pacienteService.listarTerapeutasVinculados(id)
+        : [];
+
+      const profissionalClinica = terapeutasClinica.find(
+        (t) => t.id === terapeutaId,
+      );
+
+      if (
+        atualizados.length > 0 &&
+        atualizados.some((e) => e.id === terapeutaId)
+      ) {
+        setEspecialistas(atualizados);
+      } else if (profissionalClinica) {
+        setEspecialistas((prev) =>
+          prev.some((e) => e.id === terapeutaId)
+            ? prev
+            : [
+                ...prev,
+                {
+                  id: profissionalClinica.id,
+                  nome: profissionalClinica.nome,
+                  email: profissionalClinica.email,
+                  crefito: profissionalClinica.crefito,
+                  registro_profissional:
+                    profissionalClinica.registro_profissional ??
+                    profissionalClinica.crefito,
+                  especialidade:
+                    profissionalClinica.especialidade ??
+                    "Equipe Multidisciplinar",
+                  papel_equipe: "Equipe Multidisciplinar",
+                  status_ativo: true,
+                },
+              ],
+        );
+      }
+
+      setModalVincularAberto(false);
+      toast.success(
+        "Especialista vinculado à Equipe Multidisciplinar com sucesso.",
+      );
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Não foi possível vincular o especialista selecionado.";
+      setErroModalVinculo(msg);
+      toast.error(msg);
+    } finally {
+      setIsSubmittingVinculo(false);
+    }
+  };
+
+  const handleDesvincularEspecialista = async (terapeutaId: string) => {
+    if (!id) return;
+    setRemovendoEspecialistaId(terapeutaId);
+    setAlertaConflitoEquipe(null);
+    try {
+      await pacienteService.desvincularTerapeuta(id, terapeutaId);
+      setEspecialistas((prev) => prev.filter((e) => e.id !== terapeutaId));
+      toast.success("Vínculo do especialista removido da Equipe Multidisciplinar.");
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Não é possível remover o único especialista vinculado ao paciente (409 Conflict).";
+      setAlertaConflitoEquipe(msg);
+      toast.error(msg);
+    } finally {
+      setRemovendoEspecialistaId(null);
+    }
+  };
 
   function calcularIdade(dataNasc?: string | null): string {
     if (!dataNasc) return "N/I";
@@ -103,14 +262,78 @@ export function PerfilPacientePage() {
 
   const handleIniciarSessaoComPaciente = () => {
     if (!paciente) return;
+
+    const sessaoConcorrenteAtiva = sessoes.find(
+      (s) =>
+        (s.status_sessao === "em_andamento" ||
+          s.status_sessao === "conectado" ||
+          s.status_sessao === "pausada") &&
+        Boolean(user?.id) &&
+        Boolean(s.terapeuta_id) &&
+        s.terapeuta_id !== user?.id,
+    );
+
+    if (sessaoConcorrenteAtiva) {
+      const condutorNome =
+        sessaoConcorrenteAtiva.terapeuta?.nome ||
+        especialistas.find((e) => e.id === sessaoConcorrenteAtiva.terapeuta_id)
+          ?.nome ||
+        "outro especialista da Equipe Multidisciplinar";
+      const msgConflito = `Conflito de sessão ativa (409): Este paciente já está em atendimento conduzido por ${condutorNome}. Você pode acompanhar a sessão em Modo Observador no Cockpit.`;
+      setAlertaConflitoEquipe(msgConflito);
+      toast.error(msgConflito);
+      return;
+    }
+
     abrirModalPreSessao();
     selecionarPaciente({ id: paciente.id, nome: paciente.nome });
   };
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center py-20 text-xs text-muted-foreground">
-        Carregando prontuário e histórico do paciente...
+      <div
+        data-testid="perfil-paciente-loading"
+        className="flex flex-1 flex-col gap-6 w-full max-w-7xl mx-auto py-4"
+      >
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-9 w-48 rounded-xl" />
+          <Skeleton className="h-10 w-56 rounded-xl" />
+        </div>
+        <Skeleton className="h-28 w-full rounded-2xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((item) => (
+            <Skeleton key={item} className="h-40 w-full rounded-xl" />
+          ))}
+        </div>
+        <span className="sr-only">
+          Carregando prontuário e histórico do paciente...
+        </span>
+      </div>
+    );
+  }
+
+  if (erroProntuario) {
+    return (
+      <div
+        data-testid="perfil-paciente-erro"
+        className="flex flex-1 flex-col items-center justify-center py-20 gap-4 text-center"
+      >
+        <AlertCircle className="h-10 w-10 text-red-500" />
+        <h2 className="text-lg font-bold text-foreground">
+          Falha ao carregar o prontuário
+        </h2>
+        <p className="text-xs text-muted-foreground max-w-sm">
+          {erroProntuario}
+        </p>
+        <Button
+          onClick={() => void carregarDados()}
+          variant="outline"
+          size="sm"
+          className="min-h-11 gap-2"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Tentar Novamente
+        </Button>
       </div>
     );
   }
@@ -319,6 +542,45 @@ export function PerfilPacientePage() {
         </p>
       </div>
 
+      {/* Seção: Equipe Multidisciplinar (Especialistas Vinculados) — RF18, RN04 */}
+      {alertaConflitoEquipe && (
+        <div
+          role="alert"
+          data-testid="alerta-conflito-equipe"
+          className="rounded-2xl border border-amber-300 bg-amber-50 p-4 flex items-start justify-between gap-3 text-amber-900 text-xs font-semibold shadow-2xs"
+        >
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <span>{alertaConflitoEquipe}</span>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setAlertaConflitoEquipe(null)}
+            className="h-7 px-2 text-xs text-amber-800 hover:bg-amber-100"
+          >
+            Fechar
+          </Button>
+        </div>
+      )}
+
+      <PainelEquipeMultidisciplinar
+        especialistas={especialistas}
+        usuarioLogadoId={user?.id}
+        loading={loadingEquipe}
+        erro={erroEquipe}
+        removendoId={removendoEspecialistaId}
+        onAbrirModalVincular={() => {
+          setErroModalVinculo(null);
+          setModalVincularAberto(true);
+        }}
+        onDesvincularEspecialista={handleDesvincularEspecialista}
+        onRetry={() => {
+          if (id) void carregarEquipeMultidisciplinar(id, paciente);
+        }}
+      />
+
       {/* Seção: Gerenciador de Anotações do Prontuário (RF16, RF19, RF21, RN05) */}
       <GerenciadorAnotacoesProntuario pacienteId={id!} usuarioLogadoId={user?.id} />
 
@@ -364,6 +626,7 @@ export function PerfilPacientePage() {
                 Sel.
               </TableHead>
               <TableHead className="text-xs font-bold text-foreground">Game Terapêutico</TableHead>
+              <TableHead className="text-xs font-bold text-foreground">Especialista (Equipe Multidisciplinar)</TableHead>
               <TableHead className="text-xs font-bold text-foreground">Data de Realização</TableHead>
               <TableHead className="text-xs font-bold text-foreground">Status</TableHead>
               <TableHead className="text-right text-xs font-bold text-foreground pr-6">Relatório</TableHead>
@@ -372,12 +635,25 @@ export function PerfilPacientePage() {
           <TableBody>
             {sessoes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-xs text-muted-foreground">
+                <TableCell colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
                   Este paciente ainda não possui sessões registradas.
                 </TableCell>
               </TableRow>
             ) : (
-              sessoes.map((s) => (
+              sessoes.map((s) => {
+                const espVinculado = especialistas.find(
+                  (e) => e.id === s.terapeuta_id,
+                );
+                const nomeEspecialistaSessao =
+                  s.terapeuta?.nome ||
+                  espVinculado?.nome ||
+                  "Especialista da Equipe";
+                const especialidadeSessao =
+                  espVinculado?.especialidade ||
+                  s.terapeuta?.registro_profissional ||
+                  "Equipe Multidisciplinar";
+
+                return (
                 <TableRow key={s.id} className="hover:bg-muted/30 border-b border-border/60">
                   <TableCell className="text-center py-3">
                     <input
@@ -390,7 +666,21 @@ export function PerfilPacientePage() {
                     />
                   </TableCell>
                   <TableCell className="text-xs font-semibold text-foreground py-3">
-                    {s.jogo?.nome || "Jogo Terapêutico"}
+                    {s.jogo?.nome || s.jogo?.titulo || "Jogo Terapêutico"}
+                  </TableCell>
+                  <TableCell
+                    data-testid={`autoria-sessao-${s.id}`}
+                    className="text-xs py-3"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-bold text-foreground flex items-center gap-1.5">
+                        <Stethoscope className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                        {nomeEspecialistaSessao}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {especialidadeSessao}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground py-3">
                     {s.data_hora_inicio ? new Date(s.data_hora_inicio).toLocaleString("pt-BR") : ""}
@@ -441,11 +731,24 @@ export function PerfilPacientePage() {
                     )}
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Modal de Vinculação de Especialista da Clínica à Equipe Multidisciplinar (RF18, RF19, RN04) */}
+      <ModalVincularEspecialista
+        isOpen={modalVincularAberto}
+        onClose={() => setModalVincularAberto(false)}
+        terapeutasDisponiveis={terapeutasClinica}
+        idsJaVinculados={especialistas.map((e) => e.id)}
+        onConfirmarVinculo={handleConfirmarVinculoEspecialista}
+        isSubmitting={isSubmittingVinculo}
+        erro={erroModalVinculo}
+        pacienteNome={paciente?.nome}
+      />
 
       {/* Modal de Comparação Lado a Lado de Sessões (RF15 / RF19) */}
       <ModalCompararSessoes

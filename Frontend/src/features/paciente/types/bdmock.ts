@@ -11,6 +11,7 @@ import type {
   DadosClinicos,
   Gatilho,
   TerapeutaPaciente,
+  EspecialistaVinculado,
   CriarPacienteDTO,
   AtualizarPacienteDTO,
   FiltroPacienteDTO,
@@ -177,6 +178,7 @@ export const MOCK_PACIENTE_PEDRO: Paciente = {
     {
       terapeuta_id: MOCK_TERAPEUTA_LOGADO.id,
       paciente_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      papel_equipe: "Especialista Responsável",
       created_at: "2026-01-15T10:30:00.000Z",
       terapeuta: {
         id: MOCK_TERAPEUTA_LOGADO.id,
@@ -186,6 +188,23 @@ export const MOCK_PACIENTE_PEDRO: Paciente = {
         crefito: MOCK_TERAPEUTA_LOGADO.crefito,
         registro_profissional: MOCK_TERAPEUTA_LOGADO.registro_profissional,
         especialidade: MOCK_TERAPEUTA_LOGADO.especialidade,
+        status_ativo: true,
+      },
+    },
+    {
+      terapeuta_id: "b3333333-3333-4333-8333-333333333333",
+      paciente_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      papel_equipe: "Equipe Multidisciplinar",
+      created_at: "2026-01-20T14:00:00.000Z",
+      terapeuta: {
+        id: "b3333333-3333-4333-8333-333333333333",
+        nome: "Dra. Luma Maiara",
+        email: "luma.maiara@intea.com.br",
+        telefone: "(86) 99988-7766",
+        crefito: "CRP-21/04567",
+        crp: "CRP-21/04567",
+        registro_profissional: "CRP-21/04567",
+        especialidade: "Psicologia Cognitivo-Comportamental e ABA",
         status_ativo: true,
       },
     },
@@ -546,6 +565,49 @@ export async function reativarPacienteMock(id: string): Promise<Paciente | null>
 }
 
 /**
+ * Realistic fixtures of multidisciplinary team specialists belonging to the clinic (RF18, RN04).
+ */
+export const MOCK_EQUIPE_MULTIDISCIPLINAR: EspecialistaVinculado[] = [
+  {
+    id: MOCK_TERAPEUTA_LOGADO.id,
+    nome: MOCK_TERAPEUTA_LOGADO.nome,
+    email: MOCK_TERAPEUTA_LOGADO.email,
+    telefone: MOCK_TERAPEUTA_LOGADO.telefone,
+    crefito: MOCK_TERAPEUTA_LOGADO.crefito,
+    registro_profissional: MOCK_TERAPEUTA_LOGADO.registro_profissional,
+    especialidade: MOCK_TERAPEUTA_LOGADO.especialidade,
+    papel_equipe: "Especialista Responsável",
+    created_at: "2026-01-15T10:30:00.000Z",
+    status_ativo: true,
+  },
+  {
+    id: "b3333333-3333-4333-8333-333333333333",
+    nome: "Dra. Luma Maiara",
+    email: "luma.maiara@intea.com.br",
+    telefone: "(86) 99988-7766",
+    crefito: "CRP-21/04567",
+    crp: "CRP-21/04567",
+    registro_profissional: "CRP-21/04567",
+    especialidade: "Psicologia Cognitivo-Comportamental e ABA",
+    papel_equipe: "Equipe Multidisciplinar",
+    created_at: "2026-01-20T14:00:00.000Z",
+    status_ativo: true,
+  },
+  {
+    id: "c4444444-4444-4444-8444-444444444444",
+    nome: "Dr. Hermeson Alves",
+    email: "hermeson.alves@intea.com.br",
+    telefone: "(86) 99977-1122",
+    crefito: "CREFITO-14/87654-TO",
+    registro_profissional: "CREFITO-14/87654-TO",
+    especialidade: "Psicomotricidade e Reabilitação Motora",
+    papel_equipe: "Equipe Multidisciplinar",
+    created_at: "2026-02-01T09:00:00.000Z",
+    status_ativo: true,
+  },
+];
+
+/**
  * Lists therapists linked to patient in mock storage.
  */
 export async function listarTerapeutasPacienteMock(
@@ -554,6 +616,41 @@ export async function listarTerapeutasPacienteMock(
   const paciente = pacientesMock.find((p) => p.id === pacienteId);
   if (!paciente) return [];
   return JSON.parse(JSON.stringify(paciente.terapeutas ?? []));
+}
+
+/**
+ * Lists normalized multidisciplinary specialists linked to patient in mock storage (RF18, RN04).
+ */
+export async function listarEspecialistasVinculadosMock(
+  pacienteId: string,
+): Promise<EspecialistaVinculado[]> {
+  const vinculos = await listarTerapeutasPacienteMock(pacienteId);
+  return vinculos.map((v) => {
+    const conhecido = MOCK_EQUIPE_MULTIDISCIPLINAR.find(
+      (esp) => esp.id === v.terapeuta_id,
+    );
+    return {
+      id: v.terapeuta?.id ?? v.terapeuta_id,
+      nome: v.terapeuta?.nome ?? conhecido?.nome ?? "Especialista da Equipe",
+      email: v.terapeuta?.email ?? conhecido?.email ?? null,
+      telefone: v.terapeuta?.telefone ?? conhecido?.telefone ?? null,
+      crp: v.terapeuta?.crp ?? conhecido?.crp ?? null,
+      crefito: v.terapeuta?.crefito ?? conhecido?.crefito ?? null,
+      registro_profissional:
+        v.terapeuta?.registro_profissional ??
+        v.terapeuta?.crefito ??
+        v.terapeuta?.crp ??
+        conhecido?.registro_profissional ??
+        null,
+      especialidade:
+        v.terapeuta?.especialidade ??
+        conhecido?.especialidade ??
+        "Equipe Multidisciplinar",
+      papel_equipe: v.papel_equipe ?? conhecido?.papel_equipe ?? "Equipe Multidisciplinar",
+      created_at: v.created_at ?? conhecido?.created_at,
+      status_ativo: v.terapeuta?.status_ativo ?? true,
+    };
+  });
 }
 
 /**
@@ -574,13 +671,23 @@ export async function vincularTerapeutaMock(
   );
 
   if (!jaVinculado) {
+    const conhecido = MOCK_EQUIPE_MULTIDISCIPLINAR.find(
+      (esp) => esp.id === terapeutaId,
+    );
     paciente.terapeutas.push({
       paciente_id: pacienteId,
       terapeuta_id: terapeutaId,
+      papel_equipe: conhecido?.papel_equipe ?? "Equipe Multidisciplinar",
       created_at: new Date().toISOString(),
       terapeuta: {
         id: terapeutaId,
-        nome: "Terapeuta Vinculado",
+        nome: conhecido?.nome ?? "Terapeuta Vinculado",
+        email: conhecido?.email ?? null,
+        telefone: conhecido?.telefone ?? null,
+        crefito: conhecido?.crefito ?? null,
+        crp: conhecido?.crp ?? null,
+        registro_profissional: conhecido?.registro_profissional ?? null,
+        especialidade: conhecido?.especialidade ?? "Equipe Multidisciplinar",
         status_ativo: true,
       },
     });
@@ -590,7 +697,7 @@ export async function vincularTerapeutaMock(
 }
 
 /**
- * Unlinks therapist from patient in mock storage.
+ * Unlinks therapist from patient in mock storage (prevents removing the last linked specialist - 409 Conflict).
  */
 export async function desvincularTerapeutaMock(
   pacienteId: string,
@@ -601,7 +708,18 @@ export async function desvincularTerapeutaMock(
     throw new Error("Paciente não encontrado para desvinculação.");
   }
 
-  paciente.terapeutas = (paciente.terapeutas ?? []).filter(
+  const listaAtual = paciente.terapeutas ?? [];
+  const estaVinculado = listaAtual.some((t) => t.terapeuta_id === terapeutaId);
+
+  if (estaVinculado && listaAtual.length <= 1) {
+    const erroConflito = new Error(
+      "Não é possível remover o único especialista vinculado ao paciente. O prontuário exige ao menos 1 responsável ativo.",
+    ) as Error & { status?: number };
+    erroConflito.status = 409;
+    throw erroConflito;
+  }
+
+  paciente.terapeutas = listaAtual.filter(
     (t) => t.terapeuta_id !== terapeutaId,
   );
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
+import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { useSessionPersistence } from "@/features/sessao/hooks/useSessionPersistence";
 import { useLiveTelemetry } from "@/features/sessao/hooks/useLiveTelemetry";
 import { useClinicalTimer } from "@/features/sessao/hooks/useClinicalTimer";
@@ -19,6 +20,8 @@ import {
   Gamepad2,
   Clock,
   ArrowLeft,
+  Eye,
+  Users,
 } from "lucide-react";
 
 /**
@@ -37,6 +40,7 @@ export function CockpitSessaoPage() {
   useSessionPersistence();
 
   // 2. Stores e estado da sessão
+  const user = useAuthStore((state) => state.user);
   const status = useSessionStore((state) => state.status);
   const config = useSessionStore((state) => state.config);
   const pareamento = useSessionStore((state) => state.pareamento);
@@ -49,6 +53,10 @@ export function CockpitSessaoPage() {
   const finalizarSessao = useSessionStore((state) => state.finalizarSessao);
   const restaurarSessao = useSessionStore((state) => state.restaurarSessao);
 
+  // Estado de condução e Modo Observador da Equipe Multidisciplinar (RF13, RF21, RN04)
+  const [terapeutaCondutorId, setTerapeutaCondutorId] = useState<string | null>(null);
+  const [terapeutaCondutorNome, setTerapeutaCondutorNome] = useState<string | null>(null);
+
   // Sincronização do Cockpit com a Sessão Clínica (Backend / API / BD)
   // REGRA CLÍNICA: O Cockpit DEVE aparecer SOMENTE quando a sessão está em andamento (RN01, RF12, RF13)
   useEffect(() => {
@@ -58,12 +66,9 @@ export function CockpitSessaoPage() {
       if (!paramSessaoId) return;
 
       // Se a sessão já estiver ativa no Zustand com os dados consistentes, evita re-fetch cíclico
-      if (
+      const jaHidratado =
         status === "em_andamento" &&
-        (pareamento?.sessionToken === paramSessaoId || config?.jogoTitulo)
-      ) {
-        return;
-      }
+        (pareamento?.sessionToken === paramSessaoId || config?.jogoTitulo);
 
       try {
         // Busca a sessão no backend/mock por ID ou Token de Pareamento
@@ -75,8 +80,35 @@ export function CockpitSessaoPage() {
         if (!ativo) return;
 
         if (!sessaoEncontrada) {
+          if (jaHidratado) return;
           toast.error("Sessão clínica não localizada.");
           navigate("/painel");
+          return;
+        }
+
+        if (sessaoEncontrada.terapeuta_id) {
+          setTerapeutaCondutorId(sessaoEncontrada.terapeuta_id);
+        }
+        if (sessaoEncontrada.terapeuta?.nome) {
+          setTerapeutaCondutorNome(sessaoEncontrada.terapeuta.nome);
+        }
+
+        const modoObservadorAtivo =
+          Boolean(user?.id) &&
+          Boolean(sessaoEncontrada.terapeuta_id) &&
+          sessaoEncontrada.terapeuta_id !== user?.id &&
+          sessaoEncontrada.modo_sessao !== "modo_livre";
+
+        if (jaHidratado) {
+          if (modoObservadorAtivo && sessaoEncontrada.session_token) {
+            SessionSocketManager.getInstance().entrarSala(sessaoEncontrada.session_token);
+            SessionSocketManager.getInstance()
+              .getSocket()
+              ?.emit("entrar_sessao", {
+                session_token: sessaoEncontrada.session_token,
+                role: "observador_equipe",
+              });
+          }
           return;
         }
 
@@ -144,6 +176,14 @@ export function CockpitSessaoPage() {
         // Entra na sala do WebSocket para streaming de telemetria
         if (sessaoEncontrada.session_token) {
           SessionSocketManager.getInstance().entrarSala(sessaoEncontrada.session_token);
+          if (modoObservadorAtivo) {
+            SessionSocketManager.getInstance()
+              .getSocket()
+              ?.emit("entrar_sessao", {
+                session_token: sessaoEncontrada.session_token,
+                role: "observador_equipe",
+              });
+          }
         }
       } catch (err) {
         console.error("Erro ao sincronizar sessão no Cockpit:", err);
@@ -155,7 +195,7 @@ export function CockpitSessaoPage() {
     return () => {
       ativo = false;
     };
-  }, [paramSessaoId, status, pareamento, config, restaurarSessao, navigate]);
+  }, [paramSessaoId, status, pareamento, config, restaurarSessao, navigate, user?.id]);
 
   // 3. Telemetria em tempo real
   const { metricas, historico } = useLiveTelemetry({
@@ -181,10 +221,18 @@ export function CockpitSessaoPage() {
   // Determina se a sessão ativa está em Modo Livre (sem paciente associado - RN01)
   const isModoLivre = !config?.pacienteId;
 
+  // Determina se o especialista logado está em Modo Observador da Equipe Multidisciplinar (RF13, RF21, RN04)
+  const isModoObservador =
+    !isModoLivre &&
+    Boolean(user?.id) &&
+    Boolean(terapeutaCondutorId) &&
+    terapeutaCondutorId !== user?.id;
+
   // Handlers de intervenção clínica imediata
 
   /** Dispatches pause command to store, remote game via WebSocket, and backend REST (RF21 — Manual Intervention). */
   const handlePausar = () => {
+    if (isModoObservador) return;
     pausarSessao();
     SessionSocketManager.getInstance().enviarComando({
       tipo: "pausar",
@@ -199,6 +247,7 @@ export function CockpitSessaoPage() {
    * Session Control (RF13, RF21): Unpauses clinical timer and signals game client to resume rendering.
    */
   const handleRetomar = () => {
+    if (isModoObservador) return;
     retomarSessao();
     SessionSocketManager.getInstance().enviarComando({
       tipo: "retomar",
@@ -210,6 +259,7 @@ export function CockpitSessaoPage() {
 
   /** Adjusts DDA level in store and broadcasts command to remote device (RF17, RN03). */
   const handleAjustarDda = (nivel: number) => {
+    if (isModoObservador) return;
     ajustarDda(nivel);
     SessionSocketManager.getInstance().enviarComando({
       tipo: "ajustar_dda",
@@ -342,6 +392,34 @@ export function CockpitSessaoPage() {
 
       {/* Conteúdo Principal do Cockpit */}
       <main className="flex-1 p-4 sm:p-8 flex flex-col gap-6 max-w-7xl mx-auto w-full">
+        {/* Banner Informativo do Modo Observador da Equipe Multidisciplinar (RF13, RF21, RN04) */}
+        {isModoObservador && (
+          <div
+            role="status"
+            data-testid="banner-modo-observador"
+            className="rounded-2xl border border-indigo-200 bg-indigo-50/90 dark:bg-indigo-950/40 dark:border-indigo-800 px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-indigo-900 dark:text-indigo-200 shadow-xs"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                <Eye className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-extrabold">
+                  Modo Acompanhamento da Equipe — Sessão conduzida por{" "}
+                  {terapeutaCondutorNome || "Especialista Responsável"}
+                </p>
+                <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300 mt-0.5">
+                  Você está acompanhando a telemetria ao vivo como integrante da Equipe Multidisciplinar. Os comandos de intervenção remota (Pausar, Ajustar DDA e Finalizar Sessão) são exclusivos do especialista condutor.
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold text-xs px-3 py-1 rounded-full flex items-center gap-1.5 shrink-0">
+              <Users className="w-3.5 h-3.5" />
+              Observador da Equipe
+            </Badge>
+          </div>
+        )}
+
         {/* Seção 1: Barra de Controles Clínicos do Terapeuta */}
         <section aria-label="Controles Clínicos">
           <ControlesClinicos
@@ -350,8 +428,11 @@ export function CockpitSessaoPage() {
             onPausar={handlePausar}
             onRetomar={handleRetomar}
             onAjustarDda={handleAjustarDda}
-            onAbrirModalFinalizar={() => setModalFinalizarAberto(true)}
+            onAbrirModalFinalizar={() => {
+              if (!isModoObservador) setModalFinalizarAberto(true);
+            }}
             onAbrirAnotacoes={() => setModalAnotacaoAberto(true)}
+            desabilitado={isModoObservador}
             isModoLivre={isModoLivre}
           />
         </section>

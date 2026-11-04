@@ -10,6 +10,8 @@ import {
   ShieldAlert,
   Activity,
   AlertCircle,
+  Stethoscope,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
@@ -18,7 +20,7 @@ import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import { sessaoService } from "@/features/sessao/services/sessaoService";
 import type { Sessao } from "@/features/sessao/types/sessao.types";
 import { pacienteService } from "../services/paciente.service";
-import type { Paciente } from "../types/paciente.types";
+import type { Paciente, EspecialistaVinculado } from "../types/paciente.types";
 import type {
   MetricasEngajamentoGeral,
   ResumoJogoPaciente,
@@ -154,6 +156,7 @@ export function HistoricoPacientePage() {
 
   // Estados de dados principais
   const [paciente, setPaciente] = useState<Paciente | null>(null);
+  const [especialistasEquipe, setEspecialistasEquipe] = useState<EspecialistaVinculado[]>([]);
   const [engajamento, setEngajamento] = useState<MetricasEngajamentoGeral | null>(null);
   const [jogos, setJogos] = useState<ResumoJogoPaciente[]>([]);
   const [jogoSelecionadoId, setJogoSelecionadoId] = useState<string | null>(null);
@@ -171,12 +174,44 @@ export function HistoricoPacientePage() {
   const [erroHttp, setErroHttp] = useState<{ status?: number; mensagem: string } | null>(null);
 
   /**
-   * Carrega os dados cadastrais do paciente (cabeçalho da página).
+   * Carrega os dados cadastrais do paciente e os especialistas vinculados à Equipe Multidisciplinar (RF18, RN04).
    */
   const carregarDadosPaciente = useCallback(async (id: string) => {
     try {
       const dados = await pacienteService.buscarPorId(id);
       setPaciente(dados);
+
+      if (typeof pacienteService.listarTerapeutasVinculados === "function") {
+        const vinculados = await pacienteService
+          .listarTerapeutasVinculados(id)
+          .catch(() => [] as EspecialistaVinculado[]);
+        if (vinculados.length > 0) {
+          setEspecialistasEquipe(vinculados);
+          return;
+        }
+      }
+
+      if (dados?.terapeutas?.length) {
+        setEspecialistasEquipe(
+          dados.terapeutas.map((v) => ({
+            id: v.terapeuta?.id ?? v.terapeuta_id,
+            nome: v.terapeuta?.nome ?? "Especialista da Equipe",
+            email: v.terapeuta?.email ?? null,
+            crefito: v.terapeuta?.crefito ?? null,
+            crp: v.terapeuta?.crp ?? null,
+            registro_profissional:
+              v.terapeuta?.registro_profissional ??
+              v.terapeuta?.crefito ??
+              v.terapeuta?.crp ??
+              null,
+            especialidade:
+              v.terapeuta?.especialidade ?? "Equipe Multidisciplinar",
+            papel_equipe: v.papel_equipe ?? "Equipe Multidisciplinar",
+            created_at: v.created_at,
+            status_ativo: v.terapeuta?.status_ativo ?? true,
+          })),
+        );
+      }
     } catch (err: unknown) {
       console.error("[HistoricoPacientePage.carregarDadosPaciente] Falha:", err);
     }
@@ -627,9 +662,48 @@ export function HistoricoPacientePage() {
       </section>
 
       {/* ========================================================================
-          4. LINHA DO TEMPO CRONOLÓGICA DE SESSÕES (RF15, RN01, RNF07)
+          4. LINHA DO TEMPO CRONOLÓGICA DE SESSÕES E AUTORIA MULTIDISCIPLINAR (RF15, RF18, RF21, RN01, RNF07)
           ======================================================================== */}
-      <section aria-label="Linha do Tempo Cronológica">
+      <section aria-label="Linha do Tempo Cronológica" className="space-y-4">
+        {especialistasEquipe.length > 0 && (
+          <div
+            data-testid="painel-autoria-multidisciplinar-historico"
+            className="rounded-2xl border border-border bg-card p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-2.5 text-xs">
+              <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+                <Users className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="font-bold text-foreground">
+                  Equipe Multidisciplinar (Especialistas Vinculados)
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Intervenções conduzidas de forma colaborativa pelos especialistas vinculados ao prontuário.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {especialistasEquipe.map((esp) => (
+                <Badge
+                  key={esp.id}
+                  data-testid={`badge-autoria-historico-${esp.id}`}
+                  variant="outline"
+                  className="bg-indigo-50/70 text-indigo-800 border-indigo-200 text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5"
+                >
+                  <Stethoscope className="h-3 w-3 text-indigo-600" />
+                  <span>{esp.nome}</span>
+                  {esp.especialidade && (
+                    <span className="text-indigo-600/80 font-normal">
+                      • {esp.especialidade}
+                    </span>
+                  )}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
         <LinhaDoTempoSessoes
           sessoes={sessoesLinhaDoTempo}
           isLoading={isLoading || isRefreshing}
