@@ -67,7 +67,7 @@ function mockResponse() {
 describe('BD/Back: Trilha de Auditoria de Acessos ao Prontuário Médico (RF08, RNF06)', () => {
   const caminhoMigration = path.resolve(
     process.cwd(),
-    '../Database/migrations/012_auditoria_prontuario.sql'
+    fs.existsSync(path.resolve(process.cwd(), '../Database/migrations/019_auditoria_prontuario.sql')) ? '../Database/migrations/019_auditoria_prontuario.sql' : '../Database/migrations/012_auditoria_prontuario.sql'
   );
   const caminhoDatabaseSql = path.resolve(
     process.cwd(),

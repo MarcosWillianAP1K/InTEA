@@ -15,8 +15,11 @@ import { Sessao, STATUS_SESSAO } from '../models/sessao.model.js';
 
 interface RawTerapeutaData {
   id: string;
+  nome?: string;
   nome_completo?: string;
   especialidade?: string;
+  crefito?: string;
+  registro_profissional?: string;
   registro_conselho?: string;
 }
 
@@ -89,9 +92,10 @@ export class SessaoConcorrenciaService {
           created_at,
           terapeuta:terapeuta_id(
             id,
-            nome_completo,
+            nome,
             especialidade,
-            registro_conselho
+            crefito,
+            registro_profissional
           )
         `)
         .eq('paciente_id', pacienteId.trim())
@@ -130,9 +134,9 @@ export class SessaoConcorrenciaService {
           if (t) {
             especialistaInfo = {
               id: t.id,
-              nome: t.nome_completo,
+              nome: t.nome || t.nome_completo,
               especialidade: t.especialidade,
-              registro_conselho: t.registro_conselho,
+              registro_conselho: t.crefito || t.registro_profissional || t.registro_conselho,
             };
           }
         }

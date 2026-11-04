@@ -76,7 +76,7 @@ function executarTriggerRelatorioSessao(
 describe('BD: Trigger de Bloqueio Estrito contra Alteração e Hard Delete em Relatórios (RN05 / RNF06)', () => {
   const caminhoMigration = path.resolve(
     process.cwd(),
-    '../Database/migrations/009_trigger_bloqueio_relatorio.sql'
+    fs.existsSync(path.resolve(process.cwd(), '../Database/migrations/018_trigger_bloqueio_relatorio.sql')) ? '../Database/migrations/018_trigger_bloqueio_relatorio.sql' : '../Database/migrations/009_trigger_bloqueio_relatorio.sql'
   );
   const caminhoDatabaseSql = path.resolve(
     process.cwd(),

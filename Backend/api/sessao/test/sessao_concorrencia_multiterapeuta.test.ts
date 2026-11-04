@@ -15,6 +15,7 @@ import { SessaoController } from '../controllers/sessao.controller.js';
 import { SessaoModel, STATUS_SESSAO, MODO_SESSAO, Sessao } from '../models/sessao.model.js';
 import { SessaoConcorrenciaService } from '../services/sessao-concorrencia.service.js';
 import { SessaoResultadoService } from '../services/sessao-resultado.service.js';
+import { RelatorioSessaoModel } from '../models/relatorio.model.js';
 import { SessaoGateway, RespostaComandoAck, EquipePresencaEvento } from '../../../core/websocket/sessao.gateway.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 
@@ -274,6 +275,9 @@ describe('Suíte Integrada: Concorrência e Equipe Multidisciplinar (Sprint 13)'
   // 2. Isolamento de Autoria e Permissões de Mutação (RF21)
   // ============================================================================
   describe('2. Isolamento do Condutor em Mutações Clínicas (RF21)', () => {
+    beforeEach(() => {
+      vi.spyOn(RelatorioSessaoModel, 'criar').mockResolvedValue({} as any);
+    });
     const sessaoDoTerapeutaA = criarSessaoMock({
       id: UUID_SESSAO_A,
       terapeuta_id: UUID_TERAPEUTA_A,

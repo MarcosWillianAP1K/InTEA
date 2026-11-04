@@ -150,7 +150,7 @@ describe('Histórico Longitudinal: View Materializada, Cache e SLA sub-50ms', ()
   describe('Auditoria DDL e Conformidade da Migração 014', () => {
     const migrationPath = path.resolve(
       process.cwd(),
-      '../Database/migrations/014_view_materializada_historico.sql'
+      fs.existsSync(path.resolve(process.cwd(), '../Database/migrations/020_view_materializada_historico.sql')) ? '../Database/migrations/020_view_materializada_historico.sql' : '../Database/migrations/014_view_materializada_historico.sql'
     );
 
     it('deve existir o arquivo de migração 014_view_materializada_historico.sql', () => {
