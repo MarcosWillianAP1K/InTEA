@@ -53,6 +53,7 @@ export interface ManifestoJogo {
   descricaoClinica?: string;
   objetivoTerapeutico?: string;
   objetivo_clinico?: string;
+  foco_pedagogico?: string;
   faixaEtaria?: string;
   faixa_etaria?: string;
   metricasSuportadas: MetricaSuportada[];

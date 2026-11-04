@@ -29,6 +29,61 @@ export const auditoriaRoutes = Router();
  *       500:
  *         description: Erro interno ao obter estatísticas
  */
+/**
+ * @openapi
+ * /api/auditoria/prontuario:
+ *   get:
+ *     tags:
+ *       - Auditoria
+ *     summary: Consulta registros de auditoria de acessos ao prontuário médico (RF08, RNF06)
+ *     description: Retorna acessos a dados de pacientes filtráveis por período e por terapeuta com status 200.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: terapeuta_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtrar por UUID do terapeuta
+ *       - in: query
+ *         name: paciente_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtrar por UUID do paciente
+ *       - in: query
+ *         name: periodo
+ *         schema:
+ *           type: string
+ *           enum: [hoje, 7d, 30d]
+ *         description: Janela temporal pré-definida
+ *       - in: query
+ *         name: data_inicio
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Data inicial do período
+ *       - in: query
+ *         name: data_fim
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Data final do período
+ *     responses:
+ *       200:
+ *         description: Registros de auditoria recuperados com sucesso
+ *       401:
+ *         description: Não autenticado
+ *       500:
+ *         description: Erro interno ao consultar auditoria de prontuário
+ */
+auditoriaRoutes.get(
+  '/prontuario',
+  authMiddleware,
+  AuditoriaController.consultarAcessosProntuario
+);
+
 auditoriaRoutes.get(
   '/estatisticas',
   authMiddleware,

@@ -5,6 +5,7 @@ import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 import { adminMiddleware } from '../../../core/middlewares/admin.middleware.js';
 import { validarIntervaloHistorico } from '../../../core/middlewares/query-range.middleware.js';
+import { auditoriaProntuarioMiddleware } from '../middlewares/auditoria-prontuario.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/paciente
@@ -187,7 +188,7 @@ pacienteRoutes.get('/', authMiddleware, validarIntervaloHistorico, PacienteContr
  *             example:
  *               error: "Erro interno ao buscar paciente."
  */
-pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarPorId);
+pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, auditoriaProntuarioMiddleware, PacienteController.buscarPorId);
 
 /**
  * @swagger
@@ -482,8 +483,8 @@ pacienteRoutes.post('/', authMiddleware, PacienteController.criar);
  *             example:
  *               error: "Erro interno ao atualizar paciente."
  */
-pacienteRoutes.put('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.atualizar);
-pacienteRoutes.patch('/:id', authMiddleware, verificarVisibilidadePaciente, PacienteController.atualizar);
+pacienteRoutes.put('/:id', authMiddleware, verificarVisibilidadePaciente, auditoriaProntuarioMiddleware, PacienteController.atualizar);
+pacienteRoutes.patch('/:id', authMiddleware, verificarVisibilidadePaciente, auditoriaProntuarioMiddleware, PacienteController.atualizar);
 
 // ------------------------------------------------------------------------------
 // 3. Exclusão e Reativação (Soft Delete e Hard Delete)
@@ -601,7 +602,7 @@ pacienteRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, PacienteCont
  *             example:
  *               error: "Erro interno ao desativar paciente."
  */
-pacienteRoutes.delete('/:id', authMiddleware, adminMiddleware, PacienteController.desativar);
+pacienteRoutes.delete('/:id', authMiddleware, adminMiddleware, auditoriaProntuarioMiddleware, PacienteController.desativar);
 
 /**
  * @swagger
