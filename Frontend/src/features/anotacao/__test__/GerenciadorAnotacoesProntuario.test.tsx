@@ -479,4 +479,96 @@ describe("GerenciadorAnotacoesProntuario e Componentes Modulares (Sprint 12)", (
       expect(screen.getByText(/Fallback Homologado Ativo/i)).toBeDefined();
     });
   });
+
+  describe("6. Auto-Save Local de Rascunho (RF16, RNF07, Issue #164)", () => {
+    const chaveStorage = `intea_anotacao_draft_${PACIENTE_ID}`;
+
+    beforeEach(() => {
+      window.sessionStorage.clear();
+    });
+
+    afterEach(() => {
+      window.sessionStorage.clear();
+    });
+
+    it("deve restaurar rascunho anterior e exibir o badge 'Rascunho restaurado'", async () => {
+      window.sessionStorage.setItem(chaveStorage, "Observação preliminar restaurada.");
+      vi.spyOn(anotacaoService, "listarPorPaciente").mockResolvedValue([]);
+
+      render(
+        <GerenciadorAnotacoesProntuario
+          pacienteId={PACIENTE_ID}
+          usuarioLogadoId={TERAPEUTA_LOGADO_ID}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("badge-rascunho-restaurado")).toBeDefined();
+      });
+
+      expect(screen.getByText(/Rascunho restaurado/i)).toBeDefined();
+      const textarea = screen.getByTestId("textarea-nova-anotacao") as HTMLTextAreaElement;
+      expect(textarea.value).toBe("Observação preliminar restaurada.");
+    });
+
+    it("deve permitir descartar o rascunho restaurado limpando o textarea e o sessionStorage", async () => {
+      window.sessionStorage.setItem(chaveStorage, "Texto a ser descartado.");
+      vi.spyOn(anotacaoService, "listarPorPaciente").mockResolvedValue([]);
+
+      render(
+        <GerenciadorAnotacoesProntuario
+          pacienteId={PACIENTE_ID}
+          usuarioLogadoId={TERAPEUTA_LOGADO_ID}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("botao-descartar-rascunho")).toBeDefined();
+      });
+
+      const botaoDescartar = screen.getByTestId("botao-descartar-rascunho");
+      fireEvent.click(botaoDescartar);
+
+      const textarea = screen.getByTestId("textarea-nova-anotacao") as HTMLTextAreaElement;
+      expect(textarea.value).toBe("");
+      expect(screen.queryByTestId("badge-rascunho-restaurado")).toBeNull();
+      expect(window.sessionStorage.getItem(chaveStorage)).toBeNull();
+    });
+
+    it("deve expurgar o rascunho do sessionStorage após submissão bem-sucedida na API", async () => {
+      window.sessionStorage.setItem(chaveStorage, "Texto que será salvo na API.");
+      vi.spyOn(anotacaoService, "listarPorPaciente").mockResolvedValue([]);
+      const criarSpy = vi.spyOn(anotacaoService, "criar").mockResolvedValue({
+        id: "nova-nota-salva",
+        paciente_id: PACIENTE_ID,
+        terapeuta_id: TERAPEUTA_LOGADO_ID,
+        sessao_id: null,
+        conteudo: "Texto que será salvo na API.",
+        soft_delete: false,
+        status_ativo: true,
+        created_at: new Date().toISOString(),
+      });
+
+      render(
+        <GerenciadorAnotacoesProntuario
+          pacienteId={PACIENTE_ID}
+          usuarioLogadoId={TERAPEUTA_LOGADO_ID}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("botao-salvar-nova-anotacao")).toBeDefined();
+      });
+
+      const botaoSalvar = screen.getByTestId("botao-salvar-nova-anotacao");
+      await act(async () => {
+        fireEvent.click(botaoSalvar);
+      });
+
+      expect(criarSpy).toHaveBeenCalled();
+      expect(window.sessionStorage.getItem(chaveStorage)).toBeNull();
+      const textarea = screen.getByTestId("textarea-nova-anotacao") as HTMLTextAreaElement;
+      expect(textarea.value).toBe("");
+    });
+  });
 });

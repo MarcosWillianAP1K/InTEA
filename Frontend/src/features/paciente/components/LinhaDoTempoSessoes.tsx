@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Clock,
@@ -12,12 +12,13 @@ import {
   Calendar,
   Timer,
   Activity,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import type { SessaoHistoricoItem } from "../types/historico.types";
+import type { SessaoHistoricoItem, EspecialistaHistorico } from "../types/historico.types";
 
 /**
  * ============================================================================
@@ -34,6 +35,12 @@ export interface LinhaDoTempoSessoesProps {
   isLoading?: boolean;
   /** Nome do jogo selecionado para contexto visual ou undefined para visão geral */
   nomeJogoFiltro?: string;
+  /** ID do especialista selecionado para filtrar localmente a linha do tempo (Issue #187) */
+  especialistaFiltroId?: string;
+  /** Lista explícita de especialistas da equipe multidisciplinar (fallback: extraído de sessoes) */
+  especialistas?: EspecialistaHistorico[];
+  /** Callback disparado quando o especialista selecionado mudar internamente no componente */
+  onFiltrarEspecialista?: (terapeutaId?: string) => void;
   /** Callback opcional customizado para navegar até o resultado da sessão */
   onNavegarResultado?: (sessaoId: string) => void;
   /** Classes CSS adicionais */
@@ -100,10 +107,57 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
   sessoes,
   isLoading = false,
   nomeJogoFiltro,
+  especialistaFiltroId,
+  especialistas,
+  onFiltrarEspecialista,
   onNavegarResultado,
   className,
 }) => {
   const navigate = useNavigate();
+
+  // Especialistas disponíveis (populado dinamicamente de sessoes se lista externa não for fornecida)
+  const especialistasDisponiveis = useMemo(() => {
+    if (especialistas && especialistas.length > 0) {
+      return especialistas;
+    }
+    const mapa = new Map<string, EspecialistaHistorico>();
+    for (const s of sessoes) {
+      if (s.terapeuta_id) {
+        if (!mapa.has(s.terapeuta_id)) {
+          mapa.set(s.terapeuta_id, {
+            id: s.terapeuta_id,
+            nome: s.terapeuta_nome || `Terapeuta #${s.terapeuta_id.slice(0, 8)}`,
+            especialidade: s.especialidade || null,
+            registro_profissional: s.registro_profissional || null,
+          });
+        }
+      }
+    }
+    return Array.from(mapa.values());
+  }, [sessoes, especialistas]);
+
+  // Estado interno sincronizado com prop especialistaFiltroId
+  const [filtroEspecialistaInterno, setFiltroEspecialistaInterno] = useState<string | undefined>(
+    especialistaFiltroId,
+  );
+
+  useEffect(() => {
+    setFiltroEspecialistaInterno(especialistaFiltroId);
+  }, [especialistaFiltroId]);
+
+  const especialistaAtivoId =
+    filtroEspecialistaInterno;
+
+  const handleMudarEspecialista = (novoId?: string) => {
+    setFiltroEspecialistaInterno(novoId);
+    onFiltrarEspecialista?.(novoId);
+  };
+
+  // Filtragem reativa imediata preservando demais condições
+  const sessoesExibidas = useMemo(() => {
+    if (!especialistaAtivoId) return sessoes;
+    return sessoes.filter((s) => s.terapeuta_id === especialistaAtivoId);
+  }, [sessoes, especialistaAtivoId]);
 
   const handleVerRelatorio = (sessaoId: string) => {
     if (onNavegarResultado) {
@@ -167,7 +221,7 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
       aria-label="Linha do tempo cronológica de sessões do paciente"
     >
       {/* Cabeçalho da Linha do Tempo */}
-      <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between gap-3">
+      <div className="p-4 border-b border-border bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
             <Clock className="h-4 w-4" aria-hidden="true" />
@@ -182,15 +236,64 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
           </div>
         </div>
 
-        <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5">
-          {sessoes.length} {sessoes.length === 1 ? "sessão" : "sessões"}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Seletor de Especialista da Equipe Multidisciplinar (Issue #187) */}
+          {especialistasDisponiveis.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <UserCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+              <select
+                aria-label="Filtrar sessões por especialista responsável"
+                data-testid="select-filtro-especialista-timeline"
+                value={especialistaAtivoId || ""}
+                onChange={(e) => handleMudarEspecialista(e.target.value || undefined)}
+                className="min-h-11 h-11 px-2.5 py-1 text-xs rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer font-medium"
+              >
+                <option value="">Todas as Sessões da Equipe Multidisciplinar</option>
+                {especialistasDisponiveis.map((esp) => (
+                  <option key={esp.id} value={esp.id}>
+                    {esp.nome}{esp.especialidade ? ` • ${esp.especialidade}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5 shrink-0">
+            {sessoesExibidas.length} {sessoesExibidas.length === 1 ? "sessão" : "sessões"}
+          </Badge>
+        </div>
       </div>
 
       {/* Lista de Sessões em Linha do Tempo */}
       <div className="p-4 sm:p-5">
-        <div className="relative border-l-2 border-border/70 ml-3 sm:ml-4 pl-4 sm:pl-6 space-y-4">
-          {sessoes.map((sessao, index) => {
+        {sessoesExibidas.length === 0 ? (
+          <div
+            data-testid="empty-state-especialista"
+            className="p-8 text-center flex flex-col items-center justify-center gap-2.5"
+          >
+            <div className="h-10 w-10 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
+              <User className="h-5 w-5" />
+            </div>
+            <h4 className="text-sm font-bold text-foreground">
+              Nenhuma sessão encontrada para este especialista
+            </h4>
+            <p className="text-xs text-muted-foreground max-w-sm">
+              Não há intervenções registradas para o profissional selecionado com os filtros atuais.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleMudarEspecialista(undefined)}
+              data-testid="btn-limpar-filtro-especialista-timeline"
+              className="min-h-11 px-3.5 text-xs font-semibold cursor-pointer"
+            >
+              Ver todas as sessões da equipe
+            </Button>
+          </div>
+        ) : (
+          <div className="relative border-l-2 border-border/70 ml-3 sm:ml-4 pl-4 sm:pl-6 space-y-4">
+            {sessoesExibidas.map((sessao, index) => {
             const dataIso = sessao.data_hora_fim || sessao.data_hora_inicio;
             const { data, hora } = formatarDataHora(dataIso);
 
@@ -302,12 +405,28 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                         <span>Duração: {formatarDuracao(duracaoCalculada)}</span>
                       </span>
 
-                      {sessao.terapeuta_id && (
-                        <span className="flex items-center gap-1">
+                      {sessao.terapeuta_nome ? (
+                        <span
+                          data-testid={`terapeuta-info-${sessao.sessao_id}`}
+                          className="flex items-center gap-1 font-medium text-foreground/90"
+                        >
+                          <User className="h-3 w-3 text-primary" />
+                          <span>{sessao.terapeuta_nome}</span>
+                          {sessao.especialidade && (
+                            <span className="text-[11px] text-muted-foreground font-normal">
+                              ({sessao.especialidade})
+                            </span>
+                          )}
+                        </span>
+                      ) : sessao.terapeuta_id ? (
+                        <span
+                          data-testid={`terapeuta-info-${sessao.sessao_id}`}
+                          className="flex items-center gap-1"
+                        >
                           <User className="h-3 w-3 text-muted-foreground" />
                           <span>Terapeuta #{sessao.terapeuta_id.slice(0, 8)}</span>
                         </span>
-                      )}
+                      ) : null}
 
                       <span className="text-[11px] font-mono text-muted-foreground/70">
                         ID: {sessao.sessao_id.slice(0, 8)}...
@@ -348,8 +467,9 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                 </div>
               </div>
             );
-          })}
-        </div>
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

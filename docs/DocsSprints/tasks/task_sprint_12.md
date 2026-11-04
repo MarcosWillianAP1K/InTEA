@@ -253,7 +253,7 @@
 ### Front: Auto-Save Local de Rascunho (Draft Persistence) no Editor de Anotações Clínicas (Tipo: Feature)
 
 * **Tipo:** Feature
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Luma Maiara (@lumamaiara)
 * **Fronteira de Arquivos:** `Frontend/src/features/anotacao/hooks/useAnotacaoDraft.ts`, `Frontend/src/features/anotacao/components/GerenciadorAnotacoesProntuario.tsx`, `Frontend/src/features/anotacao/__test__/useAnotacaoDraft.test.ts`
 * **Ordem de Execução / Dependência:** Independente (Reforço de Ergonomia Clínica no Frontend).
 * **Requisitos:** RF16, RNF07

@@ -526,7 +526,7 @@ flowchart TD
 ### Front: Filtro por Especialista da Equipe na Linha do Tempo Longitudinal de Sessões (Tipo: Feature)
 
 * **Tipo:** Feature
-* **Responsável:** Não atribuído (Backlog Arquitetural)
+* **Responsável:** Luma Maiara (@lumamaiara)
 * **Fronteira de Arquivos:** `Frontend/src/features/paciente/components/FiltrosHistoricoAvancado.tsx`, `Frontend/src/features/paciente/components/LinhaDoTempoSessoes.tsx`, `Frontend/src/features/paciente/__test__/LinhaDoTempoFiltroEspecialista.test.tsx`
 * **Ordem de Execução / Dependência:** Independente (Ergonomia Analítica Multi-terapeuta no Histórico).
 * **Requisitos:** RF15, RF18, RF19, RNF07

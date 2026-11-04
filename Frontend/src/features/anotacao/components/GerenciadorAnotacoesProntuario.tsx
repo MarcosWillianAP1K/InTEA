@@ -6,6 +6,7 @@ import type {
 } from "../types/anotacao.types";
 import { anotacaoService } from "../services/anotacao.service";
 import { CardAnotacaoClinica } from "./CardAnotacaoClinica";
+import { useAnotacaoDraft } from "../hooks/useAnotacaoDraft";
 import { FiltrosAnotacoesClinicas } from "./FiltrosAnotacoesClinicas";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { Button } from "@/shared/components/ui/button";
@@ -78,7 +79,16 @@ export function GerenciadorAnotacoesProntuario({
     incluirInativos: false,
   });
 
-  const [novoTexto, setNovoTexto] = useState<string>("");
+  // Auto-Save Local de Rascunho com debounce de 500ms (RF16, RNF07, Issue #164)
+  const {
+    draft: novoTexto,
+    setDraft: setNovoTexto,
+    hasRestoredDraft,
+    isSavingDraft,
+    clearDraft,
+    discardDraft,
+  } = useAnotacaoDraft(pacienteId, sessaoId);
+
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const limiteCaracteres = 2000;
 
@@ -188,7 +198,7 @@ export function GerenciadorAnotacoesProntuario({
 
     try {
       const novaAnotacao = await anotacaoService.criar(dto);
-      setNovoTexto("");
+      clearDraft();
       // Atualização imediata otimista / reativa
       setAnotacoes((prev) => [novaAnotacao, ...prev]);
     } catch (err) {
@@ -283,6 +293,27 @@ export function GerenciadorAnotacoesProntuario({
             )}
           </div>
 
+          {/* Badge Informativo de Rascunho Restaurado (RF16, Issue #164) */}
+          {hasRestoredDraft && (
+            <div
+              data-testid="badge-rascunho-restaurado"
+              className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-xs font-medium"
+            >
+              <div className="flex items-center gap-1.5">
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Rascunho restaurado</span>
+              </div>
+              <button
+                type="button"
+                onClick={discardDraft}
+                className="text-2xs underline hover:text-amber-900 dark:hover:text-amber-200 cursor-pointer"
+                data-testid="botao-descartar-rascunho"
+              >
+                Descartar rascunho
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <label htmlFor="nova-anotacao-textarea" className="sr-only">
               Conteúdo da anotação clínica
@@ -306,7 +337,18 @@ export function GerenciadorAnotacoesProntuario({
             </div>
           </div>
 
-          <div className="flex items-center justify-end pt-1">
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              {isSavingDraft && (
+                <span
+                  data-testid="indicador-salvando-rascunho"
+                  className="text-2xs text-muted-foreground italic flex items-center gap-1"
+                >
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Salvando rascunho...
+                </span>
+              )}
+            </div>
             <Button
               type="submit"
               disabled={isSubmitting || !novoTexto.trim()}

@@ -250,6 +250,7 @@ export interface Patient {
   clinicalStatus: string;
   progress: number; // 0 a 100
   performanceScore?: number; // 0 a 100
+  performanceHistory?: number[]; // Histórico de pontos para sparkline de tendência
   lastSessionDate: string; // Ex: "08/09, 14:08"
   status: PatientStatus;
   responsibleName: string;

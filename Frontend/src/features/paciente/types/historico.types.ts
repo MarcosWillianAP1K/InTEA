@@ -102,7 +102,21 @@ export interface SessaoHistoricoItem {
   tempo_total_segundos?: number;
   duracao_segundos?: number;
   terapeuta_id?: string;
+  terapeuta_nome?: string;
+  especialidade?: string;
+  registro_profissional?: string;
   jogo_id?: string;
+  jogo_nome?: string;
+}
+
+/**
+ * Especialista da equipe multidisciplinar presente no histórico do paciente (Issue #187).
+ */
+export interface EspecialistaHistorico {
+  id: string;
+  nome: string;
+  especialidade?: string | null;
+  registro_profissional?: string | null;
 }
 
 /**
@@ -150,6 +164,8 @@ export interface RespostaHistoricoPaciente {
 export interface FiltrosHistorico {
   jogoId?: string;
   sessaoId?: string;
+  /** UUID do especialista para filtragem da linha do tempo da equipe multidisciplinar (Issue #187) */
+  terapeutaId?: string;
   periodo?: "7d" | "30d" | "3m" | "personalizado" | "todos";
   dataInicio?: string;
   dataFim?: string;

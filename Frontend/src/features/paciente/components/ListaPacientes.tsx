@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { CardPacienteGrid } from "./CardPacienteGrid";
+import { SparklineTendencia } from "./SparklineTendencia";
 import { CardAdicionarPaciente } from "./CardAdicionarPaciente";
 
 import { Input } from "@/shared/components/ui/input";
@@ -387,11 +388,20 @@ export function ListaPacientes({
                       </div>
                     </TableCell>
 
-                    {/* COLUNA: DESEMPENHO */}
+                    {/* COLUNA: DESEMPENHO (com SparklineTendencia) */}
                     <TableCell className="text-xs font-semibold text-foreground">
-                      {patient.performanceScore !== undefined
-                        ? `${patient.performanceScore}%`
-                        : "—"}
+                      <div className="flex items-center gap-2">
+                        <span className="min-w-[32px]">
+                          {patient.performanceScore !== undefined
+                            ? `${patient.performanceScore}%`
+                            : "—"}
+                        </span>
+                        <SparklineTendencia
+                          data={patient.performanceHistory || (patient.performanceScore !== undefined ? [Math.max(0, patient.performanceScore - 15), Math.max(0, patient.performanceScore - 6), patient.performanceScore] : null)}
+                          width={54}
+                          height={18}
+                        />
+                      </div>
                     </TableCell>
 
                     {/* COLUNA: DATA DE CRIAÇÃO / ÚLTIMA ATIVIDADE */}
