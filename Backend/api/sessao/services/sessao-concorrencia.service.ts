@@ -45,17 +45,13 @@ export class SessaoConcorrenciaService {
   ];
 
   /**
-   * Consulta se o paciente já possui uma sessão clínica ativa no momento (RF13, RF18, RN01, RN04).
+   * Evaluates whether a clinical patient already has a concurrent active session in progress.
+   * Returns 409 (Conflict) if the patient has an active session in 'aguardando_pareamento' (valid TTL), 'conectado', or 'em_andamento'.
+   * Recreational sessions without a patient identifier bypass concurrency locks.
    *
-   * Regras:
-   * - RN01 (Modo Livre): sessões sem paciente_id (null/undefined) não geram trava de concorrência.
-   * - Sessões em status terminal ('finalizada', 'cancelada', 'expirada', 'interrompida_por_queda') não geram bloqueio.
-   * - Em 'aguardando_pareamento': se expira_em já ultrapassou o horário atual, é tratada como expirada e não gera bloqueio.
-   * - Caso exista sessão ativa: retorna conflito: true, statusHttp: 409 com dados da sessão e especialista responsável.
-   *
-   * @param pacienteId - UUID do paciente clínico (ou null para modo livre)
-   * @param terapeutaSolicitanteId - UUID do terapeuta autenticado solicitando o início da sessão
-   * @returns ResultadoConcorrenciaDTO
+   * @param pacienteId - Clinical patient UUID (or null/undefined for free mode)
+   * @param terapeutaSolicitanteId - UUID of the authenticated therapist requesting session initiation
+   * @returns Concurrency evaluation result detailing conflict state, active session, and responsible specialist
    */
   static async verificarSessaoAtivaConcorrente(
     pacienteId?: string | null,
@@ -175,13 +171,14 @@ export class SessaoConcorrenciaService {
   }
 
   /**
-   * Garante que ações mutáveis críticas da máquina de estados (finalizar, cancelar)
-   * sejam executadas exclusivamente pelo terapeuta condutor ou SuperAdmin (RF21).
+   * Validates whether the authenticated user possesses authorization to mutate or terminate a clinical session.
+   * Returns 403 (Forbidden) if a team specialist other than the session conductor attempts mutation.
+   * SuperAdmin privileges bypass authorship checks, allowing institutional governance across all sessions.
    *
-   * @param sessao - Objeto da sessão clínica ou identificador de autoria
-   * @param usuarioLogadoId - UUID do usuário extraído do JWT autenticado (RF21)
-   * @param isSuperAdmin - Indicador se o usuário possui privilégios de SuperAdmin
-   * @returns ResultadoPermissaoMutacaoDTO
+   * @param sessao - Clinical session record or authorship identifier
+   * @param usuarioLogadoId - Authenticated user UUID extracted from JWT
+   * @param isSuperAdmin - Flag indicating whether the user possesses SuperAdmin privileges
+   * @returns Mutation permission result containing allowed status, HTTP code, and diagnostic message
    */
   static validarPermissaoMutacaoSessao(
     sessao: (Pick<Sessao, 'id'> & { terapeuta_id?: string | null }) | null | undefined,

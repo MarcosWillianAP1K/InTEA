@@ -372,7 +372,12 @@ export const pacienteService = {
   },
 
   /**
-   * Lists normalized multidisciplinary specialists linked to patient (RF18, RN04).
+   * Retrieves the multidisciplinary team specialists linked to a patient record.
+   * Enriches therapist records with professional council numbers and team role.
+   * Throws 403 (Forbidden) if the requesting therapist lacks active clinic membership.
+   *
+   * @param pacienteId - Target patient UUID
+   * @returns Array of associated specialist records with credentials
    */
   listarTerapeutasVinculados: async (
     pacienteId: string,
@@ -431,7 +436,13 @@ export const pacienteService = {
   },
 
   /**
-   * Associates a therapist from same clinic with patient (RF18, RF21, RN04).
+   * Associates a healthcare specialist with a patient's multidisciplinary team record.
+   * Throws 403 (Forbidden) if the specialist belongs to a differing clinic.
+   * Throws 409 (Conflict) if the specialist is already linked to this patient.
+   *
+   * @param pacienteId - Target patient UUID
+   * @param terapeutaIdOrDto - Specialist UUID or payload containing terapeuta_id
+   * @returns API confirmation message on successful link creation
    */
   vincularTerapeuta: async (
     pacienteId: string,
@@ -480,7 +491,12 @@ export const pacienteService = {
   },
 
   /**
-   * Unlinks a therapist from patient (RF18).
+   * Queries consolidated longitudinal session history and engagement metrics for a patient.
+   * Returns engagement overview, active games, and session timeline.
+   *
+   * @param pacienteId - Target patient UUID
+   * @param filtros - Optional date range query filters
+   * @returns Consolidated patient history response
    */
   buscarHistorico: async (
     pacienteId: string,
@@ -606,6 +622,15 @@ export const pacienteService = {
     );
   },
 
+  /**
+   * Removes an association between a specialist and a patient's multidisciplinary team.
+   * Throws 409 (Conflict) if attempting to unlink the sole remaining active specialist.
+   * Throws 403 (Forbidden) if user lacks permission to unlink peer specialists.
+   *
+   * @param pacienteId - Target patient UUID
+   * @param terapeutaId - Specialist therapist UUID to unlink
+   * @returns API confirmation message on successful unlinking
+   */
   desvincularTerapeuta: async (
     pacienteId: string,
     terapeutaId: string,

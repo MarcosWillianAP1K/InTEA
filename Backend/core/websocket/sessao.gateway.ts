@@ -601,8 +601,10 @@ export class SessaoGateway {
   }
 
   /**
-   * Emite para a sala da sessão o evento equipe_presenca_atualizada com
-   * o total e a lista de especialistas (terapeuta e observadores) acompanhando a sessão.
+   * Broadcasts real-time multidisciplinary team presence updates to the active session room.
+   * Emits connected specialist and observer rosters to all participants.
+   *
+   * @param sessionToken - Session PIN or alphanumeric token identifying the active room
    */
   emitirPresencaEquipe(sessionToken: string): void {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -626,7 +628,11 @@ export class SessaoGateway {
   }
 
   /**
-   * Retorna os especialistas conectados a uma sala de sessão.
+   * Retrieves the current roster of specialists and observers connected to a session room.
+   * Enumerates conductors and secondary observer specialists.
+   *
+   * @param sessionToken - Session PIN or alphanumeric token identifying the room
+   * @returns Array of active specialist connections with credentials and roles
    */
   obterEspecialistasConectados(sessionToken: string): EspecialistaConectado[] {
     const tokenNormalizado = this.normalizarToken(sessionToken);

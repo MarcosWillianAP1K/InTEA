@@ -78,7 +78,11 @@ export class AuditoriaProntuarioService {
   }
 
   /**
-   * Registra um novo acesso ou modificação na trilha imutável de prontuário.
+   * Persists an immutable medical record access or modification entry in the audit ledger.
+   * Captures timestamp, IP address, user agent, operation type, and target resource.
+   *
+   * @param dto - Medical record access audit payload including patient, therapist, and operation details
+   * @returns Created audit record or null on validation failure
    */
   static async registrarAcesso(dto: RegistrarAcessoProntuarioDTO): Promise<AuditoriaAcessoProntuario | null> {
     if (!dto.paciente_id || !validarUUID(dto.paciente_id)) {
@@ -130,7 +134,11 @@ export class AuditoriaProntuarioService {
   }
 
   /**
-   * Registra o evento de forma assíncrona e silenciosa para não degradar a latência da requisição HTTP do usuário.
+   * Asynchronously and silently records an audit entry without degrading HTTP response latency.
+   * Logs audit failures to server telemetry without interrupting caller workflow.
+   *
+   * @param dto - Medical record access audit payload
+   * @returns Resolves when persistence completes or catches silently
    */
   static async registrarSilencioso(dto: RegistrarAcessoProntuarioDTO): Promise<void> {
     try {
@@ -141,7 +149,11 @@ export class AuditoriaProntuarioService {
   }
 
   /**
-   * Consulta a trilha de auditoria de prontuário com filtros por período, terapeuta e paginação.
+   * Queries the medical record audit trail applying temporal ranges, specialist filters, and pagination.
+   * Enforces immutable historical accountability across medical record operations.
+   *
+   * @param filtros - Filtering criteria including patientId, therapistId, operation, date range, or relative period
+   * @returns Paginated audit records with total count and pagination metadata
    */
   static async consultarAcessos(filtros: FiltrosAuditoriaProntuario = {}): Promise<ResultadoPaginadoAuditoriaProntuario> {
     const page = Math.max(1, Number(filtros.page) || 1);
