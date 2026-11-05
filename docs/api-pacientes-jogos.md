@@ -586,42 +586,47 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 #### Rota 8: Listar Terapeutas Vinculados ao Paciente (Equipe Multidisciplinar)
-
 - **Método:** `GET`
 
 - **URL:** `/api/paciente/:id/terapeutas`
 - **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
 - **Segurança:** `authMiddleware` + `verificarVisibilidadePaciente` (**RN04**).
 - **Path Parameters:** `id` (`string`, UUID do paciente).
+- **Regras Clínicas (RF18, RN04):** Retorna a lista de todos os especialistas da equipe multidisciplinar vinculados ao paciente. Acesso restrito a profissionais da mesma instituição clínica vinculados em `terapeuta_paciente` (**RN04**) ou SuperAdmin. Em conformidade com a Seção 7.7 do Projeto InTEA, é vedado o termo "Co-Terapeuta", adotando-se sempre "Equipe Multidisciplinar" ou "Especialistas Vinculados".
 - **Respostas:**
   - **Status `200 OK`:**
 
     ```json
     {
-      "data": [
-        {
-          "created_at": "2026-09-20T10:30:00.000Z",
-          "terapeuta": {
+      "data": {
+        "terapeutas": [
+          {
             "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "nome": "Dra. Carolina Mendes",
-            "crp": "06/123456",
-            "especialidade": "Psicologia Cognitivo-Comportamental",
             "email": "carolina.mendes@intea.com.br",
-            "status_ativo": true
-          }
-        },
-        {
-          "created_at": "2026-09-22T14:10:00.000Z",
-          "terapeuta": {
+            "crefito": "06/123456",
+            "registro_profissional": "CRP 06/123456",
+            "especialidade": "Psicologia Cognitivo-Comportamental",
+            "papel_equipe": "especialista",
+            "status_ativo": true,
+            "created_at": "2026-09-20T10:30:00.000Z"
+          },
+          {
             "id": "4bb67a12-88ef-4109-b132-7c8899aabbcc",
             "nome": "Dr. Fernando Souza",
-            "crp": "06/987654",
-            "especialidade": "Fonoaudiologia",
             "email": "fernando.souza@intea.com.br",
-            "status_ativo": true
+            "crefito": "06/987654",
+            "registro_profissional": "CRFa 4-12345",
+            "especialidade": "Fonoaudiologia",
+            "papel_equipe": "especialista",
+            "status_ativo": true,
+            "created_at": "2026-09-22T14:10:00.000Z"
           }
+        ],
+        "meta": {
+          "total": 2
         }
-      ]
+      }
     }
     ```
 
@@ -643,8 +648,8 @@ Todas as respostas seguem formatos previsíveis:
 
 ---
 
-#### Rota 9: Vincular Novo Terapeuta ao Paciente (RF18)
 
+#### Rota 9: Vincular Novo Especialista da Equipe ao Paciente (RF18)
 - **Método:** `POST`
 
 - **URL:** `/api/paciente/:id/terapeutas`
@@ -661,9 +666,11 @@ Todas as respostas seguem formatos previsíveis:
   }
   ```
 
-- **Regras de Validação:**
-  - Bloqueia vínculo caso o paciente ou o terapeuta esteja inativo.
-  - **Isolamento Multitenant Clínico:** Bloqueia a tentativa de associar profissionais pertencentes a clínicas distintas.
+- **Regras de Validação e Negócio:**
+  - Bloqueia vínculo caso o paciente ou o profissional esteja inativo (**RN05**).
+  - **Isolamento Multitenant Clínico (RN04):** Rejeita com **`403 Forbidden`** tentativas de vincular terapeutas pertencentes a instituições clínicas distintas (`clinica_id` divergente).
+  - **Prevenção de Duplicidade (RF18):** Rejeita com **`409 Conflict`** tentativa de vincular profissional que já faz parte da equipe multidisciplinar do paciente.
+  - **Auditoria Institucional (RF08):** Dispara evento assíncrono `vinculo_equipe_criado` registrando `terapeuta_autor_id` (`req.user.id`), `terapeuta_alvo_id`, `paciente_id`, IP e timestamp.
 
 - **Respostas:**
   - **Status `201 Created`:**
@@ -674,11 +681,11 @@ Todas as respostas seguem formatos previsíveis:
     }
     ```
 
-  - **Status `400 Bad Request` (Bloqueio Institucional / Inativo):**
+  - **Status `400 Bad Request` (Parâmetro Inválido ou Profissional Inativo):**
 
     ```json
     {
-      "error": "Bloqueio de segurança: Não é permitido vincular terapeutas de clínicas diferentes."
+      "error": "O campo "terapeuta_id" (UUID) é obrigatório."
     }
     ```
 
@@ -690,6 +697,14 @@ Todas as respostas seguem formatos previsíveis:
     }
     ```
 
+  - **Status `403 Forbidden` (Isolamento Institucional RN04):**
+
+    ```json
+    {
+      "error": "Bloqueio de segurança: Não é permitido vincular terapeutas de clínicas diferentes."
+    }
+    ```
+
   - **Status `404 Not Found`:**
 
     ```json
@@ -698,10 +713,18 @@ Todas as respostas seguem formatos previsíveis:
     }
     ```
 
+  - **Status `409 Conflict` (Conflito de Vínculo Preexistente RF18):**
+
+    ```json
+    {
+      "error": "Conflito de vínculo: o terapeuta informado já está vinculado a este paciente."
+    }
+    ```
+
 ---
 
-#### Rota 10: Desvincular Terapeuta do Paciente (RF18)
 
+#### Rota 10: Desvincular Especialista da Equipe do Paciente (RF18)
 - **Método:** `DELETE`
 
 - **URL:** `/api/paciente/:id/terapeutas/:terapeutaId`
@@ -709,6 +732,10 @@ Todas as respostas seguem formatos previsíveis:
 - **Path Parameters:**
   - `id` (`string`, UUID do paciente).
   - `terapeutaId` (`string`, UUID do terapeuta a ser desvinculado).
+- **Regras Clínicas e Anti-Órfão (RF18):**
+  - **Prevenção de Paciente Órfão:** Rejeita com **`409 Conflict`** a tentativa de desvincular o único especialista ativo vinculado ao paciente (`contarTerapeutasAtivosVinculados <= 1`), impedindo prontuários órfãos na clínica.
+  - **Autorização (RF21):** Apenas o próprio especialista que deseja se auto-remover da equipe ou SuperAdmin institucional tem permissão para revogar o vínculo (`403 Forbidden` caso outro terapeuta tente forçar o desvínculo de um colega).
+  - **Auditoria Institucional (RF08):** Registra evento imutável `vinculo_equipe_removido`.
 - **Respostas:**
   - **Status `200 OK`:**
 
@@ -722,7 +749,17 @@ Todas as respostas seguem formatos previsíveis:
 
     ```json
     {
-      "error": "O parâmetro \"terapeutaId\" deve ser um UUID válido."
+      "error": "O parâmetro "terapeutaId" deve ser um UUID válido."
+    }
+    ```
+
+  - **Status `401 Unauthorized`:** Token JWT ausente ou expirado.
+
+  - **Status `403 Forbidden`:**
+
+    ```json
+    {
+      "error": "Acesso negado: apenas o próprio especialista ou um SuperAdmin pode remover este vínculo da equipe."
     }
     ```
 
@@ -730,9 +767,20 @@ Todas as respostas seguem formatos previsíveis:
 
     ```json
     {
-      "error": "Paciente não encontrado para desvincular terapeuta."
+      "error": "Vínculo não encontrado para este paciente e terapeuta."
     }
     ```
+
+  - **Status `409 Conflict` (Bloqueio Anti-Órfão RF18):**
+
+    ```json
+    {
+      "error": "Operação bloqueada: não é permitido remover o único especialista vinculado ao paciente. Vincule outro profissional da clínica antes de realizar a transferência."
+    }
+    ```
+
+---
+
 
 #### Rota 11: Consultar Histórico Longitudinal do Paciente (Engajamento e Séries por Jogo)
 
@@ -1444,6 +1492,7 @@ Todas as respostas seguem formatos previsíveis:
 | Método | Endpoint | Protegido | Requisito / Regra | Finalidade |
 | :--- | :--- | :---: | :--- | :--- |
 | `GET` | `/api/sessao/codigo-pareamento` | Sim (JWT) | **RF10** | Gera código legível único de pareamento remoto (PIN) |
+| `GET` | `/api/sessao` | Sim (JWT + Vínculo) | **RF18**, **RN04** | Lista sessões clínicas e livres com filtros, paginação e visibilidade compartilhada da equipe |
 | `POST` | `/api/sessao/iniciar` | Sim (JWT + Vínculo) | **RF12**, **RF13**, **RN01**, **RN03**, **RN04** | Inicia nova sessão clínica ou em modo livre, emite token e vincula contexto DDA |
 | `GET` | `/api/sessao/contexto-sugerido/:pacienteId` | Sim (JWT + Vínculo) | **RF12**, **RF17**, **RN04** | Consulta gatilhos sensoriais do paciente e contexto sugerido para o modal pré-sessão |
 | `POST` | `/api/sessao/parear` | Não (Launcher Game) | **RF10**, **RNF03** | Handshake de pareamento remoto do tablet/VR confirmando conexão ativa |
@@ -1479,6 +1528,72 @@ Todas as respostas seguem formatos previsíveis:
   - **Status `500 Internal Server Error`:** Erro ao gerar código único após 10 tentativas consecutivas.
 
 ---
+
+#### Rota 1.1: Listar Sessões Terapêuticas com Filtros e Visibilidade Multidisciplinar (RF18, RN04)
+
+- **Método:** `GET`
+- **URL:** `/api/sessao`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Segurança e Visibilidade Compartilhada (RF18, RN04):**
+  - Quando `pacienteId` for informado: se o terapeuta autenticado possuir vínculo ativo em `terapeuta_paciente` (e mesma `clinica_id`), o sistema **não restringe por terapeuta autor**, permitindo que o especialista consulte todo o histórico de sessões clínicas daquele paciente realizadas por qualquer membro da equipe multidisciplinar (**RF18**).
+  - Caso `pacienteId` seja informado e o terapeuta não possua vínculo ativo com o paciente, a requisição é rejeitada com **`403 Forbidden`** (**RN04**).
+  - Quando `pacienteId` for omitido: terapeuta comum visualiza apenas sessões em que atuou como condutor (`terapeuta_id = req.user.id`). SuperAdmins com `all=true` visualizam o ecossistema global.
+  - Partidas em `modo_livre` (**RN01**) permanecem estritamente restritas ao seu criador ou SuperAdmin.
+- **Query Parameters:**
+  - `page` (`integer`, opcional, padrão `1`): Página da listagem.
+  - `limit` (`integer`, opcional, padrão `10`): Máximo de registros por página.
+  - `status` (`string`, opcional): Filtro por status (`aguardando_pareamento`, `conectado`, `em_andamento`, `finalizada`, `cancelada`, `expirada`).
+  - `dataInicio` (`string (YYYY-MM-DD)`, opcional): Data inicial.
+  - `dataFim` (`string (YYYY-MM-DD)`, opcional): Data final.
+  - `pacienteId` (`string (UUID)`, opcional): UUID do paciente para visualização do prontuário compartilhado da equipe (**RF18**).
+  - `jogoId` (`string (UUID)`, opcional): Filtro por jogo específico do catálogo.
+  - `modo` (`string`, opcional): `"sessao_clinica"` ou `"modo_livre"`.
+  - `all` (`boolean`, opcional, exclusivo SuperAdmin): Visualização global irrestrita.
+- **Respostas:**
+  - **Status `200 OK`:**
+
+    ```json
+    {
+      "data": [
+        {
+          "id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
+          "session_token": "4M5S-8U7B",
+          "status_sessao": "finalizada",
+          "modo_sessao": "sessao_clinica",
+          "paciente_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "terapeuta_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "terapeuta": {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "nome": "Dra. Carolina Mendes",
+            "especialidade": "Psicologia Cognitivo-Comportamental"
+          },
+          "jogo_id": "8b5a034f-9e77-4ad3-9b6e-1d54e5cf4291",
+          "data_hora_inicio": "2026-10-07T23:30:15.000Z",
+          "data_hora_fim": "2026-10-07T23:55:20.000Z",
+          "created_at": "2026-10-07T23:20:00.000Z"
+        }
+      ],
+      "meta": {
+        "total": 1,
+        "page": 1,
+        "limit": 10,
+        "totalPages": 1
+      }
+    }
+    ```
+
+  - **Status `400 Bad Request`:** Parâmetro `pacienteId` malformado (não é UUID).
+  - **Status `401 Unauthorized`:** Token JWT ausente ou expirado.
+  - **Status `403 Forbidden` (RN04):**
+
+    ```json
+    {
+      "error": "Acesso negado: o terapeuta não possui vínculo ativo com este paciente (RN04)."
+    }
+    ```
+
+---
+
 
 #### Rota 2: Iniciar Nova Sessão Clínica ou Modo Livre (RF12, RN01, RN03)
 
@@ -1546,6 +1661,33 @@ Todas as respostas seguem formatos previsíveis:
 
   - **Status `401 Unauthorized`:** Token JWT ausente ou inválido.
   - **Status `403 Forbidden` (RN04):** Terapeuta sem vínculo com o paciente indicado.
+
+  - **Status `409 Conflict` (Trava de Sessão Clínica Simultânea Concorrente — RF13 / Concorrência):**
+
+    Retornado quando o paciente já possui uma sessão clínica ativa no momento (`aguardando_pareamento` não expirada, `conectado` ou `em_andamento`):
+
+    ```json
+    {
+      "error": "O paciente já possui uma sessão clínica ativa no momento.",
+      "codigo": "SESSAO_CLINICA_SIMULTANEA_CONFLITO",
+      "detalhes": "Não é permitido iniciar múltiplas sessões clínicas simultâneas para o mesmo paciente.",
+      "data": {
+        "conflito": true,
+        "sessao_ativa": {
+          "id": "e4f8d912-32a1-4bb6-9811-6677889900aa",
+          "status_sessao": "em_andamento",
+          "terapeuta_id": "4bb67a12-88ef-4109-b132-7c8899aabbcc",
+          "especialista_responsavel": {
+            "id": "4bb67a12-88ef-4109-b132-7c8899aabbcc",
+            "nome": "Dr. Fernando Souza",
+            "especialidade": "Fonoaudiologia",
+            "crefito": "06/987654",
+            "registro_profissional": "CRFa 4-12345"
+          }
+        }
+      }
+    }
+    ```
 
 ---
 
@@ -1809,6 +1951,16 @@ Todas as respostas seguem formatos previsíveis:
 
   - **Status `400 Bad Request`:** Sessão já finalizada, cancelada, expirada ou ainda não pareada.
   - **Status `401 Unauthorized`:** Token JWT ausente ou expirado.
+  - **Status `403 Forbidden` (Guarda de Autoria do Condutor — RF21):**
+
+    ```json
+    {
+      "error": "Acesso negado: apenas o terapeuta condutor pode finalizar esta sessão.",
+      "codigo": "FORBIDDEN_MUTACAO_CONDUTOR",
+      "detalhes": "Especialistas vinculados acompanham a sessão como observadores e não possuem permissão de encerramento."
+    }
+    ```
+
   - **Status `404 Not Found`:** Sessão não encontrada.
 
 ---
@@ -1833,6 +1985,17 @@ Todas as respostas seguem formatos previsíveis:
     ```
 
   - **Status `400 Bad Request`:** Tentativa de cancelar sessão em status terminal.
+  - **Status `401 Unauthorized`:** Token JWT ausente ou expirado.
+  - **Status `403 Forbidden` (Guarda de Autoria do Condutor — RF21):**
+
+    ```json
+    {
+      "error": "Acesso negado: apenas o terapeuta condutor pode cancelar esta sessão.",
+      "codigo": "FORBIDDEN_MUTACAO_CONDUTOR",
+      "detalhes": "Especialistas vinculados acompanham a sessão como observadores e não possuem permissão de cancelamento."
+    }
+    ```
+
   - **Status `404 Not Found`:** Sessão não encontrada.
 
 ---
@@ -2293,16 +2456,67 @@ Todas as respostas seguem formatos previsíveis:
 ---
 
 ## 6. Módulo da Trilha de Auditoria Clínica (`/api/auditoria`)
-
 ### 6.1 Resumo dos Endpoints
 
 | Método | Endpoint | Protegido | Requisito / Regra | Finalidade |
 | :--- | :--- | :---: | :--- | :--- |
+| `GET` | `/api/auditoria` | Sim (JWT) | **RF07**, **RF08**, **RN04**, **RNF06** | Lista eventos imutáveis com filtros por paciente e ação clínica |
 | `GET` | `/api/auditoria/sessao/:sessaoId` | Sim (JWT + Vínculo) | **RF13**, **RF21**, **RN04**, **RN05**, **RNF06** | Consulta a linha do tempo cronológica imutável da sessão clínica |
+| `GET` | `/api/auditoria/prontuario` | Sim (JWT) | **RF08**, **RNF06** | Consulta acessos e visualizações ao prontuário do paciente |
+| `GET` | `/api/auditoria/estatisticas` | Sim (JWT) | **RF07**, **RF08** | Estatísticas consolidadas para cartões de conformidade LGPD |
+| `POST` | `/api/auditoria` | Sim (JWT) | **RF08**, **RF21**, **RNF06** | Grava formalmente evento imutável na trilha de auditoria |
 
 ---
 
 ### 6.2 Detalhamento de Rotas — Auditoria
+
+#### Rota 0: Listar Eventos de Auditoria Institucional e Vínculos (RF07, RF08, RN04)
+
+- **Método:** `GET`
+- **URL:** `/api/auditoria`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Segurança e Multitenancy (RN04):** Acesso autenticado. Terapeutas comuns visualizam unicamente eventos pertencentes à sua instituição clínica (`clinica_id`). SuperAdmins possuem visão global.
+- **Query Parameters:**
+  - `page` (`integer`, padrão `1`): Página da listagem.
+  - `limit` (`integer`, padrão `10`): Itens por página (máximo 100).
+  - `pacienteId` (`string (UUID)`, opcional): Filtra eventos clínicos e mutações de equipe vinculadas ao paciente (**RF08**).
+  - `tipoAcao` (`string`, opcional): Filtra por ação clínica específica (`vinculo_equipe_criado`, `vinculo_equipe_removido`, `sessao_iniciada`, `sessao_finalizada`, `intervencao_dda`).
+  - `busca` (`string`, opcional): Busca textual por nome do autor ou descrição.
+- **Respostas:**
+  - **Status `200 OK`:**
+
+    ```json
+    {
+      "data": [
+        {
+          "id": "aud-1010-2020-3030-4040",
+          "paciente_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "terapeuta_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "terapeuta_nome": "Dra. Carolina Mendes",
+          "acao": "vinculo_equipe_criado",
+          "detalhes_json": {
+            "terapeuta_alvo_id": "4bb67a12-88ef-4109-b132-7c8899aabbcc",
+            "papel_equipe": "especialista"
+          },
+          "ip": "192.168.1.50",
+          "user_agent": "Mozilla/5.0 Chrome/129.0",
+          "created_at": "2026-10-30T10:15:00.000Z"
+        }
+      ],
+      "meta": {
+        "total": 1,
+        "page": 1,
+        "limit": 10,
+        "totalPages": 1
+      }
+    }
+    ```
+
+  - **Status `400 Bad Request`:** `pacienteId` malformado (não é UUID).
+  - **Status `401 Unauthorized`:** Token ausente ou inválido.
+
+---
+
 
 #### Rota 1: Consulta da Linha do Tempo Imutável da Sessão (RF13, RNF06, RN05)
 

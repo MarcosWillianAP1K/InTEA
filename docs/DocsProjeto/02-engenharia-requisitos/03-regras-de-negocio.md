@@ -151,3 +151,44 @@ A tabela abaixo reproduz o Dicionário de Dados canônico registrado na Tabela 2
 * `[Imagem 18: Tabelas das Classes no Banco de Dados]` — Estrutura física das tabelas instanciadas no PostgreSQL do Supabase.
 * `[Imagem 19: Tabela de Clínicas no Banco de Dados]` — Isolamento multi-tenant institucional garantindo o cumprimento de **RN04**.
 * `[Imagem 20: Tabela Associativa Terapeuta-Paciente]` — Tabela associativa com chave composta gerenciando vínculos de equipe multidisciplinar.
+
+---
+
+## 5. Governança da Equipe Multidisciplinar, Concorrência e Auditoria (Sprint 13)
+
+### 5.1. Matriz de Permissões: Leitura Compartilhada (RF18) vs. Escrita por Autoria (RF21)
+
+Em clínicas multidisciplinares, múltiplos especialistas (Psicólogos ABA, Fonoaudiólogos, Terapeutas Ocupacionais) compartilham o acompanhamento do mesmo paciente. Para garantir interoperabilidade clínica e resguardar a autoria indelével perante conselhos de classe (CRP, CREFITO), o InTEA aplica uma assimetria deliberada entre operações de leitura e escrita:
+
+| Operação Clínica | Endpoint / Ação | Terapeuta Criador / Condutor | Outro Especialista Vinculado | Especialista Sem Vínculo ou Outra Clínica | SuperAdmin |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Consultar Prontuário e Histórico** | `GET /api/paciente/:id`, `/historico` | `200 OK` | `200 OK` (Leitura Compartilhada **RF18**) | `403 Forbidden` (**RN04**) | `200 OK` |
+| **Listar Sessões do Paciente** | `GET /api/sessao?pacienteId=:id` | `200 OK` | `200 OK` (Vê sessões de todos os colegas) | `403 Forbidden` (**RN04**) | `200 OK` |
+| **Visualizar Resultado de Sessão** | `GET /api/sessao/:id/resultado` | `200 OK` | `200 OK` (Identifica o condutor) | `403 Forbidden` (**RN04**) | `200 OK` |
+| **Listar Anotações Clínicas** | `GET /api/anotacao/paciente/:id` | `200 OK` | `200 OK` (Vê todas as notas com autor) | `403 Forbidden` (**RN04**) | `200 OK` |
+| **Criar Nova Anotação** | `POST /api/anotacao` | `201 Created` | `201 Created` (Assinada com seu próprio JWT) | `403 Forbidden` (**RN04**) | `201 Created` |
+| **Editar Anotação Existente** | `PATCH /api/anotacao/:id` | `200 OK` | **`403 Forbidden`** (Escrita Isolada **RF21**) | `403 Forbidden` | `200 OK` |
+| **Inativar Anotação (Soft Delete)** | `DELETE /api/anotacao/:id` | `204 No Content` | **`403 Forbidden`** (Escrita Isolada **RF21**) | `403 Forbidden` | `204 No Content` |
+| **Iniciar Sessão Clínica** | `POST /api/sessao/iniciar` | `201 Created` | `201 Created` (se não houver outra ativa) | `403 Forbidden` (**RN04**) | `201 Created` |
+| **Finalizar Sessão Ativa** | `PATCH /api/sessao/:id/finalizar` | `200 OK` | **`403 Forbidden`** (Apenas condutor **RF21**) | `403 Forbidden` | `200 OK` |
+| **Cancelar Sessão Ativa** | `DELETE /api/sessao/:id/cancelar` | `200 OK` | **`403 Forbidden`** (Apenas condutor **RF21**) | `403 Forbidden` | `200 OK` |
+| **Comando de Jogo via WebSocket** | Evento `sessao:comando` | Aceito e emitido ao tablet | **`PERMISSAO_NEGADA`** (`observador_equipe`) | Conexão rejeitada | Aceito |
+| **Telemetria via WebSocket** | Evento `sessao:telemetria` | Streaming em tempo real | Streaming em tempo real (Modo Observador) | Conexão rejeitada | Streaming |
+
+### 5.2. Prevenção de Paciente Órfão (RF18 / Integridade Clínica)
+* **Regra:** Nenhum paciente na clínica pode ficar sem ao menos um profissional de saúde responsável pelo seu prontuário.
+* **Comportamento da API:** Ao executar `DELETE /api/paciente/:id/terapeutas/:terapeutaId`, o serviço consulta atomicamente `contarTerapeutasAtivosVinculados(pacienteId)`. Caso o terapeuta a ser removido seja o único profissional ativo associado ao paciente (`total <= 1`), a requisição é bloqueada imediatamente com status **`409 Conflict`**.
+* **Comportamento na Interface:** O botão de remoção é desabilitado visualmente no `<PainelEquipeMultidisciplinar />` quando `especialistas.length <= 1`, exibindo tooltip orientador ao usuário.
+
+### 5.3. Trava de Sessões Simultâneas Concorrentes (RF13 / Concorrência)
+* **Regra:** Um mesmo paciente não pode ser submetido a duas sessões clínicas simultâneas com terapeutas diferentes.
+* **Comportamento da API:** No endpoint `POST /api/sessao/iniciar`, o `SessaoConcorrenciaService` verifica se já existe registro em `sessao` com o mesmo `paciente_id` e status em `'aguardando_pareamento'` (com `expira_em` não expirado), `'conectado'` ou `'em_andamento'`. Caso detectada sessão concorrente, a criação da segunda sessão é rejeitada com **`409 Conflict`**, retornando os dados da sessão ativa e o especialista condutor.
+* **Comportamento no WebSocket:** Caso outro especialista da equipe abra a sessão em andamento no Cockpit, ele é conectado à sala Socket.IO sob o papel `'observador_equipe'`, recebendo telemetria passiva sem capacidade de intervenção motora ou interrupção do jogo.
+
+### 5.4. Trilha de Auditoria Institucional de Vínculos e Acessos (RF08, RNF05)
+* **Regra:** Todas as alterações na equipe do paciente (inclusão ou exclusão de vínculos em `terapeuta_paciente`) e consultas de auditoria devem ser imutáveis e auditáveis.
+* **Comportamento da API:** Disparo de eventos registrando autor da mutação (`req.user.id`), terapeuta alvo, paciente, tipo de ação (`vinculo_equipe_criado`, `vinculo_equipe_removido`), endereço IP e timestamp UTC. O endpoint `GET /api/auditoria` expõe filtros por `pacienteId` e `tipoAcao`, com isolamento obrigatório por `clinica_id` (**RN04**).
+
+### 5.5. Nomenclatura Clínica Homologada (Seção 7.7 do Projeto InTEA)
+* Conforme validação clínica qualitativa realizada com psicólogos e terapeutas (Página 32 do Projeto InTEA), é **terminantemente PROIBIDO** utilizar o termo *"Co-Terapeuta"* nos componentes visuais, mensagens da API e relatórios.
+* Devem ser empregadas exclusivamente as expressões **"Equipe Multidisciplinar"** ou **"Especialistas Vinculados"**, garantindo o reconhecimento da horizontalidade e autonomia das diferentes especialidades clínicas envolvidas no plano terapêutico singular.

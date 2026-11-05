@@ -20,7 +20,7 @@ O **Roteiro de Testes Manuais** estabelece o protocolo de validação de ponta a
 
 ---
 
-## 2. Matriz Geral dos 61 Casos de Teste Formais
+## 2. Matriz Geral dos 67 Casos de Teste Formais
 
 | Código | Módulo / Domínio | Título do Caso de Teste | Requisitos Validados | Status |
 | :---: | :--- | :--- | :--- | :---: |
@@ -85,6 +85,12 @@ O **Roteiro de Testes Manuais** estabelece o protocolo de validação de ponta a
 | **CT-S32** | Contexto DDA | Configuração Personalizada de Contexto Pré-Sessão | RF17, RN03, Contrato 2 | `[ ]` |
 | **CT-S33** | Contexto DDA | Início de Sessão com Fallback Clínico Parametrizado | RF17, Figura 5 | `[ ]` |
 | **CT-S34** | Modo Livre | Rejeição de Contexto Clínico ou Anotação em Modo Livre | RN01 | `[ ]` |
+| **CT-S35** | Multi-terapeuta | Vinculação de Especialista da Mesma Clínica e Acesso Compartilhado | RF18, RN04 | `[ ]` |
+| **CT-S36** | Multi-terapeuta | Rejeição de Vínculo de Terapeuta de Outra Clínica (403) | RN04 | `[ ]` |
+| **CT-S37** | Multi-terapeuta | Bloqueio de Desvinculação do Último Especialista Ativo (409) | RF18 | `[ ]` |
+| **CT-S38** | Multi-terapeuta | Bloqueio de Edição e Exclusão de Anotação por Colega da Equipe (403) | RF21 | `[ ]` |
+| **CT-S39** | Concorrência | Bloqueio de Sessão Concorrente para Paciente com Sessão Ativa (409) | RF13, RF18 | `[ ]` |
+| **CT-S40** | Auditoria | Trilha de Auditoria Imutável de Vínculo Multidisciplinar (200) | RF08, RNF05 | `[ ]` |
 
 ---
 
@@ -145,8 +151,39 @@ O **Roteiro de Testes Manuais** estabelece o protocolo de validação de ponta a
 * **Entrada:** `POST /api/sessao/iniciar` ou `POST /api/anotacao` vinculados a sessões com `modo_sessao: "modo_livre"`.
 * **Resultado Esperado:** HTTP `400 Bad Request` com recusa formal e proteção de privacidade dos prontuários.
 
+
+### CT-S35 — Vinculação de Especialista da Mesma Clínica e Acesso Compartilhado (RF18, RN04)
+* **Objetivo:** Comprovar a leitura compartilhada de prontuário, sessões passadas e anotações por múltiplos especialistas vinculados ao mesmo paciente.
+* **Entrada:** `POST /api/paciente/:id/terapeutas` com `terapeuta_id` de colega da mesma clínica, seguido de `GET /api/sessao?pacienteId=:id` pelo novo especialista.
+* **Resultado Esperado:** HTTP `201 Created` no vínculo e HTTP `200 OK` na listagem de sessões, sem restrição de autoria para especialistas vinculados (**RF18**).
+
+### CT-S36 — Rejeição de Vínculo de Especialista Pertencente a Outra Clínica (RN04)
+* **Objetivo:** Garantir o isolamento multitenant estrito impedindo que terapeutas de instituições distintas acessem o paciente.
+* **Entrada:** `POST /api/paciente/:id/terapeutas` informando terapeuta com `clinica_id` diferente da do paciente.
+* **Resultado Esperado:** HTTP `403 Forbidden` com recusa formal e zero gravação no banco de dados.
+
+### CT-S37 — Bloqueio de Desvinculação do Último Especialista Ativo (RF18 / Prevenção de Órfão)
+* **Objetivo:** Impedir que o paciente fique órfão de responsabilidade técnica na clínica.
+* **Entrada:** `DELETE /api/paciente/:id/terapeutas/:terapeutaId` quando a contagem de especialistas ativos vinculados for igual a 1.
+* **Resultado Esperado:** HTTP `409 Conflict` com mensagem bloqueando a operação até que outro especialista seja vinculado.
+
+### CT-S38 — Bloqueio de Edição e Exclusão de Anotação Clínica por Colega (RF21)
+* **Objetivo:** Garantir a escrita isolada e autoria singular indelével dentro da equipe multidisciplinar.
+* **Entrada:** `PATCH /api/anotacao/:id` ou `DELETE /api/anotacao/:id` executado por terapeuta vinculado que não seja o autor original da nota.
+* **Resultado Esperado:** HTTP `403 Forbidden` resguardando o parecer original contra adulteração concorrente (**RF21**).
+
+### CT-S39 — Bloqueio de Início de Sessão Concorrente Simultânea (RF13 / Concorrência)
+* **Objetivo:** Evitar que dois terapeutas atendam clinicamente o mesmo paciente no mesmo instante em dispositivos distintos.
+* **Entrada:** `POST /api/sessao/iniciar` submetido para paciente que já possui atendimento em status `aguardando_pareamento`, `conectado` ou `em_andamento`.
+* **Resultado Esperado:** HTTP `409 Conflict` contendo o ID da sessão ativa e os dados do especialista condutor.
+
+### CT-S40 — Trilha de Auditoria Imutável de Mutações de Vínculo (RF08, RNF05)
+* **Objetivo:** Comprovar a rastreabilidade forense imutável de todas as inclusões e exclusões de especialistas na equipe do paciente.
+* **Entrada:** `GET /api/auditoria?pacienteId=:id&tipoAcao=vinculo_equipe_criado`.
+* **Resultado Esperado:** HTTP `200 OK` retornando registro imutável com autor, terapeuta alvo, IP e timestamp UTC.
+
 ---
 
 ## 4. Guia de Homologação Manual para o Usuário
 
-Para o passo a passo completo de execução com exemplos de payloads JSON para cada um dos 61 casos, consulte o documento integral em [`docs/roteiro-testes.md`](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/roteiro-testes.md).
+Para o passo a passo completo de execução com exemplos de payloads JSON para cada um dos 67 casos, consulte o documento integral em [`docs/roteiro-testes.md`](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/roteiro-testes.md).

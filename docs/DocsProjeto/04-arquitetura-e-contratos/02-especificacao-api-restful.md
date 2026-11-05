@@ -32,9 +32,9 @@ A API adota semântica restrita de códigos de resposta, vedando qualquer uso am
 | **`204 No Content`** | Ação executada com sucesso sem payload | Exclusão lógica (*soft delete*) ou comandos de desvinculação. | Não usar quando o cliente precisa consumir o objeto resultante. |
 | **`400 Bad Request`** | Erro de sintaxe, formato ou DTO | JSON quebrado, UUID inválido ou campos obrigatórios faltantes. | Não usar para falha de regra clínica de métrica (usar 422). |
 | **`401 Unauthorized`** | Falha de autenticação | Token JWT ausente, expirado ou com assinatura inválida. | Não usar quando o usuário está logado mas sem acesso (usar 403). |
-| **`403 Forbidden`** | Acesso negado por regra clínica (**RN04**) | Terapeuta sem vínculo com paciente ou pertencente a outra clínica. | Não usar para falha de credenciais de login (usar 401). |
+| **`403 Forbidden`** | Acesso negado por regra clínica (**RN04**) ou autoria | Terapeuta sem vínculo com paciente, profissional de outra clínica ou tentativa de mutação/finalização por terapeuta que não seja o autor/condutor (**RF21**). | Não usar para falha de credenciais de login (usar 401). |
 | **`404 Not Found`** | Recurso inexistente ou inativo | Identificador de paciente, sessão ou jogo não localizado no banco. | Não usar para falhas semânticas de regras de negócio. |
-| **`409 Conflict`** | Conflito de estado concorrente | Tentativa de parear sessão já ativa ou duplicar chave única. | Não usar para erros de validação sintática de formulário. |
+| **`409 Conflict`** | Conflito de estado concorrente ou integridade | Tentativa de iniciar sessão para paciente já em atendimento ativo (**RF13**), duplicar vínculo ou remover o último especialista ativo (**RF18**). | Não usar para erros de validação sintática de formulário. |
 | **`410 Gone`** | Recurso expirado de forma definitiva | Código PIN de pareamento cujo TTL de 15 minutos foi ultrapassado. | Não usar para tokens inexistentes ou malformatados (usar 404/400). |
 | **`422 Unprocessable`** | Violação semântica de regra clínica (**RN02**) | Métrica sem `tipo_metrica` declarado ou valor fora do domínio. | Não usar para erros genéricos de sintaxe JSON. |
 | **`500 Internal Error`** | Falha catastrófica de infraestrutura | Queda de rede do banco de dados ou erro inesperado de código. | **PROIBIDO** disparar 500 para regras de negócio previsíveis. |
@@ -71,9 +71,9 @@ Gerencia o prontuário dos indivíduos no espectro autista e a equipe multidisci
 | `POST` | `/api/paciente` | `authMiddleware` | Cadastra paciente, força `clinica_id` do autor e auto-vincula o criador. |
 | `PUT` | `/api/paciente/:id` | `authMiddleware, verificarVisibilidadePaciente` | Atualização cadastral dos dados sociodemográficos e clínicos. |
 | `DELETE`| `/api/paciente/:id` | `authMiddleware, verificarVisibilidadePaciente` | Soft delete clínico inativando o registro (`status_ativo = false`, **RN05**). |
-| `GET` | `/api/paciente/:id/terapeutas` | `authMiddleware, verificarVisibilidadePaciente` | Lista os membros da equipe multidisciplinar vinculados ao paciente. |
-| `POST` | `/api/paciente/:id/terapeutas` | `authMiddleware, verificarVisibilidadePaciente` | Associa um coterapeuta da mesma clínica ao caso (**RF18**). |
-| `DELETE`| `/api/paciente/:id/terapeutas/:terapeutaId` | `authMiddleware, verificarVisibilidadePaciente` | Revoga o vínculo de acompanhamento de um coterapeuta específico. |
+| `GET` | `/api/paciente/:id/terapeutas` | `authMiddleware, verificarVisibilidadePaciente` | Lista os especialistas da equipe multidisciplinar vinculados ao paciente (**RF18**, **RN04**). |
+| `POST` | `/api/paciente/:id/terapeutas` | `authMiddleware, verificarVisibilidadePaciente` | Associa especialista da mesma clínica ao caso (**RF18**); bloqueia clínica distinta (`403`) ou já vinculado (`409`). |
+| `DELETE`| `/api/paciente/:id/terapeutas/:terapeutaId` | `authMiddleware, verificarVisibilidadePaciente` | Revoga o vínculo do especialista; bloqueia com `409 Conflict` se for o último especialista ativo (**RF18**). |
 
 ---
 
@@ -82,11 +82,12 @@ Governa a orquestração do pareamento remoto, máquina de estados e laudos anal
 
 | Método | Endpoint | Middlewares de Segurança | Regra de Autorização |
 | :---: | :--- | :--- | :--- |
-| `POST` | `/api/sessao/iniciar` | `authMiddleware, verificarVisibilidadePaciente` | Cria sessão, valida paciente, gera PIN de 15 min e injeta contexto DDA Contrato 2 (**RN01**, **RN03**). |
+| `GET` | `/api/sessao` | `authMiddleware` | Lista sessões clínicas e livres; com `pacienteId`, permite leitura a toda a equipe vinculada (**RF18**, **RN04**). |
+| `POST` | `/api/sessao/iniciar` | `authMiddleware, verificarVisibilidadePaciente` | Cria sessão, valida paciente, gera PIN e injeta DDA (**RN03**); bloqueia 2ª sessão ativa com `409 Conflict` (**RF13**). |
 | `GET` | `/api/sessao/contexto-sugerido/:pacienteId` | `authMiddleware, verificarVisibilidadePaciente` | Consulta gatilhos sensoriais da anamnese e histórico para calibração pré-sessão (**RF12**, **RF17**, **RN04**). |
 | `GET` | `/api/sessao/:id` | `authMiddleware, sessaoMiddleware` | Consulta dados da sessão com proteção anti-IDOR (**RN01**, **RN04**). |
-| `PATCH` | `/api/sessao/:id/finalizar` | `authMiddleware, sessaoMiddleware` | Finaliza formalmente a intervenção, registrando o encerramento. |
-| `DELETE`| `/api/sessao/:id/cancelar` | `authMiddleware, sessaoMiddleware` | Cancela sessão em andamento e fecha as salas de WebSocket. |
+| `PATCH` | `/api/sessao/:id/finalizar` | `authMiddleware, sessaoMiddleware` | Finaliza a intervenção; restrito exclusivamente ao condutor da sessão (**RF21**; `403` para outros). |
+| `DELETE`| `/api/sessao/:id/cancelar` | `authMiddleware, sessaoMiddleware` | Cancela sessão pendente; restrito exclusivamente ao condutor da sessão (**RF21**; `403` para outros). |
 | `GET` | `/api/sessao/:token/status` | Nenhum (Público - Consumo pelo Tablet) | Validação via regex `/^[A-Z0-9]{3,5}-?[A-Z0-9]{3,5}$/i` com TTL de 15 min. |
 | `GET` | `/api/sessao/:id/resultado` | `authMiddleware, sessaoMiddleware` | Retorna o laudo em 3FN consolidado com o parecer da IA (**RF14**). |
 | `GET` | `/api/sessao/:id/exportar` | `authMiddleware, sessaoMiddleware` | Gera e faz streaming do arquivo PDF padronizado para impressão (**RF20**). |
@@ -116,3 +117,16 @@ Catálogo de jogos terapêuticos e manifestos técnicos homologados:
 | :---: | :--- | :--- | :--- |
 | `GET` | `/api/jogos` | `authMiddleware` | Catálogo geral com filtros por objetivo clínico e status de instalação. |
 | `GET` | `/api/jogos/:id` | `authMiddleware` | Retorna o manifesto técnico do jogo com declaração de `tipo_metrica` (**Contrato 1**). |
+
+---
+
+### 3.6. Módulo da Trilha de Auditoria Clínica (`/api/auditoria`)
+Rastreabilidade imutável de eventos institucionais, vínculos de equipe e acessos clínicos (**RF07**, **RF08**, **RNF05**, **RNF06**):
+
+| Método | Endpoint | Middlewares de Segurança | Regra de Autorização |
+| :---: | :--- | :--- | :--- |
+| `GET` | `/api/auditoria` | `authMiddleware` | Lista eventos imutáveis com filtros por `pacienteId` e `tipoAcao` (**RF08**), isolando registros pela `clinica_id` do terapeuta (**RN04**) e concedendo visão global a SuperAdmin. |
+| `GET` | `/api/auditoria/sessao/:sessaoId` | `authMiddleware` | Consulta linha do tempo cronológica da sessão clínica restrita ao condutor e equipe vinculada ao paciente (**RN04**). |
+| `GET` | `/api/auditoria/prontuario` | `authMiddleware` | Consulta registros de acessos e leituras de prontuário por período e terapeuta (**RF08**, **RNF06**). |
+| `GET` | `/api/auditoria/estatisticas` | `authMiddleware` | Estatísticas agregadas de governança clínica e conformidade LGPD (**RF07**). |
+| `POST` | `/api/auditoria` | `authMiddleware` | Registra formalmente ação clínica ou evento de auditoria com IP, User-Agent e autoria JWT (**RF21**, **RNF06**). |

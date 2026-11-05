@@ -33,8 +33,8 @@ As entregas percorrem três grandes fases de maturidade:
 | **Sprint 9** | 08/10/2026 | Gestão de Sessão Ativa e Telemetria Contínua | RF12, RF13, RF17, RF21 | Concluída | [04-sprint-09-gestao-sessao-telemetria.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/05-sprints-e-evolucao/04-sprint-09-gestao-sessao-telemetria.md) |
 | **Sprint 10** | 15/10/2026 | Tela de Resultados e Relatórios Analíticos | RF14, RF16, RF20, 3FN | Concluída | [05-sprint-10-resultados-relatorios.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/05-sprints-e-evolucao/05-sprint-10-resultados-relatorios.md) |
 | **Sprint 11** | 22/10/2026 | Histórico Evolutivo e Gráficos Dinâmicos | RF15, RNF04 | Concluída | [sprint-11.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-11.md) |
-| **Sprint 12** | 29/10/2026 | Bloco de Anotações Clínicas e Contexto DDA | RF16, RF17, RN03 | Em Andamento | [07-sprint-12-anotacoes-contexto-dda.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/05-sprints-e-evolucao/07-sprint-12-anotacoes-contexto-dda.md) |
-| **Sprint 13** | 05/11/2026 | Regras Multi-terapeuta e Concorrência | RF18, RN04 | Planejada | [Projeto_de_InTEA.pdf](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/Projeto_de_InTEA.pdf) |
+| **Sprint 12** | 29/10/2026 | Bloco de Anotações Clínicas e Contexto DDA | RF16, RF17, RN03 | Concluída | [07-sprint-12-anotacoes-contexto-dda.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/05-sprints-e-evolucao/07-sprint-12-anotacoes-contexto-dda.md) |
+| **Sprint 13** | 05/11/2026 | Regras Multi-terapeuta e Concorrência | RF08, RF18, RF21, RN04, RN05 | Concluída | [sprint-13.md](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-13.md) |
 | **Sprint 14** | 12/11/2026 | Polimento Técnico, UX/UI e Documentação | RNF07, Qualidade | Planejada | [Projeto_de_InTEA.pdf](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/Projeto_de_InTEA.pdf) |
 | **Sprint 15** | 19/11/2026 | Validação Clínica Fechada com Parceiros | Homologação Clínica | Planejada | [Projeto_de_InTEA.pdf](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/Projeto_de_InTEA.pdf) |
 | **Sprint 16** | 26/11/2026 | Deploy Piloto em Nuvem | RNF06, Produção | Planejada | [Projeto_de_InTEA.pdf](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/Projeto_de_InTEA.pdf) |
@@ -78,4 +78,5 @@ Para os relatórios detalhados das sprints de implementação de software (Sprin
 * [Sprint 10: Tela de Resultados e Relatórios Analíticos](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/05-sprints-e-evolucao/05-sprint-10-resultados-relatorios.md)
 * [Sprint 11: Histórico Evolutivo e Gráficos Dinâmicos](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-11.md)
 * [Sprint 12: Anotações Clínicas e Contexto DDA Pré-Sessão](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/05-sprints-e-evolucao/07-sprint-12-anotacoes-contexto-dda.md)
+* [Sprint 13: Regras Multi-terapeuta, Visibilidade Compartilhada e Concorrência](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/DocsSprints/sprints/sprint-13.md)
 * [Governança Kanban, Protocolo de Cards e Checklist](file:///c:/Users/MWSS/OneDrive/Desktop/InTEA/docs/05-sprints-e-evolucao/06-governanca-kanban-e-tasks.md)

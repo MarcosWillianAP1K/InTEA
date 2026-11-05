@@ -2062,7 +2062,246 @@ Content-Type: application/json
 
 ---
 
-> **Total atualizado: 61 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 22 Sessão/Pareamento (CT-S01→S22) · 6 Histórico Longitudinal Sprint 11 (CT-S23→S28) · 6 Anotações e Contexto DDA Sprint 12 (CT-S29→S34)
+---
+
+## Módulo 6 — Regras Multi-terapeuta, Visibilidade e Concorrência (Sprint 13)
+
+### CT-S35 — Vinculação de Especialista da Mesma Clínica e Acesso Compartilhado ao Prontuário (201 Created / 200 OK — RF18 / RN04)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF18 — Vínculo Multi-terapeuta por Paciente; RN04 — Visibilidade Institucional Compartilhada |
+| **Tipo** | Positivo — expansão da equipe multidisciplinar e leitura compartilhada |
+| **Precondição** | Paciente X (`22222222-2222-2222-2222-222222222222`) cadastrado pela Terapeuta A na Clínica 1, com sessões e anotações anteriores. Terapeuta B (`44444444-4444-4444-4444-444444444444`) ativo na mesma Clínica 1. |
+
+**Entrada 1 — `POST /api/paciente/22222222-2222-2222-2222-222222222222/terapeutas` (Terapeuta A vincula Terapeuta B)**
+
+```http
+Authorization: Bearer {token-terapeuta-A}
+Content-Type: application/json
+```
+
+```json
+{
+  "terapeuta_id": "44444444-4444-4444-4444-444444444444"
+}
+```
+
+**Entrada 2 — `GET /api/sessao?pacienteId=22222222-2222-2222-2222-222222222222` (Terapeuta B consulta sessões)**
+
+```http
+Authorization: Bearer {token-terapeuta-B}
+```
+
+**Entrada 3 — `GET /api/anotacao/paciente/22222222-2222-2222-2222-222222222222` (Terapeuta B consulta anotações)**
+
+```http
+Authorization: Bearer {token-terapeuta-B}
+```
+
+#### Passos
+
+1. Com as credenciais da Terapeuta A, executar `POST /api/paciente/22222222-2222-2222-2222-222222222222/terapeutas` informando o UUID do Terapeuta B.
+2. Com as credenciais do Terapeuta B recém-vinculado, executar `GET /api/sessao?pacienteId=22222222-2222-2222-2222-222222222222`.
+3. Executar `GET /api/anotacao/paciente/22222222-2222-2222-2222-222222222222` com o token do Terapeuta B.
+
+#### Resultado Esperado
+
+- Entrada 1: HTTP **201 Created** com mensagem `{"message": "Terapeuta vinculado ao paciente com sucesso."}`.
+- Entrada 2: HTTP **200 OK** retornando todas as sessões clínicas do paciente conduzidas pela Terapeuta A, comprovando que a consulta não é restrita por `terapeuta_id = req.user.id` quando há vínculo ativo (**RF18**).
+- Entrada 3: HTTP **200 OK** retornando todas as anotações do prontuário com o objeto enriquecido `autor: { nome, especialidade, registro_profissional }` da Terapeuta A.
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S36 — Rejeição de Vínculo de Terapeuta Pertencente a Outra Clínica (403 Forbidden — RN04)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RN04 — Isolamento Multi-tenant Institucional Estrito |
+| **Tipo** | Negativo — bloqueio de vínculo inter-clínicas |
+| **Precondição** | Paciente X (`22222222-2222-2222-2222-222222222222`) pertence à Clínica 1 (`clinica_id: "c1111111-1111-1111-1111-111111111111"`). Terapeuta C (`55555555-5555-5555-5555-555555555555`) pertence à Clínica 2 (`clinica_id: "c2222222-2222-2222-2222-222222222222"`). |
+
+**Entrada — `POST /api/paciente/22222222-2222-2222-2222-222222222222/terapeutas`**
+
+```http
+Authorization: Bearer {token-terapeuta-clinica-1}
+Content-Type: application/json
+```
+
+```json
+{
+  "terapeuta_id": "55555555-5555-5555-5555-555555555555"
+}
+```
+
+#### Passos
+
+1. Autenticar com o token JWT de profissional pertencente à Clínica 1.
+2. Tentar vincular o Terapeuta C (cadastrado na Clínica 2) ao prontuário do Paciente X da Clínica 1.
+
+#### Resultado Esperado
+
+- HTTP **403 Forbidden**
+- Payload JSON: `{"error": "Bloqueio de segurança: Não é permitido vincular terapeutas de clínicas diferentes."}`
+- Nenhum registro é gravado em `terapeuta_paciente`, resguardando o isolamento multitenant estrito (**RN04**).
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S37 — Bloqueio de Desvinculação do Último Especialista Ativo do Paciente (409 Conflict — RF18 / Prevenção de Órfão)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF18 — Prevenção de Prontuário Órfão; RN04 |
+| **Tipo** | Negativo — integridade de responsabilidade técnica clínica |
+| **Precondição** | Paciente Y (`33333333-3333-3333-3333-333333333333`) possui unicamente a Terapeuta A (`11111111-1111-1111-1111-111111111111`) como especialista ativa vinculada na equipe. |
+
+**Entrada — `DELETE /api/paciente/33333333-3333-3333-3333-333333333333/terapeutas/11111111-1111-1111-1111-111111111111`**
+
+```http
+Authorization: Bearer {token-terapeuta-A}
+```
+
+#### Passos
+
+1. Verificar via `GET /api/paciente/33333333-3333-3333-3333-333333333333/terapeutas` que a lista contém apenas 1 especialista ativo (`total: 1`).
+2. Executar a requisição `DELETE` para desvincular a Terapeuta A.
+
+#### Resultado Esperado
+
+- HTTP **409 Conflict**
+- Payload JSON: `{"error": "Operação bloqueada: não é permitido remover o único especialista vinculado ao paciente. Vincule outro profissional da clínica antes de realizar a transferência."}`
+- O vínculo em `terapeuta_paciente` é preservado atomicamente, impedindo que o paciente fique órfão de acompanhamento técnico na instituição (**RF18**).
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S38 — Bloqueio de Edição e Exclusão de Anotação Clínica por Colega da Equipe (403 Forbidden — RF21)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF21 — Autoria Indelével; RF18 — Escrita Isolada por Especialista |
+| **Tipo** | Negativo — preservação da autoria singular |
+| **Precondição** | Paciente X acompanhado pela Terapeuta A (`11111111-1111-1111-1111-111111111111`) e Terapeuta B (`44444444-4444-4444-4444-444444444444`). Terapeuta A criou a anotação `77777777-7777-7777-7777-777777777777`. |
+
+**Entrada 1 — `PATCH /api/anotacao/77777777-7777-7777-7777-777777777777` (Tentativa de edição por Terapeuta B)**
+
+```http
+Authorization: Bearer {token-terapeuta-B}
+Content-Type: application/json
+```
+
+```json
+{
+  "conteudo": "Tentativa de adulterar o parecer clínico formulado pela Terapeuta A."
+}
+```
+
+**Entrada 2 — `DELETE /api/anotacao/77777777-7777-7777-7777-777777777777` (Tentativa de inativação por Terapeuta B)**
+
+```http
+Authorization: Bearer {token-terapeuta-B}
+```
+
+#### Passos
+
+1. Terapeuta B (com permissão de leitura concedida por **RF18**) tenta editar o texto da anotação da Terapeuta A via `PATCH`.
+2. Terapeuta B tenta inativar a anotação da Terapeuta A via `DELETE`.
+
+#### Resultado Esperado
+
+- Ambas as requisições são rejeitadas com HTTP **403 Forbidden**.
+- Mensagem: `"Acesso negado: apenas o autor da anotação clínica possui permissão para editá-la ou inativá-la (RF21)."`
+- O conteúdo, o carimbo de data/hora e a autoria da nota permanecem inalterados.
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S39 — Bloqueio de Início de Sessão Concorrente para Paciente com Sessão Ativa (409 Conflict — RF13 / Concorrência)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF13 — Concorrência de Sessões Clínicas; RF18 |
+| **Tipo** | Negativo — trava de concorrência em tempo real |
+| **Precondição** | Paciente X (`22222222-2222-2222-2222-222222222222`) já está em atendimento ativo conduzido pelo Terapeuta A (sessão `e4f8d912-32a1-4bb6-9811-6677889900aa` com status `em_andamento`). |
+
+**Entrada — `POST /api/sessao/iniciar` (Terapeuta B tenta abrir segunda sessão simultânea)**
+
+```http
+Authorization: Bearer {token-terapeuta-B}
+Content-Type: application/json
+```
+
+```json
+{
+  "terapeuta_id": "44444444-4444-4444-4444-444444444444",
+  "jogo_id": "8b5a034f-9e77-4ad3-9b6e-1d54e5cf4291",
+  "paciente_id": "22222222-2222-2222-2222-222222222222",
+  "modo_sessao": "sessao_clinica",
+  "codigo_pareamento": "9K3M-7V2X",
+  "contexto_dda_json": {
+    "usar_fallback_padrao": true
+  }
+}
+```
+
+#### Passos
+
+1. Enquanto a intervenção do Terapeuta A está ativa no Cockpit, o Terapeuta B tenta iniciar uma nova sessão clínica para o mesmo paciente.
+
+#### Resultado Esperado
+
+- HTTP **409 Conflict**
+- Payload JSON contendo:
+  - `codigo`: `"SESSAO_CLINICA_SIMULTANEA_CONFLITO"`
+  - `error`: `"O paciente já possui uma sessão clínica ativa no momento."`
+  - `data.sessao_ativa.id`: `"e4f8d912-32a1-4bb6-9811-6677889900aa"`
+  - `data.sessao_ativa.especialista_responsavel.nome`: identificação do Terapeuta A
+- Nenhuma segunda sessão é criada no banco relacional, preservando a integridade física do paciente e a telemetria do jogo.
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S40 — Trilha de Auditoria Imutável de Mutações de Vínculo Multidisciplinar (200 OK — RF08 / RNF05)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RF08 — Auditoria de Acessos e Vínculos; RNF05 — Imutabilidade e Rastreabilidade |
+| **Tipo** | Positivo — verificação de governança e auditoria |
+| **Precondição** | Execução anterior das mutações de vínculo dos casos CT-S35 e CT-S37. |
+
+**Entrada — `GET /api/auditoria?pacienteId=22222222-2222-2222-2222-222222222222&tipoAcao=vinculo_equipe_criado`**
+
+```http
+Authorization: Bearer {token-terapeuta-A}
+```
+
+#### Passos
+
+1. Executar a consulta na trilha de auditoria filtrando pelo UUID do paciente e pela ação `vinculo_equipe_criado`.
+
+#### Resultado Esperado
+
+- HTTP **200 OK**
+- Retorno de lista de eventos contendo:
+  - `acao`: `"vinculo_equipe_criado"`
+  - `paciente_id`: `"22222222-2222-2222-2222-222222222222"`
+  - `terapeuta_id`: UUID do autor da operação
+  - `detalhes_json`: `{"terapeuta_alvo_id": "44444444-4444-4444-4444-444444444444", "papel_equipe": "especialista"}`
+  - Endereço IP do cliente e timestamp UTC imutável
+- Confirmação de rastreabilidade forense institucional sem impacto na performance operacional (**RF08**, **RNF05**).
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+> **Total atualizado: 67 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 22 Sessão/Pareamento (CT-S01→S22) · 6 Histórico Longitudinal Sprint 11 (CT-S23→S28) · 6 Anotações e Contexto DDA Sprint 12 (CT-S29→S34) · 6 Multi-terapeuta, Visibilidade e Concorrência Sprint 13 (CT-S35→S40)
 
 ---
 
@@ -2070,13 +2309,13 @@ Content-Type: application/json
 
 | Protocolo / Código | Semântica | Casos de Teste |
 | :---: | :--- | :--- |
-| **HTTP 200** | Sucesso em consulta, pareamento, validação aprovada, resultados ou modo livre | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12, CT-S01, CT-S02, CT-S06, CT-S10, CT-S14, CT-S15, CT-S16, CT-S22, CT-S23, CT-S24, CT-S25, CT-S28, CT-S29, CT-S31, CT-S33 |
-| **HTTP 201** | Recurso criado (paciente, vínculo, início de sessão, telemetria, anotação clínica) | CT-P01, CT-P11, CT-S07, CT-S08, CT-S09, CT-S20, CT-S29, CT-S32, CT-S33 |
+| **HTTP 200** | Sucesso em consulta, pareamento, validação aprovada, resultados ou modo livre | CT-P04, CT-P05, CT-P06, CT-P09, CT-P10, CT-P14, CT-J01, CT-J02, CT-J03, CT-J04, CT-J05, CT-J07, CT-J09, CT-J12, CT-S01, CT-S02, CT-S06, CT-S10, CT-S14, CT-S15, CT-S16, CT-S22, CT-S23, CT-S24, CT-S25, CT-S28, CT-S29, CT-S31, CT-S33, CT-S35, CT-S40 |
+| **HTTP 201** | Recurso criado (paciente, vínculo, início de sessão, telemetria, anotação clínica) | CT-P01, CT-P11, CT-S07, CT-S08, CT-S09, CT-S20, CT-S29, CT-S32, CT-S33, CT-S35 |
 | **HTTP 400** | Parâmetros inválidos, lote excedido, transição inválida de FSM ou sessão não finalizada | CT-P02, CT-P12, CT-P13, CT-P15, CT-J08, CT-S09, CT-S14, CT-S18, CT-S25, CT-S34 |
 | **HTTP 401** | Sem autenticação / Token JWT ausente ou inválido | CT-P08 |
-| **HTTP 403** | Acesso negado por falta de vínculo clínico institucional (RN04) ou autor divergente (RF21) | CT-P07, CT-S14, CT-S17, CT-S27, CT-S30 |
+| **HTTP 403** | Acesso negado por falta de vínculo institucional (RN04) ou autoria divergente (RF21) | CT-P07, CT-S14, CT-S17, CT-S27, CT-S30, CT-S36, CT-S38 |
 | **HTTP 404** | Recurso não encontrado (paciente, jogo ou sessão inexistente) | CT-J06, CT-S04 |
-| **HTTP 409** | Conflito de integridade única ou sessão já em andamento | CT-P03, CT-S05 |
+| **HTTP 409** | Conflito de integridade única, sessão concorrente ou trava anti-órfão | CT-P03, CT-S05, CT-S37, CT-S39 |
 | **HTTP 410** | Token PIN expirado (TTL 15 min) ou sessão terminal | CT-S03 |
 | **HTTP 422** | Violação de regra clínica de tipagem estrita RN02 | CT-J10, CT-J11, CT-S26 |
 | **Banco / SQL** | Validação de restrições DDL 3FN e bloqueio de exclusão física | CT-S19, CT-S21 |
@@ -2087,3 +2326,4 @@ Content-Type: application/json
 | **WebSocket** | Sinalização de encerramento de sessão (`sessao_finalizada`) | CT-S14 |
 | **Histórico / RN01** | Supressão de Modo Livre em prontuário longitudinal | CT-S28 |
 | **Anotações / Contexto DDA** | Injeção prévia DDA (RN03), autoria compulsória (RF21) e soft delete (RN05) | CT-S29, CT-S30, CT-S31, CT-S32, CT-S33, CT-S34 |
+| **Multi-terapeuta / Concorrência** | Visibilidade compartilhada (RF18), autoria isolada (RF21), trava anti-órfão (409), trava simultânea (409) e auditoria (RF08) | CT-S35, CT-S36, CT-S37, CT-S38, CT-S39, CT-S40 |
