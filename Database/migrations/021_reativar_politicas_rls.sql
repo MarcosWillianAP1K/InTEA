@@ -25,6 +25,132 @@
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
+-- 0. Garantia Idempotente de Tabelas e Colunas Criadas Após a Migration 010
+--    (Caso 010_sessoes_ativas, 015, 017 ou 019 ainda não tenham sido rodadas)
+-- ------------------------------------------------------------------------------
+
+ALTER TABLE IF EXISTS public.clinica
+    ADD COLUMN IF NOT EXISTS status_ativo BOOLEAN DEFAULT TRUE NOT NULL;
+
+CREATE TABLE IF NOT EXISTS public.sessao_ativa (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) NOT NULL UNIQUE,
+    ip_origem VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    dispositivo VARCHAR(100) NULL,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+    ultimo_acesso_em TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+    expira_em TIMESTAMPTZ NOT NULL,
+    revogado BOOLEAN NOT NULL DEFAULT FALSE,
+    revogado_em TIMESTAMPTZ NULL,
+    motivo_revogacao VARCHAR(100) NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessao_ativa_usuario_id ON public.sessao_ativa(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_sessao_ativa_token_hash ON public.sessao_ativa(token_hash);
+CREATE INDEX IF NOT EXISTS idx_sessao_ativa_ativas ON public.sessao_ativa(usuario_id, revogado, expira_em) WHERE revogado = FALSE;
+
+CREATE TABLE IF NOT EXISTS public.auditoria_vinculo_acesso (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    paciente_id UUID NOT NULL REFERENCES public.paciente(id) ON DELETE RESTRICT,
+    terapeuta_autor_id UUID NOT NULL REFERENCES public.terapeuta(id) ON DELETE RESTRICT,
+    terapeuta_alvo_id UUID NOT NULL REFERENCES public.terapeuta(id) ON DELETE RESTRICT,
+    acao VARCHAR(40) NOT NULL CHECK (acao IN ('vinculo_equipe_criado', 'vinculo_equipe_removido')),
+    ip VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+CREATE OR REPLACE FUNCTION public.impedir_modificacao_auditoria_vinculo()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Operacao proibida: Registros da trilha de auditoria de vinculos sao estritamente imutaveis (RN05 / RNF05).'
+        USING ERRCODE = '23505';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_mutacao_auditoria_vinculo ON public.auditoria_vinculo_acesso;
+CREATE TRIGGER trg_bloqueio_mutacao_auditoria_vinculo
+    BEFORE UPDATE OR DELETE ON public.auditoria_vinculo_acesso
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_modificacao_auditoria_vinculo();
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_vinculo_paciente_created ON public.auditoria_vinculo_acesso(paciente_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_vinculo_autor ON public.auditoria_vinculo_acesso(terapeuta_autor_id);
+CREATE INDEX IF NOT EXISTS idx_auditoria_vinculo_acao ON public.auditoria_vinculo_acesso(acao);
+CREATE INDEX IF NOT EXISTS idx_terapeuta_paciente_paciente_id ON public.terapeuta_paciente(paciente_id, terapeuta_id);
+
+CREATE OR REPLACE FUNCTION public.desvincular_terapeuta_seguro(
+    p_paciente_id UUID,
+    p_terapeuta_id UUID
+) RETURNS TEXT AS $$
+DECLARE
+    v_existe_vinculo BOOLEAN;
+    v_ativos_restantes INTEGER;
+BEGIN
+    PERFORM 1 FROM public.paciente WHERE id = p_paciente_id FOR UPDATE;
+
+    SELECT EXISTS (
+        SELECT 1 FROM public.terapeuta_paciente
+        WHERE paciente_id = p_paciente_id AND terapeuta_id = p_terapeuta_id
+    ) INTO v_existe_vinculo;
+
+    IF NOT v_existe_vinculo THEN
+        RETURN 'nao_vinculado';
+    END IF;
+
+    SELECT COUNT(*)::INTEGER
+    INTO v_ativos_restantes
+    FROM public.terapeuta_paciente tp
+    JOIN public.terapeuta t ON t.id = tp.terapeuta_id
+    WHERE tp.paciente_id = p_paciente_id
+      AND tp.terapeuta_id <> p_terapeuta_id
+      AND t.status_ativo = TRUE;
+
+    IF v_ativos_restantes <= 0 THEN
+        RETURN 'ultimo_ativo';
+    END IF;
+
+    DELETE FROM public.terapeuta_paciente
+    WHERE paciente_id = p_paciente_id AND terapeuta_id = p_terapeuta_id;
+
+    RETURN 'removido';
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
+
+CREATE TABLE IF NOT EXISTS public.auditoria_acesso_prontuario (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    paciente_id UUID NOT NULL REFERENCES public.paciente(id) ON DELETE RESTRICT,
+    terapeuta_id UUID REFERENCES public.terapeuta(id) ON DELETE SET NULL,
+    operacao VARCHAR(30) NOT NULL,
+    recurso_acessado VARCHAR(255) NOT NULL,
+    ip VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    detalhes_json JSONB DEFAULT '{}'::jsonb NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+CREATE OR REPLACE FUNCTION public.impedir_modificacao_auditoria_prontuario()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Operacao proibida: Registros da trilha de auditoria de prontuario sao estritamente imutaveis (RN05 / RNF06).'
+        USING ERRCODE = '23505';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_mutacao_auditoria_prontuario ON public.auditoria_acesso_prontuario;
+CREATE TRIGGER trg_bloqueio_mutacao_auditoria_prontuario
+    BEFORE UPDATE OR DELETE ON public.auditoria_acesso_prontuario
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_modificacao_auditoria_prontuario();
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_prontuario_paciente ON public.auditoria_acesso_prontuario(paciente_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_prontuario_terapeuta ON public.auditoria_acesso_prontuario(terapeuta_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_prontuario_created ON public.auditoria_acesso_prontuario(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_prontuario_operacao ON public.auditoria_acesso_prontuario(operacao);
+
+-- ------------------------------------------------------------------------------
 -- 1. Funções Auxiliares SECURITY DEFINER (Anti-Recursão 42P17)
 -- ------------------------------------------------------------------------------
 
