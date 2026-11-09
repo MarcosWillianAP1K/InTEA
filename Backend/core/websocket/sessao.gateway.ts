@@ -8,6 +8,8 @@ import {
 import { SocketRateLimiter } from './socket.limiter.js';
 import { SessaoModel, STATUS_SESSAO } from '../../api/sessao/models/sessao.model.js';
 import { AuditoriaService } from '../../api/auditoria/services/auditoria.service.js';
+import { supabase } from '../supabase/supabase.client.js';
+import { hasSuperAdminClaim } from '../auth/privilegios.js';
 
 export type RoleSocket = 'terapeuta' | 'dispositivo' | 'observador_equipe' | string;
 
@@ -326,9 +328,9 @@ export class SessaoGateway {
       registroConselho?: string;
     };
 
-    const handlerEntrada = (payload: EntradaPayload, ack?: (res: unknown) => void) => {
+    const handlerEntrada = async (payload: EntradaPayload, ack?: (res: unknown) => void) => {
       const token = payload?.session_token || payload?.sessionToken || '';
-      this.lidarEntradaSessao(socket, {
+      await this.lidarEntradaSessao(socket, {
         session_token: token,
         role: payload?.role,
         jogo_id: payload?.jogo_id || payload?.jogoId,
@@ -390,7 +392,7 @@ export class SessaoGateway {
   /**
    * Processes client joining (therapist web panel or remote game) in the session room.
    */
-  private lidarEntradaSessao(socket: Socket, payload: EntrarSessaoPayload): void {
+  private async lidarEntradaSessao(socket: Socket, payload: EntrarSessaoPayload): Promise<void> {
     if (!payload || !payload.session_token) {
       socket.emit('erro_sessao', {
         error: 'Parâmetro obrigatório ausente: session_token'
@@ -400,11 +402,51 @@ export class SessaoGateway {
 
     const tokenNormalizado = this.normalizarToken(payload.session_token);
     const sala = `session_${tokenNormalizado}`;
-    const role = payload.role || 'terapeuta';
+    let role = payload.role || 'terapeuta';
+    let terapeutaIdResolvido = payload.terapeuta_id;
+    let isSuperAdmin = false;
+
+    const handshakeToken = (socket.handshake as { auth?: { token?: unknown } } | undefined)?.auth
+      ?.token;
+
+    if (role === 'terapeuta' && typeof handshakeToken === 'string' && handshakeToken.trim() !== '') {
+      try {
+        const resAuth = await supabase.auth.getUser(handshakeToken.trim());
+        if (resAuth?.error || !resAuth?.data?.user) {
+          socket.emit('erro_sessao', {
+            error: 'Não autorizado: token JWT inválido ou expirado na conexão WebSocket.',
+            codigo: 'NAO_AUTORIZADO',
+          });
+          return;
+        }
+        terapeutaIdResolvido = resAuth.data.user.id;
+        isSuperAdmin = hasSuperAdminClaim(resAuth.data.user);
+      } catch {
+        // Ignora falha quando auth não está configurado no ambiente de teste
+      }
+    }
+
+    if (role === 'terapeuta' && terapeutaIdResolvido) {
+      try {
+        const sessaoBanco = await SessaoModel.buscarPorToken(tokenNormalizado);
+        if (
+          sessaoBanco &&
+          sessaoBanco.terapeuta_id &&
+          sessaoBanco.terapeuta_id !== terapeutaIdResolvido &&
+          !isSuperAdmin
+        ) {
+          role = 'observador_equipe';
+        }
+      } catch {
+        // Ignora falha quando o model não está disponível em testes isolados
+      }
+    }
+
+    socket.data.isSuperAdmin = isSuperAdmin;
 
     socket.data.sessionToken = tokenNormalizado;
     socket.data.role = role;
-    socket.data.terapeutaId = payload.terapeuta_id;
+    socket.data.terapeutaId = terapeutaIdResolvido;
     socket.join(sala);
 
     // Confirmação de entrada na sala
@@ -426,7 +468,7 @@ export class SessaoGateway {
       mapa.set(socket.id, {
         socket_id: socket.id,
         role,
-        terapeuta_id: payload.terapeuta_id,
+        terapeuta_id: terapeutaIdResolvido,
         nome: payload.nome,
         especialidade: payload.especialidade,
         registro_conselho: payload.registro_conselho,

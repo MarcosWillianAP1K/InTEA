@@ -12,9 +12,9 @@ import { ModalAnotacaoSessaoAtiva } from "../components/ModalAnotacaoSessaoAtiva
 import { TelemetriaCards } from "@/features/sessao/components/telemetria/TelemetriaCards";
 import { TelemetriaChart } from "@/features/sessao/components/telemetria/TelemetriaChart";
 import { TabletDiagnosticCard } from "@/features/sessao/components/telemetria/TabletDiagnosticCard";
-import { sessaoService } from "@/features/sessao/services/sessaoService";
+import { sessaoService } from "@/features/sessao/services/sessao.service";
 import { pacienteService } from "@/features/paciente/services/paciente.service";
-import { jogosService } from "@/features/jogos/services/jogosService";
+import { jogosService } from "@/features/jogos/services/jogos.service";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { toast } from "sonner";
@@ -246,6 +246,7 @@ export function CockpitSessaoPage() {
   const { tempoFormatado } = useClinicalTimer({
     sessaoId: idSessaoEfetivo,
     ativo: status === "em_andamento",
+    isPausado,
   });
 
   // Determina se a sessão ativa está em Modo Livre (sem paciente associado - RN01)
@@ -265,6 +266,12 @@ export function CockpitSessaoPage() {
     if (isModoObservador) return;
     pausarSessao();
     toast.info("Comando de pausa enviado ao jogo remoto.");
+    const idSessaoPausa = paramSessaoId || pareamento?.sessionToken;
+    if (idSessaoPausa) {
+      void sessaoService.atualizarStatus(idSessaoPausa, "pausada").catch((err) => {
+        console.error("Erro ao sincronizar status de pausa no backend:", err);
+      });
+    }
     SessionSocketManager.getInstance().enviarComando({
       tipo: "pausar",
       sessionToken: tokenSessao,
@@ -279,6 +286,12 @@ export function CockpitSessaoPage() {
     if (isModoObservador) return;
     retomarSessao();
     toast.success("Intervenção retomada no dispositivo.");
+    const idSessaoRetomar = paramSessaoId || pareamento?.sessionToken;
+    if (idSessaoRetomar) {
+      void sessaoService.atualizarStatus(idSessaoRetomar, "em_andamento").catch((err) => {
+        console.error("Erro ao sincronizar status de retomada no backend:", err);
+      });
+    }
     SessionSocketManager.getInstance().enviarComando({
       tipo: "retomar",
       sessionToken: tokenSessao,

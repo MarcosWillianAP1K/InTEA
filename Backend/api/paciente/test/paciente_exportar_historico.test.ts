@@ -43,7 +43,8 @@ describe('PacienteExportarHistoricoService & PacienteController (RF20, RN04, RN0
     id: terapeutaIdValido,
     email: 'terapeuta@intea.com.br',
     clinica_id: clinicaIdValida,
-    user_metadata: { is_super_admin: false, nome: 'Dra. Mariana Costa' },
+    app_metadata: { is_super_admin: false },
+    user_metadata: { nome: 'Dra. Mariana Costa' },
   };
 
   beforeEach(() => {
@@ -215,7 +216,7 @@ describe('PacienteExportarHistoricoService & PacienteController (RF20, RN04, RN0
         id: 'super-admin-id',
         email: 'admin@intea.com.br',
         is_super_admin: true,
-        user_metadata: { is_super_admin: true },
+        app_metadata: { is_super_admin: true },
       };
 
       const res = criarMockResponse();

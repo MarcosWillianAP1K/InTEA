@@ -95,7 +95,7 @@ describe('Core Middleware: Visibilidade por Vínculo (verificarVisibilidadePacie
     const reqAlvo = {
       pacienteAlvoId: pacienteValidoId,
       params: {},
-      user: { id: terapeutaValidoId, user_metadata: { is_super_admin: true } },
+      user: { id: terapeutaValidoId, app_metadata: { is_super_admin: true } },
     } as unknown as AuthenticatedRequest;
     const resAlvo = criarMockRes();
     const nextAlvo = vi.fn() as unknown as NextFunction;
@@ -105,7 +105,7 @@ describe('Core Middleware: Visibilidade por Vínculo (verificarVisibilidadePacie
     // 2. Via req.params.pacienteId
     const reqParams = {
       params: { pacienteId: pacienteValidoId },
-      user: { id: terapeutaValidoId, user_metadata: { is_super_admin: true } },
+      user: { id: terapeutaValidoId, app_metadata: { is_super_admin: true } },
     } as unknown as AuthenticatedRequest;
     const resParams = criarMockRes();
     const nextParams = vi.fn() as unknown as NextFunction;
@@ -116,7 +116,7 @@ describe('Core Middleware: Visibilidade por Vínculo (verificarVisibilidadePacie
     const reqBody = {
       params: {},
       body: { paciente_id: pacienteValidoId },
-      user: { id: terapeutaValidoId, user_metadata: { is_super_admin: true } },
+      user: { id: terapeutaValidoId, app_metadata: { is_super_admin: true } },
     } as unknown as AuthenticatedRequest;
     const resBody = criarMockRes();
     const nextBody = vi.fn() as unknown as NextFunction;
@@ -169,7 +169,7 @@ describe('Core Middleware: Visibilidade por Vínculo (verificarVisibilidadePacie
   it('deve permitir acesso (next) para SuperAdmin via user_metadata', async () => {
     const req = {
       params: { id: pacienteValidoId },
-      user: { id: terapeutaValidoId, user_metadata: { is_super_admin: true } },
+      user: { id: terapeutaValidoId, app_metadata: { is_super_admin: true } },
     } as unknown as AuthenticatedRequest;
     const res = criarMockRes();
     const next = vi.fn() as unknown as NextFunction;

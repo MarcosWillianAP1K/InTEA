@@ -70,7 +70,7 @@ flowchart LR
   - **RN02 (Tipagem Estrita de Métricas):** toda métrica deve ter `tipo_metrica` explícito no manifesto; métricas sem tipo ou incompatíveis são rejeitadas com `422 Unprocessable Entity`.
   - **RN03 (Contexto DDA Pré-Sessão):** o contexto de estresse inicial e gatilhos a evitar é injetado antes do primeiro evento de telemetria.
   - **RN04 (Visibilidade por Vínculo Institucional):** acesso a prontuários exige vínculo ativo em `terapeuta_paciente` e mesma clínica (`clinica_id`), retornando `403 Forbidden` em acessos indevidos.
-  - **RN05 (Inalterabilidade do Histórico Clínico):** proibido `hard delete` em registros clínicos (`paciente`, `anotacao_clinica`, `relatorio_sessao`). Permitido exclusivamente `soft delete` (`status_ativo = false` ou `soft_delete = true`).
+  - **RN05 (Inalterabilidade do Histórico Clínico e Retenção Legal):** proibido `hard delete` em registros clínicos (`paciente`, `anotacao_clinica`, `sessao`, `relatorio_sessao`). A exclusão física é bloqueada no banco de dados por triggers `BEFORE DELETE` (`impedir_delete_fisico_prontuario` e `impedir_modificacao_relatorio_sessao` — Migration 022), assegurando a política de retenção mínima de 20 anos (Lei 13.787/2018 Art. 6º). Permitido exclusivamente `soft delete` (`status_ativo = false` ou `soft_delete = true`).
 
 ---
 
@@ -98,8 +98,8 @@ Database/
 | **PKs sempre UUID** | `id UUID PRIMARY KEY DEFAULT gen_random_uuid()` (ou PK/FK compartilhada `sessao_id UUID PRIMARY KEY REFERENCES sessao(id)` em tabelas 1:1 estritas em 3FN, como `relatorio_sessao`). Nunca usar `BIGSERIAL` ou `INT`. |
 | **FKs sempre UUID** | Toda chave estrangeira deve referenciar um `UUID`. Proibido criar FKs transitivas redundantes (ex.: proibido `paciente_id` em `telemetria_evento` ou `relatorio_sessao`, pois já é resolvido via `sessao_id -> paciente_id`). |
 | **Timestamps padrão** | Toda tabela deve ter `created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL` e `updated_at` quando aplicável. |
-| **Soft Delete (RN05)** | Entidades de prontuário humano (`paciente`, `anotacao_clinica`, `relatorio_sessao`) usam `status_ativo = false` ou `soft_delete = true`. Hard DELETE é bloqueado por trigger (`impedir_hard_delete_clinico`). Tabelas de streaming (`telemetria_evento`) são *append-only* e não possuem `soft_delete`. |
-| **RLS obrigatório** | `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` deve ser aplicado a **todas** as tabelas. |
+| **Soft Delete e Retenção de 20 Anos (RN05 / Lei 13.787/2018)** | Entidades de prontuário (`paciente`, `anotacao_clinica`, `sessao`, `relatorio_sessao`) usam `status_ativo = false` ou `soft_delete = true` e seguem retenção mínima de 20 anos (Lei 13.787/2018 Art. 6º). O `DELETE` físico é bloqueado no banco por triggers (`impedir_delete_fisico_prontuario` e `impedir_modificacao_relatorio_sessao` — Migration 022). Tabelas de streaming (`telemetria_evento`) e trilhas de auditoria/consentimento (`auditoria_sessao`, `auditoria_vinculo_acesso`, `auditoria_acesso_prontuario`, `consentimento_responsavel`) são *append-only* e protegidas contra `UPDATE`, `DELETE` e `TRUNCATE`. |
+| **RLS obrigatório e Anti-Recursão (Migration 021)** | `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` é aplicado a **todas** as tabelas públicas. Para eliminar recursão infinita (`42P17`) em consultas cruzadas de vínculo, as políticas utilizam funções `SECURITY DEFINER` com `SET search_path = public` (`rls_is_super_admin()`, `rls_clinica_usuario()`, `rls_tem_vinculo_paciente(uuid)`, `rls_tem_acesso_sessao(uuid)`). |
 | **Sem colunas BLOB** | Arquivos (PDF, DOCX) **nunca** são armazenados no banco; utiliza-se o **Supabase Storage** com bucket privado e Signed URLs temporárias. |
 
 ### 2.3 Regras de Migração e Seeds
@@ -127,7 +127,8 @@ Database/
 | `telemetria_evento` | Série temporal *append-only* de eventos de telemetria da sessão |
 | `anotacao_clinica` | Anotações estruturadas e observações de prontuário (**RN05**) |
 | `relatorio_sessao` | Relatório analítico pós-sessão (1:1 com `sessao` via `sessao_id` PK/FK em 3FN) |
-| `auditoria_clinica` | Trilha imutável de auditoria de operações sensíveis (LGPD) |
+| `auditoria_sessao` / `auditoria_vinculo_acesso` / `auditoria_acesso_prontuario` | Trilhas imutáveis de auditoria clínica, vínculos de equipe e acessos ao prontuário (`ON DELETE RESTRICT`, bloqueio de `UPDATE`, `DELETE` e `TRUNCATE` — Migration 022) |
+| `consentimento_responsavel` | Trilha imutável (*append-only*) de consentimento específico e em destaque de pais ou responsável legal (LGPD Art. 14 §1º — Migration 023) |
 
 ---
 
@@ -592,7 +593,7 @@ flowchart TD
 
 | Elemento | Convenção Obrigatória | Exemplo Correto | Exemplo Proibido |
 | :--- | :--- | :--- | :--- |
-| **Métodos em Controllers, Models e Services** | **`camelCase`** | `deletarHard()`, `buscarPorId()`, `iniciarSessao()` | `deletar_hard()`, `buscar_por_id()` |
+| **Métodos em Controllers, Models e Services** | **`camelCase`** | `inativar()`, `buscarPorId()`, `iniciarSessao()` | `inativar_paciente()`, `buscar_por_id()` |
 | **Componentes, Páginas e Modais React** | **`PascalCase`** | `CockpitSessaoPage.tsx`, `ModalPreSessao.tsx` | `cockpit_sessao.tsx` |
 | **Arquivos de Service, Model, Route, DTO** | **`kebab-case` / `.layer.ts`** | `paciente.model.ts`, `sessao.service.ts` | `PacienteModel.ts`, `sessao_service.ts` |
 | **Interfaces e Types TypeScript** | **`PascalCase`** | `CriarPacienteDTO`, `Sessao` | `criarPacienteDTO`, `sessao_type` |
@@ -677,11 +678,12 @@ VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-### 8.3 Isolamento de Chaves e Proteção de Dados Clínicos (LGPD)
+### 8.3 Isolamento de Chaves, RLS e Proteção de Dados Clínicos (LGPD e Lei 13.787/2018)
 
-| Camada | Chave Utilizada | Responsabilidade de Segurança |
+| Camada | Chave / Mecanismo | Responsabilidade de Segurança |
 | :--- | :--- | :--- |
-| **Back-end (Node.js)** | `SUPABASE_SERVICE_ROLE_KEY` | Autoridade central de negócio: valida o token JWT no `authMiddleware`, verifica vínculo institucional (`terapeuta_paciente` e `clinica_id` — **RN04**), aplica Soft Delete (**RN05**) e registra trilha de auditoria antes de persistir no Supabase. |
+| **Back-end (Node.js)** | `SUPABASE_SERVICE_ROLE_KEY` + `SUPABASE_ANON_KEY` | Autoridade central de negócio: separa o cliente de autenticação (`ANON_KEY`) do cliente administrativo (`SERVICE_ROLE_KEY`, sem contaminação de sessão JWT), valida o token no `authMiddleware`, verifica vínculo institucional (`terapeuta_paciente` e `clinica_id` — **RN04**), aplica Soft Delete (**RN05**) e registra trilha de auditoria. |
+| **Banco de Dados (PostgreSQL)** | RLS + `SECURITY DEFINER` + Triggers (Migrations 021, 022, 023) | Defesa em profundidade com Row Level Security ativo em todas as tabelas usando funções `SECURITY DEFINER` anti-recursão (`rls_is_super_admin`, `rls_clinica_usuario`, `rls_tem_vinculo_paciente`, `rls_tem_acesso_sessao`); bloqueio de `is_super_admin` via `raw_user_meta_data` no trigger `handle_new_user()`; bloqueio físico de `DELETE` em prontuário (`paciente`, `anotacao_clinica`, `sessao`, `relatorio_sessao`) para retenção mínima de 20 anos (Lei 13.787/2018 Art. 6º); e trilha imutável de consentimento parental (`consentimento_responsavel`, LGPD Art. 14 §1º). |
 | **Front-end (React)** | `VITE_SUPABASE_ANON_KEY` | Chave pública de cliente. Nunca armazena segredos de infraestrutura. Em caso de expiração de sessão (`401`), limpa `access_token`, `refresh_token` e o cache `intea:auth-store` do `localStorage`. |
 
 ### 8.4 Supabase Storage (Laudos Clínicos)

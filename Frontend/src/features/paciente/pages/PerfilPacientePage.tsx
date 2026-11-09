@@ -16,6 +16,7 @@ import {
   GitCompare,
   Activity,
   Stethoscope,
+  ShieldCheck,
 } from "lucide-react";
 import { ModalCompararSessoes } from "../components/ModalCompararSessoes";
 import { PainelEquipeMultidisciplinar } from "../components/PainelEquipeMultidisciplinar";
@@ -27,7 +28,7 @@ import { terapeutaService } from "@/features/terapeuta/services/terapeuta.servic
 import type { Terapeuta } from "@/features/terapeuta/types/terapeuta.types";
 import { GerenciadorAnotacoesProntuario } from "@/features/anotacao";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
-import { sessaoService } from "@/features/sessao/services/sessaoService";
+import { sessaoService } from "@/features/sessao/services/sessao.service";
 import type { Sessao } from "@/features/sessao/types/sessao.types";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
 import { Button } from "@/shared/components/ui/button";
@@ -71,6 +72,8 @@ export function PerfilPacientePage() {
   const [isSubmittingVinculo, setIsSubmittingVinculo] = useState<boolean>(false);
   const [erroModalVinculo, setErroModalVinculo] = useState<string | null>(null);
   const [removendoEspecialistaId, setRemovendoEspecialistaId] = useState<string | null>(null);
+  const [abaAtiva, setAbaAtiva] = useState<"visao_geral" | "prontuario" | "sessoes">("visao_geral");
+  const [consentimentoLgpd, setConsentimentoLgpd] = useState<boolean>(false);
 
   const user = useAuthStore((s) => s.user);
   const abrirModalPreSessao = useSessionStore((s) => s.abrirModalPreSessao);
@@ -172,6 +175,17 @@ export function PerfilPacientePage() {
       ]);
 
       setPaciente(dadosPaciente);
+      if (dadosPaciente) {
+        let salvoLocal = false;
+        try {
+          salvoLocal =
+            typeof window !== "undefined" &&
+            window.localStorage.getItem(`lgpd_tcle_paciente_${dadosPaciente.id}`) === "true";
+        } catch {
+          // localStorage indisponível
+        }
+        setConsentimentoLgpd(Boolean(dadosPaciente.consentimento_lgpd || salvoLocal));
+      }
       setSessoes(
         (resSessoes?.data || []).filter(
           (s) => s.status_sessao !== "aguardando_pareamento",
@@ -253,6 +267,21 @@ export function PerfilPacientePage() {
     abrirModalPreSessao();
   };
 
+  const handleRegistrarConsentimentoLgpd = () => {
+    if (!paciente) return;
+    setConsentimentoLgpd(true);
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(`lgpd_tcle_paciente_${paciente.id}`, "true");
+      }
+    } catch {
+      // localStorage indisponível
+    }
+    toast.success(
+      "Termo de Consentimento Livre e Esclarecido (TCLE) registrado com sucesso para o responsável legal.",
+    );
+  };
+
   const handleConfirmarVinculoEspecialista = async (terapeutaId: string) => {
     if (!id || !terapeutaId) return;
 
@@ -281,7 +310,7 @@ export function PerfilPacientePage() {
 
     if (especialistas.length <= 1) {
       const msgBloqueio =
-        "Regra Anti-Órfão (RN04): O paciente não pode ficar sem nenhum especialista responsável.";
+        "Não é possível desvincular: O paciente precisa manter ao menos um especialista responsável.";
       setAlertaConflitoEquipe(msgBloqueio);
       toast.warning(msgBloqueio);
       return;
@@ -378,18 +407,34 @@ export function PerfilPacientePage() {
             variant="ghost"
             size="sm"
             onClick={() => navigate("/pacientes")}
-            className="h-9 w-9 p-0 rounded-xl"
+            className="min-h-[44px] min-w-[44px] p-0 rounded-xl"
             title="Voltar"
           >
             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </Button>
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
                 {paciente.nome}
               </h1>
               <Badge variant="outline" className="text-xs bg-muted/50 border-primary/20 text-primary font-semibold">
                 Prontuário: #{paciente.id.slice(0, 8)}
+              </Badge>
+              <Badge
+                data-testid="badge-consentimento-lgpd"
+                variant="outline"
+                className={
+                  consentimentoLgpd
+                    ? "text-xs bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-semibold gap-1"
+                    : "text-xs bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-300 font-semibold gap-1"
+                }
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>
+                  {consentimentoLgpd
+                    ? "Consentimento LGPD: Ativo (Responsável Legal)"
+                    : "Consentimento LGPD: Pendente (Responsável Legal)"}
+                </span>
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -400,24 +445,85 @@ export function PerfilPacientePage() {
 
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="btn-registrar-consentimento-lgpd"
+            onClick={handleRegistrarConsentimentoLgpd}
+            className="min-h-[44px] px-4 text-xs font-semibold gap-1.5 cursor-pointer"
+          >
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+            <span>
+              {consentimentoLgpd
+                ? "Termo LGPD (TCLE) Confirmado"
+                : "Registrar Consentimento LGPD (TCLE)"}
+            </span>
+          </Button>
+
+          <Button
             variant="outline"
             size="sm"
             onClick={() => navigate(`/pacientes/${paciente.id}/historico`)}
-            className="min-h-11 px-4 text-xs font-semibold gap-1.5 cursor-pointer"
+            className="min-h-[44px] px-4 text-xs font-semibold gap-1.5 cursor-pointer"
           >
             <Clock className="h-4 w-4" />
-            <span>Histórico de Sessões</span>
+            <span>Evolução Longitudinal</span>
           </Button>
 
           <Button
             size="sm"
             onClick={handleIniciarAtendimento}
-            className="min-h-11 px-4 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
+            className="min-h-[44px] px-4 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
           >
             <Play className="h-4 w-4 fill-current" />
             <span>Iniciar Sessão com este Paciente</span>
           </Button>
         </div>
+      </div>
+
+      {/* Navegação Interna em Abas do Hub do Paciente */}
+      <div
+        role="tablist"
+        aria-label="Seções do Perfil do Paciente"
+        data-testid="tabs-perfil-paciente"
+        className="flex flex-wrap items-center gap-2 border-b border-border pb-3"
+      >
+        <Button
+          type="button"
+          role="tab"
+          aria-selected={abaAtiva === "visao_geral"}
+          data-testid="tab-visao-geral-equipe"
+          variant={abaAtiva === "visao_geral" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAbaAtiva("visao_geral")}
+          className="min-h-[44px] px-4 rounded-xl text-xs font-semibold cursor-pointer"
+        >
+          Visão Geral & Equipe
+        </Button>
+        <Button
+          type="button"
+          role="tab"
+          aria-selected={abaAtiva === "prontuario"}
+          data-testid="tab-prontuario-anotacoes"
+          variant={abaAtiva === "prontuario" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAbaAtiva("prontuario")}
+          className="min-h-[44px] px-4 rounded-xl text-xs font-semibold cursor-pointer"
+        >
+          Prontuário & Anotações
+        </Button>
+        <Button
+          type="button"
+          role="tab"
+          aria-selected={abaAtiva === "sessoes"}
+          data-testid="tab-sessoes-evolucao"
+          variant={abaAtiva === "sessoes" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAbaAtiva("sessoes")}
+          className="min-h-[44px] px-4 rounded-xl text-xs font-semibold cursor-pointer"
+        >
+          Sessões & Evolução
+        </Button>
       </div>
 
       {/* Grid de Informações Principais */}
@@ -632,7 +738,7 @@ export function PerfilPacientePage() {
               Intervenções Recentes
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Selecione até duas sessões para visualização comparativa lado a lado (RF15).
+              Selecione até duas sessões para visualização comparativa lado a lado das métricas e evolução clínica.
             </p>
           </div>
 

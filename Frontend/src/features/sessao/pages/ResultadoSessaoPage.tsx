@@ -6,7 +6,7 @@ import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import {
   sessaoService,
   type DadosResultadoSessao,
-} from "@/features/sessao/services/sessaoService";
+} from "@/features/sessao/services/sessao.service";
 import type { SerieMetricaJogo } from "@/features/paciente/types/historico.types";
 import { BlocoAnotacoesClinicas } from "@/features/sessao/components/resultado/BlocoAnotacoesClinicas";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -1377,7 +1377,7 @@ export function ResultadoSessaoPage({
                 )}
               </div>
               <span className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
-                Protegido contra edição por terceiros (RF16 / RF21)
+                Registro clínico original protegido (autoria inviolável)
               </span>
             </div>
             <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap bg-white/80 dark:bg-card/60 rounded-xl p-3.5 border border-indigo-100 dark:border-indigo-900">

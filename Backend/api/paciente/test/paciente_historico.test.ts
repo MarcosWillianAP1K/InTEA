@@ -188,7 +188,7 @@ function configurarVisibilidadeMock({
     data: {
       user: {
         id: terapeutaId,
-        user_metadata: { is_super_admin: isSuperAdmin },
+        app_metadata: { is_super_admin: isSuperAdmin },
       },
     },
     error: null,

@@ -9,7 +9,7 @@ import { SessaoExportarService } from '../services/sessao-exportar.service.js';
 // Middlewares de autenticação JWT e validação de vínculo clínico (RN04)
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
-import { verificarSessaoMiddleware } from '../../../core/middlewares/sessao.middleware.js';
+import { verificarSessaoMiddleware, validarCondutorSessaoMiddleware } from '../../../core/middlewares/sessao.middleware.js';
 import { validarIntervaloHistorico } from '../../../core/middlewares/query-range.middleware.js';
 import { parearRateLimiter } from '../../../core/middlewares/rate-limit.middleware.js';
 
@@ -890,7 +890,7 @@ sessaoRoutes.get('/:id/exportar', authMiddleware, verificarSessaoMiddleware, Ses
  *       500:
  *         description: Erro interno ao finalizar sessão
  */
-sessaoRoutes.patch('/:id/finalizar', authMiddleware, verificarSessaoMiddleware, SessaoController.finalizar);
+sessaoRoutes.patch('/:id/finalizar', authMiddleware, verificarSessaoMiddleware, validarCondutorSessaoMiddleware, SessaoController.finalizar);
 
 /**
  * @swagger
@@ -939,7 +939,7 @@ sessaoRoutes.patch('/:id/finalizar', authMiddleware, verificarSessaoMiddleware, 
  *       500:
  *         description: Erro interno ao cancelar sessão
  */
-sessaoRoutes.delete('/:id/cancelar', authMiddleware, verificarSessaoMiddleware, SessaoController.cancelar);
+sessaoRoutes.delete('/:id/cancelar', authMiddleware, verificarSessaoMiddleware, validarCondutorSessaoMiddleware, SessaoController.cancelar);
 
 /**
  * @swagger
@@ -1033,7 +1033,7 @@ sessaoRoutes.delete('/:id/cancelar', authMiddleware, verificarSessaoMiddleware, 
  *                   type: string
  *                   example: "Erro interno ao atualizar status da sessão"
  */
-sessaoRoutes.patch('/:id/status', authMiddleware, verificarSessaoMiddleware, SessaoController.atualizarStatus);
+sessaoRoutes.patch('/:id/status', authMiddleware, verificarSessaoMiddleware, validarCondutorSessaoMiddleware, SessaoController.atualizarStatus);
 
 /**
  * @swagger

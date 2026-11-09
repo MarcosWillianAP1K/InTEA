@@ -17,6 +17,7 @@
 import { Response, NextFunction } from 'express';
 import { supabase } from '../supabase/supabase.client.js';
 import { AuthenticatedRequest } from './auth.middleware.js';
+import { hasSuperAdminClaim } from '../auth/privilegios.js';
 import { validarUUID } from '../utils/validators.js';
 
 export interface MeMiddlewareOptions {
@@ -77,7 +78,7 @@ export function meMiddleware(options?: MeMiddlewareOptions) {
         return;
       }
 
-      const isSuperAdmin = terapeuta.is_super_admin === true || usuarioLogado.user_metadata?.is_super_admin === true;
+      const isSuperAdmin = terapeuta.is_super_admin === true || hasSuperAdminClaim(usuarioLogado);
       if (req.user) {
         req.user.is_super_admin = isSuperAdmin;
         if (terapeuta.clinica_id) {

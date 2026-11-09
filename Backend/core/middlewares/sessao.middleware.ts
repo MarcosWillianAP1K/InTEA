@@ -16,6 +16,7 @@
 import { Response, NextFunction } from 'express';
 import { supabase } from '../supabase/supabase.client.js';
 import { AuthenticatedRequest } from './auth.middleware.js';
+import { hasSuperAdminClaim } from '../auth/privilegios.js';
 import { validarUUID } from '../utils/validators.js';
 import { SessaoModel, Sessao, MODO_SESSAO } from '../../api/sessao/models/sessao.model.js';
 import { SessaoConcorrenciaService } from '../../api/sessao/services/sessao-concorrencia.service.js';
@@ -68,7 +69,7 @@ export async function verificarSessaoMiddleware(
     }
 
     // Bypass SuperAdmin
-    const isSuperAdmin = usuarioLogado.user_metadata?.is_super_admin === true || usuarioLogado.is_super_admin === true;
+    const isSuperAdmin = hasSuperAdminClaim(usuarioLogado);
     if (isSuperAdmin) {
       req.contextoSessao = sessao;
       req.pacienteAlvoId = sessao.paciente_id || undefined;
@@ -157,7 +158,7 @@ export function validarCondutorSessaoMiddleware(
   const usuarioLogadoId = req.user?.id || '';
   const isSuperAdmin =
     req.user?.is_super_admin === true ||
-    req.user?.user_metadata?.is_super_admin === true;
+    hasSuperAdminClaim(req.user);
 
   if (!sessao) {
     res.status(404).json({ error: 'Sessão clínica não encontrada no contexto da requisição.' });

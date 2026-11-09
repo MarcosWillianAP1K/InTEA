@@ -622,7 +622,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
             id: usuario.id,
             email: usuario.email,
             is_super_admin: usuario.is_super_admin,
-            user_metadata: { is_super_admin: usuario.is_super_admin },
+            app_metadata: { is_super_admin: usuario.is_super_admin },
           },
         },
         error: null,

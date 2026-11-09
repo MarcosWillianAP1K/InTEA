@@ -14,7 +14,7 @@ import {
   ChevronRight,
   Activity,
 } from "lucide-react";
-import { sessaoService } from "../services/sessaoService";
+import { sessaoService } from "../services/sessao.service";
 import type { Sessao, FiltroSessaoDTO } from "../types/sessao.types";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { Button } from "@/shared/components/ui/button";
@@ -184,14 +184,14 @@ export function HistoricoSessoesPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Histórico de sessões
+              Registro de Atendimentos
             </h1>
             <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
               {isSuperAdmin && verTodasAdmin ? "Todas as Sessões (Admin)" : "Minhas Sessões"}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Consulte telemetrias passadas, intervenções DDA e laudos clínicos gerados pela IA.
+            Consulte o histórico geral de intervenções clínicas, telemetrias e relatórios de sessões da instituição.
           </p>
         </div>
 

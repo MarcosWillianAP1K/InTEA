@@ -19,6 +19,7 @@ import {
 import { TerapeutaModel } from '../../terapeuta/models/terapeuta.model.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
+import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 import { CryptoService } from '../../../core/security/crypto.service.js';
 import {
   validarUUID,
@@ -30,6 +31,32 @@ import {
   formatarCEP,
   formatarTelefone,
 } from '../../../core/utils/formatters.js';
+
+export interface ConsentimentoResponsavelRegistro {
+  id?: string;
+  paciente_id: string;
+  responsavel_id?: string | null;
+  terapeuta_id?: string | null;
+  versao_termo: string;
+  consentimento_concedido: boolean;
+  finalidades?: string[];
+  canal_coleta?: string;
+  ip_origem?: string | null;
+  user_agent?: string | null;
+  observacoes?: string | null;
+  revogado_em?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+export interface RegistrarConsentimentoDTO {
+  versao_termo?: string;
+  consentimento_concedido?: boolean;
+  responsavel_id?: string | null;
+  finalidades?: string[];
+  canal_coleta?: string;
+  observacoes?: string | null;
+}
 
 export class PacienteServiceError extends Error {
   constructor(
@@ -66,7 +93,7 @@ export class PacienteService {
 
       let isSuperAdmin =
         usuarioLogado.is_super_admin === true ||
-        usuarioLogado.user_metadata?.is_super_admin === true;
+        hasSuperAdminClaim(usuarioLogado);
 
       let statusAtivo = (usuarioLogado as { status_ativo?: boolean }).status_ativo !== false;
 
@@ -188,7 +215,7 @@ export class PacienteService {
     if (usuarioLogado) {
       const isSuperAdmin =
         usuarioLogado.is_super_admin === true ||
-        usuarioLogado.user_metadata?.is_super_admin === true;
+        hasSuperAdminClaim(usuarioLogado);
 
       if (!isSuperAdmin) {
         const terapeuta = await TerapeutaModel.buscarPorId(usuarioLogado.id);
@@ -450,7 +477,7 @@ export class PacienteService {
     if (usuarioLogado && usuarioLogado.id) {
       const isSuperAdmin =
         usuarioLogado.is_super_admin === true ||
-        usuarioLogado.user_metadata?.is_super_admin === true;
+        hasSuperAdminClaim(usuarioLogado);
 
       if (!isSuperAdmin && usuarioLogado.id !== terapeutaId) {
         throw new PacienteServiceError(
@@ -545,5 +572,162 @@ export class PacienteService {
    */
   static decifrarDadoSensivel(texto: string): string {
     return CryptoService.decifrar(texto);
+  }
+
+  /**
+   * Consulta o histórico e status vigente de consentimento parental (LGPD Art. 14 §1º).
+   */
+  static async obterConsentimento(pacienteId: string): Promise<{
+    vigente: boolean;
+    ultimo_consentimento: ConsentimentoResponsavelRegistro | null;
+    historico: ConsentimentoResponsavelRegistro[];
+  }> {
+    if (!pacienteId || !validarUUID(pacienteId)) {
+      throw new PacienteServiceError('O identificador do paciente deve ser um UUID válido.', 400);
+    }
+
+    const { data, error } = await supabase
+      .from('consentimento_responsavel')
+      .select('*')
+      .eq('paciente_id', pacienteId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new PacienteServiceError(
+        `Erro ao consultar consentimento parental: ${error.message}`,
+        500
+      );
+    }
+
+    const historico = (Array.isArray(data) ? data : []) as ConsentimentoResponsavelRegistro[];
+    const ultimo = historico.length > 0 ? historico[0] : null;
+    const vigente = Boolean(
+      ultimo && ultimo.consentimento_concedido === true && !ultimo.revogado_em
+    );
+
+    return {
+      vigente,
+      ultimo_consentimento: ultimo,
+      historico,
+    };
+  }
+
+  /**
+   * Registra formalmente um novo termo de consentimento parental ou revogação (LGPD Art. 14 §1º).
+   */
+  static async registrarConsentimento(
+    pacienteId: string,
+    dto: RegistrarConsentimentoDTO,
+    contexto: {
+      terapeutaId?: string | null;
+      ipOrigem?: string | null;
+      userAgent?: string | null;
+    } = {}
+  ): Promise<ConsentimentoResponsavelRegistro> {
+    if (!pacienteId || !validarUUID(pacienteId)) {
+      throw new PacienteServiceError('O identificador do paciente deve ser um UUID válido.', 400);
+    }
+
+    if (dto.responsavel_id !== undefined && dto.responsavel_id !== null && dto.responsavel_id !== '') {
+      if (typeof dto.responsavel_id !== 'string' || !validarUUID(dto.responsavel_id)) {
+        throw new PacienteServiceError('O campo "responsavel_id" deve ser um UUID válido.', 400);
+      }
+    }
+
+    if (
+      dto.consentimento_concedido !== undefined &&
+      typeof dto.consentimento_concedido !== 'boolean'
+    ) {
+      throw new PacienteServiceError('O campo "consentimento_concedido" deve ser booleano.', 400);
+    }
+
+    if (dto.versao_termo !== undefined && typeof dto.versao_termo !== 'string') {
+      throw new PacienteServiceError('O campo "versao_termo" deve ser uma string.', 400);
+    }
+
+    if (dto.finalidades !== undefined) {
+      if (
+        !Array.isArray(dto.finalidades) ||
+        !dto.finalidades.every((item) => typeof item === 'string' && item.trim().length > 0)
+      ) {
+        throw new PacienteServiceError(
+          'O campo "finalidades" deve ser um array de strings não vazias.',
+          400
+        );
+      }
+    }
+
+    if (dto.canal_coleta !== undefined && typeof dto.canal_coleta !== 'string') {
+      throw new PacienteServiceError('O campo "canal_coleta" deve ser uma string.', 400);
+    }
+
+    const versaoTermo =
+      dto.versao_termo && dto.versao_termo.trim().length > 0 ? dto.versao_termo.trim() : 'v1.0';
+    const consentimentoConcedido =
+      dto.consentimento_concedido !== undefined ? dto.consentimento_concedido : true;
+    const canalColeta =
+      dto.canal_coleta && dto.canal_coleta.trim().length > 0
+        ? dto.canal_coleta.trim()
+        : 'presencial_web';
+    const finalidades =
+      dto.finalidades && dto.finalidades.length > 0
+        ? dto.finalidades
+        : ['tratamento_clinico', 'telemetria_cognitiva', 'relatorio_ia'];
+
+    const payload: ConsentimentoResponsavelRegistro = {
+      paciente_id: pacienteId,
+      responsavel_id: dto.responsavel_id || null,
+      terapeuta_id: contexto.terapeutaId || null,
+      versao_termo: versaoTermo,
+      consentimento_concedido: consentimentoConcedido,
+      finalidades,
+      canal_coleta: canalColeta,
+      ip_origem: contexto.ipOrigem || null,
+      user_agent: contexto.userAgent || null,
+      observacoes: typeof dto.observacoes === 'string' ? dto.observacoes : null,
+      ...(consentimentoConcedido === false ? { revogado_em: new Date().toISOString() } : {}),
+    };
+
+    const insertQuery = supabase
+      .from('consentimento_responsavel')
+      .insert(payload) as unknown as {
+      select?: (cols: string) => {
+        single?: () => Promise<{ data: ConsentimentoResponsavelRegistro | null; error: { message: string } | null }>;
+      };
+      data?: ConsentimentoResponsavelRegistro | null;
+      error?: { message: string } | null;
+    };
+
+    if (typeof insertQuery?.select === 'function') {
+      const selected = insertQuery.select('*');
+      if (typeof selected?.single === 'function') {
+        const { data, error } = await selected.single();
+        if (error) {
+          throw new PacienteServiceError(
+            `Erro ao registrar consentimento parental: ${error.message}`,
+            500
+          );
+        }
+        return data || payload;
+      }
+    }
+
+    const fallbackRes = await (insertQuery as unknown as Promise<{
+      data?: ConsentimentoResponsavelRegistro | ConsentimentoResponsavelRegistro[] | null;
+      error?: { message: string } | null;
+    }>);
+
+    if (fallbackRes?.error) {
+      throw new PacienteServiceError(
+        `Erro ao registrar consentimento parental: ${fallbackRes.error.message}`,
+        500
+      );
+    }
+
+    if (Array.isArray(fallbackRes?.data) && fallbackRes.data.length > 0) {
+      return fallbackRes.data[0];
+    }
+
+    return (fallbackRes?.data as ConsentimentoResponsavelRegistro) || payload;
   }
 }

@@ -268,7 +268,7 @@ describe('AuditoriaService — Regras de Negócio e Segurança', () => {
 
     const res = await AuditoriaService.validarAcessoLinhaDoTempo(sessaoIdValido, {
       id: 'super-admin-id',
-      user_metadata: { is_super_admin: true },
+      app_metadata: { is_super_admin: true },
     });
 
     expect(res.autorizado).toBe(true);

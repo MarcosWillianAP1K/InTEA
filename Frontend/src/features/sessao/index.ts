@@ -21,4 +21,4 @@ export * from "./components/resultado/BotaoExportarRelatorio";
 export * from "./components/resultado/BlocoAnotacoesClinicas";
 export * from "./pages/CockpitSessaoPage";
 export * from "./pages/ResultadoSessaoPage";
-export * from "./services/sessaoService";
+export * from "./services/sessao.service";

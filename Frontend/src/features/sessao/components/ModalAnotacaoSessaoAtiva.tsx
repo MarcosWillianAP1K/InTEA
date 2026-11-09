@@ -19,10 +19,15 @@ import {
   UserCheck,
   RotateCcw,
   ShieldAlert,
+  Pencil,
+  Trash2,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { anotacaoService } from "@/features/anotacao/services/anotacao.service";
 import type { AnotacaoClinica } from "@/features/anotacao/types/anotacao.types";
+import { useAuthStore } from "@/features/autenticacao/store/authStore";
 
 /**
  * ============================================================================
@@ -73,6 +78,12 @@ export function ModalAnotacaoSessaoAtiva({
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [textoEdicao, setTextoEdicao] = useState("");
+  const [salvandoEdicaoId, setSalvandoEdicaoId] = useState<string | null>(null);
+  const [inativandoId, setInativandoId] = useState<string | null>(null);
+
+  const user = useAuthStore((s) => s.user);
 
   // 1. Carrega ou restaura rascunho de sessionStorage tolerante a F5 ou fechamento acidental
   useEffect(() => {
@@ -211,6 +222,61 @@ export function ModalAnotacaoSessaoAtiva({
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // 5. Edição inline e inativação (soft delete) pelo autor da anotação
+  const handleIniciarEdicao = (item: AnotacaoClinica) => {
+    setEditandoId(item.id);
+    setTextoEdicao(item.conteudo);
+  };
+
+  const handleCancelarEdicao = () => {
+    setEditandoId(null);
+    setTextoEdicao("");
+  };
+
+  const handleSalvarEdicao = async (anotacaoId: string) => {
+    const limpo = textoEdicao.trim();
+    if (limpo.length < MINIMO_CARACTERES || salvandoEdicaoId) return;
+
+    setSalvandoEdicaoId(anotacaoId);
+    try {
+      const atualizada = await anotacaoService.atualizar(anotacaoId, {
+        conteudo: limpo,
+      });
+      setAnotacoes((prev) =>
+        prev.map((a) =>
+          a.id === anotacaoId
+            ? atualizada || { ...a, conteudo: limpo, updated_at: new Date().toISOString() }
+            : a,
+        ),
+      );
+      setEditandoId(null);
+      setTextoEdicao("");
+      toast.success("Anotação clínica atualizada com sucesso.");
+    } catch {
+      toast.error("Não foi possível atualizar a anotação clínica.");
+    } finally {
+      setSalvandoEdicaoId(null);
+    }
+  };
+
+  const handleInativarAnotacao = async (anotacaoId: string) => {
+    if (inativandoId) return;
+    setInativandoId(anotacaoId);
+    try {
+      await anotacaoService.inativar(anotacaoId);
+      setAnotacoes((prev) => prev.filter((a) => a.id !== anotacaoId));
+      if (editandoId === anotacaoId) {
+        setEditandoId(null);
+        setTextoEdicao("");
+      }
+      toast.success("Anotação clínica inativada com sucesso.");
+    } catch {
+      toast.error("Não foi possível inativar a anotação clínica.");
+    } finally {
+      setInativandoId(null);
     }
   };
 
@@ -376,6 +442,11 @@ export function ModalAnotacaoSessaoAtiva({
                         second: "2-digit",
                       })
                     : "Horário não informado";
+                  const isAutor =
+                    !user?.id || !item.terapeuta_id || item.terapeuta_id === user.id;
+                  const estaEditando = editandoId === item.id;
+                  const estaSalvandoEdicao = salvandoEdicaoId === item.id;
+                  const estaInativando = inativandoId === item.id;
 
                   return (
                     <div
@@ -383,16 +454,101 @@ export function ModalAnotacaoSessaoAtiva({
                       data-testid={`item-anotacao-${item.id}`}
                       className="p-3 rounded-xl bg-muted/40 border border-border/70 text-xs flex flex-col gap-1.5 transition-colors"
                     >
-                      <div className="flex items-center justify-between text-2xs text-muted-foreground">
+                      <div className="flex items-center justify-between text-2xs text-muted-foreground gap-2">
                         <span className="font-semibold text-foreground flex items-center gap-1">
                           <UserCheck className="h-3 w-3 text-primary" />
                           <span>{autorNome}</span>
                         </span>
-                        <span className="font-mono">{dataFormatada}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono">{dataFormatada}</span>
+                          {isAutor && !isModoLivre && !estaEditando && (
+                            <div className="flex items-center gap-1 ml-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                data-testid={`btn-editar-anotacao-${item.id}`}
+                                onClick={() => handleIniciarEdicao(item)}
+                                disabled={Boolean(inativandoId)}
+                                className="h-6 px-1.5 text-2xs text-muted-foreground hover:text-foreground cursor-pointer"
+                                title="Editar anotação"
+                              >
+                                <Pencil className="h-3 w-3 mr-0.5" />
+                                <span>Editar</span>
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                data-testid={`btn-inativar-anotacao-${item.id}`}
+                                onClick={() => void handleInativarAnotacao(item.id)}
+                                disabled={estaInativando}
+                                className="h-6 px-1.5 text-2xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                                title="Inativar anotação"
+                              >
+                                {estaInativando ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Trash2 className="h-3 w-3 mr-0.5" />
+                                    <span>Inativar</span>
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed">
-                        {item.conteudo}
-                      </p>
+
+                      {estaEditando ? (
+                        <div className="flex flex-col gap-2 mt-1">
+                          <textarea
+                            data-testid={`textarea-edicao-anotacao-${item.id}`}
+                            rows={2}
+                            maxLength={LIMITE_CARACTERES}
+                            value={textoEdicao}
+                            onChange={(e) => setTextoEdicao(e.target.value)}
+                            disabled={estaSalvandoEdicao}
+                            className="w-full text-xs rounded-lg border border-border bg-background p-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                          />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              data-testid={`btn-cancelar-edicao-${item.id}`}
+                              onClick={handleCancelarEdicao}
+                              disabled={estaSalvandoEdicao}
+                              className="h-7 px-2.5 text-2xs cursor-pointer"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              <span>Cancelar</span>
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              data-testid={`btn-salvar-edicao-${item.id}`}
+                              onClick={() => void handleSalvarEdicao(item.id)}
+                              disabled={
+                                estaSalvandoEdicao ||
+                                textoEdicao.trim().length < MINIMO_CARACTERES
+                              }
+                              className="h-7 px-2.5 text-2xs cursor-pointer"
+                            >
+                              {estaSalvandoEdicao ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <Check className="h-3 w-3 mr-1" />
+                              )}
+                              <span>Salvar edição</span>
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                          {item.conteudo}
+                        </p>
+                      )}
                     </div>
                   );
                 })}

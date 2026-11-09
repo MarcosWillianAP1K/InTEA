@@ -11,6 +11,7 @@ import {
 import { SessaoIaAnaliseService } from './sessao-ia-analise.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { AuthenticatedRequest, UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
+import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 
 
 export interface CabecalhoLaudo {
@@ -168,7 +169,7 @@ export class SessaoExportarService {
    */
   static async gerarLaudoExportacao(
     sessaoId: string,
-    usuarioAutenticado?: UsuarioAutenticado | { id: string; user_metadata?: { is_super_admin?: boolean } } | null
+    usuarioAutenticado?: UsuarioAutenticado | { id: string; is_super_admin?: boolean; app_metadata?: { is_super_admin?: boolean } } | null
   ): Promise<RespostaServicoExportar> {
     // 1. Validação do parâmetro de identificação da sessão
     if (!sessaoId || !validarUUID(sessaoId)) {
@@ -208,7 +209,7 @@ export class SessaoExportarService {
     }
 
     // 5. Validação institucional de acesso (RN04)
-    const isSuperAdmin = usuarioAutenticado?.user_metadata?.is_super_admin === true;
+    const isSuperAdmin = hasSuperAdminClaim(usuarioAutenticado);
     const isDono = usuarioAutenticado?.id === sessao.terapeuta_id;
 
     if (!isSuperAdmin && !isDono) {

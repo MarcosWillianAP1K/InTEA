@@ -811,7 +811,7 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
       {},
       { sessaoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
       {},
-      { id: 'meu-terapeuta-uuid', user_metadata: { is_super_admin: false } }
+      { id: 'meu-terapeuta-uuid', app_metadata: { is_super_admin: false } }
     );
 
     await TelemetriaController.listarPorSessao(mockReq, mockRes);
@@ -833,7 +833,7 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
       {},
       { sessaoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
       {},
-      { id: 'admin-uuid', user_metadata: { is_super_admin: true } }
+      { id: 'admin-uuid', app_metadata: { is_super_admin: true } }
     );
 
     await TelemetriaController.listarPorSessao(mockReq, mockRes);
@@ -896,7 +896,7 @@ describe('TelemetriaController — Endpoints e Validações REST', () => {
       {},
       { sessaoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
       {},
-      { id: 'meu-terapeuta-uuid', user_metadata: { is_super_admin: false } }
+      { id: 'meu-terapeuta-uuid', app_metadata: { is_super_admin: false } }
     );
 
     await TelemetriaController.listarPorSessao(mockReq, mockRes);

@@ -1,5 +1,5 @@
 import { useState, useId } from "react";
-import { sessaoService } from "../../services/sessaoService";
+import { sessaoService } from "../../services/sessao.service";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { Button } from "@/shared/components/ui/button";
 import {

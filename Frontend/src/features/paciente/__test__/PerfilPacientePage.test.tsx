@@ -165,4 +165,46 @@ describe("Página: PerfilPacientePage (Prontuário e Equipe Multidisciplinar)", 
     expect(screen.getByTestId("modal-vincular-especialista")).toBeDefined();
     expect(screen.getByText("Vincular Especialista da Clínica")).toBeDefined();
   });
+
+  it("deve exibir indicador de Consentimento LGPD (Responsável Legal), permitir registrar TCLE e navegar pelas abas do hub", async () => {
+    vi.spyOn(pacienteService, "buscarPorId").mockResolvedValue(MOCK_PACIENTE);
+    vi.spyOn(sessaoService, "listar").mockResolvedValue({
+      data: MOCK_SESSOES,
+      meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+    });
+    vi.spyOn(pacienteService, "listarTerapeutas").mockResolvedValue([]);
+    vi.spyOn(terapeutaService, "listar").mockResolvedValue([]);
+
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={["/pacientes/paciente-uuid-1234"]}>
+          <Routes>
+            <Route path="/pacientes/:id" element={<PerfilPacientePage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    const badgeLgpd = screen.getByTestId("badge-consentimento-lgpd");
+    expect(badgeLgpd.textContent).toContain("Consentimento LGPD");
+
+    const btnRegistrarLgpd = screen.getByTestId("btn-registrar-consentimento-lgpd");
+    await act(async () => {
+      fireEvent.click(btnRegistrarLgpd);
+    });
+
+    expect(screen.getByTestId("badge-consentimento-lgpd").textContent).toContain(
+      "Consentimento LGPD: Ativo"
+    );
+
+    const tabProntuario = screen.getByTestId("tab-prontuario-anotacoes");
+    const tabSessoes = screen.getByTestId("tab-sessoes-evolucao");
+    expect(tabProntuario).toBeDefined();
+    expect(tabSessoes).toBeDefined();
+
+    await act(async () => {
+      fireEvent.click(tabProntuario);
+    });
+    expect(tabProntuario.getAttribute("aria-selected")).toBe("true");
+  });
 });

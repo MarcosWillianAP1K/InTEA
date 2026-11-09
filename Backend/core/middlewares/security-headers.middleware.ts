@@ -159,7 +159,7 @@ export const corsOptions: CorsOptions = {
     'Authorization',
     'X-Requested-With',
     'Accept',
-    'x-skip-rate-limit',
+    ...(process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST) ? ['x-skip-rate-limit'] : []),
     'session-token',
   ],
   maxAge: 86400, // 24 horas de cache para preflight OPTIONS

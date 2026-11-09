@@ -8,10 +8,13 @@
 
 A API REST do InTEA opera sob o padrão JSON sobre HTTP/HTTPS, seguindo a arquitetura MVC (Model-View-Controller) com Node.js, Express, TypeScript e persistência no PostgreSQL via Supabase.
 
-### 1.1 Autenticação e Segurança
+### 1.1 Autenticação, Segurança e Governança de Dados (RLS e LGPD)
 
 - Os endpoints protegidos exigem o cabeçalho `Authorization: Bearer <TOKEN_JWT>`, validado pelo `authMiddleware` via Supabase Auth.
 - O controle de acesso clínico aos prontuários e dados confidenciais do paciente é reforçado pelo middleware `verificarVisibilidadePaciente` (**RN04**), que valida o vínculo ativo terapeuta-paciente e a mesma afiliação institucional clínica.
+- **Defesa em Profundidade no Banco de Dados (Migration 021):** Todas as tabelas do schema `public` operam com **Row Level Security (RLS)** habilitado e políticas apoiadas por funções `SECURITY DEFINER` com `SET search_path = public` (`rls_is_super_admin()`, `rls_clinica_usuario()`, `rls_tem_vinculo_paciente(uuid)`, `rls_tem_acesso_sessao(uuid)`), prevenindo recursão infinita (`42P17`) e garantindo isolamento multi-tenant mesmo em acessos diretos ao banco.
+- **Retenção Legal de 20 Anos e Bloqueio Físico de Hard Delete (Migration 022 —RN05 / Lei 13.787/2018 Art. 6º):** Prontuários clínicos (`paciente`, `anotacao_clinica`, `sessao`, `relatorio_sessao`) possuem proteção física no PostgreSQL via triggers `BEFORE DELETE` (`impedir_delete_fisico_prontuario()` e `impedir_modificacao_relatorio_sessao()`). Qualquer inativação é exclusivamente lógica (`status_ativo = false` ou `soft_delete = true`), sendo proibido o uso de rotas de exclusão física em ambiente produtivo.
+- **Consentimento Parental Imutável (Migration 023 — LGPD Art. 14 §1º):** O tratamento de dados clínicos de crianças e adolescentes exige registro de consentimento específico e em destaque de ao menos um dos pais ou responsável legal na trilha *append-only* `public.consentimento_responsavel` (`GET/POST /api/paciente/:id/consentimento`).
 
 ### 1.2 Padrão de Respostas HTTP e Tratamento de Erros
 
@@ -65,9 +68,10 @@ Todas as respostas seguem formatos previsíveis:
 | `GET` | `/api/paciente/:id` | Sim (JWT + Vínculo) | **RF06**, **RN04** | Consulta prontuário e dados completos do paciente |
 | `POST` | `/api/paciente` | Sim (Recomendado) | **RF06**, **RF18** | Cadastra novo paciente e responsável principal |
 | `PUT` | `/api/paciente/:id` | Sim (JWT + Vínculo) | **RF06**, **RN04** | Atualiza dados cadastrais do paciente |
-| `DELETE` | `/api/paciente/:id` | Sim | **RN05** | Soft delete: inativa o paciente preservando prontuário |
+| `DELETE` | `/api/paciente/:id` | Sim | **RN05**, **Lei 13.787/2018** | Soft delete: inativa o paciente preservando o prontuário pelo prazo legal mínimo de 20 anos |
 | `PATCH` | `/api/paciente/:id/reativar` | Sim | **RN05** | Reativa paciente inativo (`status_ativo = true`) |
-| `DELETE` | `/api/paciente/:id/hard` | Sim (Admin/Dev) | Testes | Exclusão física permanente (apenas DEV e testes) |
+| `GET` | `/api/paciente/:id/consentimento` | Sim (JWT + Vínculo) | **LGPD Art. 14 §1º**, **RN04** | Consulta o estado vigente e o histórico imutável de consentimento parental do paciente |
+| `POST` | `/api/paciente/:id/consentimento` | Sim (JWT + Vínculo) | **LGPD Art. 14 §1º**, **RN04**, **RN05** | Registra concessão ou revogação (*append-only*) de consentimento do responsável legal |
 | `GET` | `/api/paciente/:id/terapeutas` | Sim (JWT + Vínculo) | **RF18**, **RN04** | Lista terapeutas da equipe multidisciplinar vinculados |
 | `POST` | `/api/paciente/:id/terapeutas` | Sim (JWT) | **RF18**, **RF21** | Vincula um novo terapeuta da mesma clínica ao paciente |
 | `DELETE` | `/api/paciente/:id/terapeutas/:terapeutaId` | Sim (JWT) | **RF18** | Remove o vínculo do terapeuta com o paciente |
@@ -559,29 +563,84 @@ Todas as respostas seguem formatos previsíveis:
 
 ---
 
-#### Rota 7: Exclusão Física Permanente (Hard Delete - DEV/Testes)
+#### Rota 7: Consultar e Registrar Consentimento Parental LGPD (Art. 14 §1º — Migration 023)
 
-- **Método:** `DELETE`
+> **Política de Retenção Legal e Bloqueio de Hard Delete (Migration 022):** Em cumprimento à **RN05** e ao **Art. 6º da Lei nº 13.787/2018** (guarda obrigatória de prontuários por no mínimo 20 anos a partir do último registro), a exclusão física de pacientes é bloqueada no banco de dados pelo trigger `trg_bloqueio_delete_paciente` (`impedir_delete_fisico_prontuario()`) e pela restrição `ON DELETE RESTRICT` na trilha de auditoria (`auditoria_acesso_prontuario`). Rotas de exclusão física (`/hard`) não são utilizadas em operação clínica.
 
-- **URL:** `/api/paciente/:id/hard`
-- **Aviso de Segurança:**
-  - Restrito a testes unitários, automação em CI e testes locais. Não deve ser invocado em ambiente de produção clínica.
+##### 7.1 Consultar Consentimento Parental (`GET /api/paciente/:id/consentimento`)
+
+- **Método:** `GET`
+- **URL:** `/api/paciente/:id/consentimento`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`
+- **Segurança:** Protegido por `authMiddleware`, `verificarVisibilidadePaciente` (**RN04**) e política RLS `consentimento_select_equipe` (`public.rls_tem_vinculo_paciente(paciente_id)`).
 - **Respostas:**
   - **Status `200 OK`:**
 
     ```json
     {
-      "message": "Paciente excluído fisicamente do banco com sucesso (hard delete para testes)."
+      "data": {
+        "paciente_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "consentimento_ativo": true,
+        "consentimento_vigente": {
+          "id": "b71c4a90-2211-4f88-9a10-334455667788",
+          "paciente_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "responsavel_id": "e2b74052-16a3-4813-9f87-217bc3c02341",
+          "terapeuta_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "versao_termo": "v1.0",
+          "finalidades": [
+            "acompanhamento_clinico",
+            "telemetria_terapeutica",
+            "relatorios_ia"
+          ],
+          "consentimento_concedido": true,
+          "canal_coleta": "presencial_web",
+          "created_at": "2026-11-08T14:00:00.000Z"
+        },
+        "historico": [
+          {
+            "id": "b71c4a90-2211-4f88-9a10-334455667788",
+            "versao_termo": "v1.0",
+            "consentimento_concedido": true,
+            "canal_coleta": "presencial_web",
+            "created_at": "2026-11-08T14:00:00.000Z"
+          }
+        ]
+      },
+      "message": "Consentimento parental consultado com sucesso."
     }
     ```
 
-  - **Status `404 Not Found`:**
+##### 7.2 Registrar ou Revogar Consentimento Parental (`POST /api/paciente/:id/consentimento`)
 
-    ```json
-    {
-      "error": "Paciente não encontrado para exclusão física."
-    }
-    ```
+- **Método:** `POST`
+- **URL:** `/api/paciente/:id/consentimento`
+- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT>`, `Content-Type: application/json`
+- **Regras de Imutabilidade (Migration 023):**
+  - A tabela `public.consentimento_responsavel` possui o trigger `trg_bloqueio_mutacao_consentimento` (`BEFORE UPDATE OR DELETE`) e `trg_bloqueio_truncate_consentimento` (`BEFORE TRUNCATE`).
+  - Tanto a concessão (`consentimento_concedido: true`) quanto a eventual revogação (`consentimento_concedido: false`) são gravadas como novos registros *append-only* na trilha, preservando IP de origem, `User-Agent`, versão do termo e carimbo temporal UTC.
+- **Request Body (JSON):**
+
+  ```json
+  {
+    "responsavel_id": "e2b74052-16a3-4813-9f87-217bc3c02341",
+    "versao_termo": "v1.0",
+    "finalidades": [
+      "acompanhamento_clinico",
+      "telemetria_terapeutica",
+      "relatorios_ia"
+    ],
+    "consentimento_concedido": true,
+    "canal_coleta": "presencial_web",
+    "observacoes": "Termo assinado presencialmente pela responsável legal na anamnese inicial."
+  }
+  ```
+
+- **Respostas:**
+  - **Status `201 Created`:** Registro imutável de consentimento gravado com sucesso.
+  - **Status `400 Bad Request`:** Dados de entrada inválidos.
+  - **Status `401 Unauthorized`:** Token JWT ausente ou inválido.
+  - **Status `403 Forbidden`:** Terapeuta sem vínculo ativo com o paciente (**RN04**).
+  - **Status `404 Not Found`:** Paciente não encontrado.
 
 ---
 
@@ -2370,7 +2429,6 @@ O módulo de anotações provê o registro médico-terapêutico estruturado pós
 | `PATCH` | `/api/anotacao/:id` | Sim (JWT + Vínculo) | **RF16**, **RF21**, **RN04** | Atualiza conteúdo textual da anotação (restrito ao terapeuta autor) |
 | `DELETE` | `/api/anotacao/:id` | Sim (JWT + Vínculo) | **RN05**, **RF21**, **RN04** | Inativação lógica (*soft delete*, `soft_delete: true`) restrita ao autor |
 | `PATCH` | `/api/anotacao/:id/reativar` | Sim (JWT + Vínculo) | **RN05**, **RF21**, **RN04** | Reativação lógica (`soft_delete: false`) restrita ao autor ou SuperAdmin institucional |
-| `DELETE` | `/api/anotacao/:id/hard` | Sim (JWT + Admin) | **RN05** | Exclusão física permanente (exclusivo para testes de CI/CD e SuperAdmin) |
 | `POST` | `/api/anotacao/paciente` | Sim (JWT + Vínculo) | **RF16**, **RF21**, **RN04** | Cria parecer clínico geral vinculado diretamente ao prontuário (`sessao_id = null`) |
 | `GET` | `/api/anotacao/paciente/:pacienteId` | Sim (JWT + Vínculo) | **RF16**, **RF19**, **RF21**, **RN04** | Lista o histórico com filtros avançados (autor, período, busca, sessão e paginação) |
 | `PATCH` | `/api/anotacao/paciente/:id` | Sim (JWT + Vínculo) | **RF16**, **RF21** | Edita anotação do prontuário (alias para `PATCH /api/anotacao/:id`) |
@@ -2656,17 +2714,10 @@ O módulo de anotações provê o registro médico-terapêutico estruturado pós
 
 ---
 
-#### Rota 8: Exclusão Física Permanente (SuperAdmin / Testes)
+#### Nota sobre Bloqueio de Exclusão Física e Retenção Legal (RN05 / Lei 13.787/2018 Art. 6º — Migration 022)
 
-- **Método:** `DELETE`
-- **URL:** `/api/anotacao/:id/hard`
-- **Headers Requeridos:** `Authorization: Bearer <TOKEN_JWT_ADMIN>`
-- **Regras:** Remove fisicamente o registro do banco de dados relacional. Exclusivo para perfis com permissão `admin` / SuperAdmin em esteiras de testes e CI/CD.
-- **Respostas:**
-  - **Status `204 No Content`:** Registro expurgado fisicamente.
-  - **Status `401 Unauthorized`:** Não autenticado.
-  - **Status `403 Forbidden`:** Usuário não é SuperAdmin.
-  - **Status `404 Not Found`:** Registro não encontrado.
+- A exclusão física (`DELETE` no banco) de registros em `public.anotacao_clinica` é bloqueada permanentemente pelo trigger `trg_bloqueio_delete_anotacao` (`public.impedir_delete_fisico_prontuario()`), lançando exceção SQL `23505`.
+- Toda remoção de anotação clínica utiliza exclusivamente a inativação lógica (`DELETE /api/anotacao/:id` $\rightarrow$ `soft_delete = true`), assegurando a preservação integral do prontuário pelo prazo legal mínimo de **20 anos** (**Lei nº 13.787/2018, Art. 6º**). Rotas de exclusão física (`/hard`) não possuem uso produtivo.
 
 ---
 
@@ -2759,8 +2810,9 @@ O servidor Socket.IO opera integrado ao backend na porta `3000`, expondo o names
 | **RN01** (Modo Livre sem Persistência) | `POST /api/telemetria`, `PATCH /api/sessao/:id/finalizar`, `GET /api/sessao/:id/resultado` | `200` (`persistido: false`, `relatorio: null`) | Supressão mandatória de gravação de telemetria e relatório clínico no prontuário. |
 | **RN02** (Tipagem Estrita de Métrica) | `POST /api/jogos/:id/validar-telemetria` | `200`, `404`, `422` | Rejeição mandatória com status 422 para tipos divergentes. |
 | **RN03** (Contexto DDA Pré-Sessão) | `POST /api/sessao/iniciar`, `POST /api/sessao/parear`, `GET /contexto-sugerido` | `200`, `201`, `400`, `403` | Entrega obrigatória de estresse e gatilhos (Contrato 2) antes do primeiro pacote de telemetria contínua. |
-| **RN04** (Visibilidade por Vínculo) | `GET /api/telemetria/sessao/:id`, `GET /api/auditoria/sessao/:id` | `200`, `401`, `403`, `404` | Middleware `verificarVisibilidadePaciente` bloqueia terceiros (403). |
-| **RN05** (Inalterabilidade e Imutabilidade) | `DELETE /api/anotacao/:id`, `PATCH /api/anotacao/:id/reativar`, `DELETE /api/paciente/:id` | `200`, `204`, `403`, `404` | Soft delete clínico (`soft_delete: true`), histórico imutável e reativação restrita (`soft_delete: false`). |
+| **RN04** (Visibilidade por Vínculo e RLS) | `GET /api/telemetria/sessao/:id`, `GET /api/auditoria/sessao/:id`, Políticas RLS (Migration 021) | `200`, `401`, `403`, `404` | Middleware `verificarVisibilidadePaciente` (403) e funções `SECURITY DEFINER` anti-recursão no PostgreSQL (`rls_tem_vinculo_paciente`, `rls_tem_acesso_sessao`). |
+| **RN05** (Inalterabilidade e Retenção de 20 Anos) | `DELETE /api/anotacao/:id`, `PATCH /api/anotacao/:id/reativar`, `DELETE /api/paciente/:id`, Triggers Migration 022 | `200`, `403`, `404` | Soft delete clínico (`soft_delete = true` / `status_ativo = false`), bloqueio físico de `DELETE` via triggers (`impedir_delete_fisico_prontuario`) e retenção mínima de 20 anos (Lei 13.787/2018 Art. 6º). |
+| **LGPD Art. 14 §1º** (Consentimento Parental) | `GET /api/paciente/:id/consentimento`, `POST /api/paciente/:id/consentimento` (Migration 023) | `200`, `201`, `400`, `401`, `403`, `404` | Registro e consulta da trilha imutável (*append-only*) de concessão/revogação de consentimento específico dos pais ou responsável legal. |
 | **RNF02** (Contrato e Manifesto) | `POST /api/jogos/validar-manifesto` | `200`, `400` | Conformidade com `manifestoGame.json` e documentação OpenAPI. |
 | **RNF03** (Rate Limiting e TTL) | `POST /api/sessao/parear`, `core/websocket/socket.limiter.ts` | `410`, `erro_rate_limit` | Expiração de PIN em 15 min e teto de 20 eventos/s no WebSocket. |
 | **RNF04** (Resiliência de Conexão) | `core/websocket/sessao.reconnection.ts` | `sessao:alerta_conexao`, `interrompida_por_queda` | Janela de tolerância de 60s para reconexão de dispositivo. |

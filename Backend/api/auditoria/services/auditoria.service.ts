@@ -16,13 +16,17 @@ import {
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
+import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 
 export interface UsuarioAutenticadoInfo {
   id?: string;
   is_super_admin?: boolean;
   clinica_id?: string | null;
-  user_metadata?: {
+  app_metadata?: {
     is_super_admin?: boolean;
+    [key: string]: unknown;
+  };
+  user_metadata?: {
     [key: string]: unknown;
   };
   [key: string]: unknown;
@@ -126,7 +130,7 @@ export class AuditoriaService {
     }
 
     const isSuperAdmin =
-      usuario?.user_metadata?.is_super_admin === true ||
+      hasSuperAdminClaim(usuario) ||
       usuario?.is_super_admin === true;
     const isDonoDaSessao = Boolean(usuario?.id && sessao.terapeuta_id === usuario.id);
 
@@ -233,7 +237,7 @@ export class AuditoriaService {
   ): Promise<{ auditoria: AuditoriaSessao[]; total: number }> {
     const isSuperAdmin =
       usuario?.is_super_admin === true ||
-      usuario?.user_metadata?.is_super_admin === true;
+      hasSuperAdminClaim(usuario);
 
     if (!isSuperAdmin && usuario) {
       let clinicaId: string | null | undefined = usuario.clinica_id ?? filtros.clinicaId;

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { sessaoService } from "../services/sessaoService";
+import { sessaoService } from "../services/sessao.service";
 
 export interface UseRelatorioExportOptions {
   sessaoId?: string;

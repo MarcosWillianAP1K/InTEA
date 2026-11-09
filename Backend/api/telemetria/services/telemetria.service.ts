@@ -32,6 +32,46 @@ export type EntradaTelemetriaEvento = Omit<TelemetriaEvento, 'sessao_id' | 'data
 };
 
 export class TelemetriaService {
+  private static readonly SESSAO_CACHE_TTL_MS = 5000;
+  private static readonly JOGO_CACHE_TTL_MS = 60000;
+  private static sessaoCache: Map<string, { valor: Sessao; expiraEm: number }> = new Map();
+  private static jogoCache: Map<
+    string,
+    { valor: { manifesto_json?: ManifestoJogo | null } | null; expiraEm: number }
+  > = new Map();
+
+  private static isCacheHabilitado(): boolean {
+    return process.env.NODE_ENV !== 'test' && !process.env.VITEST;
+  }
+
+  /**
+   * Limpa o cache em memória de sessões e manifestos de jogos.
+   */
+  static limparCache(): void {
+    this.sessaoCache.clear();
+    this.jogoCache.clear();
+  }
+
+  private static async resolverJogoComCache(
+    jogoId: string
+  ): Promise<{ manifesto_json?: ManifestoJogo | null } | null> {
+    if (this.isCacheHabilitado()) {
+      const emCache = this.jogoCache.get(jogoId);
+      if (emCache && emCache.expiraEm > Date.now()) {
+        return emCache.valor;
+      }
+    }
+
+    const jogo = await JogoModel.buscarPorId(jogoId);
+    if (this.isCacheHabilitado() && jogo) {
+      this.jogoCache.set(jogoId, {
+        valor: jogo,
+        expiraEm: Date.now() + this.JOGO_CACHE_TTL_MS,
+      });
+    }
+    return jogo ?? null;
+  }
+
   /**
    * Resolves a session entity from its UUID or pairing PIN token.
    *
@@ -42,10 +82,25 @@ export class TelemetriaService {
     if (!identificador || typeof identificador !== 'string') return null;
     const idLimpo = identificador.trim();
 
-    if (validarUUID(idLimpo)) {
-      return SessaoModel.buscarPorId(idLimpo);
+    if (this.isCacheHabilitado()) {
+      const emCache = this.sessaoCache.get(idLimpo);
+      if (emCache && emCache.expiraEm > Date.now()) {
+        return emCache.valor;
+      }
     }
-    return SessaoModel.buscarPorToken(idLimpo);
+
+    const sessao = validarUUID(idLimpo)
+      ? await SessaoModel.buscarPorId(idLimpo)
+      : await SessaoModel.buscarPorToken(idLimpo);
+
+    if (this.isCacheHabilitado() && sessao && sessao.status_sessao === STATUS_SESSAO.EM_ANDAMENTO) {
+      this.sessaoCache.set(idLimpo, {
+        valor: sessao,
+        expiraEm: Date.now() + this.SESSAO_CACHE_TTL_MS,
+      });
+    }
+
+    return sessao;
   }
 
   /**
@@ -148,7 +203,7 @@ export class TelemetriaService {
 
     // Regra RN02: Validação estrita contra o manifesto clínico do jogo
     if (sessao.jogo_id) {
-      const jogo = await JogoModel.buscarPorId(sessao.jogo_id);
+      const jogo = await this.resolverJogoComCache(sessao.jogo_id);
       if (jogo?.manifesto_json) {
         const validacao = this.validarEventoRN02(evento, jogo.manifesto_json);
         if (!validacao.valido) {
@@ -220,7 +275,7 @@ export class TelemetriaService {
 
     // Regra RN02: Validação estrita do lote contra o manifesto clínico do jogo
     if (sessao.jogo_id) {
-      const jogo = await JogoModel.buscarPorId(sessao.jogo_id);
+      const jogo = await this.resolverJogoComCache(sessao.jogo_id);
       if (jogo?.manifesto_json) {
         for (const evt of eventos) {
           const validacao = this.validarEventoRN02(evt, jogo.manifesto_json);

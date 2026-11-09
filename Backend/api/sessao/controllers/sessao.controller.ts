@@ -16,6 +16,7 @@ import { SessaoContextoDdaService, ContextoPacienteContrato2, EntradaContextoDDA
 import { validarUUID } from '../../../core/utils/validators.js';
 import { eventBus } from '../../../core/events/event-bus.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 import { REGEX_PIN_PAREAMENTO } from '../../../core/middlewares/sessao.middleware.js';
 
 export class SessaoController {
@@ -373,7 +374,7 @@ export class SessaoController {
       // Validação de autoria e permissão de mutação do condutor (Sprint 13 — RF21)
       const isSuperAdminFinalizar =
         authReq.user?.is_super_admin === true ||
-        authReq.user?.user_metadata?.is_super_admin === true;
+        hasSuperAdminClaim(authReq.user);
 
       const permissaoFinalizar = SessaoConcorrenciaService.validarPermissaoMutacaoSessao(
         sessaoAtual,
@@ -514,7 +515,7 @@ export class SessaoController {
       // Validação de autoria e permissão de mutação do condutor (Sprint 13 — RF21)
       const isSuperAdminCancelar =
         authReq.user?.is_super_admin === true ||
-        authReq.user?.user_metadata?.is_super_admin === true;
+        hasSuperAdminClaim(authReq.user);
 
       const permissaoCancelar = SessaoConcorrenciaService.validarPermissaoMutacaoSessao(
         sessao,
@@ -954,7 +955,7 @@ export class SessaoController {
       }
 
       const sessaoId = String(req.params.id || '');
-      const isSuperAdmin = authReq.user?.user_metadata?.is_super_admin === true;
+      const isSuperAdmin = hasSuperAdminClaim(authReq.user);
 
       const resultado = await SessaoResultadoService.obterResultadoConsolidado(
         sessaoId,

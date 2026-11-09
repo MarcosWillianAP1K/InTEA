@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthModel, LoginDTO, RecuperarSenhaDTO, RedefinirSenhaDTO } from '../models/auth.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { SessoesAtivasService } from '../../../core/auth/sessoes-ativas.service.js';
+import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 
 // ==============================================================================
 // CONTROLLER: AuthController
@@ -286,8 +287,8 @@ export class AuthController {
         tempo_experiencia_anos: perfil.tempo_experiencia_anos ?? 0,
         clinica_id: perfil.clinica_id ?? null,
         areas_foco: areasFocoNormalizadas,
-        is_admin: Boolean(perfil.is_super_admin ?? user?.user_metadata?.is_super_admin ?? false),
-        role: Boolean(perfil.is_super_admin ?? user?.user_metadata?.is_super_admin ?? false)
+        is_admin: Boolean(perfil.is_super_admin ?? hasSuperAdminClaim(user)),
+        role: Boolean(perfil.is_super_admin ?? hasSuperAdminClaim(user))
           ? 'super_admin'
           : 'terapeuta',
         status_ativo: Boolean(perfil.status_ativo),

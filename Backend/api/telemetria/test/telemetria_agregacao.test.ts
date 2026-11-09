@@ -443,7 +443,7 @@ describe('Card 2.1 — TelemetriaController.obterEstatisticasSessao (Endpoint RE
     const { mockReq, mockRes, getStatus, getJson } = criarMocks(
       { sessaoId: sessaoIdValido },
       {},
-      { id: 'terapeuta-sem-vinculo', user_metadata: { is_super_admin: false } }
+      { id: 'terapeuta-sem-vinculo', app_metadata: { is_super_admin: false } }
     );
 
     await TelemetriaController.obterEstatisticasSessao(mockReq, mockRes);
@@ -504,7 +504,7 @@ describe('Card 2.1 — TelemetriaController.obterEstatisticasSessao (Endpoint RE
     const { mockReq, mockRes, getStatus, getJson } = criarMocks(
       { sessaoId: sessaoIdValido },
       {},
-      { id: terapeutaIdDono, user_metadata: { is_super_admin: false } }
+      { id: terapeutaIdDono, app_metadata: { is_super_admin: false } }
     );
 
     await TelemetriaController.obterEstatisticasSessao(mockReq, mockRes);

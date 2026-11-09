@@ -167,8 +167,8 @@ export const ModalVincularEspecialista: React.FC<
               </DialogTitle>
               <DialogDescription className="text-xs font-medium text-gray-500 mt-0.5">
                 {pacienteNome
-                  ? `Selecione um profissional da clínica para compartilhar o acompanhamento de ${pacienteNome} (RF18, RN04).`
-                  : "Selecione um profissional da clínica para integrar a Equipe Multidisciplinar do paciente (RF18, RN04)."}
+                  ? `Selecione um profissional da clínica para compartilhar o acompanhamento de ${pacienteNome}.`
+                  : "Selecione um profissional da clínica para integrar a Equipe Multidisciplinar do paciente."}
               </DialogDescription>
             </div>
           </div>

@@ -7,6 +7,7 @@ import { TelemetriaService } from '../services/telemetria.service.js';
 import { TelemetriaAgregacaoService } from '../services/telemetria-agregacao.service.js';
 import { SessaoModel } from '../../sessao/models/sessao.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 
@@ -212,7 +213,7 @@ export class TelemetriaController {
 
       const usuarioLogado = (req as AuthenticatedRequest).user;
       const isSuperAdmin =
-        usuarioLogado?.user_metadata?.is_super_admin === true ||
+        hasSuperAdminClaim(usuarioLogado) ||
         usuarioLogado?.is_super_admin === true;
       const isDonoDaSessao = Boolean(usuarioLogado?.id && sessao.terapeuta_id === usuarioLogado.id);
 
@@ -273,7 +274,7 @@ export class TelemetriaController {
 
       const usuarioLogado = (req as AuthenticatedRequest).user;
       const isSuperAdmin =
-        usuarioLogado?.user_metadata?.is_super_admin === true ||
+        hasSuperAdminClaim(usuarioLogado) ||
         usuarioLogado?.is_super_admin === true;
       const isDonoDaSessao = Boolean(usuarioLogado?.id && sessao.terapeuta_id === usuarioLogado.id);
 

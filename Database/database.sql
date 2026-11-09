@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- PROJETO InTEA: MODELAGEM RELACIONAL SUPABASE (PostgreSQL)
 -- Modelo Otimizado, Padronizado em UUID, Gestão de Pacientes, Terapeutas e Laudos
--- (Políticas de RLS desativadas para a fase de desenvolvimento e prototipação ágil)
+-- (Políticas de RLS consolidadas e ativadas na Seção 24 / Migration 021)
 -- ==============================================================================
 
 -- 1. Extensões para UUID e Criptografia
@@ -349,7 +349,7 @@ CREATE INDEX IF NOT EXISTS idx_auditoria_detalhes_gin
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.auditoria_acesso_prontuario (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    paciente_id UUID NOT NULL REFERENCES public.paciente(id) ON DELETE CASCADE,
+    paciente_id UUID NOT NULL REFERENCES public.paciente(id) ON DELETE RESTRICT,
     terapeuta_id UUID REFERENCES public.terapeuta(id) ON DELETE SET NULL,
     operacao VARCHAR(30) NOT NULL, -- 'visualizacao', 'alteracao', 'exclusao_logica'
     recurso_acessado VARCHAR(255) NOT NULL,
@@ -390,8 +390,93 @@ CREATE INDEX IF NOT EXISTS idx_auditoria_prontuario_operacao
 -- ==============================================================================
 -- O trigger trg_bloqueio_relatorio_sessao permanece ativo garantindo a inalterabilidade
 -- dos dados de IA e bloqueando exclusão física de relatórios clínicos (RN05 / RNF06).
--- Para anotacao_clinica, a desativação pontual é mantida para fases de testes em DEV.
+-- Triggers BEFORE DELETE impedem exclusão física em paciente, anotacao_clinica e sessao (Migration 022 / Lei 13.787/2018 Art. 6º).
+CREATE OR REPLACE FUNCTION public.impedir_delete_fisico_prontuario()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Operacao proibida: Exclusao fisica de prontuario clinico e vedada (RN05 / Lei 13.787/2018). Utilize inativacao logica (soft_delete = true ou status_ativo = false).'
+        USING ERRCODE = '23505';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_delete_paciente ON public.paciente;
+CREATE TRIGGER trg_bloqueio_delete_paciente
+    BEFORE DELETE ON public.paciente
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_delete_fisico_prontuario();
+
 DROP TRIGGER IF EXISTS trg_bloqueio_delete_anotacao ON public.anotacao_clinica;
+CREATE TRIGGER trg_bloqueio_delete_anotacao
+    BEFORE DELETE ON public.anotacao_clinica
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_delete_fisico_prontuario();
+
+DROP TRIGGER IF EXISTS trg_bloqueio_delete_sessao ON public.sessao;
+CREATE TRIGGER trg_bloqueio_delete_sessao
+    BEFORE DELETE ON public.sessao
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_delete_fisico_prontuario();
+
+CREATE OR REPLACE FUNCTION public.impedir_truncate_auditoria()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Operacao proibida: Truncamento de tabelas da trilha de auditoria clinica e terminantemente vedado (RN05 / RNF06).'
+        USING ERRCODE = '23505';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_truncate_auditoria_sessao ON public.auditoria_sessao;
+CREATE TRIGGER trg_bloqueio_truncate_auditoria_sessao
+    BEFORE TRUNCATE ON public.auditoria_sessao
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION public.impedir_truncate_auditoria();
+
+DROP TRIGGER IF EXISTS trg_bloqueio_truncate_auditoria_prontuario ON public.auditoria_acesso_prontuario;
+CREATE TRIGGER trg_bloqueio_truncate_auditoria_prontuario
+    BEFORE TRUNCATE ON public.auditoria_acesso_prontuario
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION public.impedir_truncate_auditoria();
+
+-- ==============================================================================
+-- 17.1. TABELA: consentimento_responsavel (Consentimento Parental LGPD Art. 14 §1º - Migration 023)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.consentimento_responsavel (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    paciente_id UUID NOT NULL REFERENCES public.paciente(id) ON DELETE RESTRICT,
+    responsavel_id UUID REFERENCES public.responsavel(id) ON DELETE RESTRICT,
+    terapeuta_id UUID NOT NULL REFERENCES public.terapeuta(id) ON DELETE RESTRICT,
+    versao_termo VARCHAR(50) NOT NULL DEFAULT 'v1.0',
+    finalidades JSONB NOT NULL DEFAULT '["acompanhamento_clinico", "telemetria_terapeutica", "relatorios_ia"]'::jsonb,
+    consentimento_concedido BOOLEAN NOT NULL DEFAULT TRUE,
+    ip_origem VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    canal_coleta VARCHAR(50) NOT NULL DEFAULT 'presencial_web',
+    observacoes TEXT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc', NOW())
+);
+
+CREATE OR REPLACE FUNCTION public.impedir_modificacao_consentimento_responsavel()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Operacao proibida: Registros de consentimento parental (LGPD Art. 14) sao estritamente imutaveis. Para revogar ou atualizar o consentimento, insira um novo registro na trilha (RN05 / RNF06).'
+        USING ERRCODE = '23505';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_bloqueio_mutacao_consentimento ON public.consentimento_responsavel;
+CREATE TRIGGER trg_bloqueio_mutacao_consentimento
+    BEFORE UPDATE OR DELETE ON public.consentimento_responsavel
+    FOR EACH ROW
+    EXECUTE FUNCTION public.impedir_modificacao_consentimento_responsavel();
+
+DROP TRIGGER IF EXISTS trg_bloqueio_truncate_consentimento ON public.consentimento_responsavel;
+CREATE TRIGGER trg_bloqueio_truncate_consentimento
+    BEFORE TRUNCATE ON public.consentimento_responsavel
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION public.impedir_modificacao_consentimento_responsavel();
+
+CREATE INDEX IF NOT EXISTS idx_consentimento_paciente_created
+    ON public.consentimento_responsavel(paciente_id, created_at DESC);
 DROP TRIGGER IF EXISTS trg_bloqueio_delete_relatorio ON public.relatorio_sessao;
 
 
@@ -478,6 +563,11 @@ CREATE INDEX IF NOT EXISTS idx_relatorio_dados_ia_gin ON public.relatorio_sessao
 CREATE INDEX IF NOT EXISTS idx_anotacao_paciente_autor_data ON public.anotacao_clinica(paciente_id, terapeuta_id, created_at DESC) WHERE soft_delete = false;
 CREATE INDEX IF NOT EXISTS idx_anotacao_sessao_soft_delete ON public.anotacao_clinica(sessao_id, created_at DESC) WHERE soft_delete = false;
 
+-- Índices Compostos de Performance (Migration 022 - P1.4)
+CREATE INDEX IF NOT EXISTS idx_sessao_terapeuta_inicio ON public.sessao(terapeuta_id, data_hora_inicio DESC);
+CREATE INDEX IF NOT EXISTS idx_sessao_paciente_inicio ON public.sessao(paciente_id, data_hora_inicio DESC) WHERE paciente_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_anotacao_paciente_created_ativo ON public.anotacao_clinica(paciente_id, created_at DESC) WHERE soft_delete = FALSE;
+
 -- Trigger para atualizacao automatica de updated_at em sessao
 CREATE OR REPLACE FUNCTION public.fn_sessao_set_updated_at()
 RETURNS TRIGGER AS $$
@@ -523,7 +613,7 @@ BEGIN
     COALESCE((NEW.raw_user_meta_data->>'tempo_experiencia_anos')::INTEGER, 0),
     NEW.raw_user_meta_data->>'especialidade',
     (NEW.raw_user_meta_data->>'clinica_id')::UUID,
-    COALESCE((NEW.raw_user_meta_data->>'is_super_admin')::BOOLEAN, FALSE),
+    COALESCE((NEW.raw_app_meta_data->>'is_super_admin')::BOOLEAN, FALSE),
     TRUE
   );
   RETURN NEW;
@@ -688,8 +778,9 @@ ON CONFLICT (nome) DO NOTHING;
 -- ==============================================================================
 -- 23. VÍNCULO MULTITERAPEUTA, AUDITORIA DE VÍNCULOS E FUNÇÃO ANTI-ÓRFÃO (Sprint 13 - Migration 017)
 -- Conformidade: RF08, RF18, RN04, RN05, RNF05
--- Auditoria de RLS (AGENTS.md §6.2.3): RLS removido na Migration 010; o Backend
--- opera via service_role com validação institucional em Serviço/Middleware (RN04).
+-- Auditoria de RLS: RLS reativado e consolidado na Seção 24 (Migration 021) com
+-- funções SECURITY DEFINER anti-recursão (42P17), em defesa em profundidade com
+-- a validação institucional em Serviço/Middleware (RN04).
 -- ==============================================================================
 
 -- 1. Índice Reverso de Vínculo Multiterapeuta (Busca por Paciente -> Equipe)
@@ -722,6 +813,12 @@ CREATE TRIGGER trg_bloqueio_mutacao_auditoria_vinculo
     BEFORE UPDATE OR DELETE ON public.auditoria_vinculo_acesso
     FOR EACH ROW
     EXECUTE FUNCTION public.impedir_modificacao_auditoria_vinculo();
+
+DROP TRIGGER IF EXISTS trg_bloqueio_truncate_auditoria_vinculo ON public.auditoria_vinculo_acesso;
+CREATE TRIGGER trg_bloqueio_truncate_auditoria_vinculo
+    BEFORE TRUNCATE ON public.auditoria_vinculo_acesso
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION public.impedir_truncate_auditoria();
 
 -- 4. Índices de Otimização da Trilha de Auditoria de Vínculos (RNF05)
 CREATE INDEX IF NOT EXISTS idx_auditoria_vinculo_paciente_created
@@ -770,3 +867,415 @@ BEGIN
     RETURN 'removido';
 END;
 $$ LANGUAGE plpgsql SECURITY INVOKER;
+
+
+-- ==============================================================================
+-- 24. POLÍTICAS DE ROW LEVEL SECURITY (RLS) E FUNÇÕES ANTI-RECURSÃO (Migration 021)
+-- Conformidade: RN04 (Isolamento Institucional), RN05 / RNF06 (Sigilo e Imutabilidade)
+-- ==============================================================================
+
+CREATE OR REPLACE FUNCTION public.rls_is_super_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.terapeuta
+        WHERE id = auth.uid()
+          AND is_super_admin = TRUE
+          AND status_ativo = TRUE
+    );
+$$;
+
+CREATE OR REPLACE FUNCTION public.rls_clinica_usuario()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT clinica_id
+    FROM public.terapeuta
+    WHERE id = auth.uid()
+      AND status_ativo = TRUE
+    LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION public.rls_tem_vinculo_paciente(p_paciente_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT public.rls_is_super_admin()
+    OR EXISTS (
+        SELECT 1
+        FROM public.terapeuta t
+        JOIN public.paciente p ON p.id = p_paciente_id
+        JOIN public.terapeuta_paciente tp
+          ON tp.paciente_id = p.id
+         AND tp.terapeuta_id = t.id
+        WHERE t.id = auth.uid()
+          AND t.status_ativo = TRUE
+          AND p.clinica_id = t.clinica_id
+    );
+$$;
+
+CREATE OR REPLACE FUNCTION public.rls_tem_acesso_sessao(p_sessao_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT public.rls_is_super_admin()
+    OR EXISTS (
+        SELECT 1
+        FROM public.sessao s
+        JOIN public.terapeuta t
+          ON t.id = auth.uid()
+         AND t.status_ativo = TRUE
+        WHERE s.id = p_sessao_id
+          AND (
+              s.terapeuta_id = auth.uid()
+              OR (
+                  s.paciente_id IS NOT NULL
+                  AND public.rls_tem_vinculo_paciente(s.paciente_id)
+              )
+          )
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.rls_is_super_admin() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.rls_clinica_usuario() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.rls_tem_vinculo_paciente(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.rls_tem_acesso_sessao(UUID) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.rls_is_super_admin() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.rls_clinica_usuario() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.rls_tem_vinculo_paciente(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.rls_tem_acesso_sessao(UUID) TO authenticated, service_role;
+
+ALTER TABLE IF EXISTS public.clinica ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.terapeuta ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.areas_foco ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.terapeuta_area_foco ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.paciente ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.responsavel ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.paciente_responsavel ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.dados_clinicos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.terapeuta_paciente ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.gatilhos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.paciente_gatilho ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.laudo_clinico ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.jogo ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.sessao ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.anotacao_clinica ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.relatorio_sessao ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.telemetria_evento ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.auditoria_sessao ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.sessao_ativa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.auditoria_vinculo_acesso ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.auditoria_acesso_prontuario ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.consentimento_responsavel ENABLE ROW LEVEL SECURITY;
+
+DO $$
+DECLARE
+    pol RECORD;
+BEGIN
+    FOR pol IN
+        SELECT schemaname, tablename, policyname
+        FROM pg_policies
+        WHERE schemaname = 'public'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I;', pol.policyname, pol.schemaname, pol.tablename);
+    END LOOP;
+END $$;
+
+CREATE POLICY "clinica_select_membros_ou_admin" ON public.clinica
+    FOR SELECT TO authenticated
+    USING (public.rls_is_super_admin() OR id = public.rls_clinica_usuario());
+
+CREATE POLICY "clinica_all_super_admin" ON public.clinica
+    FOR ALL TO authenticated
+    USING (public.rls_is_super_admin())
+    WITH CHECK (public.rls_is_super_admin());
+
+CREATE POLICY "terapeuta_select_mesma_clinica_ou_admin" ON public.terapeuta
+    FOR SELECT TO authenticated
+    USING (id = auth.uid() OR public.rls_is_super_admin() OR (clinica_id IS NOT NULL AND clinica_id = public.rls_clinica_usuario()));
+
+CREATE POLICY "terapeuta_update_proprio_ou_admin" ON public.terapeuta
+    FOR UPDATE TO authenticated
+    USING (id = auth.uid() OR public.rls_is_super_admin())
+    WITH CHECK (public.rls_is_super_admin() OR (id = auth.uid() AND is_super_admin = FALSE AND clinica_id IS NOT DISTINCT FROM public.rls_clinica_usuario()));
+
+CREATE POLICY "terapeuta_insert_delete_super_admin" ON public.terapeuta
+    FOR ALL TO authenticated
+    USING (public.rls_is_super_admin())
+    WITH CHECK (public.rls_is_super_admin());
+
+CREATE POLICY "areas_foco_select_autenticados" ON public.areas_foco
+    FOR SELECT TO authenticated
+    USING (TRUE);
+
+CREATE POLICY "areas_foco_all_super_admin" ON public.areas_foco
+    FOR ALL TO authenticated
+    USING (public.rls_is_super_admin())
+    WITH CHECK (public.rls_is_super_admin());
+
+CREATE POLICY "terapeuta_area_foco_select_autenticados" ON public.terapeuta_area_foco
+    FOR SELECT TO authenticated
+    USING (TRUE);
+
+CREATE POLICY "terapeuta_area_foco_gestao_propria_ou_admin" ON public.terapeuta_area_foco
+    FOR ALL TO authenticated
+    USING (terapeuta_id = auth.uid() OR public.rls_is_super_admin())
+    WITH CHECK (terapeuta_id = auth.uid() OR public.rls_is_super_admin());
+
+CREATE POLICY "paciente_select_vinculados_ou_admin" ON public.paciente
+    FOR SELECT TO authenticated
+    USING (public.rls_tem_vinculo_paciente(id));
+
+CREATE POLICY "paciente_insert_mesma_clinica_ou_admin" ON public.paciente
+    FOR INSERT TO authenticated
+    WITH CHECK (public.rls_is_super_admin() OR (clinica_id IS NOT NULL AND clinica_id = public.rls_clinica_usuario()));
+
+CREATE POLICY "paciente_update_vinculados_ou_admin" ON public.paciente
+    FOR UPDATE TO authenticated
+    USING (public.rls_tem_vinculo_paciente(id))
+    WITH CHECK (public.rls_is_super_admin() OR (public.rls_tem_vinculo_paciente(id) AND clinica_id = public.rls_clinica_usuario()));
+
+CREATE POLICY "paciente_delete_super_admin" ON public.paciente
+    FOR DELETE TO authenticated
+    USING (public.rls_is_super_admin());
+
+CREATE POLICY "responsavel_select_vinculados_ou_admin" ON public.responsavel
+    FOR SELECT TO authenticated
+    USING (public.rls_is_super_admin() OR EXISTS (SELECT 1 FROM public.paciente_responsavel pr WHERE pr.responsavel_id = responsavel.id AND public.rls_tem_vinculo_paciente(pr.paciente_id)));
+
+CREATE POLICY "responsavel_insert_terapeuta_ativo" ON public.responsavel
+    FOR INSERT TO authenticated
+    WITH CHECK (public.rls_is_super_admin() OR public.rls_clinica_usuario() IS NOT NULL);
+
+CREATE POLICY "responsavel_update_vinculados_ou_admin" ON public.responsavel
+    FOR UPDATE TO authenticated
+    USING (public.rls_is_super_admin() OR EXISTS (SELECT 1 FROM public.paciente_responsavel pr WHERE pr.responsavel_id = responsavel.id AND public.rls_tem_vinculo_paciente(pr.paciente_id)))
+    WITH CHECK (public.rls_is_super_admin() OR EXISTS (SELECT 1 FROM public.paciente_responsavel pr WHERE pr.responsavel_id = responsavel.id AND public.rls_tem_vinculo_paciente(pr.paciente_id)));
+
+CREATE POLICY "responsavel_delete_super_admin" ON public.responsavel
+    FOR DELETE TO authenticated
+    USING (public.rls_is_super_admin());
+
+CREATE POLICY "paciente_responsavel_gestao_vinculados" ON public.paciente_responsavel
+    FOR ALL TO authenticated
+    USING (public.rls_tem_vinculo_paciente(paciente_id))
+    WITH CHECK (public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "dados_clinicos_gestao_vinculados" ON public.dados_clinicos
+    FOR ALL TO authenticated
+    USING (public.rls_tem_vinculo_paciente(paciente_id))
+    WITH CHECK (public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "terapeuta_paciente_select_equipe_ou_admin" ON public.terapeuta_paciente
+    FOR SELECT TO authenticated
+    USING (terapeuta_id = auth.uid() OR public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "terapeuta_paciente_insert_equipe_mesma_clinica" ON public.terapeuta_paciente
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        public.rls_is_super_admin()
+        OR (
+            EXISTS (
+                SELECT 1
+                FROM public.paciente p
+                JOIN public.terapeuta t_alvo ON t_alvo.id = terapeuta_id
+                WHERE p.id = paciente_id
+                  AND p.clinica_id = public.rls_clinica_usuario()
+                  AND t_alvo.clinica_id = p.clinica_id
+                  AND t_alvo.status_ativo = TRUE
+            )
+            AND (terapeuta_id = auth.uid() OR public.rls_tem_vinculo_paciente(paciente_id))
+        )
+    );
+
+CREATE POLICY "terapeuta_paciente_delete_equipe_ou_admin" ON public.terapeuta_paciente
+    FOR DELETE TO authenticated
+    USING (public.rls_is_super_admin() OR public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "gatilhos_select_autenticados" ON public.gatilhos
+    FOR SELECT TO authenticated
+    USING (TRUE);
+
+CREATE POLICY "gatilhos_all_super_admin" ON public.gatilhos
+    FOR ALL TO authenticated
+    USING (public.rls_is_super_admin())
+    WITH CHECK (public.rls_is_super_admin());
+
+CREATE POLICY "paciente_gatilho_gestao_vinculados" ON public.paciente_gatilho
+    FOR ALL TO authenticated
+    USING (public.rls_tem_vinculo_paciente(paciente_id))
+    WITH CHECK (public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "laudo_clinico_select_vinculados" ON public.laudo_clinico
+    FOR SELECT TO authenticated
+    USING (public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "laudo_clinico_insert_vinculados" ON public.laudo_clinico
+    FOR INSERT TO authenticated
+    WITH CHECK (terapeuta_id = auth.uid() AND public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "laudo_clinico_update_autor_ou_admin" ON public.laudo_clinico
+    FOR UPDATE TO authenticated
+    USING (public.rls_is_super_admin() OR (terapeuta_id = auth.uid() AND public.rls_tem_vinculo_paciente(paciente_id)))
+    WITH CHECK (public.rls_is_super_admin() OR (terapeuta_id = auth.uid() AND public.rls_tem_vinculo_paciente(paciente_id)));
+
+CREATE POLICY "laudo_clinico_delete_autor_ou_admin" ON public.laudo_clinico
+    FOR DELETE TO authenticated
+    USING (public.rls_is_super_admin() OR (terapeuta_id = auth.uid() AND public.rls_tem_vinculo_paciente(paciente_id)));
+
+CREATE POLICY "jogo_select_autenticados" ON public.jogo
+    FOR SELECT TO authenticated
+    USING (TRUE);
+
+CREATE POLICY "jogo_all_super_admin" ON public.jogo
+    FOR ALL TO authenticated
+    USING (public.rls_is_super_admin())
+    WITH CHECK (public.rls_is_super_admin());
+
+CREATE POLICY "sessao_select_equipe_ou_autor" ON public.sessao
+    FOR SELECT TO authenticated
+    USING (public.rls_tem_acesso_sessao(id));
+
+CREATE POLICY "sessao_insert_terapeuta_autorizado" ON public.sessao
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        public.rls_is_super_admin()
+        OR (
+            terapeuta_id = auth.uid()
+            AND ((modo_sessao = 'modo_livre' AND paciente_id IS NULL) OR (paciente_id IS NOT NULL AND public.rls_tem_vinculo_paciente(paciente_id)))
+        )
+    );
+
+CREATE POLICY "sessao_update_equipe_ou_autor" ON public.sessao
+    FOR UPDATE TO authenticated
+    USING (public.rls_tem_acesso_sessao(id))
+    WITH CHECK (public.rls_tem_acesso_sessao(id));
+
+CREATE POLICY "anotacao_clinica_select_equipe" ON public.anotacao_clinica
+    FOR SELECT TO authenticated
+    USING (public.rls_is_super_admin() OR (soft_delete = FALSE AND public.rls_tem_vinculo_paciente(paciente_id)));
+
+CREATE POLICY "anotacao_clinica_insert_autor_vinculado" ON public.anotacao_clinica
+    FOR INSERT TO authenticated
+    WITH CHECK (terapeuta_id = auth.uid() AND public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "anotacao_clinica_update_autor_ou_admin" ON public.anotacao_clinica
+    FOR UPDATE TO authenticated
+    USING (public.rls_is_super_admin() OR (terapeuta_id = auth.uid() AND public.rls_tem_vinculo_paciente(paciente_id)))
+    WITH CHECK (public.rls_is_super_admin() OR (terapeuta_id = auth.uid() AND public.rls_tem_vinculo_paciente(paciente_id)));
+
+CREATE POLICY "relatorio_sessao_select_equipe" ON public.relatorio_sessao
+    FOR SELECT TO authenticated
+    USING (public.rls_is_super_admin() OR (soft_delete = FALSE AND public.rls_tem_acesso_sessao(sessao_id)));
+
+CREATE POLICY "relatorio_sessao_insert_equipe" ON public.relatorio_sessao
+    FOR INSERT TO authenticated
+    WITH CHECK (public.rls_tem_acesso_sessao(sessao_id));
+
+CREATE POLICY "relatorio_sessao_update_equipe" ON public.relatorio_sessao
+    FOR UPDATE TO authenticated
+    USING (public.rls_tem_acesso_sessao(sessao_id))
+    WITH CHECK (public.rls_tem_acesso_sessao(sessao_id));
+
+CREATE POLICY "telemetria_evento_select_equipe" ON public.telemetria_evento
+    FOR SELECT TO authenticated
+    USING (public.rls_tem_acesso_sessao(sessao_id));
+
+CREATE POLICY "telemetria_evento_insert_equipe" ON public.telemetria_evento
+    FOR INSERT TO authenticated
+    WITH CHECK (public.rls_tem_acesso_sessao(sessao_id));
+
+CREATE POLICY "auditoria_sessao_select_equipe" ON public.auditoria_sessao
+    FOR SELECT TO authenticated
+    USING (public.rls_tem_acesso_sessao(sessao_id));
+
+CREATE POLICY "auditoria_sessao_insert_equipe" ON public.auditoria_sessao
+    FOR INSERT TO authenticated
+    WITH CHECK (public.rls_tem_acesso_sessao(sessao_id));
+
+CREATE POLICY "sessao_ativa_gestao_proprio_usuario_ou_admin" ON public.sessao_ativa
+    FOR ALL TO authenticated
+    USING (usuario_id = auth.uid() OR public.rls_is_super_admin())
+    WITH CHECK (usuario_id = auth.uid() OR public.rls_is_super_admin());
+
+CREATE POLICY "auditoria_vinculo_select_equipe" ON public.auditoria_vinculo_acesso
+    FOR SELECT TO authenticated
+    USING (public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "auditoria_vinculo_insert_autor_vinculado" ON public.auditoria_vinculo_acesso
+    FOR INSERT TO authenticated
+    WITH CHECK (public.rls_is_super_admin() OR (terapeuta_autor_id = auth.uid() AND public.rls_tem_vinculo_paciente(paciente_id)));
+
+CREATE POLICY "auditoria_prontuario_select_equipe" ON public.auditoria_acesso_prontuario
+    FOR SELECT TO authenticated
+    USING (public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "auditoria_prontuario_insert_equipe" ON public.auditoria_acesso_prontuario
+    FOR INSERT TO authenticated
+    WITH CHECK (public.rls_is_super_admin() OR (terapeuta_id = auth.uid() AND public.rls_tem_vinculo_paciente(paciente_id)));
+
+CREATE POLICY "consentimento_select_equipe" ON public.consentimento_responsavel
+    FOR SELECT TO authenticated
+    USING (public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "consentimento_insert_equipe" ON public.consentimento_responsavel
+    FOR INSERT TO authenticated
+    WITH CHECK (public.rls_is_super_admin() OR (terapeuta_id = auth.uid() AND public.rls_tem_vinculo_paciente(paciente_id)));
+
+DROP POLICY IF EXISTS "Acesso de leitura a laudos no Storage" ON storage.objects;
+DROP POLICY IF EXISTS "Upload de laudos no Storage" ON storage.objects;
+DROP POLICY IF EXISTS "Exclusao de laudos no Storage" ON storage.objects;
+
+CREATE POLICY "Acesso de leitura a laudos no Storage" ON storage.objects
+    FOR SELECT TO authenticated
+    USING (
+        bucket_id = 'laudos'
+        AND (
+            public.rls_is_super_admin()
+            OR (
+                (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                AND public.rls_tem_vinculo_paciente(((storage.foldername(name))[1])::uuid)
+            )
+        )
+    );
+
+CREATE POLICY "Upload de laudos no Storage" ON storage.objects
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        bucket_id = 'laudos'
+        AND (
+            public.rls_is_super_admin()
+            OR (
+                (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                AND public.rls_tem_vinculo_paciente(((storage.foldername(name))[1])::uuid)
+            )
+        )
+    );
+
+CREATE POLICY "Exclusao de laudos no Storage" ON storage.objects
+    FOR DELETE TO authenticated
+    USING (
+        bucket_id = 'laudos'
+        AND (
+            public.rls_is_super_admin()
+            OR (
+                (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                AND public.rls_tem_vinculo_paciente(((storage.foldername(name))[1])::uuid)
+            )
+        )
+    );

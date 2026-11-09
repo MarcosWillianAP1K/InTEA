@@ -612,7 +612,7 @@ describe('Backend: Auth Feature (Envelope Pattern & Sanitização Estrita)', () 
           role: 'authenticated',
           email_confirmed_at: '2026-01-01T00:00:00.000Z',
           last_sign_in_at: '2026-10-21T12:00:00.000Z',
-          user_metadata: { is_super_admin: false },
+          app_metadata: { is_super_admin: false },
         },
       } as unknown as AuthenticatedRequest;
 

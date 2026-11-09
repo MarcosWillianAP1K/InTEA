@@ -49,6 +49,8 @@ docs/figma
 # Documentação interna / Projetos
 BRAIN_PROJECT/
 AGENTS.md
+CLAUDE.md
+.agents/referencia/
 
 # MkDocs build output
 site/

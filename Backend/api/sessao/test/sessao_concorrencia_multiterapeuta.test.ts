@@ -59,7 +59,7 @@ function criarSessaoMock(parciais?: Partial<Sessao>): Sessao {
 function criarMocksHttp(
   body: Record<string, unknown> = {},
   params: Record<string, string> = {},
-  user: { id: string; is_super_admin?: boolean; user_metadata?: { is_super_admin?: boolean } } | null = { id: UUID_TERAPEUTA_A },
+  user: { id: string; is_super_admin?: boolean; app_metadata?: { is_super_admin?: boolean } } | null = { id: UUID_TERAPEUTA_A },
   contextoSessao?: Sessao | null
 ) {
   let statusCode = 200;

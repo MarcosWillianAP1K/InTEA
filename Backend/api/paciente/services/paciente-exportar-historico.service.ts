@@ -17,6 +17,7 @@ import { validarUUID } from '../../../core/utils/validators.js';
 import { PacienteModel, Paciente } from '../models/paciente.model.js';
 import { HistoricoSessaoModel } from '../models/historico.model.js';
 import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
+import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 
 export interface RespostaExportacaoProntuario {
   sucesso: boolean;
@@ -214,7 +215,7 @@ export class PacienteExportarHistoricoService {
     // 4. Verificação Institucional de Acesso (RN04)
     const isSuperAdmin =
       usuarioAutenticado.is_super_admin === true ||
-      usuarioAutenticado.user_metadata?.is_super_admin === true;
+      hasSuperAdminClaim(usuarioAutenticado);
 
     if (!isSuperAdmin) {
       const temVinculo = await this.verificarVinculo(usuarioAutenticado.id, paciente);

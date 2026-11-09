@@ -7,26 +7,35 @@ import { Request, Response, NextFunction } from 'express';
 import { AuditoriaProntuarioService } from '../../auditoria/auditoria-prontuario.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 
-export function auditoriaProntuarioMiddleware(req: Request, res: Response, next: NextFunction): void {
+function executarAuditoriaProntuario(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  operacaoForcada?: string
+): void {
   const rawId = req.params?.id || (req.params as Record<string, string | string[]>)?.pacienteId;
   const pacienteId = Array.isArray(rawId) ? String(rawId[0] || '') : String(rawId || '');
 
-  // Determina a operação clínica com base no método HTTP (com fallback seguro para mocks)
+  // Determina a operação clínica com base no parâmetro explícito ou método HTTP
   const method = typeof req?.method === 'string' ? req.method.toUpperCase() : 'GET';
   let operacao: string;
-  switch (method) {
-    case 'GET':
-      operacao = 'visualizacao';
-      break;
-    case 'PUT':
-    case 'PATCH':
-      operacao = 'alteracao';
-      break;
-    case 'DELETE':
-      operacao = 'exclusao_logica';
-      break;
-    default:
-      operacao = method.toLowerCase();
+  if (operacaoForcada) {
+    operacao = operacaoForcada;
+  } else {
+    switch (method) {
+      case 'GET':
+        operacao = 'visualizacao';
+        break;
+      case 'PUT':
+      case 'PATCH':
+        operacao = 'alteracao';
+        break;
+      case 'DELETE':
+        operacao = 'exclusao_logica';
+        break;
+      default:
+        operacao = method.toLowerCase();
+    }
   }
 
   // Intercepta o fechamento da resposta HTTP
@@ -62,4 +71,28 @@ export function auditoriaProntuarioMiddleware(req: Request, res: Response, next:
   }
 
   next();
+}
+
+export function auditoriaProntuarioMiddleware(
+  operacaoExplicita: string
+): (req: Request, res: Response, next: NextFunction) => void;
+export function auditoriaProntuarioMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void;
+export function auditoriaProntuarioMiddleware(
+  reqOrOperacao: Request | string,
+  res?: Response,
+  next?: NextFunction
+): ((req: Request, res: Response, next: NextFunction) => void) | void {
+  if (typeof reqOrOperacao === 'string') {
+    const operacao = reqOrOperacao;
+    return (reqInner: Request, resInner: Response, nextInner: NextFunction): void => {
+      executarAuditoriaProntuario(reqInner, resInner, nextInner, operacao);
+    };
+  }
+  if (res && next) {
+    executarAuditoriaProntuario(reqOrOperacao, res, next);
+  }
 }

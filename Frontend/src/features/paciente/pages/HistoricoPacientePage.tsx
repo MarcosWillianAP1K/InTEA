@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { useSessionStore } from "@/features/sessao/store/sessionStore";
-import { sessaoService } from "@/features/sessao/services/sessaoService";
+import { sessaoService } from "@/features/sessao/services/sessao.service";
 import type { Sessao } from "@/features/sessao/types/sessao.types";
 import { pacienteService } from "../services/paciente.service";
 import type { Paciente, EspecialistaVinculado } from "../types/paciente.types";

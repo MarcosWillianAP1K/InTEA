@@ -858,5 +858,77 @@ export class PacienteController {
       });
     }
   }
+
+  /**
+   * Handles GET /api/paciente/:id/consentimento to retrieve parental consent history and status (LGPD Art. 14 §1º).
+   */
+  static async obterConsentimento(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id || '').trim();
+      const resultado = await PacienteService.obterConsentimento(pacienteId);
+
+      res.status(200).json({
+        data: resultado,
+        message: 'Consentimento parental consultado com sucesso.',
+      });
+    } catch (error: unknown) {
+      if (error instanceof PacienteServiceError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      console.error('[PacienteController.obterConsentimento]', error);
+      res.status(500).json({
+        error: 'Erro interno ao consultar consentimento parental.',
+        detalhes: obterMensagemErro(error),
+      });
+    }
+  }
+
+  /**
+   * Handles POST /api/paciente/:id/consentimento to record parental consent or revocation (LGPD Art. 14 §1º).
+   */
+  static async registrarConsentimento(req: Request, res: Response): Promise<void> {
+    try {
+      const pacienteId = String(req.params.id || '').trim();
+      const authReq = req as AuthenticatedRequest;
+      const terapeutaId = authReq.user?.id || null;
+
+      const xForwardedFor = req.headers?.['x-forwarded-for'];
+      const ipOrigem =
+        typeof xForwardedFor === 'string'
+          ? xForwardedFor.split(',')[0]?.trim()
+          : req.ip || req.socket?.remoteAddress || null;
+      const userAgent =
+        typeof req.headers?.['user-agent'] === 'string' ? req.headers['user-agent'] : null;
+
+      const registro = await PacienteService.registrarConsentimento(
+        pacienteId,
+        req.body || {},
+        {
+          terapeutaId,
+          ipOrigem,
+          userAgent,
+        }
+      );
+
+      res.status(201).json({
+        data: {
+          ...registro,
+          consentimento: registro,
+        },
+        message: 'Consentimento parental registrado com sucesso (LGPD Art. 14 §1º).',
+      });
+    } catch (error: unknown) {
+      if (error instanceof PacienteServiceError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      console.error('[PacienteController.registrarConsentimento]', error);
+      res.status(500).json({
+        error: 'Erro interno ao registrar consentimento parental.',
+        detalhes: obterMensagemErro(error),
+      });
+    }
+  }
 }
 

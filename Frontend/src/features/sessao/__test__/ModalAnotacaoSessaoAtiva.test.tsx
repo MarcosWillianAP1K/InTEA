@@ -384,4 +384,65 @@ describe("Feature: Modal de Anotação Clínica em Tempo Real no Cockpit de Sess
     expect(btnAnotar.hasAttribute("disabled")).toBe(true);
     expect(btnAnotar.getAttribute("title")).toContain("Modo Livre");
   });
+
+  it("10. deve permitir ao terapeuta autor editar inline e inativar suas próprias anotações na sessão ativa", async () => {
+    const mockNota: AnotacaoClinica = {
+      id: "anot-autor-1",
+      sessao_id: sessaoIdPadrao,
+      paciente_id: pacienteIdPadrao,
+      terapeuta_id: "terap-1",
+      terapeuta_nome: "Dra. Sofia Lima",
+      conteudo: "Texto inicial da observação clínica.",
+      status_ativo: true,
+      soft_delete: false,
+      created_at: "2026-10-27T10:00:00Z",
+    };
+
+    spyListarPorSessao.mockResolvedValueOnce([mockNota]);
+    const spyAtualizar = vi.spyOn(anotacaoService, "atualizar").mockResolvedValue({
+      ...mockNota,
+      conteudo: "Texto editado inline durante a sessão.",
+    });
+    const spyInativar = vi.spyOn(anotacaoService, "inativar").mockResolvedValue({
+      ...mockNota,
+      status_ativo: false,
+      soft_delete: true,
+    });
+
+    render(
+      <ModalAnotacaoSessaoAtiva
+        aberto={true}
+        onFechar={vi.fn()}
+        sessaoId={sessaoIdPadrao}
+        pacienteId={pacienteIdPadrao}
+        pacienteNome="Lucas Silva"
+      />
+    );
+
+    const btnEditar = await screen.findByTestId("btn-editar-anotacao-anot-autor-1");
+    fireEvent.click(btnEditar);
+
+    const textareaEdicao = screen.getByTestId("textarea-edicao-anotacao-anot-autor-1");
+    fireEvent.change(textareaEdicao, {
+      target: { value: "Texto editado inline durante a sessão." },
+    });
+
+    const btnSalvarEdicao = screen.getByTestId("btn-salvar-edicao-anot-autor-1");
+    await act(async () => {
+      fireEvent.click(btnSalvarEdicao);
+    });
+
+    expect(spyAtualizar).toHaveBeenCalledWith("anot-autor-1", {
+      conteudo: "Texto editado inline durante a sessão.",
+    });
+    expect(screen.getByText("Texto editado inline durante a sessão.")).toBeDefined();
+
+    const btnInativar = screen.getByTestId("btn-inativar-anotacao-anot-autor-1");
+    await act(async () => {
+      fireEvent.click(btnInativar);
+    });
+
+    expect(spyInativar).toHaveBeenCalledWith("anot-autor-1");
+    expect(screen.queryByTestId("item-anotacao-anot-autor-1")).toBeNull();
+  });
 });

@@ -253,7 +253,7 @@ describe('Card 2.3 — SessaoExportarService.gerarLaudoExportacao (Regras de Neg
 
     const res = await SessaoExportarService.gerarLaudoExportacao(sessaoIdValido, {
       id: 'outro-terapeuta-sem-acesso',
-      user_metadata: { is_super_admin: false },
+      app_metadata: { is_super_admin: false },
     });
 
     expect(res.sucesso).toBe(false);
@@ -270,7 +270,7 @@ describe('Card 2.3 — SessaoExportarService.gerarLaudoExportacao (Regras de Neg
 
     const res = await SessaoExportarService.gerarLaudoExportacao(sessaoIdValido, {
       id: 'outro-terapeuta-com-vinculo',
-      user_metadata: { is_super_admin: false },
+      app_metadata: { is_super_admin: false },
     });
 
     expect(res.sucesso).toBe(true);
@@ -346,7 +346,7 @@ describe('Card 2.3 — SessaoExportarService.gerarLaudoExportacao (Regras de Neg
 
     const res = await SessaoExportarService.gerarLaudoExportacao(sessaoIdValido, {
       id: 'super-admin-uuid',
-      user_metadata: { is_super_admin: true },
+      app_metadata: { is_super_admin: true },
     });
 
     expect(res.sucesso).toBe(true);

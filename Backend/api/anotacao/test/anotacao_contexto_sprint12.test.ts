@@ -676,7 +676,7 @@ describe('Sprint 12 - Enriquecimento de Autoria, Reativação e Filtros de Anota
           user: {
             id: superAdminId,
             is_super_admin: true,
-            user_metadata: { is_super_admin: true },
+            app_metadata: { is_super_admin: true },
           },
         },
         error: null,

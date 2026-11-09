@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { supabase } from '../supabase/supabase.client.js';
 import { AuthenticatedRequest } from './auth.middleware.js';
+import { hasSuperAdminClaim } from '../auth/privilegios.js';
 import { validarUUID } from '../utils/validators.js';
 
 /**
@@ -75,7 +76,7 @@ export async function verificarVisibilidadePaciente(
     }
 
     // 4. Verificação de privilégios de SuperAdministrador
-    const isSuperAdminMetadata = usuarioLogado.user_metadata?.is_super_admin === true;
+    const isSuperAdminMetadata = hasSuperAdminClaim(usuarioLogado);
     if (isSuperAdminMetadata) {
       return next();
     }

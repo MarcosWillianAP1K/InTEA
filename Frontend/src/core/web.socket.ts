@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useSyncExternalStore } from "react";
 import { io, Socket } from "socket.io-client";
+import { useAuthStore } from "@/features/autenticacao/store/authStore";
 
 /**
  * ============================================================================
@@ -207,11 +208,14 @@ export class SessionSocketManager {
       return this.socket;
     }
 
+    const token = useAuthStore.getState().tokens?.access_token;
+
     if (!this.socket) {
       const serverUrl = url || getSocketUrl();
       this.updateStatus("conectando");
 
       this.socket = io(serverUrl, {
+        auth: { token },
         autoConnect: false,
         reconnection: true,
         reconnectionAttempts: 10,
@@ -223,6 +227,8 @@ export class SessionSocketManager {
       }) as TypedSocket;
 
       this.configurarEventosInternos();
+    } else {
+      this.socket.auth = { token };
     }
 
     if (!this.socket.connected) {

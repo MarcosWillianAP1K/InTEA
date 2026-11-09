@@ -1,3 +1,4 @@
+import React from "react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import type { MetricasTelemetria } from "../../types";
@@ -28,7 +29,7 @@ export interface TelemetriaCardsProps {
  * Grid of cards with real-time clinical indicators and telemetry metrics (RF12, RF17, RN02).
  * Displays hits/errors, accuracy percentage, mean reaction time, and attention/stress levels.
  */
-export function TelemetriaCards({ metricas, isLoading = false }: TelemetriaCardsProps) {
+export const TelemetriaCards = React.memo(function TelemetriaCards({ metricas, isLoading = false }: TelemetriaCardsProps) {
   const taxaAcerto =
     metricas.totalEventos > 0
       ? Math.round((metricas.acertos / (metricas.acertos + metricas.erros || 1)) * 100)
@@ -169,4 +170,4 @@ export function TelemetriaCards({ metricas, isLoading = false }: TelemetriaCards
       </Card>
     </div>
   );
-}
+});

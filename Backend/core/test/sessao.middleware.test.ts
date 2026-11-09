@@ -346,7 +346,7 @@ describe('Core Middleware: Verificação de Sessão Clínica e Anti-IDOR (verifi
   it('9. deve permitir bypass de SuperAdmin via user_metadata mesmo para sessão de outro autor em modo livre', async () => {
     const req = {
       params: { id: sessaoId },
-      user: { id: outroTerapeutaId, user_metadata: { is_super_admin: true } },
+      user: { id: outroTerapeutaId, app_metadata: { is_super_admin: true } },
     } as unknown as AuthenticatedRequest;
     const res = createMockResponse();
     const next = vi.fn() as unknown as NextFunction;

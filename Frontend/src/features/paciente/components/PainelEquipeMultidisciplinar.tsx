@@ -21,6 +21,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import type { EspecialistaVinculado } from "../types/paciente.types";
 
 export type EspecialistaEquipeItem = EspecialistaVinculado;
@@ -72,6 +73,10 @@ export const PainelEquipeMultidisciplinar: React.FC<
   onRetry,
   className = "",
 }) => {
+  const user = useAuthStore((s) => s.user);
+  const isSuperAdmin = Boolean(
+    user?.is_super_admin || user?.role === "super_admin",
+  );
   const isUnicoEspecialista = especialistas.length <= 1;
 
   return (
@@ -98,7 +103,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
             </div>
             <p className="text-sm text-gray-500 font-medium mt-0.5">
               Profissionais da clínica com acesso compartilhado ao prontuário,
-              histórico longitudinal e condução de sessões terapêuticas (RN04).
+              histórico longitudinal e condução de sessões terapêuticas.
             </p>
           </div>
         </div>
@@ -196,8 +201,11 @@ export const PainelEquipeMultidisciplinar: React.FC<
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
           {especialistas.map((esp) => {
+            const idEfetivoLogado = usuarioLogadoId || user?.id;
+            const terapeutaAlvoId =
+              (esp as { terapeuta_id?: string }).terapeuta_id || esp.id;
             const isUsuarioLogado =
-              Boolean(usuarioLogadoId) && esp.id === usuarioLogadoId;
+              Boolean(idEfetivoLogado) && terapeutaAlvoId === idEfetivoLogado;
             const registroExibicao =
               esp.registro_profissional ||
               esp.crefito ||
@@ -206,7 +214,14 @@ export const PainelEquipeMultidisciplinar: React.FC<
             const especialidadeExibicao =
               esp.especialidade || "Equipe Multidisciplinar";
             const isRemovendoEste = removendoId === esp.id;
-            const desabilitado = isUnicoEspecialista || Boolean(removendoId);
+            const semPermissaoDesvincular =
+              Boolean(user?.id) &&
+              !isSuperAdmin &&
+              terapeutaAlvoId !== user?.id;
+            const desabilitado =
+              isUnicoEspecialista ||
+              Boolean(removendoId) ||
+              semPermissaoDesvincular;
 
             return (
               <div
@@ -264,7 +279,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
                   </div>
                 </div>
 
-                {/* Botão de Desvincular (protegido contra remoção do último especialista) */}
+                {/* Botão de Desvincular (protegido contra remoção do último especialista e por autoria/admin) */}
                 <div className="flex items-center justify-end shrink-0">
                   <Button
                     type="button"
@@ -273,7 +288,9 @@ export const PainelEquipeMultidisciplinar: React.FC<
                     title={
                       isUnicoEspecialista
                         ? "O paciente deve possuir ao menos 1 especialista vinculado"
-                        : `Remover vínculo de ${esp.nome}`
+                        : semPermissaoDesvincular
+                          ? "Apenas o próprio especialista ou um administrador pode remover este vínculo"
+                          : `Remover vínculo de ${esp.nome}`
                     }
                     aria-label={`Desvincular ${esp.nome}`}
                     onClick={() => {
@@ -283,7 +300,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
                     }}
                     data-testid={`btn-desvincular-${esp.id}`}
                     className={`min-h-11 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer ${
-                      isUnicoEspecialista
+                      desabilitado
                         ? "border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed opacity-70"
                         : "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 bg-white"
                     }`}

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PacienteService, PacienteServiceError } from '../services/paciente.service.js';
+import { PacienteController } from '../controllers/paciente.controller.js';
 import { PacienteModel } from '../models/paciente.model.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 import { CryptoService } from '../../../core/security/crypto.service.js';
@@ -48,7 +49,7 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
 
       const superAdminMeta = {
         id: 'admin-uuid-2',
-        user_metadata: { is_super_admin: true },
+        app_metadata: { is_super_admin: true },
       };
       await PacienteService.listar({}, superAdminMeta, true);
       expect(spyListar.mock.calls[1]?.[0]?.terapeutaId).toBeUndefined();
@@ -837,6 +838,88 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         expect(resultado).toBe('removido');
         expect(mockDeleteEqPaciente).toHaveBeenCalledWith('paciente_id', pacienteId);
         expect(mockDeleteEqTerapeuta).toHaveBeenCalledWith('terapeuta_id', terapeutaBId);
+      });
+    });
+
+    describe('Consentimento Parental (LGPD Art. 14 §1º)', () => {
+      it('GET /:id/consentimento deve consultar histórico e retornar status vigente', async () => {
+        const mockOrder = vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 'cons-1',
+              paciente_id: idValido,
+              versao_termo: 'v1.0',
+              consentimento_concedido: true,
+              revogado_em: null,
+              created_at: '2026-10-10T10:00:00Z',
+            },
+          ],
+          error: null,
+        });
+        const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+        const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+        vi.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as unknown as ReturnType<typeof supabase.from>);
+
+        const req = { params: { id: idValido } } as unknown as Parameters<typeof PacienteController.obterConsentimento>[0];
+        const res = {
+          status: vi.fn().mockReturnThis(),
+          json: vi.fn(),
+        } as unknown as Parameters<typeof PacienteController.obterConsentimento>[1];
+
+        await PacienteController.obterConsentimento(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              vigente: true,
+              ultimo_consentimento: expect.objectContaining({ id: 'cons-1', versao_termo: 'v1.0' }),
+            }),
+          })
+        );
+      });
+
+      it('POST /:id/consentimento deve registrar novo termo de consentimento com defaults seguros e retornar 201', async () => {
+        const terapeutaId = '22222222-2222-4222-8222-222222222222';
+        const mockSingle = vi.fn().mockResolvedValue({
+          data: {
+            id: 'cons-2',
+            paciente_id: idValido,
+            terapeuta_id: terapeutaId,
+            versao_termo: 'v1.0',
+            consentimento_concedido: true,
+            canal_coleta: 'presencial_web',
+          },
+          error: null,
+        });
+        const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+        const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
+        vi.spyOn(supabase, 'from').mockReturnValue({ insert: mockInsert } as unknown as ReturnType<typeof supabase.from>);
+
+        const req = {
+          params: { id: idValido },
+          user: { id: terapeutaId },
+          headers: { 'user-agent': 'Vitest' },
+          ip: '127.0.0.1',
+          body: { observacoes: 'Termo assinado presencialmente pela mãe' },
+        } as unknown as Parameters<typeof PacienteController.registrarConsentimento>[0];
+        const res = {
+          status: vi.fn().mockReturnThis(),
+          json: vi.fn(),
+        } as unknown as Parameters<typeof PacienteController.registrarConsentimento>[1];
+
+        await PacienteController.registrarConsentimento(req, res);
+
+        expect(mockInsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            paciente_id: idValido,
+            terapeuta_id: terapeutaId,
+            versao_termo: 'v1.0',
+            consentimento_concedido: true,
+            canal_coleta: 'presencial_web',
+          })
+        );
+        expect(res.status).toHaveBeenCalledWith(201);
       });
     });
   });

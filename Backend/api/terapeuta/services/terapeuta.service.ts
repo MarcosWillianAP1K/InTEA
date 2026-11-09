@@ -12,6 +12,7 @@ import {
   AreaFoco,
 } from '../models/terapeuta.model.js';
 import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
+import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 import { validarTelefone, validarUUID } from '../../../core/utils/validators.js';
 import { formatarTelefone } from '../../../core/utils/formatters.js';
 
@@ -56,7 +57,7 @@ export class TerapeutaService {
   ): Promise<Terapeuta[]> {
     const isSuperAdmin =
       usuarioLogado?.is_super_admin === true ||
-      usuarioLogado?.user_metadata?.is_super_admin === true;
+      hasSuperAdminClaim(usuarioLogado);
 
     let clinicaIdFiltro: string | null | undefined = undefined;
 
@@ -103,7 +104,7 @@ export class TerapeutaService {
     if (usuarioLogado) {
       const isSuperAdmin =
         usuarioLogado.is_super_admin === true ||
-        usuarioLogado.user_metadata?.is_super_admin === true;
+        hasSuperAdminClaim(usuarioLogado);
 
       const isProprioTerapeuta = usuarioLogado.id === id;
 
@@ -200,7 +201,7 @@ export class TerapeutaService {
     if (usuarioLogado) {
       const isSuperAdmin =
         usuarioLogado.is_super_admin === true ||
-        usuarioLogado.user_metadata?.is_super_admin === true;
+        hasSuperAdminClaim(usuarioLogado);
 
       const isProprio = usuarioLogado.id === terapeutaId;
 
@@ -288,7 +289,7 @@ export class TerapeutaService {
     if (usuarioLogado) {
       const isSuperAdmin =
         usuarioLogado.is_super_admin === true ||
-        usuarioLogado.user_metadata?.is_super_admin === true;
+        hasSuperAdminClaim(usuarioLogado);
 
       if (!isSuperAdmin) {
         const dtoObj = dto as Record<string, unknown>;

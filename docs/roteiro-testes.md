@@ -251,13 +251,13 @@ Authorization: Bearer {token}
 
 ---
 
-### CT-P09 — Soft Delete: Inativação sem Exclusão Física (RN05)
+### CT-P09 — Soft Delete: Inativação sem Exclusão Física e Retenção de 20 Anos (RN05 / Lei 13.787/2018)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RN05 — Inalterabilidade do Histórico Clínico |
+| **Requisito** | RN05 — Inalterabilidade do Histórico Clínico; Lei 13.787/2018 Art. 6º (Migration 022) |
 | **Tipo** | Positivo |
-| **Precondição** | Paciente ativo com UUID conhecido |
+| **Precondição** | Paciente ativo com UUID conhecido; trigger `trg_bloqueio_delete_paciente` ativo |
 
 **Entrada — `DELETE /api/paciente/{id}`**
 
@@ -266,14 +266,14 @@ Authorization: Bearer {token}
 1. Executar `DELETE /api/paciente/{id}`.
 2. Verificar `status_ativo` na resposta.
 3. Executar `GET /api/paciente` e confirmar ausência do paciente.
-4. Verificar **diretamente no banco** que o registro **não foi deletado fisicamente**.
+4. Verificar **diretamente no banco** que o registro **não foi deletado fisicamente** e que qualquer tentativa de `DELETE FROM public.paciente` é bloqueada pelo trigger `trg_bloqueio_delete_paciente` (`impedir_delete_fisico_prontuario()`).
 
 #### Resultado Esperado
 
 - HTTP **200 OK**
 - `data.status_ativo: false`
 - Paciente ausente da listagem padrão
-- Registro físico preservado no banco
+- Registro físico preservado no banco para cumprimento do prazo legal mínimo de 20 anos de guarda (Lei 13.787/2018 Art. 6º), sem utilização produtiva de rotas `/hard`
 
 **Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
 
@@ -1492,25 +1492,27 @@ WHERE table_name = 'relatorio_sessao';
 
 ---
 
-### CT-S21 — Imutabilidade de Prontuário e Bloqueio de Hard Delete em Relatório Clínico (RN05)
+### CT-S21 — Imutabilidade de Prontuário e Bloqueio de Hard Delete via Triggers (RN05 / Lei 13.787/2018 — Migration 022)
 
 | Campo | Valor |
 | :--- | :--- |
-| **Requisito** | RN05 — Inalterabilidade e Imutabilidade do Histórico Clínico |
+| **Requisito** | RN05 — Inalterabilidade e Retenção Mínima de 20 Anos (Lei 13.787/2018 Art. 6º) |
 | **Tipo** | Negativo / Validação de Imutabilidade |
-| **Precondição** | Sessão clínica com relatório persistido |
+| **Precondição** | Triggers `trg_bloqueio_relatorio_sessao`, `trg_bloqueio_delete_paciente`, `trg_bloqueio_delete_anotacao` e `trg_bloqueio_delete_sessao` ativos (Migration 022) |
 
-**Entrada — Tentativa de `DELETE FROM public.relatorio_sessao WHERE sessao_id = '{id}';`**
+**Entrada — Tentativa de `DELETE` físico em `relatorio_sessao`, `paciente`, `anotacao_clinica` ou `sessao`**
 
 #### Passos
 
-1. Localizar o `sessao_id` de um relatório clínico existente.
-2. Tentar executar exclusão física (`DELETE`) diretamente via SQL ou endpoint administrativo.
+1. Localizar registros existentes em `public.relatorio_sessao`, `public.paciente`, `public.anotacao_clinica` e `public.sessao`.
+2. Tentar executar exclusão física (`DELETE`) diretamente via SQL.
+3. Tentar executar `TRUNCATE` nas tabelas de auditoria (`auditoria_sessao`, `auditoria_vinculo_acesso`, `auditoria_acesso_prontuario`).
 
 #### Resultado Esperado
 
-- Exclusão física sumariamente rejeitada por trigger de integridade clínica ou substituída por flag `soft_delete: true`
-- Preservação intacta dos dados históricos e análises da IA no prontuário médico (**RN05**)
+- Exclusão física sumariamente rejeitada pelos triggers `impedir_modificacao_relatorio_sessao()` e `impedir_delete_fisico_prontuario()` com código `23505`
+- Tentativa de `TRUNCATE` em trilhas de auditoria rejeitada por `impedir_truncate_auditoria()`
+- Preservação intacta dos dados históricos pelo prazo mínimo de 20 anos (Lei 13.787/2018 Art. 6º / **RN05**), exigindo exclusivamente inativação lógica (`soft_delete = true` ou `status_ativo = false`)
 
 **Status:** `[X] Passou` `[ ] Falhou` `[ ] Pendente`
 
@@ -2062,7 +2064,108 @@ Content-Type: application/json
 
 ---
 
-> **Total atualizado: 61 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 22 Sessão/Pareamento (CT-S01→S22) · 6 Histórico Longitudinal Sprint 11 (CT-S23→S28) · 6 Anotações e Contexto DDA Sprint 12 (CT-S29→S34)
+## Módulo 5 — Governança de Segurança, RLS, Retenção Legal e Consentimento LGPD (Migrations 021–023)
+
+### CT-S35 — Isolamento Row Level Security (RLS) com Funções `SECURITY DEFINER` Anti-Recursão (Migration 021 — RN04)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RN04 — Visibilidade por Vínculo Institucional; Migration 021 |
+| **Tipo** | Positivo / Segurança de Banco de Dados |
+| **Precondição** | Migration 021 aplicada; todas as tabelas do schema `public` com `ENABLE ROW LEVEL SECURITY` |
+
+**Entrada — Consulta autenticada no PostgreSQL e verificação das funções `SECURITY DEFINER`**
+
+```sql
+SELECT tablename, rowsecurity
+FROM pg_tables
+WHERE schemaname = 'public';
+```
+
+#### Passos
+
+1. Verificar que todas as tabelas públicas possuem `rowsecurity = true`.
+2. Validar a existência das funções `public.rls_is_super_admin()`, `public.rls_clinica_usuario()`, `public.rls_tem_vinculo_paciente(uuid)` e `public.rls_tem_acesso_sessao(uuid)` configuradas com `SECURITY DEFINER` e `SET search_path = public`.
+3. Consultar `public.paciente` e `public.terapeuta_paciente` com um JWT `authenticated` e confirmar ausência de erro de recursão infinita (`42P17`).
+
+#### Resultado Esperado
+
+- Todas as tabelas públicas com `rowsecurity = true`
+- Funções auxiliares resolvem clínica e vínculo multidisciplinar sem disparar recursão `42P17`
+- Terapeuta autenticado visualiza apenas pacientes com vínculo ativo na mesma clínica (**RN04**)
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S36 — Blindagem de `handle_new_user` contra Escalonamento de Privilégio no Signup (Migration 022 — P0.1)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | RNF02 / Segurança de Autenticação — Migration 022 |
+| **Tipo** | Negativo — prevenção de escalonamento de privilégio |
+| **Precondição** | Trigger `on_auth_user_created` apontando para `public.handle_new_user()` atualizado na Migration 022 |
+
+**Entrada — Criação de usuário no Auth enviando `"is_super_admin": true` em `raw_user_meta_data`**
+
+#### Passos
+
+1. Realizar signup enviando `raw_user_meta_data: { "nome": "Teste", "is_super_admin": true }` sem privilégio administrativo em `raw_app_meta_data`.
+2. Consultar a linha criada em `public.terapeuta`.
+
+#### Resultado Esperado
+
+- A função `public.handle_new_user()` ignora `NEW.raw_user_meta_data->>'is_super_admin'` e lê exclusivamente `COALESCE((NEW.raw_app_meta_data->>'is_super_admin')::BOOLEAN, FALSE)`
+- O registro em `public.terapeuta` é criado com `is_super_admin = false`
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+### CT-S37 — Registro e Consulta Imutável de Consentimento Parental LGPD (`GET/POST /api/paciente/:id/consentimento` — Migration 023)
+
+| Campo | Valor |
+| :--- | :--- |
+| **Requisito** | LGPD Art. 14 §1º — Consentimento Parental Específico e em Destaque; RN04; RN05 |
+| **Tipo** | Positivo / Conformidade Regulatória |
+| **Precondição** | Paciente cadastrado; terapeuta vinculado autenticado; tabela `public.consentimento_responsavel` criada (Migration 023) |
+
+**Entrada 1 — `POST /api/paciente/{id}/consentimento`**
+
+```json
+{
+  "responsavel_id": "e2b74052-16a3-4813-9f87-217bc3c02341",
+  "versao_termo": "v1.0",
+  "finalidades": [
+    "acompanhamento_clinico",
+    "telemetria_terapeutica",
+    "relatorios_ia"
+  ],
+  "consentimento_concedido": true,
+  "canal_coleta": "presencial_web",
+  "observacoes": "Consentimento colhido presencialmente na admissão."
+}
+```
+
+**Entrada 2 — `GET /api/paciente/{id}/consentimento`**
+
+#### Passos
+
+1. Executar `POST /api/paciente/{id}/consentimento` para registrar o termo do responsável legal.
+2. Executar `GET /api/paciente/{id}/consentimento` e verificar o estado vigente e a trilha histórica.
+3. Tentar executar `UPDATE` ou `DELETE` diretamente em `public.consentimento_responsavel`.
+
+#### Resultado Esperado
+
+- Entrada 1: HTTP **201 Created** com registro persistido em `public.consentimento_responsavel`
+- Entrada 2: HTTP **200 OK** retornando `consentimento_ativo: true`, `consentimento_vigente` e `historico[]`
+- Tentativa de `UPDATE`, `DELETE` ou `TRUNCATE` diretamente na tabela é bloqueada pelos triggers `trg_bloqueio_mutacao_consentimento` e `trg_bloqueio_truncate_consentimento` com código `23505` (revogações exigem novo registro *append-only* com `consentimento_concedido: false`)
+
+**Status:** `[ ] Passou` `[ ] Falhou` `[ ] Pendente`
+
+---
+
+> **Total atualizado: 64 casos de teste** — 15 Pacientes (CT-P01→P15) · 12 Jogos (CT-J01→J12) · 22 Sessão/Pareamento (CT-S01→S22) · 6 Histórico Longitudinal Sprint 11 (CT-S23→S28) · 6 Anotações e Contexto DDA Sprint 12 (CT-S29→S34) · 3 Segurança, RLS e LGPD Migrations 021–023 (CT-S35→S37)
 
 ---
 

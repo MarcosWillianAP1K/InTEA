@@ -219,6 +219,9 @@ export class TerapeutaModel {
       email: dto.email,
       password: dto.password,
       email_confirm: true,
+      app_metadata: {
+        is_super_admin: dto.is_super_admin ?? false,
+      },
       user_metadata: {
         nome: dto.nome,
         telefone: dto.telefone ?? null,
@@ -227,7 +230,6 @@ export class TerapeutaModel {
         especialidade: dto.especialidade ?? null,
         tempo_experiencia_anos: dto.tempo_experiencia_anos ?? 0,
         clinica_id: dto.clinica_id ?? null,
-        is_super_admin: dto.is_super_admin ?? false,
       },
     });
 

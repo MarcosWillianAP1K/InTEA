@@ -10,6 +10,7 @@ import {
   type ErroSessaoPayload,
 } from "../web.socket";
 import { io } from "socket.io-client";
+import { useAuthStore } from "@/features/autenticacao/store/authStore";
 
 // Mock do socket.io-client
 vi.mock("socket.io-client", () => {
@@ -79,6 +80,15 @@ describe("Card 4.1 — Integração do Cliente WebSocket / Socket.IO (core/web.s
     });
 
     it("deve inicializar o Socket.IO com configurações de reconexão e backoff exponencial", () => {
+      useAuthStore.setState({
+        tokens: {
+          access_token: "jwt-terapeuta-123",
+          refresh_token: "refresh-terapeuta-123",
+          expires_in: 3600,
+          token_type: "Bearer",
+        },
+      });
+
       const manager = SessionSocketManager.getInstance();
       manager.conectar("http://localhost:3000");
 
@@ -86,6 +96,7 @@ describe("Card 4.1 — Integração do Cliente WebSocket / Socket.IO (core/web.s
       expect(io).toHaveBeenCalledWith(
         "http://localhost:3000",
         expect.objectContaining({
+          auth: { token: "jwt-terapeuta-123" },
           autoConnect: false,
           reconnection: true,
           reconnectionAttempts: 10,

@@ -278,7 +278,7 @@ describe('Histórico Longitudinal: View Materializada, Cache e SLA sub-50ms', ()
         data: {
           user: {
             id: terapeutaId,
-            user_metadata: { is_super_admin: false },
+            app_metadata: { is_super_admin: false },
           },
         },
         error: null,

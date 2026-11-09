@@ -143,7 +143,37 @@ describe('Core Middleware: Restrição de Administrador (adminMiddleware)', () =
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('deve autorizar e chamar next() se o usuário tiver is_super_admin no user_metadata e estiver ativo', async () => {
+  it('deve autorizar e chamar next() se o usuário tiver is_super_admin no app_metadata e estiver ativo', async () => {
+    const req: any = {
+      user: {
+        id: adminId,
+        app_metadata: { is_super_admin: true },
+      },
+    };
+    const res: any = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    const next = vi.fn();
+
+    const mockMaybeSingle = vi.fn().mockResolvedValue({
+      data: { is_super_admin: false, status_ativo: true },
+      error: null,
+    });
+    const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+
+    vi.spyOn(supabase, 'from').mockReturnValue({
+      select: mockSelect,
+    } as any);
+
+    await adminMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('deve rejeitar com 403 Forbidden tentativa de escalonamento de privilégio via user_metadata quando is_super_admin é false no banco', async () => {
     const req: any = {
       user: {
         id: adminId,
@@ -169,7 +199,7 @@ describe('Core Middleware: Restrição de Administrador (adminMiddleware)', () =
 
     await adminMiddleware(req, res, next);
 
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,7 @@ import { AuditoriaService } from '../services/auditoria.service.js';
 import { AuditoriaProntuarioService } from '../auditoria-prontuario.service.js';
 import { AuditoriaSessao } from '../models/auditoria.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 
 export class AuditoriaController {
@@ -251,7 +252,7 @@ export class AuditoriaController {
 
       // Guarda Anti-Spoofing de terapeuta (RF21)
       const isSuperAdmin =
-        usuarioLogado?.user_metadata?.is_super_admin === true ||
+        hasSuperAdminClaim(usuarioLogado) ||
         usuarioLogado?.is_super_admin === true;
 
       if (

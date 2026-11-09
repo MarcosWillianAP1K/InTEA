@@ -119,6 +119,47 @@ describe('Core Middleware: Rate Limiting Contra Força Bruta (RNF03)', () => {
 
       expect(chamadasExecutadas).toBe(7);
     });
+
+    it('deve ignorar o header x-skip-rate-limit e bloquear na 6ª tentativa fora de ambiente de teste (produção)', async () => {
+      const oldNodeEnv = process.env.NODE_ENV;
+      const oldVitest = process.env.VITEST;
+      process.env.NODE_ENV = 'production';
+      delete process.env.VITEST;
+
+      try {
+        let chamadasExecutadas = 0;
+        let statusRetornado = 0;
+        const nextFn = () => {
+          chamadasExecutadas++;
+        };
+
+        for (let i = 0; i < 6; i++) {
+          const req = {
+            ip: '192.168.1.199',
+            headers: { 'x-skip-rate-limit': 'true' },
+          } as unknown as Request;
+
+          const res = {
+            setHeader: () => {},
+            status: (code: number) => {
+              statusRetornado = code;
+              return res;
+            },
+            json: () => {},
+          } as unknown as Response;
+
+          await loginRateLimiter(req, res, nextFn);
+        }
+
+        expect(chamadasExecutadas).toBe(5);
+        expect(statusRetornado).toBe(429);
+      } finally {
+        process.env.NODE_ENV = oldNodeEnv;
+        if (oldVitest !== undefined) {
+          process.env.VITEST = oldVitest;
+        }
+      }
+    });
   });
 
   describe('parearRateLimiter (Proteção do PIN de Pareamento)', () => {

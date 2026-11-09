@@ -1,3 +1,4 @@
+import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/shared/components/ui/card";
 import type { PontoHistoricoTelemetria } from "../../types";
 import { TrendingUp, Activity } from "lucide-react";
@@ -18,7 +19,7 @@ export interface TelemetriaChartProps {
  * Real-time vector SVG chart for continuous visualization of patient engagement and attention.
  * Renders high-performance dynamic curves without heavy third-party dependencies.
  */
-export function TelemetriaChart({
+export const TelemetriaChart = React.memo(function TelemetriaChart({
   historico,
   titulo = "Evolução Contínua de Engajamento e Atenção",
 }: TelemetriaChartProps) {
@@ -197,4 +198,4 @@ export function TelemetriaChart({
       </CardContent>
     </Card>
   );
-}
+});

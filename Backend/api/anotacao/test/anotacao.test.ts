@@ -2620,7 +2620,7 @@ describe('Rotas Canônicas Unificadas (/api/anotacao/:id) — Integração de Mi
           user: {
             id: superAdminId,
             is_super_admin: true,
-            user_metadata: { is_super_admin: true },
+            app_metadata: { is_super_admin: true },
           },
         },
         error: null,
@@ -2676,7 +2676,7 @@ describe('Rotas Canônicas Unificadas (/api/anotacao/:id) — Integração de Mi
           user: {
             id: autorId,
             is_super_admin: false,
-            user_metadata: { is_super_admin: false },
+            app_metadata: { is_super_admin: false },
           },
         },
         error: null,

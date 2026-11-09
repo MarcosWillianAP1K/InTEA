@@ -590,7 +590,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
       user: {
         id: '99999999-0000-4000-a000-999999999999',
         is_super_admin: true,
-        user_metadata: { is_super_admin: true },
+        app_metadata: { is_super_admin: true },
       },
     });
 

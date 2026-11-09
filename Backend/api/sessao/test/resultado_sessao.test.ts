@@ -974,7 +974,7 @@ describe('SessaoController.consultarResultado — Integração REST e Códigos H
     expect(getJson().error).toContain('não encontrada');
   });
 
-  it('deve extrair isSuperAdmin = true a partir de user_metadata.is_super_admin', async () => {
+  it('deve extrair isSuperAdmin = true a partir de app_metadata.is_super_admin', async () => {
     const spyService = vi.spyOn(SessaoResultadoService, 'obterResultadoConsolidado').mockResolvedValue({
       sucesso: true,
       status: 200,
@@ -983,7 +983,7 @@ describe('SessaoController.consultarResultado — Integração REST e Códigos H
 
     const { req, res } = criarMockHttp(
       { id: sessaoId },
-      { id: terapeutaId, user_metadata: { is_super_admin: true } }
+      { id: terapeutaId, app_metadata: { is_super_admin: true } }
     );
 
     await SessaoController.consultarResultado(req, res);

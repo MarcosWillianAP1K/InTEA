@@ -5,6 +5,7 @@
 import { FiltrosSessaoDTO, RespostaListagemSessao } from '../dtos/sessao.dto.js';
 import { SessaoModel, Sessao, MODO_SESSAO } from '../models/sessao.model.js';
 import { UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
+import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 import { supabase } from '../../../core/supabase/supabase.client.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 
@@ -88,7 +89,7 @@ export class SessaoListarService {
   ): Promise<RespostaListagemSessao<Sessao>> {
     const isSuperAdmin =
       usuarioLogado?.is_super_admin === true ||
-      usuarioLogado?.user_metadata?.is_super_admin === true;
+      hasSuperAdminClaim(usuarioLogado);
 
     if (filtros.pacienteId !== undefined && filtros.pacienteId !== '') {
       const pacienteId = filtros.pacienteId.trim();

@@ -910,5 +910,29 @@ pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, verificarV
  *       500:
  *         description: Erro interno do servidor
  */
-pacienteRoutes.get('/:id/prontuario/exportar', authMiddleware, PacienteController.exportarProntuario);
+pacienteRoutes.get(
+  '/:id/prontuario/exportar',
+  authMiddleware,
+  verificarVisibilidadePaciente,
+  auditoriaProntuarioMiddleware('visualizacao'),
+  PacienteController.exportarProntuario
+);
+
+// ------------------------------------------------------------------------------
+// 6. Consentimento Parental (LGPD Art. 14 §1º)
+// ------------------------------------------------------------------------------
+
+pacienteRoutes.get(
+  '/:id/consentimento',
+  authMiddleware,
+  verificarVisibilidadePaciente,
+  PacienteController.obterConsentimento
+);
+
+pacienteRoutes.post(
+  '/:id/consentimento',
+  authMiddleware,
+  verificarVisibilidadePaciente,
+  PacienteController.registrarConsentimento
+);
 

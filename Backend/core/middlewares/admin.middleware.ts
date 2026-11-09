@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { supabase } from '../supabase/supabase.client.js';
 import { AuthenticatedRequest } from './auth.middleware.js';
+import { hasSuperAdminClaim } from '../auth/privilegios.js';
 
 /**
  * ==============================================================================
@@ -70,7 +71,7 @@ export async function adminMiddleware(
     // 3. Valida permissão de administrador (via tabela ou user_metadata do Supabase Auth)
     const isSuperAdmin =
       terapeuta.is_super_admin === true ||
-      usuarioLogado.user_metadata?.is_super_admin === true;
+      hasSuperAdminClaim(usuarioLogado);
 
     if (!isSuperAdmin) {
       res.status(403).json({

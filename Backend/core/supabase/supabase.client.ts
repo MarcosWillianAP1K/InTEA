@@ -11,7 +11,26 @@ if (!supabaseUrl || !supabaseKey) {
   console.warn('[Supabase] Atenção: SUPABASE_URL ou chaves do Supabase não estão definidas no ambiente.');
 }
 
+const noopStorage = {
+  getItem: (): null => null,
+  setItem: (): void => {},
+  removeItem: (): void => {},
+};
+
 export const supabase: SupabaseClient = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseKey || 'placeholder-key'
+  supabaseKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storage: noopStorage,
+    },
+  }
 );
+
+// Garante que chamadas a signInWithPassword/verifyOtp no singleton nunca contaminem
+// o cabeçalho Authorization (Bearer SERVICE_ROLE_KEY) nas queries PostgREST/Storage.
+(supabase.auth as unknown as { storage: typeof noopStorage }).storage = noopStorage;
+(supabase as unknown as { accessToken: () => Promise<null> }).accessToken = async () => null;

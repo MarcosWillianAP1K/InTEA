@@ -117,6 +117,7 @@ export interface Paciente {
   numero?: string | null;
   complemento?: string | null;
   status_ativo: boolean;
+  consentimento_lgpd?: boolean;
   created_at: string;
   updated_at: string;
   responsaveis?: Responsavel[];

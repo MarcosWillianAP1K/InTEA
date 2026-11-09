@@ -19,10 +19,13 @@ import type {
   ManifestoRespostaApi,
 } from "../types/jogos.types";
 import {
+  JOGOS_MOCK,
   listarJogosMock,
   buscarJogoMockPorId,
   obterManifestoJogoMock,
 } from "../types/bdmock";
+
+export { JOGOS_MOCK };
 
 /**
  * Serializes game catalog search and pagination filters into HTTP query parameters.

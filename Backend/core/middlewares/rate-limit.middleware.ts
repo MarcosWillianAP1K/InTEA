@@ -39,7 +39,10 @@ export const loginRateLimiter = rateLimit({
   },
   skip: (req: Request) => {
     // Permite bypass apenas em testes que declarem explicitamente o header
-    return Boolean(req.headers && req.headers['x-skip-rate-limit']);
+    return (
+      (process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST)) &&
+      Boolean(req.headers && req.headers['x-skip-rate-limit'])
+    );
   },
   handler: (req: Request, res: Response, _next: NextFunction, options) => {
     const rateLimitInfo = (req as Request & { rateLimit?: { resetTime?: Date } }).rateLimit;
@@ -71,7 +74,10 @@ export const parearRateLimiter = rateLimit({
     xForwardedForHeader: false,
   },
   skip: (req: Request) => {
-    return Boolean(req.headers && req.headers['x-skip-rate-limit']);
+    return (
+      (process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST)) &&
+      Boolean(req.headers && req.headers['x-skip-rate-limit'])
+    );
   },
   handler: (req: Request, res: Response, _next: NextFunction, options) => {
     const rateLimitInfo = (req as Request & { rateLimit?: { resetTime?: Date } }).rateLimit;

@@ -281,17 +281,28 @@ describe("PerfilPacientePage — Gestão de Equipe Multidisciplinar (RF06, RF18,
 
     renderizarPerfilPaciente();
 
+    // Colega não pode ser desvinculado por terapeuta comum (apenas o próprio ou SuperAdmin)
     const btnDesvincularLuma = await screen.findByTestId(
       `btn-desvincular-${ESPECIALISTA_LUMA.id}`,
     );
-    expect(btnDesvincularLuma).not.toBeDisabled();
+    expect(btnDesvincularLuma).toBeDisabled();
+    expect(btnDesvincularLuma).toHaveAttribute(
+      "title",
+      "Apenas o próprio especialista ou um administrador pode remover este vínculo",
+    );
 
-    fireEvent.click(btnDesvincularLuma);
+    // O próprio especialista pode acionar sua desvinculação (ou SuperAdmin pode desvincular colega)
+    const btnDesvincularMarcos = await screen.findByTestId(
+      `btn-desvincular-${ESPECIALISTA_MARCOS.id}`,
+    );
+    expect(btnDesvincularMarcos).not.toBeDisabled();
+
+    fireEvent.click(btnDesvincularMarcos);
 
     await waitFor(() => {
       expect(desvincularSpy).toHaveBeenCalledWith(
         MOCK_PACIENTE_PEDRO.id,
-        ESPECIALISTA_LUMA.id,
+        ESPECIALISTA_MARCOS.id,
       );
     });
 

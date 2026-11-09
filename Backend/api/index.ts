@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { authRoutes } from './auth/routes/auth.routes.js';
-import { exemploRoutes } from './exemplo/routes/exemplo.routes.js';
 import { jogosRoutes } from './jogos/routes/jogo.routes.js';
 import { pacienteRoutes } from './paciente/routes/paciente.routes.js';
 import { sessaoRoutes } from './sessao/routes/sessao.routes.js';
@@ -25,5 +24,4 @@ apiRouter.use('/telemetria', telemetriaRoutes);
 apiRouter.use('/auditoria', auditoriaRoutes);
 apiRouter.use('/admin', adminRoutes);
 apiRouter.use('/anotacao', anotacaoRoutes);
-apiRouter.use('/exemplo', exemploRoutes);
 apiRouter.use('/jogos', jogosRoutes);

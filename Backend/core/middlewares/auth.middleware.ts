@@ -10,11 +10,11 @@ export type UsuarioAutenticado = Partial<User> & {
   email?: string;
   is_super_admin?: boolean;
   user_metadata?: {
-    is_super_admin?: boolean;
     nome?: string;
     [key: string]: unknown;
   };
   app_metadata?: {
+    is_super_admin?: boolean;
     [key: string]: unknown;
   };
   clinica_id?: string | null;

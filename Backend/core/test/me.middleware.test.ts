@@ -281,7 +281,7 @@ describe('Core Middleware: Titularidade e Auto-Gestão de Perfil (meMiddleware)'
   it('10. deve permitir bypass de SuperAdmin via user_metadata do token JWT ao acessar outro ID', async () => {
     const req = {
       params: { id: outroId },
-      user: { id: meuId, user_metadata: { is_super_admin: true } },
+      user: { id: meuId, app_metadata: { is_super_admin: true } },
     } as unknown as AuthenticatedRequest;
     const res = createMockResponse();
     const next = vi.fn() as unknown as NextFunction;
@@ -309,7 +309,7 @@ describe('Core Middleware: Titularidade e Auto-Gestão de Perfil (meMiddleware)'
   it('11. deve retornar 403 para SuperAdmin se allowAdmin for explicitamente configurado como false ao acessar outro ID', async () => {
     const req = {
       params: { id: outroId },
-      user: { id: meuId, user_metadata: { is_super_admin: true } },
+      user: { id: meuId, app_metadata: { is_super_admin: true } },
     } as unknown as AuthenticatedRequest;
     const res = createMockResponse();
     const next = vi.fn() as unknown as NextFunction;

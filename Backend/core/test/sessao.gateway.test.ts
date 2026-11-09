@@ -793,7 +793,7 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao) & Heartbeat/Que
         condutorSocket.emit('entrar_sessao', {
           session_token: '849-291',
           role: 'terapeuta',
-          terapeuta_id: 'terapeuta-condutor-uuid',
+          terapeuta_id: '11111111-1111-1111-1111-111111111111',
           nome: 'Dr. Marcos Willian',
           especialidade: 'Fonoaudiologia',
         });
@@ -838,7 +838,7 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao) & Heartbeat/Que
         condutorSocket.emit('entrar_sessao', {
           session_token: '849-291',
           role: 'terapeuta',
-          terapeuta_id: 'condutor-uuid',
+          terapeuta_id: '11111111-1111-1111-1111-111111111111',
         });
         condutorSocket.on('sessao_conectada', () => resolve());
       });
@@ -952,6 +952,24 @@ describe('Card 2.2 & 2.3 - Gateway WebSocket Socket.IO (/sessao) & Heartbeat/Que
 
       dispositivoSocket.disconnect();
       observadorSocket.disconnect();
+    });
+
+    it('deve rebaixar automaticamente role terapeuta para observador_equipe quando terapeuta_id divergir do condutor da sessão no banco (P1.2)', async () => {
+      const outroTerapeutaSocket = await createClientSocket();
+
+      const confirmacao = await new Promise<any>((resolve) => {
+        outroTerapeutaSocket.emit('entrar_sessao', {
+          session_token: '849-291',
+          role: 'terapeuta',
+          terapeuta_id: '99999999-9999-9999-9999-999999999999',
+        });
+        outroTerapeutaSocket.on('sessao_conectada', (dados) => resolve(dados));
+      });
+
+      expect(confirmacao.status).toBe('ok');
+      expect(confirmacao.role).toBe('observador_equipe');
+
+      outroTerapeutaSocket.disconnect();
     });
   });
 });

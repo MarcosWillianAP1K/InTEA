@@ -927,4 +927,5 @@ export const sessaoService = {
   },
 };
 
+export * from "../types/sessao.types";
 export default sessaoService;
