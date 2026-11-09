@@ -1213,6 +1213,13 @@ describe('Auditoria de Backend: Envelope Pattern Categorizado e Sanitização Es
           cpf: '364.721.890-50',
           telefone: '+55 (11) 98765-4321',
           parentesco: 'Mãe',
+          cep: '01310-100',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          endereco: 'Av Paulista',
+          bairro: 'Bela Vista',
+          numero: '1000',
+          complemento: 'Apto 12',
           principal: true,
         },
       },
@@ -1270,7 +1277,12 @@ describe('Auditoria de Backend: Envelope Pattern Categorizado e Sanitização Es
 
     // Verificação estrita do Envelope
     expect(Object.keys(json).sort()).toEqual(['data', 'message'].sort());
-    expect(Object.keys(json.data).sort()).toEqual(['dados_clinicos', 'meta', 'paciente', 'responsaveis'].sort());
+    expect(Object.keys(json.data).sort()).toEqual(['dados_clinicos', 'gatilhos', 'laudos', 'meta', 'paciente', 'responsaveis', 'terapeuta_responsavel_id'].sort());
+    expect(json.data.responsaveis[0].cpf).toBe('364.721.890-50');
+    expect(json.data.responsaveis[0].cep).toBe('01310-100');
+    expect(json.data.responsaveis[0].endereco).toBe('Av Paulista');
+    expect(json.data.responsaveis[0].cidade).toBe('São Paulo');
+    expect(json.data.responsaveis[0].estado).toBe('SP');
     expect(json.data.paciente.id).toBe(pacienteUuid);
     expect(json.data.paciente.nome).toBe('Enzo Gabriel da Silva');
     expect(json.data.responsaveis).toBeInstanceOf(Array);
@@ -1295,6 +1307,13 @@ describe('Auditoria de Backend: Envelope Pattern Categorizado e Sanitização Es
           cpf: '364.721.890-50',
           telefone: '+55 (11) 98765-4321',
           parentesco: 'Mãe',
+          cep: '01310-100',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          endereco: 'Av Paulista',
+          bairro: 'Bela Vista',
+          numero: '1000',
+          complemento: 'Apto 12',
         },
       },
     });

@@ -10,6 +10,7 @@ import type {
   Responsavel,
   DadosClinicos,
   Gatilho,
+  LaudoClinico,
   TerapeutaPaciente,
   EspecialistaVinculado,
   CriarPacienteDTO,
@@ -126,6 +127,29 @@ export const MOCK_RESPONSAVEIS: Responsavel[] = [
 // FIXTURES DE PACIENTES REALISTAS
 // ============================================================================
 
+export const MOCK_LAUDOS_PADRAO: LaudoClinico[] = [
+  {
+    id: "laudo-001",
+    paciente_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    terapeuta_id: MOCK_TERAPEUTA_LOGADO.id,
+    titulo: "Laudo Neuropsicológico Multidisciplinar — CID-11 6A02.0",
+    descricao:
+      "Avaliação diagnóstica estruturada indicando Transtorno do Espectro do Autismo Nível 1 de suporte, com recomendações de intervenção em Terapia Ocupacional e ABA.",
+    arquivo_caminho: "/laudos/laudo-neuropsicologico-pedro-silveira.pdf",
+    arquivo_nome_original: "laudo_pedro_henrique_silveira_2026.pdf",
+    arquivo_mime_type: "application/pdf",
+    tamanho_bytes: 428560,
+    created_at: "2026-01-15T10:00:00.000Z",
+    updated_at: "2026-01-15T10:00:00.000Z",
+    terapeuta: {
+      id: MOCK_TERAPEUTA_LOGADO.id,
+      nome: MOCK_TERAPEUTA_LOGADO.nome,
+      especialidade: MOCK_TERAPEUTA_LOGADO.especialidade,
+      registro_profissional: MOCK_TERAPEUTA_LOGADO.registro_profissional,
+    },
+  },
+];
+
 export const MOCK_PACIENTE_PEDRO: Paciente = {
   id: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
   clinica_id: MOCK_CLINICA.id,
@@ -133,6 +157,10 @@ export const MOCK_PACIENTE_PEDRO: Paciente = {
   data_nascimento: "2018-06-15", // 8 anos em 2026
   telefone: "(11) 98765-4321",
   cpf: "529.982.247-25",
+  photoUrl:
+    "https://images.unsplash.com/photo-1543332164-6e82f355badc?auto=format&fit=crop&q=80&w=400",
+  foto_url:
+    "https://images.unsplash.com/photo-1543332164-6e82f355badc?auto=format&fit=crop&q=80&w=400",
   cep: "01310-100",
   cidade: "São Paulo",
   estado: "SP",
@@ -141,6 +169,7 @@ export const MOCK_PACIENTE_PEDRO: Paciente = {
   numero: "1000",
   complemento: "Apto 42",
   status_ativo: true,
+  terapeuta_responsavel_id: MOCK_TERAPEUTA_LOGADO.id,
   created_at: "2026-01-15T10:00:00.000Z",
   updated_at: "2026-01-15T10:00:00.000Z",
   responsaveis: [MOCK_RESPONSAVEIS[0]],
@@ -174,11 +203,34 @@ export const MOCK_PACIENTE_PEDRO: Paciente = {
       gatilho: MOCK_GATILHOS[1],
     },
   ],
+  laudos: [
+    {
+      id: "laudo-001",
+      paciente_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      terapeuta_id: MOCK_TERAPEUTA_LOGADO.id,
+      titulo: "Laudo Neuropsicológico Multidisciplinar — CID-11 6A02.0",
+      descricao:
+        "Avaliação diagnóstica estruturada indicando Transtorno do Espectro do Autismo Nível 1 de suporte, com recomendações de intervenção em Terapia Ocupacional e ABA.",
+      arquivo_caminho: "/laudos/laudo-neuropsicologico-pedro-silveira.pdf",
+      arquivo_nome_original: "laudo_pedro_henrique_silveira_2026.pdf",
+      arquivo_mime_type: "application/pdf",
+      tamanho_bytes: 428560,
+      created_at: "2026-01-15T10:00:00.000Z",
+      updated_at: "2026-01-15T10:00:00.000Z",
+      terapeuta: {
+        id: MOCK_TERAPEUTA_LOGADO.id,
+        nome: MOCK_TERAPEUTA_LOGADO.nome,
+        especialidade: MOCK_TERAPEUTA_LOGADO.especialidade,
+        registro_profissional: MOCK_TERAPEUTA_LOGADO.registro_profissional,
+      },
+    },
+  ],
   terapeutas: [
     {
       terapeuta_id: MOCK_TERAPEUTA_LOGADO.id,
       paciente_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
       papel_equipe: "Especialista Responsável",
+      eh_responsavel: true,
       created_at: "2026-01-15T10:30:00.000Z",
       terapeuta: {
         id: MOCK_TERAPEUTA_LOGADO.id,
@@ -188,6 +240,7 @@ export const MOCK_PACIENTE_PEDRO: Paciente = {
         crefito: MOCK_TERAPEUTA_LOGADO.crefito,
         registro_profissional: MOCK_TERAPEUTA_LOGADO.registro_profissional,
         especialidade: MOCK_TERAPEUTA_LOGADO.especialidade,
+        eh_responsavel: true,
         status_ativo: true,
       },
     },
@@ -195,6 +248,7 @@ export const MOCK_PACIENTE_PEDRO: Paciente = {
       terapeuta_id: "b3333333-3333-4333-8333-333333333333",
       paciente_id: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
       papel_equipe: "Equipe Multidisciplinar",
+      eh_responsavel: false,
       created_at: "2026-01-20T14:00:00.000Z",
       terapeuta: {
         id: "b3333333-3333-4333-8333-333333333333",
@@ -205,6 +259,7 @@ export const MOCK_PACIENTE_PEDRO: Paciente = {
         crp: "CRP-21/04567",
         registro_profissional: "CRP-21/04567",
         especialidade: "Psicologia Cognitivo-Comportamental e ABA",
+        eh_responsavel: false,
         status_ativo: true,
       },
     },
@@ -218,6 +273,10 @@ export const MOCK_PACIENTE_SOFIA: Paciente = {
   data_nascimento: "2020-11-22", // 5 anos
   telefone: "(86) 98877-6655",
   cpf: "482.193.850-10",
+  photoUrl:
+    "https://images.unsplash.com/photo-1595454223600-91fbdd77ae09?auto=format&fit=crop&q=80&w=400",
+  foto_url:
+    "https://images.unsplash.com/photo-1595454223600-91fbdd77ae09?auto=format&fit=crop&q=80&w=400",
   cep: "64000-020",
   cidade: "Teresina",
   estado: "PI",
@@ -225,6 +284,7 @@ export const MOCK_PACIENTE_SOFIA: Paciente = {
   bairro: "Centro",
   numero: "450",
   status_ativo: true,
+  terapeuta_responsavel_id: MOCK_TERAPEUTA_LOGADO.id,
   created_at: "2026-02-01T14:30:00.000Z",
   updated_at: "2026-02-01T14:30:00.000Z",
   responsaveis: [MOCK_RESPONSAVEIS[2]],
@@ -251,10 +311,34 @@ export const MOCK_PACIENTE_SOFIA: Paciente = {
       gatilho: MOCK_GATILHOS[2],
     },
   ],
+  laudos: [
+    {
+      id: "laudo-002",
+      paciente_id: "e4f8d912-32a1-4bb6-9811-6677889900aa",
+      terapeuta_id: MOCK_TERAPEUTA_LOGADO.id,
+      titulo: "Laudo Clínico Fonoaudiológico e Terapia Ocupacional — CID-11 6A02.1",
+      descricao:
+        "Parecer clínico de comunicação alternativa (PECS) e perfil de integração sensorial.",
+      arquivo_caminho: "/laudos/laudo-clinico-sofia-oliveira.pdf",
+      arquivo_nome_original: "laudo_sofia_helena_oliveira_2026.pdf",
+      arquivo_mime_type: "application/pdf",
+      tamanho_bytes: 315200,
+      created_at: "2026-02-01T14:30:00.000Z",
+      updated_at: "2026-02-01T14:30:00.000Z",
+      terapeuta: {
+        id: MOCK_TERAPEUTA_LOGADO.id,
+        nome: MOCK_TERAPEUTA_LOGADO.nome,
+        especialidade: MOCK_TERAPEUTA_LOGADO.especialidade,
+        registro_profissional: MOCK_TERAPEUTA_LOGADO.registro_profissional,
+      },
+    },
+  ],
   terapeutas: [
     {
       terapeuta_id: MOCK_TERAPEUTA_LOGADO.id,
       paciente_id: "e4f8d912-32a1-4bb6-9811-6677889900aa",
+      papel_equipe: "Especialista Responsável",
+      eh_responsavel: true,
       created_at: "2026-02-01T15:00:00.000Z",
       terapeuta: {
         id: MOCK_TERAPEUTA_LOGADO.id,
@@ -264,6 +348,7 @@ export const MOCK_PACIENTE_SOFIA: Paciente = {
         crefito: MOCK_TERAPEUTA_LOGADO.crefito,
         registro_profissional: MOCK_TERAPEUTA_LOGADO.registro_profissional,
         especialidade: MOCK_TERAPEUTA_LOGADO.especialidade,
+        eh_responsavel: true,
         status_ativo: true,
       },
     },
@@ -277,6 +362,10 @@ export const MOCK_PACIENTE_LUCAS: Paciente = {
   data_nascimento: "2019-04-10", // 7 anos
   telefone: "(86) 99123-4567",
   cpf: "123.456.789-09",
+  photoUrl:
+    "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&q=80&w=400",
+  foto_url:
+    "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&q=80&w=400",
   cep: "64049-550",
   cidade: "Teresina",
   estado: "PI",
@@ -284,6 +373,7 @@ export const MOCK_PACIENTE_LUCAS: Paciente = {
   bairro: "Ininga",
   numero: "1200",
   status_ativo: true,
+  terapeuta_responsavel_id: MOCK_TERAPEUTA_LOGADO.id,
   created_at: "2026-03-10T09:15:00.000Z",
   updated_at: "2026-03-10T09:15:00.000Z",
   responsaveis: [MOCK_RESPONSAVEIS[1]],
@@ -311,10 +401,34 @@ export const MOCK_PACIENTE_LUCAS: Paciente = {
       gatilho: MOCK_GATILHOS[3],
     },
   ],
+  laudos: [
+    {
+      id: "laudo-003",
+      paciente_id: "a1b2c3d4-e5f6-4a8b-8c0d-1e2f3a4b5c6d",
+      terapeuta_id: MOCK_TERAPEUTA_LOGADO.id,
+      titulo: "Laudo Neurológico e Avaliação Sensorial — CID-11 6A02.2",
+      descricao:
+        "Avaliação clínica para suporte substancial contínuo e adaptação de estímulos táteis e luminosos.",
+      arquivo_caminho: "/laudos/laudo-neurologico-lucas-santos.pdf",
+      arquivo_nome_original: "laudo_lucas_gabriel_santos_2026.pdf",
+      arquivo_mime_type: "application/pdf",
+      tamanho_bytes: 512400,
+      created_at: "2026-03-10T09:15:00.000Z",
+      updated_at: "2026-03-10T09:15:00.000Z",
+      terapeuta: {
+        id: MOCK_TERAPEUTA_LOGADO.id,
+        nome: MOCK_TERAPEUTA_LOGADO.nome,
+        especialidade: MOCK_TERAPEUTA_LOGADO.especialidade,
+        registro_profissional: MOCK_TERAPEUTA_LOGADO.registro_profissional,
+      },
+    },
+  ],
   terapeutas: [
     {
       terapeuta_id: MOCK_TERAPEUTA_LOGADO.id,
       paciente_id: "a1b2c3d4-e5f6-4a8b-8c0d-1e2f3a4b5c6d",
+      papel_equipe: "Especialista Responsável",
+      eh_responsavel: true,
       created_at: "2026-03-10T09:30:00.000Z",
       terapeuta: {
         id: MOCK_TERAPEUTA_LOGADO.id,
@@ -324,6 +438,7 @@ export const MOCK_PACIENTE_LUCAS: Paciente = {
         crefito: MOCK_TERAPEUTA_LOGADO.crefito,
         registro_profissional: MOCK_TERAPEUTA_LOGADO.registro_profissional,
         especialidade: MOCK_TERAPEUTA_LOGADO.especialidade,
+        eh_responsavel: true,
         status_ativo: true,
       },
     },
@@ -577,6 +692,7 @@ export const MOCK_EQUIPE_MULTIDISCIPLINAR: EspecialistaVinculado[] = [
     registro_profissional: MOCK_TERAPEUTA_LOGADO.registro_profissional,
     especialidade: MOCK_TERAPEUTA_LOGADO.especialidade,
     papel_equipe: "Especialista Responsável",
+    eh_responsavel: true,
     created_at: "2026-01-15T10:30:00.000Z",
     status_ativo: true,
   },
@@ -590,6 +706,7 @@ export const MOCK_EQUIPE_MULTIDISCIPLINAR: EspecialistaVinculado[] = [
     registro_profissional: "CRP-21/04567",
     especialidade: "Psicologia Cognitivo-Comportamental e ABA",
     papel_equipe: "Equipe Multidisciplinar",
+    eh_responsavel: false,
     created_at: "2026-01-20T14:00:00.000Z",
     status_ativo: true,
   },
@@ -602,6 +719,7 @@ export const MOCK_EQUIPE_MULTIDISCIPLINAR: EspecialistaVinculado[] = [
     registro_profissional: "CREFITO-14/87654-TO",
     especialidade: "Psicomotricidade e Reabilitação Motora",
     papel_equipe: "Equipe Multidisciplinar",
+    eh_responsavel: false,
     created_at: "2026-02-01T09:00:00.000Z",
     status_ativo: true,
   },
@@ -625,10 +743,16 @@ export async function listarEspecialistasVinculadosMock(
   pacienteId: string,
 ): Promise<EspecialistaVinculado[]> {
   const vinculos = await listarTerapeutasPacienteMock(pacienteId);
-  return vinculos.map((v) => {
+  return vinculos.map((v, index) => {
     const conhecido = MOCK_EQUIPE_MULTIDISCIPLINAR.find(
       (esp) => esp.id === v.terapeuta_id,
     );
+    const papelEquipe = v.papel_equipe ?? conhecido?.papel_equipe ?? "Equipe Multidisciplinar";
+    const ehResponsavel =
+      v.eh_responsavel ??
+      v.terapeuta?.eh_responsavel ??
+      conhecido?.eh_responsavel ??
+      (papelEquipe === "Especialista Responsável" || index === 0);
     return {
       id: v.terapeuta?.id ?? v.terapeuta_id,
       nome: v.terapeuta?.nome ?? conhecido?.nome ?? "Especialista da Equipe",
@@ -646,7 +770,8 @@ export async function listarEspecialistasVinculadosMock(
         v.terapeuta?.especialidade ??
         conhecido?.especialidade ??
         "Equipe Multidisciplinar",
-      papel_equipe: v.papel_equipe ?? conhecido?.papel_equipe ?? "Equipe Multidisciplinar",
+      papel_equipe: papelEquipe,
+      eh_responsavel: ehResponsavel,
       created_at: v.created_at ?? conhecido?.created_at,
       status_ativo: v.terapeuta?.status_ativo ?? true,
     };

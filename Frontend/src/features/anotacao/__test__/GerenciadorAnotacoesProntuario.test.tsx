@@ -571,4 +571,148 @@ describe("GerenciadorAnotacoesProntuario e Componentes Modulares (Sprint 12)", (
       expect(textarea.value).toBe("");
     });
   });
+
+  describe("7. Paginação Estrita de 4 Anotações por Página", () => {
+    function gerarMockAnotacoes(quantidade: number): AnotacaoClinica[] {
+      return Array.from({ length: quantidade }, (_, idx) => {
+        const num = idx + 1;
+        return {
+          id: `nota-pag-${num}`,
+          paciente_id: PACIENTE_ID,
+          terapeuta_id: TERAPEUTA_LOGADO_ID,
+          sessao_id: null,
+          conteudo: `Anotação Clínica Longitudinal #${num}`,
+          soft_delete: false,
+          status_ativo: true,
+          terapeuta_nome: "Dr. Marcos Terapeuta",
+          created_at: new Date(Date.now() - idx * 60000).toISOString(),
+        };
+      });
+    }
+
+    it("deve exibir exatamente 4 anotações na página 1 quando existirem 7 anotações e navegar para a página 2 exibindo as 3 restantes", async () => {
+      const seteAnotacoes = gerarMockAnotacoes(7);
+      vi.spyOn(anotacaoService, "listarPorPaciente").mockResolvedValue(
+        seteAnotacoes,
+      );
+
+      render(
+        <GerenciadorAnotacoesProntuario
+          pacienteId={PACIENTE_ID}
+          usuarioLogadoId={TERAPEUTA_LOGADO_ID}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("anotacoes-lista")).toBeDefined();
+      });
+
+      // Página 1: exibe 1 a 4
+      expect(
+        screen.getByTestId("indicador-itens-paginacao").textContent,
+      ).toBe("Exibindo 1–4 de 7 anotações");
+      expect(
+        screen.getByTestId("indicador-pagina-atual").textContent,
+      ).toBe("Página 1 de 2");
+
+      expect(screen.getByTestId("card-anotacao-nota-pag-1")).toBeDefined();
+      expect(screen.getByTestId("card-anotacao-nota-pag-2")).toBeDefined();
+      expect(screen.getByTestId("card-anotacao-nota-pag-3")).toBeDefined();
+      expect(screen.getByTestId("card-anotacao-nota-pag-4")).toBeDefined();
+      expect(screen.queryByTestId("card-anotacao-nota-pag-5")).toBeNull();
+
+      const btnAnterior = screen.getByTestId(
+        "botao-pagina-anterior",
+      ) as HTMLButtonElement;
+      const btnProxima = screen.getByTestId(
+        "botao-pagina-proxima",
+      ) as HTMLButtonElement;
+
+      expect(btnAnterior.disabled).toBe(true);
+      expect(btnProxima.disabled).toBe(false);
+
+      // Avança para a página 2
+      fireEvent.click(btnProxima);
+
+      expect(
+        screen.getByTestId("indicador-itens-paginacao").textContent,
+      ).toBe("Exibindo 5–7 de 7 anotações");
+      expect(
+        screen.getByTestId("indicador-pagina-atual").textContent,
+      ).toBe("Página 2 de 2");
+
+      expect(screen.queryByTestId("card-anotacao-nota-pag-1")).toBeNull();
+      expect(screen.getByTestId("card-anotacao-nota-pag-5")).toBeDefined();
+      expect(screen.getByTestId("card-anotacao-nota-pag-6")).toBeDefined();
+      expect(screen.getByTestId("card-anotacao-nota-pag-7")).toBeDefined();
+
+      expect(btnAnterior.disabled).toBe(false);
+      expect(btnProxima.disabled).toBe(true);
+    });
+
+    it("deve retornar automaticamente para a página 1 ao aplicar filtro de busca ou ao criar uma nova anotação", async () => {
+      const seteAnotacoes = gerarMockAnotacoes(7);
+      vi.spyOn(anotacaoService, "listarPorPaciente").mockResolvedValue(
+        seteAnotacoes,
+      );
+      vi.spyOn(anotacaoService, "criar").mockResolvedValue({
+        id: "nota-pag-nova",
+        paciente_id: PACIENTE_ID,
+        terapeuta_id: TERAPEUTA_LOGADO_ID,
+        sessao_id: null,
+        conteudo: "Anotação recém-criada no topo Longitudinal.",
+        soft_delete: false,
+        status_ativo: true,
+        created_at: new Date().toISOString(),
+      });
+
+      render(
+        <GerenciadorAnotacoesProntuario
+          pacienteId={PACIENTE_ID}
+          usuarioLogadoId={TERAPEUTA_LOGADO_ID}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("anotacoes-lista")).toBeDefined();
+      });
+
+      // Vai para a página 2
+      fireEvent.click(screen.getByTestId("botao-pagina-proxima"));
+      expect(
+        screen.getByTestId("indicador-pagina-atual").textContent,
+      ).toBe("Página 2 de 2");
+
+      // Aplica filtro de busca -> deve resetar para Página 1
+      const inputBusca = screen.getByTestId("input-busca-anotacao");
+      fireEvent.change(inputBusca, { target: { value: "Longitudinal" } });
+      fireEvent.keyDown(inputBusca, { key: "Enter" });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("indicador-pagina-atual").textContent,
+        ).toBe("Página 1 de 2");
+      });
+
+      // Vai para a página 2 novamente e cria uma nova anotação -> deve resetar para Página 1
+      fireEvent.click(screen.getByTestId("botao-pagina-proxima"));
+      expect(
+        screen.getByTestId("indicador-pagina-atual").textContent,
+      ).toBe("Página 2 de 2");
+
+      const textarea = screen.getByTestId("textarea-nova-anotacao");
+      fireEvent.change(textarea, {
+        target: { value: "Anotação recém-criada no topo Longitudinal." },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("botao-salvar-nova-anotacao"));
+      });
+
+      expect(
+        screen.getByTestId("indicador-pagina-atual").textContent,
+      ).toBe("Página 1 de 2");
+      expect(screen.getByTestId("card-anotacao-nota-pag-nova")).toBeDefined();
+    });
+  });
 });

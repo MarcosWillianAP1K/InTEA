@@ -27,10 +27,12 @@ import type { EspecialistaVinculado } from "../types/paciente.types";
 export type EspecialistaEquipeItem = EspecialistaVinculado;
 
 export interface PainelEquipeMultidisciplinarProps {
-  /** Lista de especialistas vinculados à equipe multidisciplinar do paciente */
+  /** Lista de especialistas vinculados à equipe do paciente */
   especialistas: EspecialistaVinculado[];
   /** ID do especialista autenticado na sessão atual para destaque "Você (Logado)" */
   usuarioLogadoId?: string | null;
+  /** ID explícito do terapeuta responsável (líder) da equipe */
+  terapeutaResponsavelId?: string | null;
   /** Estado de carregamento assíncrono (Skeleton Loader) */
   loading?: boolean;
   /** Mensagem de erro caso a busca de vínculos falhe */
@@ -65,6 +67,7 @@ export const PainelEquipeMultidisciplinar: React.FC<
 > = ({
   especialistas,
   usuarioLogadoId,
+  terapeutaResponsavelId,
   loading = false,
   erro = null,
   removendoId = null,
@@ -79,44 +82,63 @@ export const PainelEquipeMultidisciplinar: React.FC<
   );
   const isUnicoEspecialista = especialistas.length <= 1;
 
+  const liderEncontrado = especialistas.find(
+    (esp) =>
+      (esp as { eh_responsavel?: boolean }).eh_responsavel === true ||
+      esp.papel_equipe === "Especialista Responsável" ||
+      esp.papel_equipe === "Terapeuta Responsável",
+  );
+
+  const liderId =
+    terapeutaResponsavelId ||
+    (liderEncontrado
+      ? (liderEncontrado as { terapeuta_id?: string }).terapeuta_id ||
+        liderEncontrado.id
+      : (especialistas[0] as { terapeuta_id?: string } | undefined)
+          ?.terapeuta_id ||
+        especialistas[0]?.id ||
+        null);
+
+  const idEfetivoLogado = usuarioLogadoId || user?.id;
+  const isLiderLogado =
+    Boolean(idEfetivoLogado && liderId && idEfetivoLogado === liderId) ||
+    (especialistas.length === 0 && Boolean(idEfetivoLogado));
+  const podeGerenciarEquipe = isSuperAdmin || isLiderLogado;
+
   return (
     <section
-      aria-label="Equipe Multidisciplinar (Especialistas Vinculados)"
+      aria-label="Equipe Especialista"
       data-testid="painel-equipe-multidisciplinar"
       className={`bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-100 ${className}`.trim()}
     >
       {/* Cabeçalho da Seção */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
             <Users className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-extrabold text-gray-900">
-                Equipe Multidisciplinar (Especialistas Vinculados)
-              </h2>
-              <Badge className="bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-xs px-2.5 py-0.5 rounded-full">
-                {especialistas.length}{" "}
-                {especialistas.length === 1 ? "especialista" : "especialistas"}
-              </Badge>
-            </div>
-            <p className="text-sm text-gray-500 font-medium mt-0.5">
-              Profissionais da clínica com acesso compartilhado ao prontuário,
-              histórico longitudinal e condução de sessões terapêuticas.
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-extrabold text-gray-900">
+              Equipe Especialista
+            </h2>
+            <Badge className="bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-xs px-2.5 py-0.5 rounded-full">
+              {especialistas.length}{" "}
+              {especialistas.length === 1 ? "especialista" : "especialistas"}
+            </Badge>
           </div>
         </div>
 
-        <Button
-          type="button"
-          onClick={() => onAbrirModalVincular?.()}
-          data-testid="btn-abrir-modal-vincular"
-          className="min-h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm flex items-center gap-2 shrink-0 cursor-pointer"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span data-testid="btn-adicionar-especialista">Adicionar Especialista</span>
-        </Button>
+        {podeGerenciarEquipe && (
+          <Button
+            type="button"
+            onClick={() => onAbrirModalVincular?.()}
+            data-testid="btn-abrir-modal-vincular"
+            className="min-h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm flex items-center gap-2 shrink-0 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span data-testid="btn-adicionar-especialista">Adicionar Especialista</span>
+          </Button>
+        )}
       </div>
 
       {/* 1. Estado de Carregamento (Skeleton Loader) */}
@@ -201,27 +223,22 @@ export const PainelEquipeMultidisciplinar: React.FC<
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
           {especialistas.map((esp) => {
-            const idEfetivoLogado = usuarioLogadoId || user?.id;
             const terapeutaAlvoId =
               (esp as { terapeuta_id?: string }).terapeuta_id || esp.id;
             const isUsuarioLogado =
               Boolean(idEfetivoLogado) && terapeutaAlvoId === idEfetivoLogado;
+            const isLiderCard = Boolean(
+              liderId && (terapeutaAlvoId === liderId || esp.id === liderId),
+            );
             const registroExibicao =
               esp.registro_profissional ||
               esp.crefito ||
               esp.crp ||
               "Registro institucional ativo";
             const especialidadeExibicao =
-              esp.especialidade || "Equipe Multidisciplinar";
+              esp.especialidade || "Equipe Especialista";
             const isRemovendoEste = removendoId === esp.id;
-            const semPermissaoDesvincular =
-              Boolean(user?.id) &&
-              !isSuperAdmin &&
-              terapeutaAlvoId !== user?.id;
-            const desabilitado =
-              isUnicoEspecialista ||
-              Boolean(removendoId) ||
-              semPermissaoDesvincular;
+            const desabilitado = isUnicoEspecialista || Boolean(removendoId);
 
             return (
               <div
@@ -249,6 +266,14 @@ export const PainelEquipeMultidisciplinar: React.FC<
                       <span className="font-extrabold text-gray-900 text-sm truncate">
                         {esp.nome}
                       </span>
+                      {isLiderCard && (
+                        <Badge
+                          data-testid={`badge-lider-equipe-${esp.id}`}
+                          className="bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold px-2 py-0.5 rounded-full"
+                        >
+                          Responsável (Líder)
+                        </Badge>
+                      )}
                       {isUsuarioLogado && (
                         <Badge
                           data-testid={`badge-voce-logado-${esp.id}`}
@@ -279,40 +304,40 @@ export const PainelEquipeMultidisciplinar: React.FC<
                   </div>
                 </div>
 
-                {/* Botão de Desvincular (protegido contra remoção do último especialista e por autoria/admin) */}
-                <div className="flex items-center justify-end shrink-0">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={desabilitado}
-                    title={
-                      isUnicoEspecialista
-                        ? "O paciente deve possuir ao menos 1 especialista vinculado"
-                        : semPermissaoDesvincular
-                          ? "Apenas o próprio especialista ou um administrador pode remover este vínculo"
+                {/* Botão de Desvincular (exclusivo do Líder da equipe ou SuperAdmin) */}
+                {podeGerenciarEquipe && (
+                  <div className="flex items-center justify-end shrink-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={desabilitado}
+                      title={
+                        isUnicoEspecialista
+                          ? "O paciente deve possuir ao menos 1 especialista vinculado"
                           : `Remover vínculo de ${esp.nome}`
-                    }
-                    aria-label={`Desvincular ${esp.nome}`}
-                    onClick={() => {
-                      if (!desabilitado) {
-                        onDesvincularEspecialista?.(esp.id);
                       }
-                    }}
-                    data-testid={`btn-desvincular-${esp.id}`}
-                    className={`min-h-11 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer ${
-                      desabilitado
-                        ? "border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed opacity-70"
-                        : "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 bg-white"
-                    }`}
-                  >
-                    {isRemovendoEste ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <UserMinus className="w-4 h-4" />
-                    )}
-                    <span>{isRemovendoEste ? "Removendo..." : "Desvincular"}</span>
-                  </Button>
-                </div>
+                      aria-label={`Desvincular ${esp.nome}`}
+                      onClick={() => {
+                        if (!desabilitado) {
+                          onDesvincularEspecialista?.(esp.id);
+                        }
+                      }}
+                      data-testid={`btn-desvincular-${esp.id}`}
+                      className={`min-h-11 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer ${
+                        desabilitado
+                          ? "border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed opacity-70"
+                          : "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 bg-white"
+                      }`}
+                    >
+                      {isRemovendoEste ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <UserMinus className="w-4 h-4" />
+                      )}
+                      <span>{isRemovendoEste ? "Removendo..." : "Desvincular"}</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             );
           })}

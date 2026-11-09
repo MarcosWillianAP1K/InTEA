@@ -166,7 +166,7 @@ describe('Core Middleware: Visibilidade por Vínculo (verificarVisibilidadePacie
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('deve permitir acesso (next) para SuperAdmin via user_metadata', async () => {
+  it('deve permitir acesso (next) e propagar req.user.is_super_admin = true para SuperAdmin via app_metadata', async () => {
     const req = {
       params: { id: pacienteValidoId },
       user: { id: terapeutaValidoId, app_metadata: { is_super_admin: true } },
@@ -188,10 +188,11 @@ describe('Core Middleware: Visibilidade por Vínculo (verificarVisibilidadePacie
     await verificarVisibilidadePaciente(req, res as unknown as Response, next);
 
     expect(next).toHaveBeenCalled();
+    expect(req.user?.is_super_admin).toBe(true);
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('deve permitir acesso (next) para SuperAdmin registrado na tabela terapeuta', async () => {
+  it('deve permitir acesso (next) e propagar req.user.is_super_admin = true e clinica_id para SuperAdmin registrado na tabela terapeuta', async () => {
     const req = {
       params: { id: pacienteValidoId },
       user: { id: terapeutaValidoId },
@@ -217,7 +218,7 @@ describe('Core Middleware: Visibilidade por Vínculo (verificarVisibilidadePacie
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
               maybeSingle: vi.fn().mockResolvedValue({
-                data: { id: terapeutaValidoId, is_super_admin: true, status_ativo: true },
+                data: { id: terapeutaValidoId, clinica_id: clinicaId, is_super_admin: true, status_ativo: true },
                 error: null,
               }),
             }),
@@ -230,6 +231,8 @@ describe('Core Middleware: Visibilidade por Vínculo (verificarVisibilidadePacie
     await verificarVisibilidadePaciente(req, res as unknown as Response, next);
 
     expect(next).toHaveBeenCalled();
+    expect(req.user?.is_super_admin).toBe(true);
+    expect(req.user?.clinica_id).toBe(clinicaId);
   });
 
   it('deve retornar 403 se o perfil de terapeuta associado ao token não for encontrado no banco', async () => {
@@ -474,6 +477,8 @@ describe('Core Middleware: Visibilidade por Vínculo (verificarVisibilidadePacie
     await verificarVisibilidadePaciente(req, res as unknown as Response, next);
 
     expect(next).toHaveBeenCalled();
+    expect(req.user?.is_super_admin).toBe(false);
+    expect(req.user?.clinica_id).toBe(clinicaId);
     expect(res.status).not.toHaveBeenCalled();
   });
 

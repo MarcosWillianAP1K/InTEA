@@ -11,6 +11,7 @@ export * from "./components/SparklineTendencia";
 export * from "./components/CardAdicionarPaciente";
 export * from "./components/TabelaComparativaMetricas";
 export * from "./components/ModalCompararSessoes";
+export * from "./components/ModalCompararMultiplasSessoes";
 export * from "./components/CardsEngajamentoGeral";
 export * from "./components/GraficoEvolucaoJogo";
 export * from "./components/GraficoPolimorficoMetrica";

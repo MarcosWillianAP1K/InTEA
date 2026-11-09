@@ -6,7 +6,7 @@
 // ==============================================================================
 
 import { Request, Response } from 'express';
-import { CriarPacienteDTO, AtualizarPacienteDTO, FiltrosPacienteDTO, Paciente } from '../models/paciente.model.js';
+import { CriarPacienteDTO, AtualizarPacienteDTO, FiltrosPacienteDTO } from '../models/paciente.model.js';
 import { PacienteService, PacienteServiceError } from '../services/paciente.service.js';
 import { PacienteHistoricoService } from '../services/paciente-historico.service.js';
 import { PacienteExportarHistoricoService } from '../services/paciente-exportar-historico.service.js';
@@ -41,9 +41,17 @@ export interface ResponsavelSanitizado {
   id?: string;
   nome: string;
   cpf: string | null;
+  data_nascimento: string | null;
   telefone: string | null;
   email: string | null;
   parentesco: string | null;
+  cep: string | null;
+  cidade: string | null;
+  estado: string | null;
+  endereco: string | null;
+  bairro: string | null;
+  numero: string | null;
+  complemento: string | null;
   principal?: boolean;
 }
 
@@ -58,6 +66,8 @@ export interface TerapeutaSanitizado {
   registro_profissional?: string | null;
   especialidade?: string | null;
   created_at?: string;
+  eh_responsavel?: boolean;
+  papel_equipe?: 'Especialista Responsável' | 'Especialista Vinculado';
 }
 
 /**
@@ -87,22 +97,49 @@ function sanitizarPaciente(paciente: unknown): PacienteSanitizado | null {
 }
 
 /**
- * Sanitizes data of the legal guardian linked to the patient.
+ * Sanitizes data of the legal guardian linked to the patient, preserving complete registration fields.
  */
 function sanitizarResponsavel(r: unknown): ResponsavelSanitizado | null {
   if (!r || typeof r !== 'object') return null;
-  const raw = ('responsavel' in r && r.responsavel && typeof r.responsavel === 'object')
-    ? (r.responsavel as Record<string, unknown>)
-    : (r as Record<string, unknown>);
+  const outer = r as Record<string, unknown>;
+  const raw = ('responsavel' in outer && outer.responsavel && typeof outer.responsavel === 'object')
+    ? (outer.responsavel as Record<string, unknown>)
+    : outer;
+
+  const parentescoValue =
+    raw.parentesco !== undefined && raw.parentesco !== null
+      ? String(raw.parentesco)
+      : outer.parentesco !== undefined && outer.parentesco !== null
+        ? String(outer.parentesco)
+        : null;
+
+  const isPrincipal = Boolean(
+    raw.principal ??
+      raw.is_principal ??
+      outer.principal ??
+      (outer.tipo_responsavel === 'principal')
+  );
 
   return {
     id: raw.id !== undefined && raw.id !== null ? String(raw.id) : undefined,
     nome: String(raw.nome ?? ''),
     cpf: raw.cpf !== undefined && raw.cpf !== null ? String(raw.cpf) : null,
+    data_nascimento:
+      raw.data_nascimento !== undefined && raw.data_nascimento !== null
+        ? String(raw.data_nascimento)
+        : null,
     telefone: raw.telefone !== undefined && raw.telefone !== null ? String(raw.telefone) : null,
     email: raw.email !== undefined && raw.email !== null ? String(raw.email) : null,
-    parentesco: raw.parentesco !== undefined && raw.parentesco !== null ? String(raw.parentesco) : null,
-    principal: Boolean(raw.principal ?? raw.is_principal ?? false),
+    parentesco: parentescoValue,
+    cep: raw.cep !== undefined && raw.cep !== null ? String(raw.cep) : null,
+    cidade: raw.cidade !== undefined && raw.cidade !== null ? String(raw.cidade) : null,
+    estado: raw.estado !== undefined && raw.estado !== null ? String(raw.estado) : null,
+    endereco: raw.endereco !== undefined && raw.endereco !== null ? String(raw.endereco) : null,
+    bairro: raw.bairro !== undefined && raw.bairro !== null ? String(raw.bairro) : null,
+    numero: raw.numero !== undefined && raw.numero !== null ? String(raw.numero) : null,
+    complemento:
+      raw.complemento !== undefined && raw.complemento !== null ? String(raw.complemento) : null,
+    principal: isPrincipal,
   };
 }
 
@@ -123,6 +160,20 @@ function sanitizarTerapeuta(t: unknown): TerapeutaSanitizado | null {
         ? raw.created_at
         : undefined;
 
+  const ehResponsavel =
+    typeof outer.eh_responsavel === 'boolean'
+      ? outer.eh_responsavel
+      : typeof raw.eh_responsavel === 'boolean'
+        ? raw.eh_responsavel
+        : undefined;
+
+  const papelEquipe =
+    outer.papel_equipe === 'Especialista Responsável' || outer.papel_equipe === 'Especialista Vinculado'
+      ? outer.papel_equipe
+      : raw.papel_equipe === 'Especialista Responsável' || raw.papel_equipe === 'Especialista Vinculado'
+        ? raw.papel_equipe
+        : undefined;
+
   return {
     id: String(raw.id ?? ''),
     nome: String(raw.nome ?? ''),
@@ -132,6 +183,8 @@ function sanitizarTerapeuta(t: unknown): TerapeutaSanitizado | null {
     ...(raw.registro_profissional !== undefined ? { registro_profissional: raw.registro_profissional !== null ? String(raw.registro_profissional) : null } : {}),
     ...(raw.especialidade !== undefined ? { especialidade: raw.especialidade !== null ? String(raw.especialidade) : null } : {}),
     ...(createdAt !== undefined ? { created_at: createdAt } : {}),
+    ...(ehResponsavel !== undefined ? { eh_responsavel: ehResponsavel } : {}),
+    ...(papelEquipe !== undefined ? { papel_equipe: papelEquipe } : {}),
   };
 }
 
@@ -207,6 +260,9 @@ export class PacienteController {
    *     "paciente": { ... },
    *     "responsaveis": [ ... ],
    *     "dados_clinicos": { ... },
+   *     "gatilhos": [ ... ],
+   *     "laudos": [ ... ],
+   *     "terapeuta_responsavel_id": string | null,
    *     "meta": { "total_responsaveis": number, "ultima_atualizacao": string }
    *   },
    *   "message": "Paciente recuperado com sucesso."
@@ -227,12 +283,25 @@ export class PacienteController {
         ? paciente.responsaveis.map((r) => sanitizarResponsavel(r)).filter((r): r is ResponsavelSanitizado => r !== null)
         : [];
       const dadosClinicos = (paciente as { dados_clinicos?: unknown }).dados_clinicos ?? {};
+      const gatilhos = Array.isArray((paciente as { gatilhos?: unknown }).gatilhos)
+        ? ((paciente as { gatilhos: unknown[] }).gatilhos)
+        : [];
+      const laudos = Array.isArray((paciente as { laudos?: unknown }).laudos)
+        ? ((paciente as { laudos: unknown[] }).laudos)
+        : [];
+      const terapeutaResponsavelId =
+        typeof (paciente as { terapeuta_responsavel_id?: unknown }).terapeuta_responsavel_id === 'string'
+          ? (paciente as { terapeuta_responsavel_id: string }).terapeuta_responsavel_id
+          : null;
 
       res.status(200).json({
         data: {
           paciente: pacienteSanitizado,
           responsaveis: responsaveisSanitizados,
           dados_clinicos: dadosClinicos,
+          gatilhos,
+          laudos,
+          terapeuta_responsavel_id: terapeutaResponsavelId,
           meta: {
             total_responsaveis: responsaveisSanitizados.length,
             ultima_atualizacao: paciente.updated_at || paciente.created_at || new Date().toISOString(),
@@ -479,16 +548,16 @@ export class PacienteController {
     try {
       const pacienteId = String(req.params.id);
       const { terapeuta_id } = req.body || {};
+      const authReq = req as AuthenticatedRequest;
 
       if (!terapeuta_id || typeof terapeuta_id !== 'string') {
         res.status(400).json({ error: 'O campo "terapeuta_id" (UUID) é obrigatório.' });
         return;
       }
 
-      await PacienteService.vincularTerapeuta(pacienteId, terapeuta_id);
+      await PacienteService.vincularTerapeuta(pacienteId, terapeuta_id, authReq.user);
 
       try {
-        const authReq = req as AuthenticatedRequest;
         const terapeutaAutorId = authReq.user?.id || terapeuta_id;
         const ip =
           (typeof req.headers?.['x-forwarded-for'] === 'string'
@@ -531,7 +600,7 @@ export class PacienteController {
         return;
       }
 
-      if (msg.includes('Bloqueio de segurança') || msg.includes('clínicas diferentes')) {
+      if (msg.includes('Bloqueio de segurança') || msg.includes('clínicas diferentes') || msg.includes('Acesso negado')) {
         res.status(403).json({ error: msg });
         return;
       }
@@ -931,4 +1000,3 @@ export class PacienteController {
     }
   }
 }
-

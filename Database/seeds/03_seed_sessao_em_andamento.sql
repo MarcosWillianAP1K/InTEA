@@ -40,6 +40,15 @@ VALUES (
 )
 ON CONFLICT (terapeuta_id, paciente_id) DO NOTHING;
 
+INSERT INTO public.terapeuta_paciente_responsavel (paciente_id, terapeuta_id, created_at, updated_at)
+VALUES (
+    '164a2d30-2ca1-464f-9b55-9070f06b2058',
+    'a9849163-613f-4492-90cf-89985902d16e',
+    TIMEZONE('utc', NOW()),
+    TIMEZONE('utc', NOW())
+)
+ON CONFLICT (paciente_id) DO NOTHING;
+
 -- 3. Insere ou Atualiza a Sessão Clínica como 'em_andamento' (Cockpit Ativo)
 -- (Compatível com o schema de 02_seed_demonstracao_clinica.sql)
 INSERT INTO public.sessao (

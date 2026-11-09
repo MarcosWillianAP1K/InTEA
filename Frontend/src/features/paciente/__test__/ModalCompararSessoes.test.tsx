@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+﻿import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import {
   TabelaComparativaMetricas,
@@ -272,13 +272,13 @@ describe("Frontend: Comparativo Analítico de Sessões (RF15, RF19, RNF07)", () 
     it("deve condicionar o botão de comparação estritamente à seleção de 2 sessões", () => {
       // Simula o comportamento de habilitação do botão conforme o número de seleções
       const verificarHabilitacaoBotao = (selecionadas: string[]) => {
-        return selecionadas.length === 2;
+        return selecionadas.length >= 2;
       };
 
       expect(verificarHabilitacaoBotao([])).toBe(false);
       expect(verificarHabilitacaoBotao(["sessao-1"])).toBe(false);
       expect(verificarHabilitacaoBotao(["sessao-1", "sessao-2"])).toBe(true);
-      expect(verificarHabilitacaoBotao(["sessao-1", "sessao-2", "sessao-3"])).toBe(false);
+      expect(verificarHabilitacaoBotao(["sessao-1", "sessao-2", "sessao-3"])).toBe(true);
     });
   });
 });

@@ -2,7 +2,7 @@
 // InTEA: Suíte de Integração — Equipe Multidisciplinar e Visibilidade (RN04, RF18, RF21, RN01)
 // ==============================================================================
 // Simula o ciclo de vida completo de uma clínica multidisciplinar com:
-// - Terapeuta A e Terapeuta B (Clínica 1, vinculados ao Paciente X)
+// - Terapeuta A (Líder / Terapeuta Responsável) e Terapeuta B (Clínica 1, vinculados ao Paciente X)
 // - Terapeuta C (Clínica 2, sem vínculo)
 // - Terapeuta D (Clínica 1, sem vínculo em terapeuta_paciente)
 // - Terapeuta Inativo X (Clínica 1, status_ativo = false)
@@ -62,6 +62,13 @@ interface VinculoRow {
   paciente_id: string;
   terapeuta_id: string;
   created_at: string;
+}
+
+interface ResponsavelEquipeRow {
+  paciente_id: string;
+  terapeuta_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface SessaoRow {
@@ -145,10 +152,12 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
   const TOKEN_C = 'token-terapeuta-c';
   const TOKEN_D = 'token-terapeuta-d';
   const TOKEN_ADMIN = 'token-super-admin';
+  const TOKEN_ADMIN_DB_ONLY = 'token-super-admin-db-only';
 
   let dbTerapeutas: TerapeutaRow[];
   let dbPacientes: PacienteRow[];
   let dbVinculos: VinculoRow[];
+  let dbResponsaveisEquipe: ResponsavelEquipeRow[];
   let dbSessoes: SessaoRow[];
   let dbAnotacoes: AnotacaoRow[];
   let dbJogos: JogoRow[];
@@ -484,6 +493,15 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
       },
     ];
 
+    dbResponsaveisEquipe = [
+      {
+        paciente_id: pacienteXId,
+        terapeuta_id: terapeutaAId,
+        created_at: agora,
+        updated_at: agora,
+      },
+    ];
+
     dbJogos = [
       {
         id: jogoId,
@@ -606,6 +624,11 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
           email: 'admin@intea.com.br',
           is_super_admin: true,
         },
+        [TOKEN_ADMIN_DB_ONLY]: {
+          id: superAdminId,
+          email: 'admin@intea.com.br',
+          is_super_admin: false,
+        },
       };
 
       const usuario = token ? mapaTokens[token] : undefined;
@@ -646,10 +669,12 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
                   created_at: v.created_at,
                   terapeuta: obterTerapeutaPorId(v.terapeuta_id),
                 }));
+              const respEquipe = dbResponsaveisEquipe.find((r) => r.paciente_id === p.id);
               return {
                 ...p,
                 responsaveis: [],
                 terapeutas: terapeutasDoPaciente,
+                terapeuta_responsavel: respEquipe ? [{ terapeuta_id: respEquipe.terapeuta_id }] : [],
               } as unknown as Record<string, unknown>;
             }),
           {
@@ -744,6 +769,28 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
         ) as unknown as ReturnType<typeof supabase.from>;
       }
 
+      if (tabela === 'terapeuta_paciente_responsavel') {
+        return criarQueryBuilderInMemory(
+          () => dbResponsaveisEquipe.map((r) => ({ ...r }) as unknown as Record<string, unknown>),
+          {
+            onUpsert: (item) => {
+              const pId = String(item.paciente_id);
+              const tId = String(item.terapeuta_id);
+              const jaExiste = dbResponsaveisEquipe.some((r) => r.paciente_id === pId);
+              if (!jaExiste) {
+                dbResponsaveisEquipe.push({
+                  paciente_id: pId,
+                  terapeuta_id: tId,
+                  created_at: String(item.created_at || new Date().toISOString()),
+                  updated_at: String(item.updated_at || new Date().toISOString()),
+                });
+              }
+              return [];
+            },
+          }
+        ) as unknown as ReturnType<typeof supabase.from>;
+      }
+
       if (tabela === 'sessao') {
         return criarQueryBuilderInMemory(() =>
           dbSessoes.map((s) => enriquecerSessao(s))
@@ -806,7 +853,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
   // ==========================================================================
   // 1. Cadastro pelo Terapeuta A e vinculação do Terapeuta B à equipe (201 Created)
   // ==========================================================================
-  it('1. Terapeuta A cadastra novo paciente (auto-vínculo) e vincula Terapeuta B da mesma clínica (201 Created)', async () => {
+  it('1. Terapeuta A cadastra novo paciente (auto-vínculo como Líder) e vincula Terapeuta B da mesma clínica (201 Created)', async () => {
     const handlersCriarPaciente = obterHandlersPaciente(pacienteRoutes, '/', 'post');
     const mockCriar = criarMockReqResPaciente({
       headers: { authorization: `Bearer ${TOKEN_A}` },
@@ -822,7 +869,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
     const idNovoPaciente = String(mockCriar.getJson().data.paciente.id);
     expect(idNovoPaciente).toBeTruthy();
 
-    // Terapeuta A vincula Terapeuta B ao Paciente X
+    // Terapeuta A (Líder) vincula Terapeuta B ao Paciente X
     const handlersVincular = obterHandlersPaciente(pacienteRoutes, '/:id/terapeutas', 'post');
     const mockVincular = criarMockReqResPaciente({
       headers: { authorization: `Bearer ${TOKEN_A}` },
@@ -837,7 +884,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
       terapeuta_id: terapeutaBId,
     });
 
-    // Consulta da equipe multidisciplinar retorna Terapeuta A e Terapeuta B com crefito e created_at
+    // Consulta da equipe multidisciplinar retorna Terapeuta A (Líder) e Terapeuta B (Vinculado) com crefito, created_at e papel_equipe
     const handlersListarEquipe = obterHandlersPaciente(pacienteRoutes, '/:id/terapeutas', 'get');
     const mockEquipe = criarMockReqResPaciente({
       headers: { authorization: `Bearer ${TOKEN_B}` },
@@ -848,7 +895,11 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
     expect(mockEquipe.getStatus()).toBe(200);
     expect(mockEquipe.getJson().data.terapeutas).toHaveLength(2);
     expect(mockEquipe.getJson().data.terapeutas[0]?.crefito).toBe('CREFITO-111');
+    expect(mockEquipe.getJson().data.terapeutas[0]?.eh_responsavel).toBe(true);
+    expect(mockEquipe.getJson().data.terapeutas[0]?.papel_equipe).toBe('Especialista Responsável');
     expect(mockEquipe.getJson().data.terapeutas[1]?.crefito).toBe('CRFa-222');
+    expect(mockEquipe.getJson().data.terapeutas[1]?.eh_responsavel).toBe(false);
+    expect(mockEquipe.getJson().data.terapeutas[1]?.papel_equipe).toBe('Especialista Vinculado');
   });
 
   // ==========================================================================
@@ -870,6 +921,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
     await executarPipelinePaciente(handlersProntuario, mockProntuario.req, mockProntuario.res);
     expect(mockProntuario.getStatus()).toBe(200);
     expect(mockProntuario.getJson().data.paciente.id).toBe(pacienteXId);
+    expect(mockProntuario.getJson().data.terapeuta_responsavel_id).toBe(terapeutaAId);
 
     // 2.2. Histórico longitudinal geral (GET /api/paciente/:id/historico)
     const handlersHistorico = obterHandlersPaciente(pacienteRoutes, '/:id/historico', 'get');
@@ -1105,48 +1157,65 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
   });
 
   // ==========================================================================
-  // 8, 9 e 10. Regra D1 (Auto-remoção), Desvínculo Próprio e Trava Anti-Órfão (409)
+  // 8, 9 e 10. Governança do Terapeuta Responsável (Líder) e Trava Anti-Órfão (409)
   // ==========================================================================
-  it('8, 9 e 10. Regra D1 bloqueia Terapeuta A tentando remover Terapeuta B (403); Terapeuta B remove a si mesmo (200); Terapeuta A único ativo é bloqueado pela trava anti-órfão (409)', async () => {
+  it('8, 9 e 10. Governança do Líder: Terapeuta B (não Líder) é bloqueado com 403 ao tentar vincular ou desvincular; Terapeuta A (Líder) desvincula Terapeuta B (200); Terapeuta A único ativo é bloqueado pela trava anti-órfão (409)', async () => {
     dbVinculos.push({
       paciente_id: pacienteXId,
       terapeuta_id: terapeutaBId,
       created_at: '2026-10-21T08:00:00.000Z',
     });
 
+    const handlersVincular = obterHandlersPaciente(pacienteRoutes, '/:id/terapeutas', 'post');
     const handlersDesvincular = obterHandlersPaciente(
       pacienteRoutes,
       '/:id/terapeutas/:terapeutaId',
       'delete'
     );
 
-    // 8. Regra D1: Terapeuta A (não SuperAdmin) tenta desvincular Terapeuta B -> 403 Forbidden
-    const mockD1Bloqueado = criarMockReqResPaciente({
-      headers: { authorization: `Bearer ${TOKEN_A}` },
-      params: { id: pacienteXId, terapeutaId: terapeutaBId },
+    // 8a. Terapeuta B (Especialista Vinculado, não Líder) tenta vincular Terapeuta D -> 403 Forbidden
+    const mockBVincularBloqueado = criarMockReqResPaciente({
+      headers: { authorization: `Bearer ${TOKEN_B}` },
+      params: { id: pacienteXId },
+      body: { terapeuta_id: terapeutaDId },
     });
     await executarPipelinePaciente(
-      handlersDesvincular,
-      mockD1Bloqueado.req,
-      mockD1Bloqueado.res
+      handlersVincular,
+      mockBVincularBloqueado.req,
+      mockBVincularBloqueado.res
     );
-    expect(mockD1Bloqueado.getStatus()).toBe(403);
-    expect(mockD1Bloqueado.getJson().error).toBe(
-      'Acesso negado: apenas o próprio especialista ou um SuperAdmin pode remover este vínculo da equipe.'
+    expect(mockBVincularBloqueado.getStatus()).toBe(403);
+    expect(mockBVincularBloqueado.getJson().error).toBe(
+      'Acesso negado: apenas o Terapeuta Responsável (Líder) ou um SuperAdmin podem adicionar especialistas à equipe deste paciente.'
     );
 
-    // 9. Auto-remoção: Terapeuta B desvincula a si mesmo -> 200 OK
-    const mockAutoRemocaoB = criarMockReqResPaciente({
+    // 8b. Terapeuta B (Especialista Vinculado, não Líder) tenta desvincular vínculo da equipe -> 403 Forbidden
+    const mockBDesvincularBloqueado = criarMockReqResPaciente({
       headers: { authorization: `Bearer ${TOKEN_B}` },
       params: { id: pacienteXId, terapeutaId: terapeutaBId },
     });
     await executarPipelinePaciente(
       handlersDesvincular,
-      mockAutoRemocaoB.req,
-      mockAutoRemocaoB.res
+      mockBDesvincularBloqueado.req,
+      mockBDesvincularBloqueado.res
     );
-    expect(mockAutoRemocaoB.getStatus()).toBe(200);
-    expect(mockAutoRemocaoB.getJson().data.vinculo).toEqual({
+    expect(mockBDesvincularBloqueado.getStatus()).toBe(403);
+    expect(mockBDesvincularBloqueado.getJson().error).toBe(
+      'Acesso negado: apenas o Terapeuta Responsável (Líder) ou um SuperAdmin podem remover vínculos da equipe.'
+    );
+
+    // 9. Terapeuta A (Terapeuta Responsável Líder) desvincula Terapeuta B da equipe -> 200 OK
+    const mockLiderRemoveB = criarMockReqResPaciente({
+      headers: { authorization: `Bearer ${TOKEN_A}` },
+      params: { id: pacienteXId, terapeutaId: terapeutaBId },
+    });
+    await executarPipelinePaciente(
+      handlersDesvincular,
+      mockLiderRemoveB.req,
+      mockLiderRemoveB.res
+    );
+    expect(mockLiderRemoveB.getStatus()).toBe(200);
+    expect(mockLiderRemoveB.getJson().data.vinculo).toEqual({
       paciente_id: pacienteXId,
       terapeuta_id: terapeutaBId,
       status: 'removido',
@@ -1165,9 +1234,9 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
   });
 
   // ==========================================================================
-  // 11. SuperAdmin desvincula terapeuta inativo X quando A está ativo (200), mas recebe 409 no último ativo
+  // 11. SuperAdmin desvincula terapeuta mesmo com is_super_admin apenas no banco (200), mas recebe 409 no último ativo
   // ==========================================================================
-  it('11. SuperAdmin consegue desvincular um terapeuta inativo X quando A continua ativo (200 OK), mas recebe 409 Conflict se tentar remover o último terapeuta ativo', async () => {
+  it('11. SuperAdmin consegue desvincular um terapeuta inativo X quando A continua ativo (200 OK, inclusive quando is_super_admin vem apenas do banco), mas recebe 409 Conflict se tentar remover o último terapeuta ativo', async () => {
     // Vincula o terapeuta inativo X ao Paciente X (enquanto A continua ativo)
     dbVinculos.push({
       paciente_id: pacienteXId,
@@ -1193,9 +1262,9 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
     );
     expect(mockAdminRemoveUnicoAtivo.getStatus()).toBe(409);
 
-    // SuperAdmin remove o terapeuta inativo X (Terapeuta A continua ativo) -> 200 OK
+    // SuperAdmin (com flag is_super_admin vinda exclusivamente da tabela terapeuta no banco) remove o terapeuta inativo X -> 200 OK
     const mockAdminRemoveInativo = criarMockReqResPaciente({
-      headers: { authorization: `Bearer ${TOKEN_ADMIN}` },
+      headers: { authorization: `Bearer ${TOKEN_ADMIN_DB_ONLY}` },
       params: { id: pacienteXId, terapeutaId: terapeutaInativoId },
     });
     await executarPipelinePaciente(

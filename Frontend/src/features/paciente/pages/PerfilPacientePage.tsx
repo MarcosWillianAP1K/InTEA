@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -13,17 +13,27 @@ import {
   Eye,
   AlertCircle,
   FileCheck,
+  FileText,
+  Download,
+  MapPin,
+  Sparkles,
   GitCompare,
   Activity,
   Stethoscope,
   ShieldCheck,
 } from "lucide-react";
 import { ModalCompararSessoes } from "../components/ModalCompararSessoes";
+import { ModalCompararMultiplasSessoes } from "../components/ModalCompararMultiplasSessoes";
 import { PainelEquipeMultidisciplinar } from "../components/PainelEquipeMultidisciplinar";
 import { ModalVincularEspecialista } from "../components/ModalVincularEspecialista";
 import { BadgeAutoriaMultidisciplinar } from "../components/BadgeAutoriaMultidisciplinar";
 import { pacienteService } from "../services/paciente.service";
-import type { Paciente, EspecialistaVinculado } from "../types/paciente.types";
+import type {
+  Paciente,
+  EspecialistaVinculado,
+  LaudoClinico,
+  GrauSeveridadeGatilho,
+} from "../types/paciente.types";
 import { terapeutaService } from "@/features/terapeuta/services/terapeuta.service";
 import type { Terapeuta } from "@/features/terapeuta/types/terapeuta.types";
 import { GerenciadorAnotacoesProntuario } from "@/features/anotacao";
@@ -59,6 +69,7 @@ export function PerfilPacientePage() {
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const [sessoesSelecionadas, setSessoesSelecionadas] = useState<string[]>([]);
   const [modalCompararAberto, setModalCompararAberto] = useState(false);
+  const [modalCompararMultiplasAberto, setModalCompararMultiplasAberto] = useState(false);
   const [loading, setLoading] = useState(true);
   const [erroProntuario, setErroProntuario] = useState<string | null>(null);
 
@@ -72,8 +83,18 @@ export function PerfilPacientePage() {
   const [isSubmittingVinculo, setIsSubmittingVinculo] = useState<boolean>(false);
   const [erroModalVinculo, setErroModalVinculo] = useState<string | null>(null);
   const [removendoEspecialistaId, setRemovendoEspecialistaId] = useState<string | null>(null);
-  const [abaAtiva, setAbaAtiva] = useState<"visao_geral" | "prontuario" | "sessoes">("visao_geral");
   const [consentimentoLgpd, setConsentimentoLgpd] = useState<boolean>(false);
+  const [imgError, setImgError] = useState<boolean>(false);
+
+  const iniciaisPaciente = useMemo(() => {
+    if (!paciente?.nome) return "";
+    return paciente.nome
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((parte) => parte[0]?.toUpperCase() || "")
+      .join("");
+  }, [paciente?.nome]);
 
   const user = useAuthStore((s) => s.user);
   const abrirModalPreSessao = useSessionStore((s) => s.abrirModalPreSessao);
@@ -84,6 +105,31 @@ export function PerfilPacientePage() {
       setLoadingEquipe(true);
       setErroEquipe(null);
       try {
+        const enriquecerResponsavel = (
+          lista: EspecialistaVinculado[],
+        ): EspecialistaVinculado[] => {
+          if (lista.length === 0) return [];
+          const responsavelIdAlvo =
+            dadosPacienteFallback?.terapeuta_responsavel_id ??
+            lista.find(
+              (item) =>
+                item.eh_responsavel ||
+                item.papel_equipe === "Especialista Responsável",
+            )?.id ??
+            lista[0].id;
+
+          return lista.map((item) => {
+            const isLider = item.id === responsavelIdAlvo;
+            return {
+              ...item,
+              eh_responsavel: isLider,
+              papel_equipe: isLider
+                ? "Especialista Responsável"
+                : item.papel_equipe || "Equipe Multidisciplinar",
+            };
+          });
+        };
+
         const buscaVinculados = async () => {
           if (typeof pacienteService.listarTerapeutasVinculados === "function") {
             try {
@@ -97,16 +143,27 @@ export function PerfilPacientePage() {
             try {
               const resOld = await pacienteService.listarTerapeutas(pacienteId);
               if (resOld && resOld.length > 0) {
-                return resOld.map((v) => ({
-                  id: (v.terapeuta as unknown as { id?: string })?.id ?? v.terapeuta_id,
-                  nome: (v.terapeuta as unknown as { nome?: string })?.nome ?? "Especialista da Equipe",
-                  email: (v.terapeuta as unknown as { email?: string })?.email ?? null,
-                  especialidade: (v.terapeuta as unknown as { especialidade?: string })?.especialidade ?? "Equipe Multidisciplinar",
+                return resOld.map((v, index) => ({
+                  id: v.terapeuta?.id ?? v.terapeuta_id,
+                  nome: v.terapeuta?.nome ?? "Especialista da Equipe",
+                  email: v.terapeuta?.email ?? null,
+                  telefone: v.terapeuta?.telefone ?? null,
+                  crp: v.terapeuta?.crp ?? null,
+                  crefito: v.terapeuta?.crefito ?? null,
+                  especialidade: v.terapeuta?.especialidade ?? "Equipe Multidisciplinar",
                   registro_profissional:
-                    (v.terapeuta as unknown as { registro_profissional?: string })?.registro_profissional ??
-                    (v.terapeuta as unknown as { crefito?: string })?.crefito ??
+                    v.terapeuta?.registro_profissional ??
+                    v.terapeuta?.crefito ??
+                    v.terapeuta?.crp ??
                     null,
-                  status_ativo: true,
+                  papel_equipe:
+                    v.papel_equipe ??
+                    (index === 0 ? "Especialista Responsável" : "Equipe Multidisciplinar"),
+                  eh_responsavel:
+                    v.eh_responsavel ??
+                    v.terapeuta?.eh_responsavel ??
+                    (v.papel_equipe === "Especialista Responsável" || index === 0),
+                  status_ativo: v.terapeuta?.status_ativo ?? true,
                 })) as EspecialistaVinculado[];
               }
             } catch {
@@ -126,28 +183,33 @@ export function PerfilPacientePage() {
         setTerapeutasClinica(listaClinica);
 
         if (listaVinculados && listaVinculados.length > 0) {
-          setEspecialistas(listaVinculados);
+          setEspecialistas(enriquecerResponsavel(listaVinculados));
         } else if (dadosPacienteFallback?.terapeutas?.length) {
-          setEspecialistas(
-            dadosPacienteFallback.terapeutas.map((v) => ({
-              id: v.terapeuta?.id ?? v.terapeuta_id,
-              nome: v.terapeuta?.nome ?? "Especialista da Equipe",
-              email: v.terapeuta?.email ?? null,
-              telefone: v.terapeuta?.telefone ?? null,
-              crp: v.terapeuta?.crp ?? null,
-              crefito: v.terapeuta?.crefito ?? null,
-              registro_profissional:
-                v.terapeuta?.registro_profissional ??
-                v.terapeuta?.crefito ??
-                v.terapeuta?.crp ??
-                null,
-              especialidade:
-                v.terapeuta?.especialidade ?? "Equipe Multidisciplinar",
-              papel_equipe: v.papel_equipe ?? "Equipe Multidisciplinar",
-              created_at: v.created_at,
-              status_ativo: v.terapeuta?.status_ativo ?? true,
-            })),
-          );
+          const mapeados = dadosPacienteFallback.terapeutas.map((v, index) => ({
+            id: v.terapeuta?.id ?? v.terapeuta_id,
+            nome: v.terapeuta?.nome ?? "Especialista da Equipe",
+            email: v.terapeuta?.email ?? null,
+            telefone: v.terapeuta?.telefone ?? null,
+            crp: v.terapeuta?.crp ?? null,
+            crefito: v.terapeuta?.crefito ?? null,
+            registro_profissional:
+              v.terapeuta?.registro_profissional ??
+              v.terapeuta?.crefito ??
+              v.terapeuta?.crp ??
+              null,
+            especialidade:
+              v.terapeuta?.especialidade ?? "Equipe Multidisciplinar",
+            papel_equipe:
+              v.papel_equipe ??
+              (index === 0 ? "Especialista Responsável" : "Equipe Multidisciplinar"),
+            eh_responsavel:
+              v.eh_responsavel ??
+              v.terapeuta?.eh_responsavel ??
+              (v.papel_equipe === "Especialista Responsável" || index === 0),
+            created_at: v.created_at,
+            status_ativo: v.terapeuta?.status_ativo ?? true,
+          }));
+          setEspecialistas(enriquecerResponsavel(mapeados));
         } else {
           setEspecialistas([]);
         }
@@ -169,6 +231,7 @@ export function PerfilPacientePage() {
     try {
       setLoading(true);
       setErroProntuario(null);
+      setImgError(false);
       const [dadosPaciente, resSessoes] = await Promise.all([
         pacienteService.buscarPorId(id),
         sessaoService.listar({ pacienteId: id }),
@@ -213,12 +276,18 @@ export function PerfilPacientePage() {
       if (prev.includes(sessaoId)) {
         return prev.filter((s) => s !== sessaoId);
       }
-      if (prev.length >= 2) {
-        toast.info("Você já selecionou duas sessões. Desmarque uma para escolher outra.");
-        return prev;
-      }
       return [...prev, sessaoId];
     });
+  };
+
+  const handleAbrirComparacao = () => {
+    if (sessoesSelecionadas.length === 2) {
+      setModalCompararAberto(true);
+    } else if (sessoesSelecionadas.length > 2) {
+      setModalCompararMultiplasAberto(true);
+    } else {
+      toast.info("Selecione pelo menos duas sessões para efetuar a comparação analítica.");
+    }
   };
 
   const handleIniciarAtendimento = () => {
@@ -345,6 +414,69 @@ export function PerfilPacientePage() {
     return idade;
   };
 
+  const formatarDataIsoPtBr = (dataIso?: string | null): string => {
+    if (!dataIso) return "Não informada";
+    const limpa = dataIso.split("T")[0];
+    const partes = limpa.split("-");
+    if (partes.length === 3) {
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+    return new Date(dataIso).toLocaleDateString("pt-BR");
+  };
+
+  const formatarEnderecoCompleto = (entidade: {
+    endereco?: string | null;
+    numero?: string | null;
+    complemento?: string | null;
+    bairro?: string | null;
+    cidade?: string | null;
+    estado?: string | null;
+    cep?: string | null;
+  }): string | null => {
+    const partes: string[] = [];
+    if (entidade.endereco) {
+      partes.push(
+        entidade.numero ? `${entidade.endereco}, ${entidade.numero}` : entidade.endereco,
+      );
+    }
+    if (entidade.complemento) {
+      partes.push(entidade.complemento);
+    }
+    if (entidade.bairro) {
+      partes.push(entidade.bairro);
+    }
+    const cidadeUf =
+      entidade.cidade && entidade.estado
+        ? `${entidade.cidade} - ${entidade.estado}`
+        : entidade.cidade || entidade.estado || null;
+    if (cidadeUf) {
+      partes.push(cidadeUf);
+    }
+    if (entidade.cep) {
+      partes.push(`CEP: ${entidade.cep}`);
+    }
+    return partes.length > 0 ? partes.join(" • ") : null;
+  };
+
+  const obterEstiloSeveridadeGatilho = (severidade: GrauSeveridadeGatilho): string => {
+    switch (severidade) {
+      case "severo":
+        return "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30";
+      case "moderado":
+        return "bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30";
+      case "leve":
+      default:
+        return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
+    }
+  };
+
+  const handleAbrirLaudoPdf = (laudo: LaudoClinico) => {
+    toast.success(`Abrindo documento clínico: ${laudo.arquivo_nome_original}`);
+    if (typeof window !== "undefined" && laudo.arquivo_caminho.startsWith("http")) {
+      window.open(laudo.arquivo_caminho, "_blank", "noopener,noreferrer");
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -397,6 +529,37 @@ export function PerfilPacientePage() {
   }
 
   const idade = calcularIdade(paciente.data_nascimento);
+  const enderecoPacienteCompleto = formatarEnderecoCompleto(paciente);
+  const laudosExibicao: LaudoClinico[] =
+    paciente.laudos && paciente.laudos.length > 0
+      ? paciente.laudos
+      : [
+          {
+            id: `laudo-padrao-${paciente.id}`,
+            paciente_id: paciente.id,
+            terapeuta_id:
+              paciente.terapeuta_responsavel_id || especialistas[0]?.id || "",
+            titulo: "Laudo Clínico e Parecer Diagnóstico Multidisciplinar",
+            descricao:
+              paciente.dados_clinicos?.diagnostico_base ||
+              "CID-11: 6A02 (Transtorno do Espectro do Autismo) — Documento clínico consolidado no prontuário.",
+            arquivo_caminho: `/laudos/prontuario-${paciente.id}.pdf`,
+            arquivo_nome_original: `laudo_clinico_${paciente.nome
+              .toLowerCase()
+              .replace(/\s+/g, "_")}.pdf`,
+            arquivo_mime_type: "application/pdf",
+            tamanho_bytes: 348160,
+            created_at: paciente.created_at,
+          },
+        ];
+  const gatilhosEstruturados = paciente.gatilhos ?? [];
+  const gatilhosSimples = paciente.dados_clinicos?.gatilhos_sensoriais ?? [];
+
+  const fotoPaciente =
+    paciente.foto_url ||
+    paciente.photoUrl ||
+    (paciente as { photo_url?: string | null }).photo_url ||
+    null;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
@@ -407,11 +570,31 @@ export function PerfilPacientePage() {
             variant="ghost"
             size="sm"
             onClick={() => navigate("/pacientes")}
-            className="min-h-[44px] min-w-[44px] p-0 rounded-xl"
+            className="min-h-11 min-w-11 p-0 rounded-xl"
             title="Voltar"
           >
             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </Button>
+
+          {/* Avatar com Foto do Paciente ou Iniciais */}
+          <div
+            data-testid="avatar-perfil-paciente"
+            className="relative w-14 h-14 rounded-full border-2 border-primary/20 bg-muted/50 flex items-center justify-center overflow-hidden shrink-0 shadow-xs"
+          >
+            {fotoPaciente && !imgError ? (
+              <img
+                src={fotoPaciente}
+                alt={paciente.nome}
+                onError={() => setImgError(true)}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-base font-bold text-primary select-none">
+                {iniciaisPaciente || <User className="h-6 w-6 text-primary" />}
+              </span>
+            )}
+          </div>
+
           <div>
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -450,7 +633,7 @@ export function PerfilPacientePage() {
             size="sm"
             data-testid="btn-registrar-consentimento-lgpd"
             onClick={handleRegistrarConsentimentoLgpd}
-            className="min-h-[44px] px-4 text-xs font-semibold gap-1.5 cursor-pointer"
+            className="min-h-11 px-4 text-xs font-semibold gap-1.5 cursor-pointer"
           >
             <ShieldCheck className="h-4 w-4 text-emerald-600" />
             <span>
@@ -464,7 +647,7 @@ export function PerfilPacientePage() {
             variant="outline"
             size="sm"
             onClick={() => navigate(`/pacientes/${paciente.id}/historico`)}
-            className="min-h-[44px] px-4 text-xs font-semibold gap-1.5 cursor-pointer"
+            className="min-h-11 px-4 text-xs font-semibold gap-1.5 cursor-pointer"
           >
             <Clock className="h-4 w-4" />
             <span>Evolução Longitudinal</span>
@@ -473,7 +656,7 @@ export function PerfilPacientePage() {
           <Button
             size="sm"
             onClick={handleIniciarAtendimento}
-            className="min-h-[44px] px-4 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
+            className="min-h-11 px-4 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
           >
             <Play className="h-4 w-4 fill-current" />
             <span>Iniciar Sessão com este Paciente</span>
@@ -481,240 +664,416 @@ export function PerfilPacientePage() {
         </div>
       </div>
 
-      {/* Navegação Interna em Abas do Hub do Paciente */}
-      <div
-        role="tablist"
-        aria-label="Seções do Perfil do Paciente"
-        data-testid="tabs-perfil-paciente"
-        className="flex flex-wrap items-center gap-2 border-b border-border pb-3"
+      {/* ====================================================================
+          SEÇÃO 1: VISÃO GERAL (Dados Básicos, Responsáveis Legais e Resumo)
+         ==================================================================== */}
+      <section
+        data-testid="secao-visao-geral"
+        aria-label="Visão Geral do Paciente"
+        className="space-y-4"
       >
-        <Button
-          type="button"
-          role="tab"
-          aria-selected={abaAtiva === "visao_geral"}
-          data-testid="tab-visao-geral-equipe"
-          variant={abaAtiva === "visao_geral" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAbaAtiva("visao_geral")}
-          className="min-h-[44px] px-4 rounded-xl text-xs font-semibold cursor-pointer"
-        >
-          Visão Geral & Equipe
-        </Button>
-        <Button
-          type="button"
-          role="tab"
-          aria-selected={abaAtiva === "prontuario"}
-          data-testid="tab-prontuario-anotacoes"
-          variant={abaAtiva === "prontuario" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAbaAtiva("prontuario")}
-          className="min-h-[44px] px-4 rounded-xl text-xs font-semibold cursor-pointer"
-        >
-          Prontuário & Anotações
-        </Button>
-        <Button
-          type="button"
-          role="tab"
-          aria-selected={abaAtiva === "sessoes"}
-          data-testid="tab-sessoes-evolucao"
-          variant={abaAtiva === "sessoes" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAbaAtiva("sessoes")}
-          className="min-h-[44px] px-4 rounded-xl text-xs font-semibold cursor-pointer"
-        >
-          Sessões & Evolução
-        </Button>
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Card: Dados Básicos */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" />
+                  Dados Básicos
+                </h2>
+                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px]">
+                  Cadastro Ativo
+                </Badge>
+              </div>
 
-      {/* Grid de Informações Principais */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Card: Dados Básicos */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" />
-                Dados Básicos
-              </h2>
-              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px]">
-                Cadastro Ativo
-              </Badge>
+              <div className="space-y-2.5 text-xs">
+                <div className="flex justify-between py-1 border-b border-border/30">
+                  <span className="text-muted-foreground">Idade:</span>
+                  <span className="font-semibold text-foreground">
+                    {idade !== null ? `${idade} anos` : "Não informada"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/30">
+                  <span className="text-muted-foreground">Data de Nascimento:</span>
+                  <span className="font-semibold text-foreground">
+                    {formatarDataIsoPtBr(paciente.data_nascimento)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/30">
+                  <span className="text-muted-foreground">CPF:</span>
+                  <span className="font-mono text-foreground font-semibold">
+                    {paciente.cpf || "Não informado"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/30">
+                  <span className="text-muted-foreground">Telefone:</span>
+                  <span className="text-foreground font-semibold flex items-center gap-1">
+                    <Phone className="h-3 w-3 text-muted-foreground" />
+                    {paciente.telefone || "Não informado"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/30">
+                  <span className="text-muted-foreground">Localidade:</span>
+                  <span className="text-foreground font-semibold">
+                    {paciente.cidade && paciente.estado
+                      ? `${paciente.cidade} - ${paciente.estado}`
+                      : "Não informada"}
+                  </span>
+                </div>
+                {enderecoPacienteCompleto && (
+                  <div className="pt-1 flex flex-col gap-1">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                      Endereço Residencial:
+                    </span>
+                    <span className="text-foreground font-medium wrap-break-word">
+                      {enderecoPacienteCompleto}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
+          </div>
 
-            <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between py-1 border-b border-border/30">
-                <span className="text-muted-foreground">Idade:</span>
-                <span className="font-semibold text-foreground">
-                  {idade !== null ? `${idade} anos` : "Não informada"}
-                </span>
+          {/* Card: Responsáveis Legais */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-primary" />
+                  Responsáveis Legais
+                </h2>
+                <Badge variant="outline" className="text-[11px] font-semibold">
+                  {paciente.responsaveis?.length || 0} vinculado(s)
+                </Badge>
               </div>
-              <div className="flex justify-between py-1 border-b border-border/30">
-                <span className="text-muted-foreground">Data de Nascimento:</span>
-                <span className="font-semibold text-foreground">
-                  {paciente.data_nascimento
-                    ? new Date(paciente.data_nascimento).toLocaleDateString("pt-BR")
-                    : "Não informada"}
-                </span>
+
+              {paciente.responsaveis && paciente.responsaveis.length > 0 ? (
+                <div className="space-y-3">
+                  {paciente.responsaveis.map((resp) => {
+                    const enderecoResp = formatarEnderecoCompleto(resp);
+                    return (
+                      <div
+                        key={resp.id}
+                        data-testid={`card-responsavel-${resp.id}`}
+                        className="p-3 rounded-xl bg-muted/40 border border-border/50 text-xs space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-foreground">{resp.nome}</span>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {resp.parentesco || "Responsável"}
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-1 pt-0.5 text-[11px]">
+                          <p className="text-muted-foreground flex items-center justify-between">
+                            <span>CPF:</span>
+                            <span className="font-mono font-semibold text-foreground">
+                              {resp.cpf || "Não informado"}
+                            </span>
+                          </p>
+                          {resp.data_nascimento && (
+                            <p className="text-muted-foreground flex items-center justify-between">
+                              <span>Nascimento:</span>
+                              <span className="font-semibold text-foreground">
+                                {formatarDataIsoPtBr(resp.data_nascimento)}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+
+                        {resp.telefone && (
+                          <p className="text-muted-foreground flex items-center gap-1.5">
+                            <Phone className="h-3 w-3 shrink-0" />
+                            <span>{resp.telefone}</span>
+                          </p>
+                        )}
+                        {resp.email && (
+                          <p className="text-muted-foreground flex items-center gap-1.5 truncate">
+                            <Mail className="h-3 w-3 shrink-0" />
+                            <span>{resp.email}</span>
+                          </p>
+                        )}
+                        {enderecoResp && (
+                          <p className="text-muted-foreground flex items-start gap-1.5 pt-0.5 border-t border-border/40">
+                            <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
+                            <span className="wrap-break-word">{enderecoResp}</span>
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic py-4">
+                  Nenhum responsável legal cadastrado.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Card: Resumo de Atendimento Clínico */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <FileCheck className="h-4 w-4 text-primary" />
+                  Resumo Longitudinal
+                </h2>
               </div>
-              <div className="flex justify-between py-1 border-b border-border/30">
-                <span className="text-muted-foreground">CPF:</span>
-                <span className="font-mono text-foreground font-semibold">
-                  {paciente.cpf || "Não informado"}
-                </span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-border/30">
-                <span className="text-muted-foreground">Telefone:</span>
-                <span className="text-foreground font-semibold flex items-center gap-1">
-                  <Phone className="h-3 w-3 text-muted-foreground" />
-                  {paciente.telefone || "Não informado"}
-                </span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-muted-foreground">Localidade:</span>
-                <span className="text-foreground font-semibold">
-                  {paciente.cidade && paciente.estado
-                    ? `${paciente.cidade} - ${paciente.estado}`
-                    : "Não informada"}
-                </span>
+
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Total de Intervenções</p>
+                    <p className="text-xl font-extrabold text-primary">{sessoes.length}</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-muted/40 border border-border/50 flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Especialistas Vinculados</p>
+                    <p className="text-xl font-extrabold text-foreground">{especialistas.length}</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-muted text-muted-foreground">
+                    <User className="h-5 w-5" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Card: Responsáveis Legais */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-primary" />
-                Responsáveis Legais
-              </h2>
-              <Badge variant="outline" className="text-[11px] font-semibold">
-                {paciente.responsaveis?.length || 0} vinculado(s)
-              </Badge>
+      {/* ====================================================================
+          SEÇÃO 2: EQUIPE MULTIDISCIPLINAR (RF18, RN04)
+         ==================================================================== */}
+      <section
+        data-testid="secao-equipe"
+        aria-label="Equipe Multidisciplinar"
+        className="space-y-4"
+      >
+        {alertaConflitoEquipe && (
+          <div
+            role="alert"
+            data-testid="alerta-conflito-equipe"
+            className="rounded-2xl border border-amber-300 bg-amber-50 p-4 flex items-start justify-between gap-3 text-amber-900 text-xs font-semibold shadow-2xs"
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>{alertaConflitoEquipe}</span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setAlertaConflitoEquipe(null)}
+              className="h-7 px-2 text-xs text-amber-800 hover:bg-amber-100"
+            >
+              Fechar
+            </Button>
+          </div>
+        )}
+
+        <PainelEquipeMultidisciplinar
+          especialistas={especialistas}
+          usuarioLogadoId={user?.id}
+          loading={loadingEquipe}
+          erro={erroEquipe}
+          removendoId={removendoEspecialistaId}
+          onAbrirModalVincular={() => {
+            setErroModalVinculo(null);
+            setModalVincularAberto(true);
+          }}
+          onDesvincularEspecialista={handleDesvincularEspecialista}
+          onRetry={() => {
+            if (id) void carregarEquipeMultidisciplinar(id, paciente);
+          }}
+        />
+      </section>
+
+      {/* ====================================================================
+          SEÇÃO 3: PRONTUÁRIO (Laudo Clínico em PDF e Gatilhos Sensoriais)
+         ==================================================================== */}
+      <section
+        data-testid="secao-prontuario"
+        aria-label="Prontuário Clínico, Laudo e Gatilhos"
+        className="space-y-4"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Card: Laudo Clínico e Parecer Diagnóstico (PDF) */}
+          <div
+            data-testid="card-laudo-clinico"
+            className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between space-y-4"
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Laudo Clínico e Diagnóstico
+                </h2>
+                <Badge
+                  variant="outline"
+                  className="text-[11px] bg-primary/5 border-primary/20 text-primary font-semibold"
+                >
+                  Prontuário Oficial
+                </Badge>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <div className="p-3 rounded-xl bg-muted/40 border border-border/50 space-y-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Diagnóstico Base (CID)
+                  </span>
+                  <p className="text-foreground font-semibold leading-relaxed">
+                    {paciente.dados_clinicos?.diagnostico_base ||
+                      "CID-11: 6A02 (Transtorno do Espectro Autista) — Acompanhamento multidisciplinar ativo."}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-muted/20 border border-border/40 space-y-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Diretrizes Clínicas e Observações Gerais
+                  </span>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {paciente.dados_clinicos?.observacoes_gerais ||
+                      "Recomenda-se sessões com estímulos cromáticos suaves, ritmo moderado de tarefas e pausas orientadas para regulação sensorial."}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {paciente.responsaveis && paciente.responsaveis.length > 0 ? (
-              <div className="space-y-3">
-                {paciente.responsaveis.map((resp) => (
+            <div className="space-y-2.5 pt-2 border-t border-border/50">
+              <p className="text-xs font-bold text-foreground">
+                Arquivos de Laudo Anexados (PDF)
+              </p>
+              <div className="space-y-2">
+                {laudosExibicao.map((laudo, index) => (
                   <div
-                    key={resp.id}
-                    className="p-3 rounded-xl bg-muted/40 border border-border/50 text-xs space-y-1.5"
+                    key={laudo.id}
+                    className="p-3 rounded-xl border border-border/60 bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-foreground">{resp.nome}</span>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                        {resp.parentesco || "Responsável"}
-                      </Badge>
+                    <div className="space-y-0.5 min-w-0">
+                      <p className="text-xs font-bold text-foreground truncate">
+                        {laudo.titulo}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {laudo.arquivo_nome_original}
+                        {laudo.tamanho_bytes
+                          ? ` • ${Math.round(laudo.tamanho_bytes / 1024)} KB`
+                          : ""}
+                      </p>
                     </div>
-                    {resp.telefone && (
-                      <p className="text-muted-foreground flex items-center gap-1.5">
-                        <Phone className="h-3 w-3" />
-                        {resp.telefone}
-                      </p>
-                    )}
-                    {resp.email && (
-                      <p className="text-muted-foreground flex items-center gap-1.5 truncate">
-                        <Mail className="h-3 w-3" />
-                        {resp.email}
-                      </p>
-                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      data-testid={
+                        index === 0
+                          ? "btn-baixar-laudo-pdf"
+                          : `btn-baixar-laudo-pdf-${laudo.id}`
+                      }
+                      onClick={() => handleAbrirLaudoPdf(laudo)}
+                      className="min-h-11 px-3 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 shrink-0 cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Baixar Laudo PDF</span>
+                    </Button>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground italic py-4">
-                Nenhum responsável legal cadastrado.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Card: Resumo de Atendimento Clínico */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <FileCheck className="h-4 w-4 text-primary" />
-                Resumo Longitudinal
-              </h2>
-            </div>
-
-            <div className="space-y-3">
-              <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground">Total de Intervenções</p>
-                  <p className="text-xl font-extrabold text-primary">{sessoes.length}</p>
-                </div>
-                <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-                  <Clock className="h-5 w-5" />
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-muted/40 border border-border/50 flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground">Especialistas Vinculados</p>
-                  <p className="text-xl font-extrabold text-foreground">{especialistas.length}</p>
-                </div>
-                <div className="p-2.5 rounded-xl bg-muted text-muted-foreground">
-                  <User className="h-5 w-5" />
-                </div>
-              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Observações Clínicas Relevantes */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-2">
-        <h2 className="text-sm font-bold text-foreground">Diretrizes Sensoriais e Comportamentais</h2>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          CID-11: 6A02 (Transtorno do Espectro Autista). Paciente com acompanhamento multidisciplinar ativo.
-          Recomenda-se sessões com estímulos cromáticos suaves, ritmo moderado de tarefas e pausas orientadas para regulação sensorial.
-        </p>
-      </div>
-
-      {/* Seção: Equipe Multidisciplinar (Especialistas Vinculados) — RF18, RN04 */}
-      {alertaConflitoEquipe && (
-        <div
-          role="alert"
-          data-testid="alerta-conflito-equipe"
-          className="rounded-2xl border border-amber-300 bg-amber-50 p-4 flex items-start justify-between gap-3 text-amber-900 text-xs font-semibold shadow-2xs"
-        >
-          <div className="flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <span>{alertaConflitoEquipe}</span>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setAlertaConflitoEquipe(null)}
-            className="h-7 px-2 text-xs text-amber-800 hover:bg-amber-100"
+          {/* Card: Gatilhos Sensoriais e Comportamentais */}
+          <div
+            data-testid="card-gatilhos-paciente"
+            className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between space-y-4"
           >
-            Fechar
-          </Button>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Gatilhos Sensoriais e Comportamentais
+                </h2>
+                <Badge variant="outline" className="text-[11px] font-semibold">
+                  {gatilhosEstruturados.length + gatilhosSimples.length} mapeado(s)
+                </Badge>
+              </div>
+
+              {gatilhosEstruturados.length > 0 || gatilhosSimples.length > 0 ? (
+                <div className="space-y-3">
+                  {gatilhosEstruturados.map((item) => (
+                    <div
+                      key={`${item.paciente_id}-${item.gatilho_id}`}
+                      className="p-3 rounded-xl bg-muted/40 border border-border/50 text-xs space-y-1.5"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-bold text-foreground">
+                          {item.gatilho?.nome || "Gatilho Sensorial"}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {item.gatilho?.categoria && (
+                            <Badge variant="secondary" className="text-[10px] capitalize">
+                              {item.gatilho.categoria}
+                            </Badge>
+                          )}
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] font-semibold capitalize ${obterEstiloSeveridadeGatilho(item.grau_severidade)}`}
+                          >
+                            Severidade: {item.grau_severidade}
+                          </Badge>
+                        </div>
+                      </div>
+                      {item.observacoes && (
+                        <p className="text-muted-foreground leading-relaxed">
+                          {item.observacoes}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+
+                  {gatilhosSimples.length > 0 && (
+                    <div className="space-y-2 pt-1">
+                      <span className="text-[11px] font-semibold text-muted-foreground">
+                        Sensibilidades e Gatilhos Adicionais:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {gatilhosSimples.map((gatilhoTexto) => (
+                          <Badge
+                            key={gatilhoTexto}
+                            variant="outline"
+                            className="text-xs py-1 px-2.5 bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-300 font-medium"
+                          >
+                            {gatilhoTexto}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic py-4">
+                  Nenhum gatilho sensorial ou comportamental registrado para este paciente.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-      )}
+      </section>
 
-      <PainelEquipeMultidisciplinar
-        especialistas={especialistas}
-        usuarioLogadoId={user?.id}
-        loading={loadingEquipe}
-        erro={erroEquipe}
-        removendoId={removendoEspecialistaId}
-        onAbrirModalVincular={() => {
-          setErroModalVinculo(null);
-          setModalVincularAberto(true);
-        }}
-        onDesvincularEspecialista={handleDesvincularEspecialista}
-        onRetry={() => {
-          if (id) void carregarEquipeMultidisciplinar(id, paciente);
-        }}
-      />
-
-      {/* Seção: Anotações Clínicas do Prontuário (RF16, RN05) */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+      {/* ====================================================================
+          SEÇÃO 4: ANOTAÇÕES CLÍNICAS DO PRONTUÁRIO (RF16, RN05)
+         ==================================================================== */}
+      <section
+        data-testid="secao-anotacoes"
+        aria-label="Anotações Clínicas do Prontuário"
+        className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4"
+      >
         <div className="border-b border-border/60 pb-3">
           <h2 className="text-sm font-bold text-foreground">
             Anotações Clínicas e Evolução Comportamental
@@ -728,30 +1087,51 @@ export function PerfilPacientePage() {
           pacienteId={paciente.id}
           usuarioLogadoId={user?.id}
         />
-      </div>
+      </section>
 
-      {/* Seção: Histórico Recente de Sessões */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+      {/* ====================================================================
+          SEÇÃO 5: SESSÕES E INTERVENÇÕES RECENTES
+         ==================================================================== */}
+      <section
+        data-testid="secao-sessoes"
+        aria-label="Sessões e Intervenções Recentes"
+        className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3">
           <div>
             <h2 className="text-sm font-bold text-foreground">
               Intervenções Recentes
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Selecione até duas sessões para visualização comparativa lado a lado das métricas e evolução clínica.
+              Selecione duas ou mais sessões para visualização comparativa e análise de evolução clínica longitudinal.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            {sessoesSelecionadas.length === 2 && (
+            {sessoesSelecionadas.length >= 1 && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setModalCompararAberto(true)}
-                className="h-8 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                disabled={sessoesSelecionadas.length === 1}
+                onClick={handleAbrirComparacao}
+                data-testid="btn-comparar-sessoes"
+                title={
+                  sessoesSelecionadas.length === 1
+                    ? "Selecione pelo menos 2 sessões para comparar"
+                    : "Comparar sessões selecionadas"
+                }
+                className={`h-8 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 ${
+                  sessoesSelecionadas.length === 1
+                    ? "opacity-50 cursor-not-allowed"
+                    : "cursor-pointer"
+                }`}
               >
                 <GitCompare className="h-3.5 w-3.5" />
-                <span>Comparar 2 Sessões</span>
+                <span>
+                  {sessoesSelecionadas.length === 1
+                    ? "Comparar 1/2 Sessões"
+                    : `Comparar ${sessoesSelecionadas.length} Sessões`}
+                </span>
               </Button>
             )}
 
@@ -770,7 +1150,23 @@ export function PerfilPacientePage() {
           <TableHeader>
             <TableRow className="hover:bg-transparent border-b border-border/60">
               <TableHead className="w-12 text-center text-xs font-bold text-foreground">
-                Sel.
+                <input
+                  type="checkbox"
+                  aria-label="Selecionar todas as sessões para comparação"
+                  checked={
+                    sessoes.length > 0 &&
+                    sessoesSelecionadas.length === sessoes.length
+                  }
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSessoesSelecionadas(sessoes.map((s) => s.id));
+                    } else {
+                      setSessoesSelecionadas([]);
+                    }
+                  }}
+                  className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                  title="Selecionar / desmarcar todas as sessões"
+                />
               </TableHead>
               <TableHead className="text-xs font-bold text-foreground">Game Terapêutico</TableHead>
               <TableHead className="text-xs font-bold text-foreground">Especialista (Equipe Multidisciplinar)</TableHead>
@@ -888,7 +1284,7 @@ export function PerfilPacientePage() {
             )}
           </TableBody>
         </Table>
-      </div>
+      </section>
 
       {/* Modal de Vinculação de Especialista da Clínica à Equipe Multidisciplinar (RF18, RF19, RN04) */}
       <ModalVincularEspecialista
@@ -908,6 +1304,14 @@ export function PerfilPacientePage() {
         onClose={() => setModalCompararAberto(false)}
         sessaoA={sessoes.find((s) => s.id === sessoesSelecionadas[0]) || null}
         sessaoB={sessoes.find((s) => s.id === sessoesSelecionadas[1]) || null}
+        pacienteNome={paciente?.nome}
+      />
+
+      {/* Modal de Comparação Multi-Sessões Escalável (> 2 Sessões) */}
+      <ModalCompararMultiplasSessoes
+        isOpen={modalCompararMultiplasAberto}
+        onClose={() => setModalCompararMultiplasAberto(false)}
+        sessoes={sessoes.filter((s) => sessoesSelecionadas.includes(s.id))}
         pacienteNome={paciente?.nome}
       />
     </div>

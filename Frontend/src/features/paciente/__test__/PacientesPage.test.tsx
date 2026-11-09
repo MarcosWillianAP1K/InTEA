@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { PacientesPage } from "../pages/PacientesPage";
 
 describe("Página Meus Pacientes Vinculados (PacientesPage)", () => {
-  it("deve renderizar o cabeçalho 'Meus Pacientes Vinculados' e botão para 'Ver todos os pacientes'", async () => {
+  it("deve renderizar o cabeçalho 'Meus Pacientes Vinculados' e NÃO exibir o botão 'Ver todos os pacientes'", async () => {
     await act(async () => {
       render(
         <MemoryRouter>
@@ -19,7 +19,7 @@ describe("Página Meus Pacientes Vinculados (PacientesPage)", () => {
         "Gerencie prontuários e sessões dos pacientes sob seus cuidados clínicos."
       )
     ).toBeDefined();
-    expect(screen.getByRole("button", { name: /Ver todos os pacientes/i })).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Ver todos os pacientes/i })).toBeNull();
   });
 
   it("NÃO deve renderizar ação ou botão de cadastrar paciente para o terapeuta comum", async () => {

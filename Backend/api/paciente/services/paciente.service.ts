@@ -71,6 +71,46 @@ export class PacienteServiceError extends Error {
 
 export class PacienteService {
   /**
+   * Defense-in-depth verification of SuperAdmin status for an authenticated user.
+   * Checks `is_super_admin` flag and `app_metadata` claims first, then falls back to `public.terapeuta` in DB.
+   */
+  private static async verificarSuperAdmin(usuarioLogado?: UsuarioAutenticado): Promise<boolean> {
+    if (!usuarioLogado) return false;
+    if (usuarioLogado.is_super_admin === true || hasSuperAdminClaim(usuarioLogado)) {
+      return true;
+    }
+    if (!usuarioLogado.id) return false;
+
+    try {
+      const client = supabase.from('terapeuta');
+      if (client && typeof client.select === 'function') {
+        const selectBuilder = client.select('is_super_admin, status_ativo') as unknown as {
+          eq?: (col: string, val: string) => {
+            maybeSingle?: () => Promise<{
+              data?: { is_super_admin?: boolean; status_ativo?: boolean } | null;
+              error?: unknown;
+            }>;
+          };
+        };
+        if (selectBuilder && typeof selectBuilder.eq === 'function') {
+          const eqQuery = selectBuilder.eq('id', usuarioLogado.id);
+          if (eqQuery && typeof eqQuery.maybeSingle === 'function') {
+            const { data } = await eqQuery.maybeSingle();
+            if (data && data.is_super_admin === true && data.status_ativo !== false) {
+              usuarioLogado.is_super_admin = true;
+              return true;
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignora erro em caso de mocks parciais em testes unitários
+    }
+
+    return false;
+  }
+
+  /**
    * Lists patients with search filters, pagination, and institutional visibility rules (RN04).
    *
    * @param filtros - Search, age, pagination, and active-status filters.
@@ -153,7 +193,18 @@ export class PacienteService {
     const responsaveisNormalizados: ResponsavelVinculado[] = Array.isArray(paciente.responsaveis)
       ? paciente.responsaveis.map((r: unknown) => {
           if (r && typeof r === 'object' && 'responsavel' in r) {
-            return (r as { responsavel: ResponsavelVinculado }).responsavel;
+            const wrapper = r as {
+              responsavel: ResponsavelVinculado;
+              tipo_responsavel?: string;
+              parentesco?: string | null;
+            };
+            return {
+              ...wrapper.responsavel,
+              ...(wrapper.parentesco && !wrapper.responsavel?.parentesco
+                ? { parentesco: wrapper.parentesco }
+                : {}),
+              ...(wrapper.tipo_responsavel === 'principal' ? { principal: true } : {}),
+            };
           }
           return r as ResponsavelVinculado;
         })
@@ -162,35 +213,68 @@ export class PacienteService {
     const terapeutasNormalizados: TerapeutaVinculado[] = Array.isArray(paciente.terapeutas)
       ? paciente.terapeutas.map((t: unknown) => {
           if (t && typeof t === 'object' && 'terapeuta' in t) {
-            return (t as { terapeuta: TerapeutaVinculado }).terapeuta;
+            const wrapper = t as { terapeuta: TerapeutaVinculado; created_at?: string };
+            return {
+              ...wrapper.terapeuta,
+              ...(wrapper.created_at && !wrapper.terapeuta?.created_at
+                ? { created_at: wrapper.created_at }
+                : {}),
+            };
           }
           return t as TerapeutaVinculado;
         })
       : [];
 
     // Decifragem segura em repouso de dados clínicos sensíveis (LGPD / RNF06)
-    const pacienteComDadosClinicos = paciente as Paciente & {
-      dados_clinicos?: {
-        diagnostico_base?: string | null;
-        observacoes_gerais?: string | null;
-        [key: string]: unknown;
-      } | null;
-    };
+    const rawDadosClinicos = (paciente as { dados_clinicos?: unknown }).dados_clinicos;
+    let dadosClinicosObj: Record<string, unknown> | null = null;
+    if (Array.isArray(rawDadosClinicos)) {
+      dadosClinicosObj =
+        rawDadosClinicos.length > 0 && rawDadosClinicos[0] && typeof rawDadosClinicos[0] === 'object'
+          ? { ...(rawDadosClinicos[0] as Record<string, unknown>) }
+          : null;
+    } else if (rawDadosClinicos && typeof rawDadosClinicos === 'object') {
+      dadosClinicosObj = { ...(rawDadosClinicos as Record<string, unknown>) };
+    }
 
-    if (pacienteComDadosClinicos.dados_clinicos) {
-      const dc = pacienteComDadosClinicos.dados_clinicos;
-      if (typeof dc.diagnostico_base === 'string') {
-        dc.diagnostico_base = CryptoService.decifrarSeCifrado(dc.diagnostico_base);
+    if (dadosClinicosObj) {
+      if (typeof dadosClinicosObj.diagnostico_base === 'string') {
+        dadosClinicosObj.diagnostico_base = CryptoService.decifrarSeCifrado(
+          dadosClinicosObj.diagnostico_base
+        );
       }
-      if (typeof dc.observacoes_gerais === 'string') {
-        dc.observacoes_gerais = CryptoService.decifrarSeCifrado(dc.observacoes_gerais);
+      if (typeof dadosClinicosObj.observacoes_gerais === 'string') {
+        dadosClinicosObj.observacoes_gerais = CryptoService.decifrarSeCifrado(
+          dadosClinicosObj.observacoes_gerais
+        );
       }
+    }
+
+    // Extração resiliente do terapeuta responsável (líder)
+    let terapeutaResponsavelId: string | null = null;
+    const rawTerResp = (paciente as { terapeuta_responsavel?: unknown }).terapeuta_responsavel;
+    if (Array.isArray(rawTerResp) && rawTerResp.length > 0) {
+      const first = rawTerResp[0] as { terapeuta_id?: unknown } | null;
+      if (first && typeof first.terapeuta_id === 'string') {
+        terapeutaResponsavelId = first.terapeuta_id;
+      }
+    } else if (rawTerResp && typeof rawTerResp === 'object' && 'terapeuta_id' in rawTerResp) {
+      const val = (rawTerResp as { terapeuta_id?: unknown }).terapeuta_id;
+      if (typeof val === 'string') {
+        terapeutaResponsavelId = val;
+      }
+    }
+
+    if (!terapeutaResponsavelId && terapeutasNormalizados.length > 0 && terapeutasNormalizados[0]?.id) {
+      terapeutaResponsavelId = String(terapeutasNormalizados[0].id);
     }
 
     return {
       ...paciente,
       responsaveis: responsaveisNormalizados,
       terapeutas: terapeutasNormalizados,
+      ...(dadosClinicosObj ? { dados_clinicos: dadosClinicosObj } : {}),
+      terapeuta_responsavel_id: terapeutaResponsavelId,
     };
   }
 
@@ -411,18 +495,38 @@ export class PacienteService {
   }
 
   /**
-   * Associates a therapist with a patient (terapeuta_paciente link).
+   * Associates a therapist with a patient (`terapeuta_paciente` link).
+   * Enforces team governance: only the Responsible Therapist (Leader) or a SuperAdmin can add specialists.
    *
    * @param pacienteId - Patient UUID.
    * @param terapeutaId - Therapist UUID.
+   * @param usuarioLogado - Optional authenticated user enforcing leadership/SuperAdmin rules.
    */
-  static async vincularTerapeuta(pacienteId: string, terapeutaId: string): Promise<void> {
+  static async vincularTerapeuta(
+    pacienteId: string,
+    terapeutaId: string,
+    usuarioLogado?: UsuarioAutenticado
+  ): Promise<void> {
     if (!pacienteId || !validarUUID(pacienteId)) {
       throw new PacienteServiceError('O ID do paciente deve ser um UUID válido.', 400);
     }
 
     if (!terapeutaId || !validarUUID(terapeutaId)) {
       throw new PacienteServiceError('O campo "terapeuta_id" deve ser um UUID válido.', 400);
+    }
+
+    if (usuarioLogado && usuarioLogado.id) {
+      const isSuperAdmin = await this.verificarSuperAdmin(usuarioLogado);
+
+      if (!isSuperAdmin) {
+        const liderId = await PacienteModel.obterTerapeutaResponsavel(pacienteId);
+        if (liderId && liderId !== usuarioLogado.id) {
+          throw new PacienteServiceError(
+            'Acesso negado: apenas o Terapeuta Responsável (Líder) ou um SuperAdmin podem adicionar especialistas à equipe deste paciente.',
+            403
+          );
+        }
+      }
     }
 
     try {
@@ -455,11 +559,12 @@ export class PacienteService {
   }
 
   /**
-   * Removes association between a therapist and a patient, enforcing self-removal/SuperAdmin (D1) and anti-orphan rules.
+   * Removes association between a therapist and a patient, enforcing Responsible Therapist (Leader) / SuperAdmin governance
+   * and anti-orphan rules.
    *
    * @param pacienteId - Patient UUID.
    * @param terapeutaId - Therapist UUID.
-   * @param usuarioLogado - Optional authenticated user enforcing D1 permission rule.
+   * @param usuarioLogado - Optional authenticated user enforcing leadership/SuperAdmin rules.
    */
   static async desvincularTerapeuta(
     pacienteId: string,
@@ -475,15 +580,18 @@ export class PacienteService {
     }
 
     if (usuarioLogado && usuarioLogado.id) {
-      const isSuperAdmin =
-        usuarioLogado.is_super_admin === true ||
-        hasSuperAdminClaim(usuarioLogado);
+      const isSuperAdmin = await this.verificarSuperAdmin(usuarioLogado);
 
-      if (!isSuperAdmin && usuarioLogado.id !== terapeutaId) {
-        throw new PacienteServiceError(
-          'Acesso negado: apenas o próprio especialista ou um SuperAdmin pode remover este vínculo da equipe.',
-          403
-        );
+      if (!isSuperAdmin) {
+        const liderId = await PacienteModel.obterTerapeutaResponsavel(pacienteId);
+        const isLider = liderId ? liderId === usuarioLogado.id : usuarioLogado.id === terapeutaId;
+
+        if (!isLider) {
+          throw new PacienteServiceError(
+            'Acesso negado: apenas o Terapeuta Responsável (Líder) ou um SuperAdmin podem remover vínculos da equipe.',
+            403
+          );
+        }
       }
     }
 

@@ -173,7 +173,7 @@ describe("PerfilPacientePage — Gestão de Equipe Multidisciplinar (RF06, RF18,
     });
   });
 
-  it("1. deve listar os especialistas vinculados na Equipe Multidisciplinar com badge 'Você (Logado)' e sem o termo proibido 'Co-Terapeuta'", async () => {
+  it("1. deve listar os especialistas vinculados na Equipe Especialista com badge 'Você (Logado)' e sem o termo proibido 'Co-Terapeuta'", async () => {
     renderizarPerfilPaciente();
 
     await waitFor(() => {
@@ -183,7 +183,7 @@ describe("PerfilPacientePage — Gestão de Equipe Multidisciplinar (RF06, RF18,
     });
 
     expect(
-      screen.getByText(/Equipe Multidisciplinar \(Especialistas Vinculados\)/i),
+      screen.getByText(/Equipe Especialista/i),
     ).toBeInTheDocument();
 
     expect(
@@ -196,6 +196,9 @@ describe("PerfilPacientePage — Gestão de Equipe Multidisciplinar (RF06, RF18,
     expect(
       screen.getByTestId(`badge-voce-logado-${ESPECIALISTA_MARCOS.id}`),
     ).toHaveTextContent("Você (Logado)");
+    expect(
+      screen.getByTestId(`badge-lider-equipe-${ESPECIALISTA_MARCOS.id}`),
+    ).toHaveTextContent("Responsável (Líder)");
 
     // Conformidade estrita com Seção 7.7: jamais utilizar o termo "Co-Terapeuta"
     expect(screen.queryByText(/Co-Terapeuta/i)).not.toBeInTheDocument();
@@ -269,7 +272,7 @@ describe("PerfilPacientePage — Gestão de Equipe Multidisciplinar (RF06, RF18,
     expect(toast.success).toHaveBeenCalled();
   });
 
-  it("3. deve exibir alerta e toast quando a API rejeita a remoção do último especialista com 409 Conflict e desabilitar o botão quando resta apenas 1 especialista", async () => {
+  it("3. deve exibir alerta e toast quando a API rejeita a remoção do último especialista com 409 Conflict e ocultar controles quando logado como especialista comum", async () => {
     const erro409 = new Error(
       "Não é possível remover o único especialista vinculado ao paciente (409 Conflict).",
     ) as Error & { status?: number };
@@ -279,19 +282,14 @@ describe("PerfilPacientePage — Gestão de Equipe Multidisciplinar (RF06, RF18,
       .spyOn(pacienteService, "desvincularTerapeuta")
       .mockRejectedValueOnce(erro409);
 
-    renderizarPerfilPaciente();
+    const { unmount } = renderizarPerfilPaciente();
 
-    // Colega não pode ser desvinculado por terapeuta comum (apenas o próprio ou SuperAdmin)
+    // O Líder (ESPECIALISTA_MARCOS) vê os botões habilitados para gerenciar toda a equipe
     const btnDesvincularLuma = await screen.findByTestId(
       `btn-desvincular-${ESPECIALISTA_LUMA.id}`,
     );
-    expect(btnDesvincularLuma).toBeDisabled();
-    expect(btnDesvincularLuma).toHaveAttribute(
-      "title",
-      "Apenas o próprio especialista ou um administrador pode remover este vínculo",
-    );
+    expect(btnDesvincularLuma).not.toBeDisabled();
 
-    // O próprio especialista pode acionar sua desvinculação (ou SuperAdmin pode desvincular colega)
     const btnDesvincularMarcos = await screen.findByTestId(
       `btn-desvincular-${ESPECIALISTA_MARCOS.id}`,
     );
@@ -309,6 +307,44 @@ describe("PerfilPacientePage — Gestão de Equipe Multidisciplinar (RF06, RF18,
     const alertaConflito = await screen.findByTestId("alerta-conflito-equipe");
     expect(alertaConflito).toHaveTextContent(/409|único especialista/i);
     expect(toast.error).toHaveBeenCalled();
+
+    unmount();
+
+    // Quando logado como especialista comum (ESPECIALISTA_LUMA), os botões de adicionar e desvincular não aparecem
+    useAuthStore.setState({
+      user: {
+        id: ESPECIALISTA_LUMA.id,
+        nome: ESPECIALISTA_LUMA.nome,
+        email: ESPECIALISTA_LUMA.email || "luma@intea.com.br",
+        clinica_id: MOCK_PACIENTE_PEDRO.clinica_id,
+        crefito: ESPECIALISTA_LUMA.crefito || "CRP-21/04567",
+        registro_profissional:
+          ESPECIALISTA_LUMA.registro_profissional || "CRP-21/04567",
+        especialidade: ESPECIALISTA_LUMA.especialidade || "Psicologia ABA",
+        is_super_admin: false,
+        status_ativo: true,
+        role: "terapeuta",
+      },
+      isAuthenticated: true,
+    });
+
+    renderizarPerfilPaciente();
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("painel-equipe-multidisciplinar"),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId("btn-abrir-modal-vincular"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`btn-desvincular-${ESPECIALISTA_MARCOS.id}`),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`btn-desvincular-${ESPECIALISTA_LUMA.id}`),
+    ).not.toBeInTheDocument();
   });
 
   it("4. deve exibir visualização compartilhada de sessões conduzidas por diferentes especialistas da Equipe Multidisciplinar", async () => {

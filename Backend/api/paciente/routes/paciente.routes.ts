@@ -803,7 +803,7 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
  * @swagger
  * /api/paciente/{id}/terapeutas/{terapeutaId}:
  *   delete:
- *     summary: Remove o vínculo de um terapeuta com o paciente (auto-remoção ou SuperAdmin, com trava anti-órfão)
+ *     summary: Remove o vínculo de um terapeuta com o paciente (Terapeuta Responsável Líder ou SuperAdmin, com trava anti-órfão)
  *     tags: [Paciente]
  *     security:
  *       - bearerAuth: []
@@ -845,11 +845,11 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado (sem vínculo ativo ou tentativa de remover outro colega sem perfil SuperAdmin - RN04 / D1)
+ *         description: Acesso negado (sem vínculo ativo ou tentativa de remover membro sem ser o Terapeuta Responsável Líder ou SuperAdmin - RN04)
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado: apenas o próprio especialista ou um SuperAdmin pode remover este vínculo da equipe."
+ *               error: "Acesso negado: apenas o Terapeuta Responsável (Líder) ou um SuperAdmin podem remover vínculos da equipe."
  *       404:
  *         description: Paciente ou vínculo não encontrado
  *         content:

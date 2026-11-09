@@ -2,6 +2,7 @@ import { useState, type ComponentType } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { BadgeAutoriaMultidisciplinar } from "../components/BadgeAutoriaMultidisciplinar";
+import { useAuthStore } from "@/features/autenticacao/store/authStore";
 
 export interface EspecialistaEquipeItem {
   id: string;
@@ -12,11 +13,14 @@ export interface EspecialistaEquipeItem {
   crefito?: string | null;
   crp?: string | null;
   email?: string | null;
+  papel_equipe?: string | null;
+  eh_responsavel?: boolean;
 }
 
 export interface PainelEquipeMultidisciplinarProps {
   especialistas: EspecialistaEquipeItem[];
   usuarioLogadoId?: string | null;
+  terapeutaResponsavelId?: string | null;
   loading?: boolean;
   erro?: string | null;
   removendoId?: string | null;
@@ -66,6 +70,7 @@ function resolverRegistroProfissional(
 function PainelEquipeMultidisciplinarContract({
   especialistas,
   usuarioLogadoId,
+  terapeutaResponsavelId,
   loading = false,
   erro = null,
   removendoId = null,
@@ -73,31 +78,51 @@ function PainelEquipeMultidisciplinarContract({
   onDesvincularEspecialista,
   onRetry,
 }: PainelEquipeMultidisciplinarProps) {
+  const user = useAuthStore((s) => s.user);
+  const isSuperAdmin = Boolean(
+    user?.is_super_admin || user?.role === "super_admin",
+  );
   const bloqueioUltimoEspecialista = especialistas.length <= 1;
+  const liderEncontrado = especialistas.find(
+    (esp) =>
+      esp.eh_responsavel === true ||
+      esp.papel_equipe === "Especialista Responsável" ||
+      esp.papel_equipe === "Terapeuta Responsável",
+  );
+  const liderId =
+    terapeutaResponsavelId ||
+    liderEncontrado?.id ||
+    especialistas[0]?.id ||
+    null;
+  const idEfetivoLogado = usuarioLogadoId || user?.id;
+  const isLiderLogado =
+    Boolean(idEfetivoLogado && liderId && idEfetivoLogado === liderId) ||
+    (especialistas.length === 0 && Boolean(idEfetivoLogado));
+  const podeGerenciarEquipe = isSuperAdmin || isLiderLogado;
 
   return (
     <section
-      aria-label="Equipe Multidisciplinar (Especialistas Vinculados)"
+      aria-label="Equipe Especialista"
       data-testid="painel-equipe-multidisciplinar"
       className="rounded-xl border border-border bg-card p-4 shadow-xs"
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold text-foreground">
-            Equipe Multidisciplinar (Especialistas Vinculados)
+            Equipe Especialista
           </h2>
-          <p className="text-xs text-muted-foreground">
-            Profissionais da clínica com acesso compartilhado ao prontuário
-          </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onAbrirModalVincular?.()}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
-        >
-          Adicionar Especialista
-        </button>
+        {podeGerenciarEquipe && (
+          <button
+            type="button"
+            onClick={() => onAbrirModalVincular?.()}
+            data-testid="btn-abrir-modal-vincular"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
+          >
+            Adicionar Especialista
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -427,7 +452,7 @@ describe("Suíte da Equipe Multidisciplinar (Cards 4.1, 4.2, 4.3 e 4.4 — RF18,
       );
 
       expect(
-        screen.getByText(/Equipe Multidisciplinar/i),
+        screen.getByText(/Equipe Especialista/i),
       ).toBeTruthy();
       const skeletonNode =
         screen.queryByTestId("painel-equipe-skeleton") ??
@@ -478,7 +503,7 @@ describe("Suíte da Equipe Multidisciplinar (Cards 4.1, 4.2, 4.3 e 4.4 — RF18,
       expect(container.innerHTML).not.toMatch(/co-?terapeuta/i);
     });
 
-    it("deve renderizar o estado de Success com múltiplos especialistas, destacando 'Você (Logado)' e credenciais", () => {
+    it("deve renderizar o estado de Success com múltiplos especialistas, destacando 'Você (Logado)', badge 'Responsável (Líder)' e credenciais", () => {
       const { container } = render(
         <PainelEquipeMultidisciplinar
           especialistas={[terapeutaLogado, segundoEspecialista]}
@@ -490,6 +515,10 @@ describe("Suíte da Equipe Multidisciplinar (Cards 4.1, 4.2, 4.3 e 4.4 — RF18,
       expect(screen.getByText("Dra. Ana Beatriz Souza")).toBeTruthy();
       expect(screen.getByText("Dr. Carlos Eduardo Lima")).toBeTruthy();
       expect(screen.getByText(/Você \(Logado\)/i)).toBeTruthy();
+      expect(
+        screen.getByTestId(`badge-lider-equipe-${terapeutaLogado.id}`),
+      ).toBeTruthy();
+      expect(screen.getByText(/Responsável \(Líder\)/i)).toBeTruthy();
       expect(screen.getByText(/Terapia Ocupacional/i)).toBeTruthy();
       expect(screen.getByText(/Psicologia Clínica ABA/i)).toBeTruthy();
       expect(container.innerHTML).not.toMatch(/co-?terapeuta/i);
@@ -562,6 +591,66 @@ describe("Suíte da Equipe Multidisciplinar (Cards 4.1, 4.2, 4.3 e 4.4 — RF18,
       fireEvent.click(botaoAdicionar);
 
       expect(onAbrirModalMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("deve ocultar os botões de 'Adicionar Especialista' e 'Desvincular' quando o usuarioLogadoId pertence a um especialista comum (não líder e não SuperAdmin)", () => {
+      useAuthStore.setState({ user: null, isAuthenticated: false });
+
+      render(
+        <PainelEquipeMultidisciplinar
+          especialistas={[terapeutaLogado, segundoEspecialista]}
+          usuarioLogadoId={segundoEspecialista.id}
+          terapeutaResponsavelId={terapeutaLogado.id}
+          loading={false}
+        />,
+      );
+
+      expect(
+        screen.queryByTestId("btn-abrir-modal-vincular"),
+      ).toBeNull();
+      expect(
+        screen.queryByTestId(`btn-desvincular-${terapeutaLogado.id}`),
+      ).toBeNull();
+      expect(
+        screen.queryByTestId(`btn-desvincular-${segundoEspecialista.id}`),
+      ).toBeNull();
+    });
+
+    it("deve exibir os botões de 'Adicionar Especialista' e 'Desvincular' para SuperAdmin mesmo não sendo o líder da equipe", () => {
+      useAuthStore.setState({
+        user: {
+          id: terceiroEspecialista.id,
+          nome: terceiroEspecialista.nome,
+          email: "admin@intea.com.br",
+          clinica_id: "clinica-01",
+          crefito: "CREFONO-8/99887",
+          is_super_admin: true,
+          status_ativo: true,
+          role: "super_admin",
+        },
+        isAuthenticated: true,
+      });
+
+      render(
+        <PainelEquipeMultidisciplinar
+          especialistas={[terapeutaLogado, segundoEspecialista]}
+          usuarioLogadoId={terceiroEspecialista.id}
+          terapeutaResponsavelId={terapeutaLogado.id}
+          loading={false}
+        />,
+      );
+
+      expect(
+        screen.getByTestId("btn-abrir-modal-vincular"),
+      ).toBeTruthy();
+      expect(
+        screen.getByTestId(`btn-desvincular-${terapeutaLogado.id}`),
+      ).toBeTruthy();
+      expect(
+        screen.getByTestId(`btn-desvincular-${segundoEspecialista.id}`),
+      ).toBeTruthy();
+
+      useAuthStore.setState({ user: null, isAuthenticated: false });
     });
   });
 

@@ -535,6 +535,45 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         ).rejects.toMatchObject({ statusCode: 400 });
       });
 
+      it('deve rejeitar com 403 quando requisitante não for o Terapeuta Responsável (Líder) nem SuperAdmin', async () => {
+        vi.spyOn(PacienteModel, 'obterTerapeutaResponsavel').mockResolvedValue(terapeutaAId);
+        const spyVincular = vi.spyOn(PacienteModel, 'vincularTerapeuta');
+
+        await expect(
+          PacienteService.vincularTerapeuta(pacienteId, terapeutaBId, {
+            id: terapeutaBId,
+            is_super_admin: false,
+          })
+        ).rejects.toMatchObject({
+          statusCode: 403,
+          message:
+            'Acesso negado: apenas o Terapeuta Responsável (Líder) ou um SuperAdmin podem adicionar especialistas à equipe deste paciente.',
+        });
+
+        expect(spyVincular).not.toHaveBeenCalled();
+      });
+
+      it('deve permitir vinculação pelo Terapeuta Responsável (Líder) ou SuperAdmin', async () => {
+        vi.spyOn(PacienteModel, 'obterTerapeutaResponsavel').mockResolvedValue(terapeutaAId);
+        const spyVincular = vi.spyOn(PacienteModel, 'vincularTerapeuta').mockResolvedValue();
+
+        await expect(
+          PacienteService.vincularTerapeuta(pacienteId, terapeutaBId, {
+            id: terapeutaAId,
+            is_super_admin: false,
+          })
+        ).resolves.toBeUndefined();
+
+        await expect(
+          PacienteService.vincularTerapeuta(pacienteId, terapeutaBId, {
+            id: superAdminId,
+            is_super_admin: true,
+          })
+        ).resolves.toBeUndefined();
+
+        expect(spyVincular).toHaveBeenCalledTimes(2);
+      });
+
       it('deve converter erro de clínica divergente em PacienteServiceError 403 (RN04)', async () => {
         vi.spyOn(PacienteModel, 'vincularTerapeuta').mockRejectedValue(
           new Error('Bloqueio de segurança: Não é permitido vincular terapeutas de clínicas diferentes.')
@@ -592,7 +631,7 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
       });
     });
 
-    describe('PacienteService.desvincularTerapeuta (Regra D1 e Prevenção Anti-Órfão)', () => {
+    describe('PacienteService.desvincularTerapeuta (Governança do Líder, SuperAdmin e Prevenção Anti-Órfão)', () => {
       it('deve rejeitar com 400 se pacienteId ou terapeutaId não forem UUIDs válidos', async () => {
         await expect(
           PacienteService.desvincularTerapeuta('invalido', terapeutaBId)
@@ -603,31 +642,33 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         ).rejects.toMatchObject({ statusCode: 400 });
       });
 
-      it('deve rejeitar com 403 (D1) quando terapeuta comum tentar desvincular outro colega', async () => {
+      it('deve rejeitar com 403 quando especialista comum (não Líder) tentar desvincular vínculo da equipe', async () => {
+        vi.spyOn(PacienteModel, 'obterTerapeutaResponsavel').mockResolvedValue(terapeutaAId);
         const spyDesvincular = vi.spyOn(PacienteModel, 'desvincularTerapeuta');
 
         await expect(
-          PacienteService.desvincularTerapeuta(pacienteId, terapeutaBId, {
-            id: terapeutaAId,
+          PacienteService.desvincularTerapeuta(pacienteId, terapeutaAId, {
+            id: terapeutaBId,
             is_super_admin: false,
           })
         ).rejects.toMatchObject({
           statusCode: 403,
           message:
-            'Acesso negado: apenas o próprio especialista ou um SuperAdmin pode remover este vínculo da equipe.',
+            'Acesso negado: apenas o Terapeuta Responsável (Líder) ou um SuperAdmin podem remover vínculos da equipe.',
         });
 
         expect(spyDesvincular).not.toHaveBeenCalled();
       });
 
-      it('deve permitir auto-remoção (200) quando o próprio terapeuta solicita desvínculo e há outro ativo', async () => {
+      it('deve permitir que o Terapeuta Responsável (Líder) desvincule outro especialista da equipe quando há outro ativo', async () => {
+        vi.spyOn(PacienteModel, 'obterTerapeutaResponsavel').mockResolvedValue(terapeutaAId);
         const spyDesvincular = vi
           .spyOn(PacienteModel, 'desvincularTerapeuta')
           .mockResolvedValue('removido');
 
         await expect(
           PacienteService.desvincularTerapeuta(pacienteId, terapeutaBId, {
-            id: terapeutaBId,
+            id: terapeutaAId,
             is_super_admin: false,
           })
         ).resolves.toBeUndefined();
@@ -635,7 +676,7 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         expect(spyDesvincular).toHaveBeenCalledWith(pacienteId, terapeutaBId);
       });
 
-      it('deve permitir que SuperAdmin desvincule outro terapeuta quando restar especialista ativo', async () => {
+      it('deve permitir que SuperAdmin desvincule outro terapeuta quando restar especialista ativo (inclusive via fallback no banco)', async () => {
         const spyDesvincular = vi
           .spyOn(PacienteModel, 'desvincularTerapeuta')
           .mockResolvedValue('removido');
@@ -648,6 +689,27 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         ).resolves.toBeUndefined();
 
         expect(spyDesvincular).toHaveBeenCalledWith(pacienteId, terapeutaBId);
+
+        // Teste com is_super_admin = false no objeto mas true na tabela terapeuta do banco
+        vi.spyOn(supabase, 'from').mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { is_super_admin: true, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>);
+
+        await expect(
+          PacienteService.desvincularTerapeuta(pacienteId, terapeutaBId, {
+            id: superAdminId,
+            is_super_admin: false,
+          })
+        ).resolves.toBeUndefined();
+
+        expect(spyDesvincular).toHaveBeenCalledTimes(2);
       });
 
       it('deve rejeitar com 409 quando o terapeuta for o último especialista ativo vinculado (anti-órfão)', async () => {
@@ -713,6 +775,8 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
             registro_profissional: 'CREFITO-111',
             especialidade: 'Terapia Ocupacional',
             created_at: '2026-10-01T10:00:00.000Z',
+            eh_responsavel: true,
+            papel_equipe: 'Especialista Responsável' as const,
           },
         ];
 
@@ -723,6 +787,7 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         expect(resultado).toHaveLength(1);
         expect(resultado[0]?.crefito).toBe('CREFITO-111');
         expect(resultado[0]?.created_at).toBe('2026-10-01T10:00:00.000Z');
+        expect(resultado[0]?.eh_responsavel).toBe(true);
       });
     });
 

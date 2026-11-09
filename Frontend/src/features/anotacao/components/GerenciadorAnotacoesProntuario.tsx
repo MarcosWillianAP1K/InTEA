@@ -17,7 +17,11 @@ import {
   Send,
   Loader2,
   FolderOpen,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+
+const ITENS_POR_PAGINA = 4;
 
 export interface GerenciadorAnotacoesProntuarioProps {
   pacienteId: string;
@@ -73,6 +77,7 @@ export function GerenciadorAnotacoesProntuario({
   const [anotacoes, setAnotacoes] = useState<AnotacaoClinica[]>([]);
   const [carregando, setCarregando] = useState<boolean>(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [paginaAtual, setPaginaAtual] = useState<number>(1);
 
   const [filtros, setFiltros] = useState<FiltroAnotacaoDTO>({
     paciente_id: pacienteId,
@@ -181,6 +186,23 @@ export function GerenciadorAnotacoesProntuario({
     });
   }, [anotacoes, filtros]);
 
+  const totalItens = anotacoesFiltradas.length;
+  const totalPaginas = Math.ceil(totalItens / ITENS_POR_PAGINA) || 1;
+  const indiceInicio = (paginaAtual - 1) * ITENS_POR_PAGINA;
+  const indiceFim = indiceInicio + ITENS_POR_PAGINA;
+  const anotacoesPaginadas = useMemo(
+    () => anotacoesFiltradas.slice(indiceInicio, indiceFim),
+    [anotacoesFiltradas, indiceInicio, indiceFim],
+  );
+  const itemInicioExibido = totalItens === 0 ? 0 : indiceInicio + 1;
+  const itemFimExibido = Math.min(indiceFim, totalItens);
+
+  useEffect(() => {
+    if (paginaAtual > totalPaginas) {
+      setPaginaAtual(1);
+    }
+  }, [paginaAtual, totalPaginas]);
+
   // Submissão de nova anotação clínica (RF16, RF21)
   async function handleCriarAnotacao(e: FormEvent) {
     e.preventDefault();
@@ -201,6 +223,7 @@ export function GerenciadorAnotacoesProntuario({
       clearDraft();
       // Atualização imediata otimista / reativa
       setAnotacoes((prev) => [novaAnotacao, ...prev]);
+      setPaginaAtual(1);
     } catch (err) {
       const mensagem =
         err instanceof Error
@@ -374,7 +397,10 @@ export function GerenciadorAnotacoesProntuario({
       {/* Barra de Filtros Longitudinais (RF19) */}
       <FiltrosAnotacoesClinicas
         filtros={filtros}
-        onFiltrosChange={setFiltros}
+        onFiltrosChange={(novosFiltros) => {
+          setFiltros(novosFiltros);
+          setPaginaAtual(1);
+        }}
         autoresDisponiveis={autoresDisponiveis}
         desabilitado={carregando}
       />
@@ -468,22 +494,73 @@ export function GerenciadorAnotacoesProntuario({
         </div>
       )}
 
-      {/* 4. SUCCESS STATE (Lista de Anotações) */}
+      {/* 4. SUCCESS STATE (Lista de Anotações Paginada) */}
       {!carregando && !erro && anotacoesFiltradas.length > 0 && (
-        <div
-          data-testid="anotacoes-lista"
-          className="flex flex-col gap-3.5"
-        >
-          {anotacoesFiltradas.map((anotacao) => (
-            <CardAnotacaoClinica
-              key={anotacao.id}
-              anotacao={anotacao}
-              usuarioLogadoId={idTerapeutaFinal}
-              onAtualizar={handleAtualizarAnotacao}
-              onInativar={handleInativarAnotacao}
-              isSubmitting={isSubmitting}
-            />
-          ))}
+        <div className="flex flex-col gap-4">
+          <div
+            data-testid="anotacoes-lista"
+            className="flex flex-col gap-3.5"
+          >
+            {anotacoesPaginadas.map((anotacao) => (
+              <CardAnotacaoClinica
+                key={anotacao.id}
+                anotacao={anotacao}
+                usuarioLogadoId={idTerapeutaFinal}
+                onAtualizar={handleAtualizarAnotacao}
+                onInativar={handleInativarAnotacao}
+                isSubmitting={isSubmitting}
+              />
+            ))}
+          </div>
+
+          <div
+            data-testid="controles-paginacao-anotacoes"
+            className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-border/60"
+          >
+            <span
+              data-testid="indicador-itens-paginacao"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              Exibindo {itemInicioExibido}–{itemFimExibido} de {totalItens} anotações
+            </span>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={paginaAtual <= 1 || isSubmitting}
+                onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
+                data-testid="botao-pagina-anterior"
+                className="min-h-11 min-w-11 px-3.5 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Anterior</span>
+              </Button>
+
+              <span
+                data-testid="indicador-pagina-atual"
+                className="text-xs font-bold text-foreground px-2"
+              >
+                Página {paginaAtual} de {totalPaginas}
+              </span>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={paginaAtual >= totalPaginas || isSubmitting}
+                onClick={() =>
+                  setPaginaAtual((p) => Math.min(totalPaginas, p + 1))
+                }
+                data-testid="botao-pagina-proxima"
+                className="min-h-11 min-w-11 px-3.5 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+              >
+                <span>Próximo</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </section>

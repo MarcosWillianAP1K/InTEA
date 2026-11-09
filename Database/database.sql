@@ -134,6 +134,23 @@ CREATE TABLE IF NOT EXISTS public.terapeuta_paciente (
 );
 
 -- ==============================================================================
+-- 8.1. TABELA: terapeuta_paciente_responsavel (Líder da Equipe - Migration 024)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.terapeuta_paciente_responsavel (
+    paciente_id UUID PRIMARY KEY REFERENCES public.paciente(id) ON DELETE CASCADE,
+    terapeuta_id UUID NOT NULL REFERENCES public.terapeuta(id) ON DELETE RESTRICT,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+    CONSTRAINT fk_lider_vinculo_equipe
+        FOREIGN KEY (terapeuta_id, paciente_id)
+        REFERENCES public.terapeuta_paciente(terapeuta_id, paciente_id)
+        ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_terapeuta_paciente_responsavel_terapeuta
+    ON public.terapeuta_paciente_responsavel(terapeuta_id);
+
+-- ==============================================================================
 -- 9. TABELAS: gatilhos e paciente_gatilho (Catálogo e Vínculo com Severidade)
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.gatilhos (
@@ -828,7 +845,7 @@ CREATE INDEX IF NOT EXISTS idx_auditoria_vinculo_autor
 CREATE INDEX IF NOT EXISTS idx_auditoria_vinculo_acao
     ON public.auditoria_vinculo_acesso(acao);
 
--- 5. Função Atômica Anti-Órfão com Lock Pessimista (RN04, RF08)
+-- 5. Função Atômica Anti-Órfão com Lock Pessimista e Sucessão de Liderança (RN04, RF08, Migration 024)
 CREATE OR REPLACE FUNCTION public.desvincular_terapeuta_seguro(
     p_paciente_id UUID,
     p_terapeuta_id UUID
@@ -836,6 +853,7 @@ CREATE OR REPLACE FUNCTION public.desvincular_terapeuta_seguro(
 DECLARE
     v_existe_vinculo BOOLEAN;
     v_ativos_restantes INTEGER;
+    v_novo_lider_id UUID;
 BEGIN
     -- Trava pessimista na linha do paciente para impedir condição de corrida
     PERFORM 1 FROM public.paciente WHERE id = p_paciente_id FOR UPDATE;
@@ -859,6 +877,29 @@ BEGIN
 
     IF v_ativos_restantes <= 0 THEN
         RETURN 'ultimo_ativo';
+    END IF;
+
+    -- Se o terapeuta removido for o líder atual, transfere a liderança para o especialista ativo mais antigo restante
+    IF EXISTS (
+        SELECT 1 FROM public.terapeuta_paciente_responsavel
+        WHERE paciente_id = p_paciente_id AND terapeuta_id = p_terapeuta_id
+    ) THEN
+        SELECT tp.terapeuta_id
+        INTO v_novo_lider_id
+        FROM public.terapeuta_paciente tp
+        JOIN public.terapeuta t ON t.id = tp.terapeuta_id
+        WHERE tp.paciente_id = p_paciente_id
+          AND tp.terapeuta_id <> p_terapeuta_id
+          AND t.status_ativo = TRUE
+        ORDER BY tp.created_at ASC
+        LIMIT 1;
+
+        IF v_novo_lider_id IS NOT NULL THEN
+            UPDATE public.terapeuta_paciente_responsavel
+            SET terapeuta_id = v_novo_lider_id,
+                updated_at = TIMEZONE('utc', NOW())
+            WHERE paciente_id = p_paciente_id;
+        END IF;
     END IF;
 
     DELETE FROM public.terapeuta_paciente
@@ -969,6 +1010,7 @@ ALTER TABLE IF EXISTS public.responsavel ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.paciente_responsavel ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.dados_clinicos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.terapeuta_paciente ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.terapeuta_paciente_responsavel ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.gatilhos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.paciente_gatilho ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.laudo_clinico ENABLE ROW LEVEL SECURITY;
@@ -1106,6 +1148,23 @@ CREATE POLICY "terapeuta_paciente_insert_equipe_mesma_clinica" ON public.terapeu
 CREATE POLICY "terapeuta_paciente_delete_equipe_ou_admin" ON public.terapeuta_paciente
     FOR DELETE TO authenticated
     USING (public.rls_is_super_admin() OR public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "tpr_select_equipe_ou_admin" ON public.terapeuta_paciente_responsavel
+    FOR SELECT TO authenticated
+    USING (public.rls_is_super_admin() OR public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "tpr_insert_equipe_ou_admin" ON public.terapeuta_paciente_responsavel
+    FOR INSERT TO authenticated
+    WITH CHECK (public.rls_is_super_admin() OR public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "tpr_update_lider_ou_admin" ON public.terapeuta_paciente_responsavel
+    FOR UPDATE TO authenticated
+    USING (public.rls_is_super_admin() OR terapeuta_id = auth.uid())
+    WITH CHECK (public.rls_is_super_admin() OR public.rls_tem_vinculo_paciente(paciente_id));
+
+CREATE POLICY "tpr_delete_super_admin" ON public.terapeuta_paciente_responsavel
+    FOR DELETE TO authenticated
+    USING (public.rls_is_super_admin());
 
 CREATE POLICY "gatilhos_select_autenticados" ON public.gatilhos
     FOR SELECT TO authenticated

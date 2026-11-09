@@ -70,7 +70,7 @@ describe("Componente CardPacienteGrid (Figma: 'Card paciente' 67:1592)", () => {
     expect(screen.getByText("Inativo")).toBeDefined();
   });
 
-  it("deve renderizar o componente SparklineTendencia com acessibilidade para o paciente", () => {
+  it("não deve renderizar gráfico ou porcentagem arbitrária de evolução no card", () => {
     const patientComHistorico: Patient = {
       ...mockPatient,
       performanceScore: 78,
@@ -78,7 +78,7 @@ describe("Componente CardPacienteGrid (Figma: 'Card paciente' 67:1592)", () => {
     };
 
     render(<CardPacienteGrid patient={patientComHistorico} />);
-    expect(screen.getByRole("img", { name: /Tendência de alta/i })).toBeDefined();
-    expect(screen.getByTestId("sparkline-tendencia")).toBeDefined();
+    expect(screen.queryByText(/Evolução/i)).toBeNull();
+    expect(screen.queryByTestId("sparkline-tendencia")).toBeNull();
   });
 });

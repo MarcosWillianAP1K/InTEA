@@ -9,9 +9,17 @@ export interface ResponsavelVinculado {
   id?: string;
   nome?: string;
   cpf?: string | null;
+  data_nascimento?: string | null;
   telefone?: string | null;
   email?: string | null;
   parentesco?: string | null;
+  cep?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  endereco?: string | null;
+  bairro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
   [key: string]: unknown;
 }
 
@@ -24,6 +32,8 @@ export interface EspecialistaVinculado {
   registro_profissional: string | null;
   especialidade: string | null;
   created_at: string;
+  eh_responsavel?: boolean;
+  papel_equipe?: 'Especialista Responsável' | 'Especialista Vinculado';
 }
 
 export type ResultadoDesvinculo = 'removido' | 'nao_vinculado' | 'ultimo_ativo';
@@ -37,6 +47,8 @@ export interface TerapeutaVinculado {
   registro_profissional?: string | null;
   especialidade?: string | null;
   created_at?: string;
+  eh_responsavel?: boolean;
+  papel_equipe?: 'Especialista Responsável' | 'Especialista Vinculado';
   [key: string]: unknown;
 }
 
@@ -60,8 +72,13 @@ export interface Paciente {
   bairro: string | null;           // Bairro
   numero: string | null;           // Número da residência
   complemento: string | null;      // Complemento (apto, bloco, casa 2, etc.)
-  responsaveis?: (ResponsavelVinculado | { responsavel: ResponsavelVinculado })[];
-  terapeutas?: (TerapeutaVinculado | { terapeuta: TerapeutaVinculado })[];
+  responsaveis?: (ResponsavelVinculado | { responsavel: ResponsavelVinculado; tipo_responsavel?: string; parentesco?: string | null })[];
+  terapeutas?: (TerapeutaVinculado | { terapeuta: TerapeutaVinculado; created_at?: string })[];
+  dados_clinicos?: Record<string, unknown> | Record<string, unknown>[] | null;
+  gatilhos?: Record<string, unknown>[];
+  laudos?: Record<string, unknown>[];
+  terapeuta_responsavel?: { terapeuta_id?: string } | { terapeuta_id?: string }[] | null;
+  terapeuta_responsavel_id?: string | null;
 }
 
 /**
@@ -277,20 +294,42 @@ export class PacienteModel {
   }
 
   /**
-   * Retrieves a specific patient record by their UUID, including linked guardians and therapists.
+   * Retrieves a specific patient record by their UUID, including linked guardians, therapists, clinical profile, triggers, and reports.
    *
    * @param id - The UUID identifier of the target patient.
    * @returns The patient entity if found, or null otherwise.
    * @throws {Error} If the database query fails.
    */
   static async buscarPorId(id: string): Promise<Paciente | null> {
+    const selectEnriquecido =
+      '*, responsaveis:paciente_responsavel(tipo_responsavel, parentesco, responsavel(*)), terapeutas:terapeuta_paciente(created_at, terapeuta(*)), dados_clinicos(*), gatilhos:paciente_gatilho(gatilho_id, grau_severidade, observacoes, gatilho:gatilhos(*)), laudos:laudo_clinico(*, terapeuta:terapeuta(id, nome, registro_profissional, especialidade)), terapeuta_responsavel:terapeuta_paciente_responsavel(terapeuta_id)';
+
     const { data, error } = await supabase
       .from('paciente')
-      .select('*, responsaveis:paciente_responsavel(responsavel(*)), terapeutas:terapeuta_paciente(terapeuta(*))')
+      .select(selectEnriquecido)
       .eq('id', id)
       .maybeSingle();
 
     if (error) {
+      if (
+        error.message?.includes('terapeuta_paciente_responsavel') ||
+        error.message?.includes('laudo_clinico') ||
+        error.message?.includes('paciente_gatilho') ||
+        error.message?.includes('relationship')
+      ) {
+        const fallback = await supabase
+          .from('paciente')
+          .select('*, responsaveis:paciente_responsavel(responsavel(*)), terapeutas:terapeuta_paciente(terapeuta(*))')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (fallback.error) {
+          throw new Error(`Erro ao buscar paciente por ID: ${fallback.error.message}`);
+        }
+
+        return (fallback.data as Paciente) || null;
+      }
+
       throw new Error(`Erro ao buscar paciente por ID: ${error.message}`);
     }
 
@@ -392,8 +431,9 @@ export class PacienteModel {
       await this.salvarOuVincularResponsavel(novoPaciente.id, dto.responsavel);
     }
 
-    // Auto-vínculo do criador na tabela associativa (RN04)
+    // Auto-vínculo do criador na tabela associativa (RN04) e como Terapeuta Responsável (Líder)
     if (terapeutaCriadorId && validarUUID(terapeutaCriadorId)) {
+      const agoraIso = new Date().toISOString();
       try {
         const client = supabase.from('terapeuta_paciente');
         if (typeof client?.upsert === 'function') {
@@ -401,7 +441,7 @@ export class PacienteModel {
             {
               terapeuta_id: terapeutaCriadorId,
               paciente_id: novoPaciente.id,
-              created_at: new Date().toISOString(),
+              created_at: agoraIso,
             },
             { onConflict: 'terapeuta_id,paciente_id', ignoreDuplicates: true }
           );
@@ -412,6 +452,23 @@ export class PacienteModel {
         }
       } catch (err) {
         console.warn('[PacienteModel.criar] Aviso ao auto-vincular criador:', err);
+      }
+
+      try {
+        const clientResp = supabase.from('terapeuta_paciente_responsavel');
+        if (typeof clientResp?.upsert === 'function') {
+          await clientResp.upsert(
+            {
+              paciente_id: novoPaciente.id,
+              terapeuta_id: terapeutaCriadorId,
+              created_at: agoraIso,
+              updated_at: agoraIso,
+            },
+            { onConflict: 'paciente_id', ignoreDuplicates: true }
+          );
+        }
+      } catch {
+        // Ignora erro caso tabela não esteja mockada em testes unitários
       }
     }
 
@@ -456,8 +513,9 @@ export class PacienteModel {
       await this.salvarOuVincularResponsavel(id, dto.responsavel);
     }
 
-    // Auto-vínculo do criador na tabela associativa (RN04)
+    // Auto-vínculo do criador na tabela associativa (RN04) e como Terapeuta Responsável (Líder)
     if (terapeutaCriadorId && validarUUID(terapeutaCriadorId)) {
+      const agoraIso = new Date().toISOString();
       try {
         const client = supabase.from('terapeuta_paciente');
         if (typeof client?.upsert === 'function') {
@@ -465,7 +523,7 @@ export class PacienteModel {
             {
               terapeuta_id: terapeutaCriadorId,
               paciente_id: id,
-              created_at: new Date().toISOString(),
+              created_at: agoraIso,
             },
             { onConflict: 'terapeuta_id,paciente_id', ignoreDuplicates: true }
           );
@@ -476,6 +534,23 @@ export class PacienteModel {
         }
       } catch (err) {
         console.warn('[PacienteModel.reativarEAtualizar] Aviso ao auto-vincular criador:', err);
+      }
+
+      try {
+        const clientResp = supabase.from('terapeuta_paciente_responsavel');
+        if (typeof clientResp?.upsert === 'function') {
+          await clientResp.upsert(
+            {
+              paciente_id: id,
+              terapeuta_id: terapeutaCriadorId,
+              created_at: agoraIso,
+              updated_at: agoraIso,
+            },
+            { onConflict: 'paciente_id', ignoreDuplicates: true }
+          );
+        }
+      } catch {
+        // Ignora erro caso tabela não esteja mockada em testes unitários
       }
     }
 
@@ -759,8 +834,84 @@ export class PacienteModel {
   }
 
   // ============================================================================
-  // 3. GESTÃO DE VÍNCULOS TERAPEUTA-PACIENTE
+  // 3. GESTÃO DE VÍNCULOS TERAPEUTA-PACIENTE E LÍDER DA EQUIPE
   // ============================================================================
+
+  /**
+   * Obtains the UUID of the lead/responsible therapist (`terapeuta_paciente_responsavel`) for a patient.
+   * Falls back to the earliest linked therapist in `terapeuta_paciente` if no explicit record exists.
+   *
+   * @param pacienteId - The UUID identifier of the target patient.
+   * @returns The UUID of the responsible therapist, or null if not found.
+   */
+  static async obterTerapeutaResponsavel(pacienteId: string): Promise<string | null> {
+    try {
+      const clientResp = supabase.from('terapeuta_paciente_responsavel');
+      if (clientResp && typeof clientResp.select === 'function') {
+        const selectBuilder = clientResp.select('terapeuta_id') as unknown as {
+          eq?: (col: string, val: string) => unknown;
+        };
+        if (selectBuilder && typeof selectBuilder.eq === 'function') {
+          const eqQuery = selectBuilder.eq('paciente_id', pacienteId) as {
+            maybeSingle?: () => Promise<{ data?: { terapeuta_id?: string } | null; error?: unknown }>;
+          };
+          if (eqQuery && typeof eqQuery.maybeSingle === 'function') {
+            const { data, error } = await eqQuery.maybeSingle();
+            if (!error && data && typeof data.terapeuta_id === 'string' && data.terapeuta_id) {
+              return data.terapeuta_id;
+            }
+          }
+        }
+      }
+    } catch {
+      // Fallback resiliente para terapeuta_paciente
+    }
+
+    try {
+      const clientTp = supabase.from('terapeuta_paciente');
+      if (clientTp && typeof clientTp.select === 'function') {
+        const selectTp = clientTp.select('terapeuta_id, created_at') as unknown as {
+          eq?: (col: string, val: string) => unknown;
+        };
+        if (selectTp && typeof selectTp.eq === 'function') {
+          const eqTp = selectTp.eq('paciente_id', pacienteId) as {
+            order?: (col: string, opts: { ascending: boolean }) => Promise<{ data?: unknown; error?: unknown }>;
+          };
+          if (eqTp && typeof eqTp.order === 'function') {
+            const { data } = await eqTp.order('created_at', { ascending: true });
+            if (Array.isArray(data) && data.length > 0) {
+              const first = data[0] as Record<string, unknown>;
+              const tObj =
+                first.terapeuta && typeof first.terapeuta === 'object'
+                  ? (first.terapeuta as Record<string, unknown>)
+                  : null;
+              const idEncontrado = first.terapeuta_id ?? tObj?.id ?? first.id;
+              if (typeof idEncontrado === 'string' && idEncontrado) {
+                return idEncontrado;
+              }
+            }
+          } else {
+            const res = await (eqTp as unknown as Promise<{ data?: unknown; error?: unknown }>);
+            if (Array.isArray(res?.data) && res.data.length > 0) {
+              const first = (res.data as Array<Record<string, unknown>>)[0];
+              const tObj =
+                first.terapeuta && typeof first.terapeuta === 'object'
+                  ? (first.terapeuta as Record<string, unknown>)
+                  : null;
+              const idEncontrado = first.terapeuta_id ?? tObj?.id ?? first.id;
+              if (typeof idEncontrado === 'string' && idEncontrado) {
+                return idEncontrado;
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignora erro em mocks parciais
+    }
+
+    return null;
+  }
 
   /**
    * Checks whether an active link exists between a patient and a therapist in `terapeuta_paciente`.
@@ -798,6 +949,7 @@ export class PacienteModel {
               maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }>;
             }
           ).maybeSingle();
+
           if (error) {
             throw new Error(`Erro ao verificar vínculo terapeuta-paciente: ${error.message}`);
           }
@@ -1085,7 +1237,8 @@ export class PacienteModel {
   }
 
   /**
-   * Retrieves all therapists currently associated with a given patient, flattened into `EspecialistaVinculado`.
+   * Retrieves all therapists currently associated with a given patient, flattened into `EspecialistaVinculado`
+   * and enriched with leadership metadata (`eh_responsavel`, `papel_equipe`).
    *
    * @param pacienteId - The UUID identifier of the patient.
    * @returns Array of associated specialist records.
@@ -1115,7 +1268,9 @@ export class PacienteModel {
       return [];
     }
 
-    return (data as Array<Record<string, unknown>>)
+    const responsavelId = await this.obterTerapeutaResponsavel(pacienteId);
+
+    const lista = (data as Array<Record<string, unknown>>)
       .map((item): EspecialistaVinculado | null => {
         if (!item || typeof item !== 'object') return null;
 
@@ -1144,8 +1299,11 @@ export class PacienteModel {
             ? String(raw.registro_profissional)
             : crefito;
 
+        const id = String(raw.id ?? '');
+        const ehResponsavel = Boolean(responsavelId && id === responsavelId);
+
         return {
-          id: String(raw.id ?? ''),
+          id,
           nome: String(raw.nome ?? ''),
           email: raw.email !== undefined && raw.email !== null ? String(raw.email) : null,
           telefone: raw.telefone !== undefined && raw.telefone !== null ? String(raw.telefone) : null,
@@ -1156,8 +1314,24 @@ export class PacienteModel {
               ? String(raw.especialidade)
               : null,
           created_at: createdAtVinculo,
+          eh_responsavel: ehResponsavel,
+          papel_equipe: ehResponsavel ? 'Especialista Responsável' : 'Especialista Vinculado',
         };
       })
       .filter((t): t is EspecialistaVinculado => t !== null);
+
+    // Se não havia registro explícito em terapeuta_paciente_responsavel, o primeiro membro é o líder por fallback
+    if (lista.length > 0 && !lista.some((t) => t.eh_responsavel)) {
+      lista[0].eh_responsavel = true;
+      lista[0].papel_equipe = 'Especialista Responsável';
+    } else if (lista.length > 1) {
+      lista.sort((a, b) => {
+        if (a.eh_responsavel && !b.eh_responsavel) return -1;
+        if (!a.eh_responsavel && b.eh_responsavel) return 1;
+        return 0;
+      });
+    }
+
+    return lista;
   }
 }

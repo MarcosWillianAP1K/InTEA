@@ -78,6 +78,9 @@ export async function verificarVisibilidadePaciente(
     // 4. Verificação de privilégios de SuperAdministrador
     const isSuperAdminMetadata = hasSuperAdminClaim(usuarioLogado);
     if (isSuperAdminMetadata) {
+      if (req.user) {
+        req.user.is_super_admin = true;
+      }
       return next();
     }
 
@@ -100,12 +103,23 @@ export async function verificarVisibilidadePaciente(
     }
 
     if (terapeuta.is_super_admin) {
+      if (req.user) {
+        req.user.is_super_admin = true;
+        if (terapeuta.clinica_id) {
+          req.user.clinica_id = terapeuta.clinica_id;
+        }
+      }
       return next();
     }
 
     if (!terapeuta.status_ativo) {
       res.status(403).json({ error: 'Acesso negado: a conta do terapeuta encontra-se inativa.' });
       return;
+    }
+
+    if (req.user) {
+      req.user.is_super_admin = false;
+      req.user.clinica_id = terapeuta.clinica_id ?? null;
     }
 
     // 5. Bloqueio institucional entre clínicas distintas

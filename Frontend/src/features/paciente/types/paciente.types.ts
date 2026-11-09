@@ -62,6 +62,26 @@ export interface PacienteGatilho {
   gatilho?: Gatilho;
 }
 
+export interface LaudoClinico {
+  id: string;
+  paciente_id: string;
+  terapeuta_id: string;
+  titulo: string;
+  descricao?: string | null;
+  arquivo_caminho: string;
+  arquivo_nome_original: string;
+  arquivo_mime_type: string;
+  tamanho_bytes?: number | null;
+  created_at: string;
+  updated_at?: string;
+  terapeuta?: {
+    id: string;
+    nome: string;
+    especialidade?: string | null;
+    registro_profissional?: string | null;
+  };
+}
+
 export interface TerapeutaVinculado {
   id: string;
   nome: string;
@@ -71,6 +91,7 @@ export interface TerapeutaVinculado {
   crefito?: string | null;
   registro_profissional?: string | null;
   especialidade?: string | null;
+  eh_responsavel?: boolean;
   status_ativo?: boolean;
 }
 
@@ -87,6 +108,7 @@ export interface EspecialistaVinculado {
   registro_profissional?: string | null;
   especialidade?: string | null;
   papel_equipe?: string | null;
+  eh_responsavel?: boolean;
   created_at?: string;
   status_ativo?: boolean;
 }
@@ -95,6 +117,7 @@ export interface TerapeutaPaciente {
   terapeuta_id: string;
   paciente_id: string;
   papel_equipe?: string | null;
+  eh_responsavel?: boolean;
   created_at?: string;
   terapeuta?: TerapeutaVinculado;
 }
@@ -109,6 +132,8 @@ export interface Paciente {
   data_nascimento: string; // ISO 8601 YYYY-MM-DD
   telefone?: string | null;
   cpf?: string | null;
+  foto_url?: string | null;
+  photoUrl?: string | null;
   cep?: string | null;
   cidade?: string | null;
   estado?: string | null;
@@ -118,12 +143,14 @@ export interface Paciente {
   complemento?: string | null;
   status_ativo: boolean;
   consentimento_lgpd?: boolean;
+  terapeuta_responsavel_id?: string | null;
   created_at: string;
   updated_at: string;
   responsaveis?: Responsavel[];
   terapeutas?: TerapeutaPaciente[];
   dados_clinicos?: DadosClinicos | null;
   gatilhos?: PacienteGatilho[];
+  laudos?: LaudoClinico[];
 }
 
 // ============================================================================
@@ -167,6 +194,8 @@ export interface AtualizarPacienteDTO {
   clinica_id?: string | null;
   telefone?: string | null;
   cpf?: string | null;
+  foto_url?: string | null;
+  photoUrl?: string | null;
   cep?: string | null;
   cidade?: string | null;
   estado?: string | null;
@@ -200,6 +229,9 @@ export interface PacienteRespostaApi {
         responsaveis?: Responsavel[];
         dados_clinicos?: DadosClinicos;
         responsavel?: Responsavel | null;
+        gatilhos?: PacienteGatilho[];
+        laudos?: LaudoClinico[];
+        terapeuta_responsavel_id?: string | null;
       };
   message?: string;
 }
@@ -314,7 +346,7 @@ export function pacienteToPatient(paciente: Paciente): Patient {
     age,
     gender: "M",
     birthDate,
-    photoUrl: "",
+    photoUrl: paciente.foto_url || paciente.photoUrl || "",
     category: dados?.diagnostico_base || "TEA Nível 1",
     clinicalStatus: dados?.observacoes_gerais || dados?.diagnostico_base || "Em acompanhamento clínico",
     progress: paciente.status_ativo ? 50 : 100,

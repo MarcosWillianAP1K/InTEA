@@ -2,7 +2,7 @@
  * ============================================================================
  * TELA DE LOGIN OFICIAL — InTEA (Figma Frame: 'Login - InTEA', Node 23:108)
  * Porta de entrada principal da aplicação de Orquestração Clínica.
- * Integrada ao useAuth / useAuthStore e aos perfis de acesso rápido.
+ * Integrada ao useAuth / useAuthStore.
  * Conformidade: RF21 (Autenticação e Autoria), RN04 (Vínculo Institucional).
  * ============================================================================
  */
@@ -18,7 +18,6 @@ import {
   Loader2,
   AlertCircle,
   ShieldCheck,
-  Sparkles,
   CheckCircle2,
   X,
   KeyRound,
@@ -26,46 +25,6 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import { useAuthStore } from "../store/authStore";
 import { authService } from "../services/auth.service";
-
-interface ContaDemonstracao {
-  nome: string;
-  cargo: string;
-  email: string;
-  senha: string;
-}
-
-const CONTAS_DEMONSTRACAO: ContaDemonstracao[] = [
-  {
-    nome: "Dr. Marcos Willian",
-    cargo: "Terapia Ocupacional • Terapeuta",
-    email: "teste@intea.com.br",
-    senha: "Senha@123",
-  },
-  {
-    nome: "Dr. Hermeson Alves",
-    cargo: "Psicomotricidade • Terapeuta",
-    email: "hermeson.alves@intea.clinica",
-    senha: "Senha@123",
-  },
-  {
-    nome: "Dr. Marcos Terapeuta",
-    cargo: "Terapia Ocupacional • Terapeuta",
-    email: "marcos.terapeuta@intea.com.br",
-    senha: "Senha@123",
-  },
-  {
-    nome: "Dra. Luma Maiara",
-    cargo: "Psicologia ABA • Terapeuta",
-    email: "luma.maiara@intea.com.br",
-    senha: "Senha@123",
-  },
-  {
-    nome: "Admin InTEA",
-    cargo: "SuperAdmin Institucional",
-    email: "admin@intea.com.br",
-    senha: "Admin@123",
-  },
-];
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -77,7 +36,6 @@ export function LoginPage() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   const [avisoRecuperacao, setAvisoRecuperacao] = useState<string | null>(null);
-  const [mostrarContasDemo, setMostrarContasDemo] = useState(false);
   const [mostrarModalRecuperar, setMostrarModalRecuperar] = useState(false);
   const [emailRecuperacao, setEmailRecuperacao] = useState("");
   const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false);
@@ -109,14 +67,6 @@ export function LoginPage() {
     } catch {
       // Erro já registrado no useAuthStore
     }
-  }
-
-  function handleSelecionarContaDemo(conta: ContaDemonstracao) {
-    setEmail(conta.email);
-    setSenha(conta.senha);
-    setErroValidacao(null);
-    setAvisoRecuperacao(null);
-    setError(null);
   }
 
   function handleEsqueciSenha() {
@@ -289,55 +239,6 @@ export function LoginPage() {
               </>
             )}
           </button>
-
-          {/* Seção Discreta de Acesso Rápido / Credenciais de Demonstração */}
-          <div className="pt-2 border-t border-border/50 mt-2">
-            <button
-              type="button"
-              onClick={() => setMostrarContasDemo((prev) => !prev)}
-              className="w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-primary transition-colors py-1 cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>
-                {mostrarContasDemo
-                  ? "Ocultar perfis de demonstração"
-                  : "Acessar com credenciais de demonstração"}
-              </span>
-            </button>
-
-            {mostrarContasDemo && (
-              <div className="grid grid-cols-1 gap-1.5 mt-2.5 animate-in fade-in duration-200">
-                {CONTAS_DEMONSTRACAO.map((conta) => {
-                  const selecionado =
-                    email.trim().toLowerCase() === conta.email.toLowerCase();
-                  return (
-                    <button
-                      key={conta.email}
-                      type="button"
-                      onClick={() => handleSelecionarContaDemo(conta)}
-                      className={`flex items-center justify-between text-left px-3 py-2 rounded-[10px] border text-xs transition-all cursor-pointer ${
-                        selecionado
-                          ? "bg-primary/10 border-primary/40 text-primary font-semibold"
-                          : "bg-surface-alt/60 hover:bg-surface-highlight/60 border-border/60 text-foreground"
-                      }`}
-                    >
-                      <div className="flex flex-col min-w-0">
-                        <span className="truncate font-semibold text-foreground-heading">
-                          {conta.nome}
-                        </span>
-                        <span className="truncate text-[11px] text-muted-foreground">
-                          {conta.email}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-card border border-border/70 text-muted-foreground shrink-0 ml-2">
-                        {conta.cargo.split("•")[1]?.trim() || conta.cargo}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </form>
 
         {/* Rodapé do Card */}

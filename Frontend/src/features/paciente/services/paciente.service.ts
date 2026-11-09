@@ -153,12 +153,43 @@ function extrairPaciente(resposta: PacienteRespostaApi | Paciente | null | undef
   if ("data" in resposta && resposta.data) {
     const d = resposta.data;
     if ("paciente" in d && d.paciente) {
-      const p = { ...d.paciente };
-      if ("responsaveis" in d && d.responsaveis && !p.responsaveis) {
-        p.responsaveis = d.responsaveis;
+      const p: Paciente = { ...d.paciente };
+      const responsaveisRaw =
+        ("responsaveis" in d && d.responsaveis) ||
+        (p.responsaveis && p.responsaveis.length > 0 ? p.responsaveis : undefined) ||
+        ("responsavel" in d && d.responsavel ? [d.responsavel] : undefined);
+
+      if (responsaveisRaw) {
+        p.responsaveis = responsaveisRaw.map((r) => ({
+          id: r.id,
+          nome: r.nome,
+          cpf: r.cpf ?? null,
+          data_nascimento: r.data_nascimento ?? null,
+          telefone: r.telefone,
+          email: r.email ?? null,
+          parentesco: r.parentesco ?? null,
+          cep: r.cep ?? null,
+          cidade: r.cidade ?? null,
+          estado: r.estado ?? null,
+          endereco: r.endereco ?? null,
+          bairro: r.bairro ?? null,
+          numero: r.numero ?? null,
+          complemento: r.complemento ?? null,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        }));
       }
       if ("dados_clinicos" in d && d.dados_clinicos && !p.dados_clinicos) {
         p.dados_clinicos = d.dados_clinicos;
+      }
+      if ("gatilhos" in d && d.gatilhos && (!p.gatilhos || p.gatilhos.length === 0)) {
+        p.gatilhos = d.gatilhos;
+      }
+      if ("laudos" in d && d.laudos && (!p.laudos || p.laudos.length === 0)) {
+        p.laudos = d.laudos;
+      }
+      if ("terapeuta_responsavel_id" in d && d.terapeuta_responsavel_id && !p.terapeuta_responsavel_id) {
+        p.terapeuta_responsavel_id = d.terapeuta_responsavel_id;
       }
       return p;
     }
@@ -187,9 +218,15 @@ function criarErroSemantico(mensagem: string, status: number): Error & { status:
 
 function normalizarEspecialistaVinculado(
   item: TerapeutaPaciente | EspecialistaVinculado,
+  index?: number,
 ): EspecialistaVinculado {
   if ("terapeuta_id" in item) {
     const t = item.terapeuta;
+    const papelEquipe = item.papel_equipe ?? "Equipe Multidisciplinar";
+    const ehResponsavel =
+      item.eh_responsavel ??
+      t?.eh_responsavel ??
+      (papelEquipe === "Especialista Responsável" || index === 0);
     return {
       id: t?.id ?? item.terapeuta_id,
       nome: t?.nome ?? "Especialista da Equipe",
@@ -199,11 +236,16 @@ function normalizarEspecialistaVinculado(
       crefito: t?.crefito ?? null,
       registro_profissional: t?.registro_profissional ?? t?.crefito ?? t?.crp ?? null,
       especialidade: t?.especialidade ?? "Equipe Multidisciplinar",
-      papel_equipe: item.papel_equipe ?? "Equipe Multidisciplinar",
+      papel_equipe: papelEquipe,
+      eh_responsavel: ehResponsavel,
       created_at: item.created_at,
       status_ativo: t?.status_ativo ?? true,
     };
   }
+  const papelEquipe = item.papel_equipe ?? "Equipe Multidisciplinar";
+  const ehResponsavel =
+    item.eh_responsavel ??
+    (papelEquipe === "Especialista Responsável" || index === 0);
   return {
     id: item.id,
     nome: item.nome,
@@ -214,7 +256,8 @@ function normalizarEspecialistaVinculado(
     registro_profissional:
       item.registro_profissional ?? item.crefito ?? item.crp ?? null,
     especialidade: item.especialidade ?? "Equipe Multidisciplinar",
-    papel_equipe: item.papel_equipe ?? "Equipe Multidisciplinar",
+    papel_equipe: papelEquipe,
+    eh_responsavel: ehResponsavel,
     created_at: item.created_at,
     status_ativo: item.status_ativo ?? true,
   };
