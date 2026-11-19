@@ -10,6 +10,8 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { AnotacaoService } from '../services/anotacao.service.js';
+import { eventBus } from '../../../core/events/event-bus.js';
+import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 
 export class AnotacaoSessaoController {
   /**
@@ -56,6 +58,21 @@ export class AnotacaoSessaoController {
         res.status(resultado.status).json({ error: resultado.erro });
         return;
       }
+
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'anotacao',
+        acao: 'anotacao_clinica_criada',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogadoId,
+        pacienteId: resultado.dados?.paciente_id ?? String(pacienteId),
+        sessaoId: resultado.dados?.sessao_id ?? String(sessao_id || ''),
+        recursoId: resultado.dados?.id ?? null,
+        descricao: 'Nova anotação clínica registrada durante sessão.',
+        detalhes: { tipo: 'sessao' },
+        ip,
+        userAgent,
+      });
 
       res.status(201).json({
         data: {
@@ -150,6 +167,21 @@ export class AnotacaoSessaoController {
         return;
       }
 
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'anotacao',
+        acao: 'anotacao_clinica_editada',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogadoId,
+        pacienteId: resultado.dados?.paciente_id ?? anotacao.paciente_id,
+        sessaoId: resultado.dados?.sessao_id ?? anotacao.sessao_id ?? null,
+        recursoId: resultado.dados?.id ?? anotacao.id,
+        descricao: 'Anotação clínica de sessão editada.',
+        detalhes: { tipo: 'sessao' },
+        ip,
+        userAgent,
+      });
+
       res.status(200).json({
         data: {
           anotacao: resultado.dados,
@@ -193,6 +225,21 @@ export class AnotacaoSessaoController {
         return;
       }
 
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'anotacao',
+        acao: 'anotacao_clinica_excluida',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogadoId,
+        pacienteId: resultado.dados?.paciente_id ?? anotacao.paciente_id,
+        sessaoId: resultado.dados?.sessao_id ?? anotacao.sessao_id ?? null,
+        recursoId: resultado.dados?.id ?? anotacao.id,
+        descricao: 'Anotação clínica de sessão desativada (soft delete).',
+        detalhes: { tipo: 'sessao' },
+        ip,
+        userAgent,
+      });
+
       res.status(200).json({
         data: {
           anotacao: resultado.dados,
@@ -230,6 +277,21 @@ export class AnotacaoSessaoController {
         res.status(resultado.status).json({ error: resultado.erro });
         return;
       }
+
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'anotacao',
+        acao: 'anotacao_clinica_reativada',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogadoId,
+        pacienteId: resultado.dados?.paciente_id ?? null,
+        sessaoId: resultado.dados?.sessao_id ?? null,
+        recursoId: resultado.dados?.id ?? id,
+        descricao: 'Anotação clínica de sessão reativada.',
+        detalhes: { tipo: 'sessao' },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {

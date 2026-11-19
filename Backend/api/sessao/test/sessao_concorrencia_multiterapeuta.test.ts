@@ -454,6 +454,7 @@ describe('Suíte Integrada: Concorrência e Equipe Multidisciplinar (Sprint 13)'
   // ============================================================================
   describe('4. WebSocket SessaoGateway — Acompanhamento Multidisciplinar ao Vivo (RF18, RF21, RNF01)', () => {
     it('deve emitir equipe_presenca_atualizada e contabilizar observador_equipe conectado na sala', async () => {
+      vi.spyOn(SessaoModel, 'buscarPorToken').mockResolvedValue(criarSessaoMock());
       const socketObservador = await conectarSocketCliente();
       const socketTerapeuta = await conectarSocketCliente();
 
@@ -579,6 +580,7 @@ describe('Suíte Integrada: Concorrência e Equipe Multidisciplinar (Sprint 13)'
     });
 
     it('deve permitir comandos clínicos emitidos pelo terapeuta condutor da sessão', async () => {
+      vi.spyOn(SessaoModel, 'buscarPorToken').mockResolvedValue(criarSessaoMock());
       const socketTerapeuta = await conectarSocketCliente();
       const socketDispositivo = await conectarSocketCliente();
 

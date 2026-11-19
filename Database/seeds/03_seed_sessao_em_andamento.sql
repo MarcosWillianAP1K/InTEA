@@ -99,7 +99,7 @@ SET
 
 -- 3. Telemetria Contínua da Sessão Ativa (Eventos de streaming)
 INSERT INTO public.telemetria_evento (sessao_id, tipo_evento, dados, data_hora)
-VALUES 
+VALUES
     (
         '44444444-4444-4444-8444-444444444444',
         'interacao_paciente',
@@ -119,22 +119,35 @@ VALUES
         TIMEZONE('utc', NOW()) - INTERVAL '1 minute'
     );
 
--- 4. Registro de Auditoria do Pareamento e Início
-INSERT INTO public.auditoria_sessao (sessao_id, terapeuta_id, origem, acao, detalhes_json, created_at)
-VALUES 
+-- 4. Registro Unificado de Auditoria do Pareamento e Início
+INSERT INTO public.auditoria_evento (
+    id, entidade, acao, origem, terapeuta_id, paciente_id, sessao_id, recurso_id, descricao, detalhes_json, created_at
+)
+VALUES
     (
-        '44444444-4444-4444-8444-444444444444',
-        'a9849163-613f-4492-90cf-89985902d16e',
+        'e3500000-0000-4000-8000-000000000001',
+        'sessao',
+        'sessao_criada',
         'terapeuta_web',
-        'sessao_iniciada',
+        'a9849163-613f-4492-90cf-89985902d16e',
+        '164a2d30-2ca1-464f-9b55-9070f06b2058',
+        '44444444-4444-4444-8444-444444444444',
+        '44444444-4444-4444-8444-444444444444',
+        'Sessão clínica iniciada em modo de acompanhamento.',
         '{"modo": "sessao_clinica", "jogo_id": "11111111-1111-4111-8111-111111111111", "paciente_id": "164a2d30-2ca1-464f-9b55-9070f06b2058"}'::jsonb,
         TIMEZONE('utc', NOW()) - INTERVAL '14 minutes'
     ),
     (
-        '44444444-4444-4444-8444-444444444444',
-        'a9849163-613f-4492-90cf-89985902d16e',
-        'dispositivo_jogo',
+        'e3500000-0000-4000-8000-000000000002',
+        'sessao',
         'dispositivo_pareado',
+        'dispositivo_jogo',
+        'a9849163-613f-4492-90cf-89985902d16e',
+        '164a2d30-2ca1-464f-9b55-9070f06b2058',
+        '44444444-4444-4444-8444-444444444444',
+        '44444444-4444-4444-8444-444444444444',
+        'Tablet pareado na sessão em andamento.',
         '{"token": "849-291", "dispositivo": "Tablet Samsung Galaxy Tab S9 FE"}'::jsonb,
         TIMEZONE('utc', NOW()) - INTERVAL '13 minutes'
-    );
+    )
+ON CONFLICT (id) DO NOTHING;

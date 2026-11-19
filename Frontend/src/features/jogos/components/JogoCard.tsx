@@ -2,6 +2,7 @@ import { Play, FlaskConical } from "lucide-react";
 import type { Jogo } from "../types";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
+import { formatarObjetivoClinico } from "../utils/formatarObjetivoClinico";
 
 interface JogoCardProps {
   jogo: Jogo;
@@ -33,7 +34,7 @@ export function JogoCard({
         </div>
 
         <div className="flex flex-col gap-0.5">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-base font-bold text-foreground tracking-tight">
               {jogo.titulo || (jogo as unknown as { nome?: string }).nome}
             </h3>
@@ -43,6 +44,24 @@ export function JogoCard({
             >
               v{jogo.versao}
             </Badge>
+            {(() => {
+              const objetivoRaw =
+                jogo.objetivo_clinico ||
+                jogo.manifesto?.objetivo_clinico ||
+                jogo.manifesto_json?.objetivo_clinico ||
+                jogo.objetivoTerapeutico;
+              const objetivoLabel = formatarObjetivoClinico(objetivoRaw);
+              if (!objetivoLabel) return null;
+              return (
+                <Badge
+                  data-testid="jogo-badge-objetivo"
+                  variant="outline"
+                  className="rounded-md bg-primary/5 text-primary border-primary/20 px-2 py-0.5 text-2xs font-medium"
+                >
+                  {objetivoLabel}
+                </Badge>
+              );
+            })()}
           </div>
           <p className="text-xs text-muted-foreground line-clamp-1">
             {jogo.descricaoClinica || (jogo as unknown as { descricao?: string }).descricao}

@@ -366,6 +366,22 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
         status: vi.fn().mockReturnThis(),
         json: vi.fn(),
       };
+      req.body.clinica_id = '22222222-2222-4222-a222-222222222222';
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'clinica') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: '22222222-2222-4222-a222-222222222222', status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as unknown as ReturnType<typeof supabase.from>;
+        }
+        return {} as unknown as ReturnType<typeof supabase.from>;
+      });
       vi.spyOn(PacienteModel, 'criar').mockResolvedValue({ id: 'uuid-1' } as any);
 
       await PacienteController.criar(req, res);
@@ -463,6 +479,21 @@ describe('POST /api/paciente — Forçamento de clinica_id e Auto-Vínculo (RN04
   it('POST /api/paciente: deve forçar clinica_id do terapeuta logado contra spoofing no DTO', async () => {
     const { PacienteController } = await import('../controllers/paciente.controller.js');
     const { TerapeutaModel } = await import('../../terapeuta/models/terapeuta.model.js');
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'clinica') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: clinicaRealId, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
 
     vi.spyOn(TerapeutaModel, 'buscarPorId').mockResolvedValue({
       id: terapeutaId,
@@ -568,6 +599,21 @@ describe('POST /api/paciente — Forçamento de clinica_id e Auto-Vínculo (RN04
     const { PacienteController } = await import('../controllers/paciente.controller.js');
     const adminId = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
     const clinicaAdminId = 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb';
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'clinica') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: clinicaAdminId, status_ativo: true },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
 
     const spyModelCriar = vi.spyOn(PacienteModel, 'criar').mockResolvedValue({
       id: pacienteId,
@@ -1462,5 +1508,72 @@ describe('Auditoria de Backend: Envelope Pattern Categorizado e Sanitização Es
     expect(Object.keys(json.data).sort()).toEqual(['jogo', 'meta', 'metricas_declaradas', 'series_temporais', 'sessoes'].sort());
     expect(json.data.jogo.id).toBe(jogoUuid);
     expect(json.message).toBe('Histórico do jogo para o paciente recuperado com sucesso.');
+  });
+});
+
+
+describe('RBAC AdminMiddleware — Criação e Edição de Paciente restritas a SuperAdmin (W1-D)', () => {
+  it('deve bloquear com 403 Forbidden quando terapeuta comum tentar POST /api/paciente, PUT /api/paciente/:id ou PATCH /api/paciente/:id', async () => {
+    const { pacienteRoutes } = await import('../routes/paciente.routes.js');
+    const terapeutaComumId = '11111111-1111-4111-a111-111111111111';
+    const pacienteAlvoId = '33333333-3333-4333-a333-333333333333';
+
+    vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: {
+        user: {
+          id: terapeutaComumId,
+          email: 'terapeuta.comum@intea.com.br',
+          app_metadata: { is_super_admin: false },
+        },
+      },
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof supabase.auth.getUser>>);
+
+    vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+      if (tabela === 'terapeuta') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: {
+                  id: terapeutaComumId,
+                  clinica_id: '22222222-2222-4222-a222-222222222222',
+                  is_super_admin: false,
+                  status_ativo: true,
+                },
+                error: null,
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const handlersPost = obterHandlersPaciente(pacienteRoutes, '/', 'post');
+    const reqResPost = criarMockReqResPaciente({
+      headers: { authorization: 'Bearer token-comum' },
+      body: { nome: 'Teste', data_nascimento: '2019-01-01', cpf: '52998224725' },
+    });
+    await executarPipelinePaciente(handlersPost, reqResPost.req, reqResPost.res);
+    expect(reqResPost.getStatus()).toBe(403);
+
+    const handlersPut = obterHandlersPaciente(pacienteRoutes, '/:id', 'put');
+    const reqResPut = criarMockReqResPaciente({
+      headers: { authorization: 'Bearer token-comum' },
+      params: { id: pacienteAlvoId },
+      body: { nome: 'Alterado' },
+    });
+    await executarPipelinePaciente(handlersPut, reqResPut.req, reqResPut.res);
+    expect(reqResPut.getStatus()).toBe(403);
+
+    const handlersPatch = obterHandlersPaciente(pacienteRoutes, '/:id', 'patch');
+    const reqResPatch = criarMockReqResPaciente({
+      headers: { authorization: 'Bearer token-comum' },
+      params: { id: pacienteAlvoId },
+      body: { nome: 'Alterado' },
+    });
+    await executarPipelinePaciente(handlersPatch, reqResPatch.req, reqResPatch.res);
+    expect(reqResPatch.getStatus()).toBe(403);
   });
 });

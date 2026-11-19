@@ -71,6 +71,7 @@ export interface Jogo {
   descricaoClinica: string;
   descricao?: string;
   objetivoTerapeutico: string;
+  objetivo_clinico?: string | null;
   status_jogo?: "ativo" | "desativado" | "manutencao" | "em_breve" | string;
   bannerUrl?: string;
   manifesto: ManifestoJogo;

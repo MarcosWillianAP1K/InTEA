@@ -6,6 +6,7 @@
 import crypto from 'node:crypto';
 import { supabase } from '../../core/supabase/supabase.client.js';
 import { validarUUID } from '../../core/utils/validators.js';
+import { eventBus } from '../../core/events/event-bus.js';
 
 export type TipoOperacaoProntuario = 'visualizacao' | 'alteracao' | 'exclusao_logica' | string;
 
@@ -97,6 +98,24 @@ export class AuditoriaProntuarioService {
       detalhes_json: dto.detalhes_json || {},
       created_at: new Date().toISOString(),
     };
+
+    if (payload.operacao === 'visualizacao') {
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'paciente',
+        acao: 'acesso_prontuario',
+        origem: 'terapeuta_web',
+        terapeutaId: payload.terapeuta_id,
+        pacienteId: payload.paciente_id,
+        recursoId: payload.paciente_id,
+        descricao: 'Consulta clínica ao prontuário do paciente.',
+        detalhes: {
+          ...payload.detalhes_json,
+          recurso_acessado: payload.recurso_acessado,
+        },
+        ip: payload.ip,
+        userAgent: payload.user_agent,
+      });
+    }
 
     if (this.isSupabaseAvailable()) {
       try {

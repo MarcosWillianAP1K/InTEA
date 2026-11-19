@@ -6,6 +6,7 @@ import { AuditoriaAdminPage } from "../pages/AuditoriaAdminPage";
 import {
   auditoriaAdminService,
   MOCK_EVENTOS_AUDITORIA,
+  normalizarEventoAuditoria,
 } from "../services/auditoriaAdmin.service";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
 
@@ -85,9 +86,91 @@ describe("Frontend: Auditoria Administrativa (RF07 / RF08)", () => {
       appendChildSpy.mockRestore();
       removeChildSpy.mockRestore();
     });
+
+    it("deve filtrar eventos por entidade e normalizar objetos relacionais", async () => {
+      const res = await auditoriaAdminService.listar({
+        entidade: "autenticacao",
+      });
+      expect(res.data.length).toBeGreaterThan(0);
+      expect(res.data.every((ev) => ev.entidade === "autenticacao")).toBe(true);
+
+      const normalizado = normalizarEventoAuditoria({
+        id: "evt-rel-1",
+        created_at: "2026-11-18T10:00:00.000Z",
+        entidade: "sessao",
+        acao: "sessao_criada",
+        origem: "terapeuta_web",
+        ip: null,
+        terapeuta: { id: "ter-1", nome: "Dra. Carla", email: "carla@intea.com.br" },
+        paciente: { id: "pac-1", nome: "Pedro Henrique" },
+      });
+
+      expect(normalizado.terapeuta_id).toBe("ter-1");
+      expect(normalizado.terapeuta_nome).toBe("Dra. Carla");
+      expect(normalizado.paciente_id).toBe("pac-1");
+      expect(normalizado.paciente_nome).toBe("Pedro Henrique");
+      expect(normalizado.ip).toBeNull();
+    });
+
+    it("deve alinhar IDs e fallback de IP 'Não registrado' nas exportações CSV e JSON", async () => {
+      const blobsCapturados: Blob[] = [];
+      vi.spyOn(document, "createElement");
+      const appendChildSpy = vi
+        .spyOn(document.body, "appendChild")
+        .mockImplementation(() => document.body);
+      const removeChildSpy = vi
+        .spyOn(document.body, "removeChild")
+        .mockImplementation(() => document.body);
+
+      window.URL.createObjectURL = vi.fn((blob: Blob) => {
+        blobsCapturados.push(blob);
+        return "blob:mock-alinhado";
+      });
+      window.URL.revokeObjectURL = vi.fn();
+
+      const eventoSemIp = {
+        ...MOCK_EVENTOS_AUDITORIA[0],
+        ip: null,
+      };
+
+      auditoriaAdminService.exportarCSV([eventoSemIp]);
+      auditoriaAdminService.exportarJSON([eventoSemIp]);
+
+      const csvTexto = await blobsCapturados[0].text();
+      const jsonTexto = await blobsCapturados[1].text();
+      const jsonParseado = JSON.parse(jsonTexto) as Array<Record<string, unknown>>;
+
+      expect(csvTexto).toContain("ID Terapeuta");
+      expect(csvTexto).toContain("ID Paciente");
+      expect(csvTexto).toContain(eventoSemIp.terapeuta_id);
+      expect(csvTexto).toContain(eventoSemIp.paciente_id);
+      expect(csvTexto).toContain("Não registrado");
+
+      expect(jsonParseado[0].terapeuta_id).toBe(eventoSemIp.terapeuta_id);
+      expect(jsonParseado[0].paciente_id).toBe(eventoSemIp.paciente_id);
+      expect(jsonParseado[0].entidade).toBe(eventoSemIp.entidade);
+      expect(jsonParseado[0].ip).toBe("Não registrado");
+
+      appendChildSpy.mockRestore();
+      removeChildSpy.mockRestore();
+    });
   });
 
   describe("Componente: TabelaAuditoria", () => {
+    it("deve exibir 'Não registrado' em eventos sem IP e renderizar seletor de entidade", () => {
+      const eventosSemIp = [
+        {
+          ...MOCK_EVENTOS_AUDITORIA[0],
+          ip: null,
+        },
+      ];
+
+      render(<TabelaAuditoria eventos={eventosSemIp} loading={false} />);
+
+      expect(screen.getByTestId("select-entidade-filtro")).toBeDefined();
+      expect(screen.getByText("Não registrado")).toBeDefined();
+      expect(screen.queryByText("127.0.0.1")).toBeNull();
+    });
     it("deve renderizar colunas da tabela e registros de auditoria", () => {
       render(
         <TabelaAuditoria eventos={MOCK_EVENTOS_AUDITORIA} loading={false} />

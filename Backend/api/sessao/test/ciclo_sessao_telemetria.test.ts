@@ -234,12 +234,12 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
       expect((jsonFim() as any).data.relatorio).toBeDefined();
       expect(bancoAuditoria.some(a => a.acao === 'sessao_finalizada')).toBe(true);
 
-      // PASSO 5: Consulta da Trilha de Auditoria
+      // PASSO 5: Consulta da Trilha de Auditoria (SuperAdmin)
       const { mockReq: reqAudit, mockRes: resAudit, getStatus: statusAudit, getJson: jsonAudit } = criarMocks(
         {},
         { sessaoId },
         {},
-        { id: terapeutaId }
+        { id: terapeutaId, is_super_admin: true }
       );
       await AuditoriaController.consultarLinhaDoTempo(reqAudit, resAudit);
 
@@ -418,7 +418,7 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
       expect((getJson() as { error: string }).error).toContain('RN04');
     });
 
-    it('deve retornar 403 Forbidden ao consultar auditoria da sessão sem vínculo', async () => {
+    it('deve retornar 403 Forbidden ao consultar auditoria da sessão sem perfil SuperAdmin', async () => {
       vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
         id: sessaoId,
         terapeuta_id: terapeutaId,
@@ -433,7 +433,7 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
       await AuditoriaController.consultarLinhaDoTempo(mockReq, mockRes);
 
       expect(getStatus()).toBe(403);
-      expect((getJson() as { error: string }).error).toContain('RN04');
+      expect((getJson() as { error: string }).error).toContain('SuperAdmin');
     });
   });
 

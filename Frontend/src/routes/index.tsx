@@ -6,6 +6,7 @@ import { PainelPage } from "@/features/painel";
 import { PacientesPage } from "@/features/paciente";
 import { TodosPacientesPage } from "@/features/paciente/pages/TodosPacientesPage";
 import { PerfilPacientePage } from "@/features/paciente/pages/PerfilPacientePage";
+import { FormularioPacientePage } from "@/features/paciente/pages/FormularioPacientePage";
 import { HistoricoPacientePage } from "@/features/paciente";
 import { BibliotecaJogosPage } from "@/features/jogos";
 import { CockpitSessaoPage, ResultadoSessaoPage } from "@/features/sessao";
@@ -48,7 +49,6 @@ export function Routes() {
           <Route path="/painel" element={<PainelPage />} />
           <Route path="/pacientes" element={<PacientesPage />} />
           <Route path="/patients" element={<PacientesPage />} />
-          <Route path="/pacientes/todos" element={<TodosPacientesPage />} />
           <Route path="/pacientes/:id" element={<PerfilPacientePage />} />
           <Route path="/pacientes/:id/historico" element={<HistoricoPacientePage />} />
           <Route path="/jogos" element={<BibliotecaJogosPage />} />
@@ -61,6 +61,9 @@ export function Routes() {
         {/* Rotas Administrativas Exclusivas de SuperAdmin (RF07, RF08) */}
         <Route element={<SuperAdminGuard />}>
           <Route element={<SidebarLayout />}>
+            <Route path="/pacientes/todos" element={<TodosPacientesPage />} />
+            <Route path="/pacientes/cadastrar" element={<FormularioPacientePage />} />
+            <Route path="/pacientes/:id/editar" element={<FormularioPacientePage />} />
             <Route path="/admin/auditoria" element={<AuditoriaAdminPage />} />
           </Route>
         </Route>

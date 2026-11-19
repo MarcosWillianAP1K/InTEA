@@ -449,7 +449,7 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                         <span>Cockpit</span>
                         <ArrowRight className="h-3 w-3 ml-0.5" />
                       </Button>
-                    ) : (
+                    ) : isFinalizada || sessao.status_sessao === "concluida" ? (
                       <Button
                         type="button"
                         variant="outline"
@@ -462,6 +462,13 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
                         <span>Ver Resultados</span>
                         <ArrowRight className="h-3 w-3 ml-0.5" />
                       </Button>
+                    ) : (
+                      <span
+                        className="text-xs text-muted-foreground px-2"
+                        aria-label="Relatório indisponível"
+                      >
+                        —
+                      </span>
                     )}
                   </div>
                 </div>

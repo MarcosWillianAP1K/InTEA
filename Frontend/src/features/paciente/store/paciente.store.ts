@@ -24,6 +24,7 @@ interface PatientsState {
 
   // Actions
   addPatient: (patient: Patient) => void;
+  upsertPatient: (patient: Patient) => void;
   fetchPatients: () => Promise<void>;
   setSelectedPatientId: (id: string | null) => void;
   setSearchTerm: (term: string) => void;
@@ -85,6 +86,14 @@ export const usePatientsStore = create<PatientsState>((set, get) => ({
         ...state.patients,
       },
       selectedPatientId: patient.id,
+    }));
+  },
+  upsertPatient: (patient: Patient) => {
+    set((state) => ({
+      patients: {
+        ...state.patients,
+        [patient.id]: patient,
+      },
     }));
   },
   setSelectedPatientId: (id: string | null) => set({ selectedPatientId: id }),

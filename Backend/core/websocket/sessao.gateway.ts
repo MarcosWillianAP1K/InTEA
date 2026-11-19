@@ -1182,7 +1182,10 @@ export class SessaoGateway {
       if (sessao) {
         await SessaoModel.atualizarStatus(sessao.id, STATUS_SESSAO.INTERROMPIDA_POR_QUEDA);
         await AuditoriaService.registrarSilencioso({
+          entidade: 'sessao',
           sessao_id: sessao.id,
+          paciente_id: sessao.paciente_id || null,
+          recurso_id: sessao.id,
           terapeuta_id: sessao.terapeuta_id,
           origem: 'dispositivo_jogo',
           acao: 'interrompida_por_queda',

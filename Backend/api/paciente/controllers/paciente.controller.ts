@@ -13,6 +13,7 @@ import { PacienteExportarHistoricoService } from '../services/paciente-exportar-
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { obterMensagemErro } from '../../../core/utils/formatters.js';
 import { validarUUID } from '../../../core/utils/validators.js';
+import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 
 // ==============================================================================
 // Tipos de Sanitização de Saída (Zero any)
@@ -33,6 +34,13 @@ export interface PacienteSanitizado {
   complemento: string | null;
   clinica_id: string | null;
   status_ativo: boolean;
+  ultima_sessao_em?: string | null;
+  dados_clinicos?: {
+    diagnostico_base?: string | null;
+    gatilhos_sensoriais?: string[];
+    observacoes_gerais?: string | null;
+  } | null;
+  responsaveis?: ResponsavelSanitizado[];
   created_at?: string;
   updated_at?: string;
 }
@@ -45,6 +53,7 @@ export interface ResponsavelSanitizado {
   telefone: string | null;
   email: string | null;
   parentesco: string | null;
+  tipo_responsavel?: string | null;
   cep: string | null;
   cidade: string | null;
   estado: string | null;
@@ -76,6 +85,33 @@ export interface TerapeutaSanitizado {
 function sanitizarPaciente(paciente: unknown): PacienteSanitizado | null {
   if (!paciente || typeof paciente !== 'object') return null;
   const p = paciente as Record<string, unknown>;
+
+  const rawDados = Array.isArray(p.dados_clinicos) ? p.dados_clinicos[0] : p.dados_clinicos;
+  const dadosClinicos =
+    rawDados && typeof rawDados === 'object'
+      ? {
+          diagnostico_base:
+            (rawDados as Record<string, unknown>).diagnostico_base !== undefined &&
+            (rawDados as Record<string, unknown>).diagnostico_base !== null
+              ? String((rawDados as Record<string, unknown>).diagnostico_base)
+              : null,
+          gatilhos_sensoriais: Array.isArray((rawDados as Record<string, unknown>).gatilhos_sensoriais)
+            ? ((rawDados as Record<string, unknown>).gatilhos_sensoriais as unknown[]).map(String)
+            : [],
+          observacoes_gerais:
+            (rawDados as Record<string, unknown>).observacoes_gerais !== undefined &&
+            (rawDados as Record<string, unknown>).observacoes_gerais !== null
+              ? String((rawDados as Record<string, unknown>).observacoes_gerais)
+              : null,
+        }
+      : undefined;
+
+  const responsaveisSanitizados = Array.isArray(p.responsaveis)
+    ? p.responsaveis
+        .map((r) => sanitizarResponsavel(r))
+        .filter((r): r is ResponsavelSanitizado => r !== null)
+    : undefined;
+
   return {
     id: String(p.id ?? ''),
     nome: String(p.nome ?? ''),
@@ -91,6 +127,12 @@ function sanitizarPaciente(paciente: unknown): PacienteSanitizado | null {
     complemento: p.complemento !== undefined && p.complemento !== null ? String(p.complemento) : null,
     clinica_id: p.clinica_id !== undefined && p.clinica_id !== null ? String(p.clinica_id) : null,
     status_ativo: p.status_ativo !== false,
+    ultima_sessao_em:
+      p.ultima_sessao_em !== undefined && p.ultima_sessao_em !== null
+        ? String(p.ultima_sessao_em)
+        : null,
+    ...(dadosClinicos ? { dados_clinicos: dadosClinicos } : {}),
+    ...(responsaveisSanitizados ? { responsaveis: responsaveisSanitizados } : {}),
     ...(p.created_at ? { created_at: String(p.created_at) } : {}),
     ...(p.updated_at ? { updated_at: String(p.updated_at) } : {}),
   };
@@ -131,6 +173,14 @@ function sanitizarResponsavel(r: unknown): ResponsavelSanitizado | null {
     telefone: raw.telefone !== undefined && raw.telefone !== null ? String(raw.telefone) : null,
     email: raw.email !== undefined && raw.email !== null ? String(raw.email) : null,
     parentesco: parentescoValue,
+    tipo_responsavel:
+      typeof raw.tipo_responsavel === 'string'
+        ? raw.tipo_responsavel
+        : typeof outer.tipo_responsavel === 'string'
+          ? outer.tipo_responsavel
+          : isPrincipal
+            ? 'principal'
+            : null,
     cep: raw.cep !== undefined && raw.cep !== null ? String(raw.cep) : null,
     cidade: raw.cidade !== undefined && raw.cidade !== null ? String(raw.cidade) : null,
     estado: raw.estado !== undefined && raw.estado !== null ? String(raw.estado) : null,
@@ -336,6 +386,21 @@ export class PacienteController {
       const dto: CriarPacienteDTO = req.body;
       const usuarioLogado = (req as AuthenticatedRequest).user;
       const novoPaciente = await PacienteService.criar(dto, usuarioLogado);
+      const { ip, userAgent } = extrairContextoHttp(req);
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'paciente',
+        acao: 'paciente_criado',
+        origem: 'sistema_admin',
+        terapeutaId: usuarioLogado?.id ?? null,
+        pacienteId: novoPaciente.id,
+        clinicaId: novoPaciente.clinica_id ?? null,
+        recursoId: novoPaciente.id,
+        descricao: `Cadastro de paciente '${novoPaciente.nome}' criado.`,
+        detalhes: { paciente_id: novoPaciente.id, nome: novoPaciente.nome },
+        ip,
+        userAgent,
+      });
 
       const pacienteSanitizado = sanitizarPaciente(novoPaciente);
       const responsavelSanitizado = Array.isArray(novoPaciente.responsaveis) && novoPaciente.responsaveis.length > 0
@@ -396,6 +461,21 @@ export class PacienteController {
       const dto: AtualizarPacienteDTO = req.body;
 
       const pacienteAtualizado = await PacienteService.atualizar(id, dto);
+      const { ip, userAgent } = extrairContextoHttp(req);
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'paciente',
+        acao: 'paciente_atualizado',
+        origem: 'sistema_admin',
+        terapeutaId: (req as AuthenticatedRequest).user?.id ?? null,
+        pacienteId: pacienteAtualizado.id,
+        clinicaId: pacienteAtualizado.clinica_id ?? null,
+        recursoId: pacienteAtualizado.id,
+        descricao: `Dados cadastrais do paciente '${pacienteAtualizado.nome}' atualizados.`,
+        detalhes: { paciente_id: pacienteAtualizado.id },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {
@@ -445,6 +525,22 @@ export class PacienteController {
     try {
       const id = String(req.params.id);
       const { paciente, jaInativo } = await PacienteService.desativar(id);
+      if (!jaInativo) {
+        const { ip, userAgent } = extrairContextoHttp(req);
+        eventBus.emitir('auditoria:evento', {
+          entidade: 'paciente',
+          acao: 'paciente_desativado',
+          origem: 'sistema_admin',
+          terapeutaId: (req as AuthenticatedRequest).user?.id ?? null,
+          pacienteId: paciente.id,
+          clinicaId: paciente.clinica_id ?? null,
+          recursoId: paciente.id,
+          descricao: `Prontuário do paciente '${paciente.nome}' desativado logicamente (RN05).`,
+          detalhes: { paciente_id: paciente.id },
+          ip,
+          userAgent,
+        });
+      }
 
       res.status(200).json({
         data: {
@@ -479,6 +575,21 @@ export class PacienteController {
     try {
       const id = String(req.params.id);
       const pacienteReativado = await PacienteService.reativar(id);
+      const { ip, userAgent } = extrairContextoHttp(req);
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'paciente',
+        acao: 'paciente_reativado',
+        origem: 'sistema_admin',
+        terapeutaId: (req as AuthenticatedRequest).user?.id ?? null,
+        pacienteId: pacienteReativado.id,
+        clinicaId: pacienteReativado.clinica_id ?? null,
+        recursoId: pacienteReativado.id,
+        descricao: `Prontuário do paciente '${pacienteReativado.nome}' reativado.`,
+        detalhes: { paciente_id: pacienteReativado.id },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {
@@ -916,6 +1027,20 @@ export class PacienteController {
         return;
       }
 
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'exportacao',
+        acao: 'exportacao_prontuario',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogado?.id ?? null,
+        pacienteId,
+        recursoId: pacienteId,
+        descricao: 'Exportação longitudinal do prontuário clínico do paciente (PDF).',
+        detalhes: { formato: 'PDF', arquivo: resultado.filename },
+        ip,
+        userAgent,
+      });
+
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${resultado.filename}"`);
       res.status(200).send(resultado.pdfBuffer);
@@ -962,14 +1087,7 @@ export class PacienteController {
       const authReq = req as AuthenticatedRequest;
       const terapeutaId = authReq.user?.id || null;
 
-      const xForwardedFor = req.headers?.['x-forwarded-for'];
-      const ipOrigem =
-        typeof xForwardedFor === 'string'
-          ? xForwardedFor.split(',')[0]?.trim()
-          : req.ip || req.socket?.remoteAddress || null;
-      const userAgent =
-        typeof req.headers?.['user-agent'] === 'string' ? req.headers['user-agent'] : null;
-
+      const { ip: ipOrigem, userAgent } = extrairContextoHttp(req);
       const registro = await PacienteService.registrarConsentimento(
         pacienteId,
         req.body || {},
@@ -979,6 +1097,22 @@ export class PacienteController {
           userAgent,
         }
       );
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'paciente',
+        acao: 'consentimento_lgpd_registrado',
+        origem: 'terapeuta_web',
+        terapeutaId,
+        pacienteId,
+        recursoId: pacienteId,
+        descricao: 'Registro ou atualização de termo de consentimento parental (LGPD Art. 14 §1º).',
+        detalhes: {
+          paciente_id: pacienteId,
+          consentimento: registro,
+        },
+        ip: ipOrigem,
+        userAgent,
+      });
 
       res.status(201).json({
         data: {

@@ -15,13 +15,14 @@ import {
   Lock,
   LogOut,
   Trash2,
-  CheckCircle2,
   Users,
   Calendar,
   Gamepad2,
   Loader2,
   AlertTriangle,
 } from "lucide-react";
+import { USE_MOCK_DATA, type HttpError } from "@/core/api/http-client";
+import { AvatarClinico } from "@/shared/components/AvatarClinico";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { authService } from "@/features/autenticacao/services/auth.service";
 import { terapeutaService } from "@/features/terapeuta/services/terapeuta.service";
@@ -48,6 +49,32 @@ import { toast } from "sonner";
  * Compliance: RF21 (Authentication/Authorship), RN04 (Clinic Association), RN05 (Soft Delete)
  * ============================================================================
  */
+function formatarTelefoneInput(valor: string): string {
+  const digitos = valor.replace(/\D/g, "");
+  if (digitos.length === 0) return "";
+  if (digitos.length > 11) {
+    return digitos;
+  }
+  if (digitos.length <= 2) {
+    return `(${digitos}`;
+  }
+  if (digitos.length <= 7) {
+    return `(${digitos.slice(0, 2)}) ${digitos.slice(2)}`;
+  }
+  return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7, 11)}`;
+}
+
+function validarTelefoneBr(telefone: string): boolean {
+  const digitos = telefone.replace(/\D/g, "");
+  if (digitos.length === 11) {
+    return /^[1-9]{2}9\d{8}$/.test(digitos);
+  }
+  if (digitos.length === 13) {
+    return /^55[1-9]{2}9\d{8}$/.test(digitos);
+  }
+  return false;
+}
+
 export function SettingsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -65,6 +92,8 @@ export function SettingsPage() {
   );
   const [email, setEmail] = useState(user?.email || "");
   const [telefone, setTelefone] = useState(user?.telefone || "");
+  const [erroTelefone, setErroTelefone] = useState<string | null>(null);
+  const [erroPersistencia, setErroPersistencia] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   // Estados dos Cards com dados reais da clínica / terapeuta
@@ -84,16 +113,54 @@ export function SettingsPage() {
   const [confirmacaoTexto, setConfirmacaoTexto] = useState("");
   const [deletandoConta, setDeletandoConta] = useState(false);
 
-  // Sincroniza formulário com usuário autenticado da store
+  // Sincroniza formulário quando dados persistidos da store mudam
   useEffect(() => {
-    if (user) {
-      if (!nome) setNome(user.nome || "");
-      if (!registro) setRegistro(user.registro_profissional || user.crefito || "");
-      if (!especialidade) setEspecialidade(user.especialidade || "");
-      if (!email) setEmail(user.email || "");
-      if (!telefone && user.telefone) setTelefone(user.telefone);
+    if (!user) return;
+    setNome(user.nome || "");
+    setRegistro(user.registro_profissional || user.crefito || "");
+    setEspecialidade(user.especialidade || "");
+    setEmail(user.email || "");
+    setTelefone(user.telefone ? formatarTelefoneInput(user.telefone) : "");
+  }, [
+    user?.id,
+    user?.nome,
+    user?.telefone,
+    user?.registro_profissional,
+    user?.crefito,
+    user?.especialidade,
+    user?.email,
+  ]);
+
+  // Busca dados frescos do terapeuta no backend ao montar a página em execução real
+  useEffect(() => {
+    if (USE_MOCK_DATA || import.meta.env.MODE === "test" || !user?.id) {
+      return;
     }
-  }, [user]);
+
+    let ativo = true;
+    void terapeutaService
+      .buscarPorId(user.id)
+      .then((perfilAtualizado) => {
+        if (!ativo || !perfilAtualizado) return;
+        setUser({
+          ...user,
+          nome: perfilAtualizado.nome ?? user.nome,
+          telefone: perfilAtualizado.telefone ?? user.telefone,
+          crefito: perfilAtualizado.crefito ?? user.crefito,
+          registro_profissional:
+            perfilAtualizado.registro_profissional ?? user.registro_profissional,
+          especialidade: perfilAtualizado.especialidade ?? user.especialidade,
+          avatar: user.avatar,
+        });
+      })
+      .catch(() => {
+        // Mantém estado atual se o servidor ainda estiver aquecendo
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [user?.id]);
 
   // Carrega métricas reais do banco de dados (Pacientes, Sessões, Jogos)
   useEffect(() => {
@@ -152,43 +219,68 @@ export function SettingsPage() {
     };
   }, []);
 
-  const handleSalvarDadosPessoais = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const persistirDadosPessoais = async () => {
+    if (salvando) return;
     if (!user?.id) {
       toast.error("Terapeuta não autenticado.");
       return;
     }
 
+    const telefoneLimpo = telefone.trim();
+    if (telefoneLimpo && !validarTelefoneBr(telefoneLimpo)) {
+      const msgTel =
+        "Telefone inválido. Informe DDD + 9 dígitos (ex: (89) 99999-9999) ou 13 dígitos com DDI 55.";
+      setErroTelefone(msgTel);
+      toast.error(msgTel);
+      return;
+    }
+
+    setErroTelefone(null);
+    setErroPersistencia(null);
     setSalvando(true);
     try {
       const terapeutaAtualizado = await terapeutaService.atualizar(user.id, {
         nome: nome.trim(),
-        telefone: telefone.trim() || null,
+        telefone: telefoneLimpo || null,
         crefito: registro.trim() || null,
         registro_profissional: registro.trim() || null,
         especialidade: especialidade.trim() || null,
       });
 
-      // Atualiza estado local da store auth
+      if (!terapeutaAtualizado) {
+        throw new Error("O servidor não confirmou a atualização do perfil.");
+      }
+
       setUser({
         ...user,
-        nome: terapeutaAtualizado?.nome ?? nome.trim(),
-        telefone: terapeutaAtualizado?.telefone ?? (telefone.trim() || null),
-        crefito: terapeutaAtualizado?.crefito ?? (registro.trim() || null),
+        nome: terapeutaAtualizado.nome ?? nome.trim(),
+        telefone: terapeutaAtualizado.telefone ?? (telefoneLimpo || null),
+        crefito: terapeutaAtualizado.crefito ?? (registro.trim() || null),
         registro_profissional:
-          terapeutaAtualizado?.registro_profissional ?? (registro.trim() || null),
+          terapeutaAtualizado.registro_profissional ?? (registro.trim() || null),
         especialidade:
-          terapeutaAtualizado?.especialidade ?? (especialidade.trim() || null),
+          terapeutaAtualizado.especialidade ?? (especialidade.trim() || null),
       });
 
       toast.success("Dados cadastrais do terapeuta atualizados com sucesso!");
     } catch (err: unknown) {
-      const mensagem =
-        err instanceof Error ? err.message : "Erro ao salvar alterações pessoais.";
+      const httpErr = err as HttpError | undefined;
+      const isColdStartOuRede = Boolean(httpErr?.isTimeoutError || httpErr?.isNetworkError);
+      const mensagem = isColdStartOuRede
+        ? "O servidor está iniciando ou demorou para responder. Suas alterações ainda não foram salvas — tente novamente."
+        : err instanceof Error
+          ? err.message
+          : "Erro ao salvar alterações pessoais.";
+      setErroPersistencia(mensagem);
       toast.error(mensagem);
     } finally {
       setSalvando(false);
     }
+  };
+
+  const handleSalvarDadosPessoais = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await persistirDadosPessoais();
   };
 
   const handleAlterarSenha = async (e: React.FormEvent) => {
@@ -258,31 +350,39 @@ export function SettingsPage() {
     "Integração Sensorial",
   ];
 
-  const iniciaisTerapeuta = (nome || user?.nome || "T").slice(0, 2).toUpperCase();
+  const nomePersistido = user?.nome || "Terapeuta Clínico";
+  const registroPersistido = user?.registro_profissional || user?.crefito;
+  const especialidadePersistida = user?.especialidade || "Terapeuta InTEA";
 
   return (
     <div className="flex flex-1 flex-col gap-6 w-full max-w-6xl mx-auto py-2 pb-16">
-      {/* 1. Profile Banner — Figma 200:1713 */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 bg-card border border-border p-6 rounded-2xl shadow-xs">
+      {/* 1. Profile Banner (reflete exclusivamente dados persistidos na store) */}
+      <div
+        data-testid="banner-perfil-terapeuta"
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 bg-card border border-border p-6 rounded-2xl shadow-xs"
+      >
         <div className="flex items-center gap-5">
-          <div className="h-20 w-20 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-primary font-bold text-2xl shadow-inner shrink-0">
-            {iniciaisTerapeuta}
-          </div>
+          <AvatarClinico
+            nome={nomePersistido}
+            src={user?.avatar}
+            size="xl"
+            data-testid="avatar-perfil-terapeuta"
+          />
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                {nome || user?.nome || "Terapeuta Clínico"}
+                {nomePersistido}
               </h1>
-              {(registro || user?.registro_profissional || user?.crefito) && (
+              {registroPersistido && (
                 <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
-                  {registro || user?.registro_profissional || user?.crefito}
+                  {registroPersistido}
                 </Badge>
               )}
             </div>
             <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <Briefcase className="h-3.5 w-3.5 text-primary" />
-                {especialidade || user?.especialidade || "Terapeuta InTEA"}
+                {especialidadePersistida}
               </span>
               <span className="flex items-center gap-1.5">
                 <Building2 className="h-3.5 w-3.5 text-primary" />
@@ -291,14 +391,6 @@ export function SettingsPage() {
             </div>
           </div>
         </div>
-
-        <Badge
-          variant="outline"
-          className="text-xs px-3 py-1 font-semibold text-emerald-600 border-emerald-500/30 bg-emerald-500/10"
-        >
-          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-          Perfil Clínico Verificado
-        </Badge>
       </div>
 
       {/* 2. Stat Cards Row (3 Cards Consumindo Banco de Dados Real) */}
@@ -373,8 +465,9 @@ export function SettingsPage() {
             <form onSubmit={handleSalvarDadosPessoais} className="flex flex-col gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-foreground">Nome Completo</label>
+                  <label htmlFor="settings-nome" className="text-xs font-semibold text-foreground">Nome Completo</label>
                   <Input
+                    id="settings-nome"
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
                     required
@@ -383,8 +476,9 @@ export function SettingsPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-foreground">Registro Profissional (CREFITO)</label>
+                  <label htmlFor="settings-registro" className="text-xs font-semibold text-foreground">Registro Profissional (CREFITO)</label>
                   <Input
+                    id="settings-registro"
                     value={registro}
                     onChange={(e) => setRegistro(e.target.value)}
                     className="text-xs h-10 bg-background border-border"
@@ -394,8 +488,9 @@ export function SettingsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-foreground">E-mail Profissional</label>
+                  <label htmlFor="settings-email" className="text-xs font-semibold text-foreground">E-mail Profissional</label>
                   <Input
+                    id="settings-email"
                     value={email}
                     disabled
                     type="email"
@@ -404,19 +499,30 @@ export function SettingsPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-foreground">Telefone de Contato</label>
+                  <label htmlFor="settings-telefone" className="text-xs font-semibold text-foreground">Telefone de Contato</label>
                   <Input
+                    id="settings-telefone"
                     value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
+                    onChange={(e) => {
+                      const formatado = formatarTelefoneInput(e.target.value);
+                      setTelefone(formatado);
+                      if (erroTelefone) setErroTelefone(null);
+                    }}
                     placeholder="(00) 00000-0000"
                     className="text-xs h-10 bg-background border-border"
                   />
+                  {erroTelefone && (
+                    <span className="text-xs font-medium text-destructive">
+                      {erroTelefone}
+                    </span>
+                  )}
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-foreground">Especialidade / Título Clínico</label>
+                <label htmlFor="settings-especialidade" className="text-xs font-semibold text-foreground">Especialidade / Título Clínico</label>
                 <Input
+                  id="settings-especialidade"
                   value={especialidade}
                   onChange={(e) => setEspecialidade(e.target.value)}
                   placeholder="Ex: Terapeuta Ocupacional Especialista em TEA"
@@ -424,11 +530,30 @@ export function SettingsPage() {
                 />
               </div>
 
+              {erroPersistencia && (
+                <div
+                  role="alert"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive"
+                >
+                  <span className="font-medium wrap-break-word">{erroPersistencia}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={salvando}
+                    onClick={() => void persistirDadosPessoais()}
+                    className="min-h-11 shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-semibold cursor-pointer"
+                  >
+                    Tentar salvar novamente
+                  </Button>
+                </div>
+              )}
+
               <div className="flex justify-end pt-2">
                 <Button
                   type="submit"
                   disabled={salvando}
-                  className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-md shadow-primary/20 cursor-pointer"
+                  className="min-h-11 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-md shadow-primary/20 cursor-pointer"
                 >
                   {salvando ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

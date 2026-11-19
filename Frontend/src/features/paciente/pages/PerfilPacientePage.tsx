@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -21,7 +21,10 @@ import {
   Activity,
   Stethoscope,
   ShieldCheck,
+  Pencil,
 } from "lucide-react";
+import { AvatarClinico } from "@/shared/components/AvatarClinico";
+import { ESTADO_CLINICO_NAO_INFORMADO } from "../constants/condicoesClinicas";
 import { ModalCompararSessoes } from "../components/ModalCompararSessoes";
 import { ModalCompararMultiplasSessoes } from "../components/ModalCompararMultiplasSessoes";
 import { PainelEquipeMultidisciplinar } from "../components/PainelEquipeMultidisciplinar";
@@ -84,19 +87,12 @@ export function PerfilPacientePage() {
   const [erroModalVinculo, setErroModalVinculo] = useState<string | null>(null);
   const [removendoEspecialistaId, setRemovendoEspecialistaId] = useState<string | null>(null);
   const [consentimentoLgpd, setConsentimentoLgpd] = useState<boolean>(false);
-  const [imgError, setImgError] = useState<boolean>(false);
-
-  const iniciaisPaciente = useMemo(() => {
-    if (!paciente?.nome) return "";
-    return paciente.nome
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((parte) => parte[0]?.toUpperCase() || "")
-      .join("");
-  }, [paciente?.nome]);
 
   const user = useAuthStore((s) => s.user);
+  const isSuperAdmin = Boolean(
+    user?.is_super_admin === true ||
+      (user as { role?: string } | null)?.role === "super_admin",
+  );
   const abrirModalPreSessao = useSessionStore((s) => s.abrirModalPreSessao);
   const selecionarPaciente = useSessionStore((s) => s.selecionarPaciente);
 
@@ -231,7 +227,6 @@ export function PerfilPacientePage() {
     try {
       setLoading(true);
       setErroProntuario(null);
-      setImgError(false);
       const [dadosPaciente, resSessoes] = await Promise.all([
         pacienteService.buscarPorId(id),
         sessaoService.listar({ pacienteId: id }),
@@ -530,28 +525,7 @@ export function PerfilPacientePage() {
 
   const idade = calcularIdade(paciente.data_nascimento);
   const enderecoPacienteCompleto = formatarEnderecoCompleto(paciente);
-  const laudosExibicao: LaudoClinico[] =
-    paciente.laudos && paciente.laudos.length > 0
-      ? paciente.laudos
-      : [
-          {
-            id: `laudo-padrao-${paciente.id}`,
-            paciente_id: paciente.id,
-            terapeuta_id:
-              paciente.terapeuta_responsavel_id || especialistas[0]?.id || "",
-            titulo: "Laudo Clínico e Parecer Diagnóstico Multidisciplinar",
-            descricao:
-              paciente.dados_clinicos?.diagnostico_base ||
-              "CID-11: 6A02 (Transtorno do Espectro do Autismo) — Documento clínico consolidado no prontuário.",
-            arquivo_caminho: `/laudos/prontuario-${paciente.id}.pdf`,
-            arquivo_nome_original: `laudo_clinico_${paciente.nome
-              .toLowerCase()
-              .replace(/\s+/g, "_")}.pdf`,
-            arquivo_mime_type: "application/pdf",
-            tamanho_bytes: 348160,
-            created_at: paciente.created_at,
-          },
-        ];
+  const laudosExibicao: LaudoClinico[] = paciente.laudos ?? [];
   const gatilhosEstruturados = paciente.gatilhos ?? [];
   const gatilhosSimples = paciente.dados_clinicos?.gatilhos_sensoriais ?? [];
 
@@ -576,24 +550,13 @@ export function PerfilPacientePage() {
             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </Button>
 
-          {/* Avatar com Foto do Paciente ou Iniciais */}
-          <div
+          <AvatarClinico
             data-testid="avatar-perfil-paciente"
-            className="relative w-14 h-14 rounded-full border-2 border-primary/20 bg-muted/50 flex items-center justify-center overflow-hidden shrink-0 shadow-xs"
-          >
-            {fotoPaciente && !imgError ? (
-              <img
-                src={fotoPaciente}
-                alt={paciente.nome}
-                onError={() => setImgError(true)}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-base font-bold text-primary select-none">
-                {iniciaisPaciente || <User className="h-6 w-6 text-primary" />}
-              </span>
-            )}
-          </div>
+            nome={paciente.nome}
+            src={fotoPaciente}
+            size="lg"
+            className="border-2 border-primary/20 shadow-xs"
+          />
 
           <div>
             <div className="flex flex-wrap items-center gap-2.5">
@@ -627,6 +590,20 @@ export function PerfilPacientePage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {isSuperAdmin && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="btn-editar-cadastro-paciente"
+              onClick={() => navigate(`/pacientes/${paciente.id}/editar`)}
+              className="min-h-11 px-4 text-xs font-semibold gap-1.5 cursor-pointer"
+            >
+              <Pencil className="h-4 w-4" />
+              <span>Editar Cadastro</span>
+            </Button>
+          )}
+
           <Button
             type="button"
             variant="outline"
@@ -681,8 +658,15 @@ export function PerfilPacientePage() {
                   <User className="h-4 w-4 text-primary" />
                   Dados Básicos
                 </h2>
-                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px]">
-                  Cadastro Ativo
+                <Badge
+                  variant="outline"
+                  className={
+                    paciente.status_ativo !== false
+                      ? "text-primary border-primary/30 text-xs font-medium bg-transparent"
+                      : "text-muted-foreground border-border text-xs font-medium bg-muted/40"
+                  }
+                >
+                  {paciente.status_ativo !== false ? "Ativo" : "Inativo"}
                 </Badge>
               </div>
 
@@ -925,65 +909,105 @@ export function PerfilPacientePage() {
 
               <div className="space-y-2 text-xs">
                 <div className="p-3 rounded-xl bg-muted/40 border border-border/50 space-y-1">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Diagnóstico Base (CID)
+                  <span className="text-2xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Diagnóstico / Condição Clínica
                   </span>
                   <p className="text-foreground font-semibold leading-relaxed">
-                    {paciente.dados_clinicos?.diagnostico_base ||
-                      "CID-11: 6A02 (Transtorno do Espectro Autista) — Acompanhamento multidisciplinar ativo."}
+                    {paciente.dados_clinicos?.diagnostico_base?.trim() ||
+                      ESTADO_CLINICO_NAO_INFORMADO}
                   </p>
                 </div>
 
                 <div className="p-3 rounded-xl bg-muted/20 border border-border/40 space-y-1">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-2xs font-bold uppercase tracking-wider text-muted-foreground">
                     Diretrizes Clínicas e Observações Gerais
                   </span>
                   <p className="text-muted-foreground leading-relaxed">
-                    {paciente.dados_clinicos?.observacoes_gerais ||
-                      "Recomenda-se sessões com estímulos cromáticos suaves, ritmo moderado de tarefas e pausas orientadas para regulação sensorial."}
+                    {paciente.dados_clinicos?.observacoes_gerais?.trim() ||
+                      "Nenhuma observação clínica registrada."}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-2.5 pt-2 border-t border-border/50">
-              <p className="text-xs font-bold text-foreground">
-                Arquivos de Laudo Anexados (PDF)
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-bold text-foreground">
+                  Arquivos de Laudo Anexados (PDF)
+                </p>
+                <span
+                  data-testid="contador-laudos-pdf"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  {laudosExibicao.length}
+                </span>
+              </div>
               <div className="space-y-2">
-                {laudosExibicao.map((laudo, index) => (
-                  <div
-                    key={laudo.id}
-                    className="p-3 rounded-xl border border-border/60 bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                  >
+                {laudosExibicao.length === 0 ? (
+                  <div className="p-3 rounded-xl border border-border/60 bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-0.5 min-w-0">
-                      <p className="text-xs font-bold text-foreground truncate">
-                        {laudo.titulo}
+                      <p className="text-xs font-semibold text-foreground">
+                        Nenhum laudo anexado
                       </p>
-                      <p className="text-[11px] text-muted-foreground truncate">
-                        {laudo.arquivo_nome_original}
-                        {laudo.tamanho_bytes
-                          ? ` • ${Math.round(laudo.tamanho_bytes / 1024)} KB`
-                          : ""}
+                      <p className="text-xs text-muted-foreground">
+                        O repositório de documentos (bucket PDF) ainda não possui arquivo enviado para este paciente.
                       </p>
                     </div>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      data-testid={
-                        index === 0
-                          ? "btn-baixar-laudo-pdf"
-                          : `btn-baixar-laudo-pdf-${laudo.id}`
-                      }
-                      onClick={() => handleAbrirLaudoPdf(laudo)}
-                      className="min-h-11 px-3 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 shrink-0 cursor-pointer"
+                      disabled
+                      data-testid="btn-baixar-laudo-pdf"
+                      className="min-h-11 px-3 text-xs font-semibold gap-1.5 shrink-0"
                     >
                       <Download className="h-3.5 w-3.5" />
-                      <span>Baixar Laudo PDF</span>
+                      <span>Sem PDF para baixar</span>
                     </Button>
                   </div>
-                ))}
+                ) : (
+                  laudosExibicao.map((laudo, index) => {
+                    const temUrlDownload = Boolean(
+                      laudo.arquivo_caminho && /^https?:\/\//i.test(laudo.arquivo_caminho),
+                    );
+                    return (
+                      <div
+                        key={laudo.id}
+                        className="p-3 rounded-xl border border-border/60 bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="text-xs font-bold text-foreground truncate">
+                            {laudo.titulo}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {laudo.arquivo_nome_original}
+                            {laudo.tamanho_bytes
+                              ? ` • ${Math.round(laudo.tamanho_bytes / 1024)} KB`
+                              : ""}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!temUrlDownload}
+                          data-testid={
+                            index === 0
+                              ? "btn-baixar-laudo-pdf"
+                              : `btn-baixar-laudo-pdf-${laudo.id}`
+                          }
+                          onClick={() => handleAbrirLaudoPdf(laudo)}
+                          className="min-h-11 px-3 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 shrink-0 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          <span>
+                            {temUrlDownload ? "Baixar Laudo PDF" : "Sem PDF para baixar"}
+                          </span>
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>

@@ -88,4 +88,19 @@ describe("Paciente Store (usePacienteStore)", () => {
     expect(state.categoryFilter).toBe("all");
     expect(state.statusFilter).toBe("all");
   });
+
+  it("deve atualizar ou inserir paciente via upsertPatient preservando registros existentes", () => {
+    const store = usePatientsStore.getState();
+    const existente = store.patients["pac-001"];
+    expect(existente).toBeDefined();
+
+    store.upsertPatient({
+      ...existente,
+      name: "Lucas Atualizado via Upsert",
+    });
+
+    const atualizado = usePatientsStore.getState().patients["pac-001"];
+    expect(atualizado.name).toBe("Lucas Atualizado via Upsert");
+    expect(Object.keys(usePatientsStore.getState().patients).length).toBeGreaterThan(1);
+  });
 });

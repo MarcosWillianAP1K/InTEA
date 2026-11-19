@@ -17,10 +17,20 @@ const noopStorage = {
   removeItem: (): void => {},
 };
 
+const isPlaceholderUrl =
+  !supabaseUrl ||
+  supabaseUrl.includes('placeholder.supabase.co') ||
+  supabaseUrl.includes('mock.supabase.co');
+
+const placeholderFetch: typeof fetch = async () => {
+  throw new Error('Supabase não configurado: SUPABASE_URL ausente ou placeholder.');
+};
+
 export const supabase: SupabaseClient = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseKey || 'placeholder-key',
   {
+    ...(isPlaceholderUrl ? { global: { fetch: placeholderFetch } } : {}),
     auth: {
       persistSession: false,
       autoRefreshToken: false,

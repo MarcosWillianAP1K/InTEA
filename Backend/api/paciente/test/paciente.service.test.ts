@@ -248,6 +248,7 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         nome: 'Paciente Com Mascara',
         data_nascimento: '2018-05-10',
         cpf: '52998224725',
+        clinica_id: '22222222-2222-4222-a222-222222222222',
         cep: '01310100',
         telefone: '11987654321',
         responsavel: {
@@ -260,6 +261,22 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
           observacoes_gerais: 'Hipersensibilidade auditiva',
         },
       };
+
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'clinica') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: payload.clinica_id, status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as unknown as ReturnType<typeof supabase.from>;
+        }
+        return {} as unknown as ReturnType<typeof supabase.from>;
+      });
 
       await PacienteService.criar(payload, {
         id: '99999999-9999-4999-8999-999999999999',
@@ -302,6 +319,22 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         clinica_id: clinicaRealId,
         status_ativo: true,
       } as unknown as Awaited<ReturnType<typeof TerapeutaModel.buscarPorId>>);
+
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'clinica') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: clinicaRealId, status_ativo: true },
+                  error: null,
+                }),
+              }),
+            }),
+          } as unknown as ReturnType<typeof supabase.from>;
+        }
+        return {} as unknown as ReturnType<typeof supabase.from>;
+      });
 
       const spyCriar = vi.spyOn(PacienteModel, 'criar').mockResolvedValue({
         id: '33333333-3333-4333-a333-333333333333',
@@ -524,6 +557,23 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
     const terapeutaBId = '33333333-3333-4333-8333-333333333333';
     const superAdminId = '99999999-9999-4999-8999-999999999999';
 
+    function mockTerapeutaBanco(isSuperAdmin: boolean) {
+      vi.spyOn(supabase, 'from').mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { is_super_admin: isSuperAdmin, status_ativo: true },
+              error: null,
+            }),
+          }),
+        }),
+      } as unknown as ReturnType<typeof supabase.from>);
+    }
+
+    beforeEach(() => {
+      mockTerapeutaBanco(false);
+    });
+
     describe('PacienteService.vincularTerapeuta', () => {
       it('deve rejeitar com 400 se pacienteId ou terapeutaId não forem UUIDs válidos', async () => {
         await expect(
@@ -691,16 +741,7 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         expect(spyDesvincular).toHaveBeenCalledWith(pacienteId, terapeutaBId);
 
         // Teste com is_super_admin = false no objeto mas true na tabela terapeuta do banco
-        vi.spyOn(supabase, 'from').mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({
-                data: { is_super_admin: true, status_ativo: true },
-                error: null,
-              }),
-            }),
-          }),
-        } as unknown as ReturnType<typeof supabase.from>);
+        mockTerapeutaBanco(true);
 
         await expect(
           PacienteService.desvincularTerapeuta(pacienteId, terapeutaBId, {
@@ -986,6 +1027,77 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         );
         expect(res.status).toHaveBeenCalledWith(201);
       });
+    });
+
+    it('deve exigir clinica_id válido em public.clinica mesmo para SuperAdmin (W1-D)', async () => {
+      await expect(
+        PacienteService.criar(
+          {
+            nome: 'Paciente Sem Clínica',
+            data_nascimento: '2018-05-10',
+            cpf: '52998224725',
+          },
+          { id: '99999999-9999-4999-8999-999999999999', is_super_admin: true }
+        )
+      ).rejects.toMatchObject({ statusCode: 400 });
+
+      vi.spyOn(supabase, 'from').mockImplementation((tabela: string) => {
+        if (tabela === 'clinica') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          } as unknown as ReturnType<typeof supabase.from>;
+        }
+        return {} as unknown as ReturnType<typeof supabase.from>;
+      });
+
+      await expect(
+        PacienteService.criar(
+          {
+            nome: 'Paciente Clínica Inexistente',
+            data_nascimento: '2018-05-10',
+            cpf: '52998224725',
+            clinica_id: '22222222-2222-4222-a222-222222222222',
+          },
+          { id: '99999999-9999-4999-8999-999999999999', is_super_admin: true }
+        )
+      ).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it('deve decifrar dados_clinicos na listagem (PacienteService.listar)', async () => {
+      const textoCifrado = CryptoService.cifrar('TEA nível 2');
+      vi.spyOn(PacienteModel, 'listar').mockResolvedValueOnce({
+        data: [
+          {
+            id: '33333333-3333-4333-a333-333333333333',
+            nome: 'Paciente Listado',
+            data_nascimento: '2019-01-01',
+            status_ativo: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            clinica_id: '22222222-2222-4222-a222-222222222222',
+            telefone: null,
+            cpf: null,
+            cep: null,
+            cidade: null,
+            estado: null,
+            endereco: null,
+            bairro: null,
+            numero: null,
+            complemento: null,
+            dados_clinicos: { diagnostico_base: textoCifrado },
+          },
+        ],
+        meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+      });
+
+      const res = await PacienteService.listar({}, { id: 'terap-1', is_super_admin: true }, true);
+      expect(
+        (res.data[0].dados_clinicos as { diagnostico_base?: string } | undefined)?.diagnostico_base
+      ).toBe('TEA nível 2');
     });
   });
 });

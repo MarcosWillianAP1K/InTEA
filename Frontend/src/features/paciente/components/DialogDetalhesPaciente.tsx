@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { AvatarClinico } from "@/shared/components/AvatarClinico";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import type { Patient, PatientStatus } from "@/features/paciente/store/paciente.store";
@@ -67,10 +68,12 @@ export function DialogDetalhesPaciente({
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-4">
-            <img
-              src={patient.photoUrl}
-              alt={patient.name}
-              className="w-14 h-14 rounded-xl object-cover border-2 border-primary/30 shadow-sm"
+            <AvatarClinico
+              nome={patient.name}
+              src={patient.photoUrl || null}
+              size="lg"
+              shape="rounded"
+              className="border-2 border-primary/30 shadow-xs shrink-0"
             />
             <div>
               <DialogTitle className="text-lg font-bold">

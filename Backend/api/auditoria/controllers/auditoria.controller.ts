@@ -1,8 +1,9 @@
 // ==============================================================================
-// InTEA: Controller da Trilha de Auditoria Clínica de Sessão e Vínculos (Sprint 9 / Sprint 13)
+// InTEA: Controller da Trilha Unificada de Auditoria Clínica e Ecossistema (Item 3)
 // ==============================================================================
-// Conformidade: RF08, RF13, RNF06 (LGPD / Segurança), RN04 (Vínculo), RN05 (Imutabilidade), RF21
+// Conformidade: RF07, RF08, RF13, RNF06 (LGPD / Segurança), RN04, RN05, RF21
 // Padrão Arquitetural: Envelope Pattern Categorizado Estrito ({ data: { ... }, message })
+// Leitura 100% restrita a SuperAdmins; escrita de eventos de sessão via POST validada por RN04.
 // ==============================================================================
 
 import { Request, Response } from 'express';
@@ -10,19 +11,25 @@ import { AuditoriaService } from '../services/auditoria.service.js';
 import { AuditoriaProntuarioService } from '../auditoria-prontuario.service.js';
 import { AuditoriaSessao } from '../models/auditoria.model.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
-import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 import { validarUUID } from '../../../core/utils/validators.js';
+import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 
 export class AuditoriaController {
   /**
    * Recursively sanitizes JSON details by removing tokens, secrets, and sensitive data (LGPD / RNF06).
-   *
-   * @param detalhes - Raw metadata object of the event.
-   * @returns Sanitized object free of secrets or credentials.
    */
   static sanitizarDetalhesJson(detalhes?: Record<string, unknown>): Record<string, unknown> {
     if (!detalhes || typeof detalhes !== 'object') return {};
-    const chavesSensiveis = ['senha', 'password', 'token', 'secret', 'hash', 'access_token', 'refresh_token', 'service_role'];
+    const chavesSensiveis = [
+      'senha',
+      'password',
+      'token',
+      'secret',
+      'hash',
+      'access_token',
+      'refresh_token',
+      'service_role',
+    ];
     const resultado: Record<string, unknown> = {};
 
     for (const [chave, valor] of Object.entries(detalhes)) {
@@ -36,20 +43,21 @@ export class AuditoriaController {
   }
 
   /**
-   * Sanitizes a clinical audit event record by expunging potentially sensitive data.
-   *
-   * @param evento - AuditoriaSessao instance retrieved from the database or generated.
-   * @returns Properly sanitized event instance.
+   * Sanitizes an audit event record by expunging potentially sensitive data.
    */
   static sanitizarEvento(evento: AuditoriaSessao): AuditoriaSessao {
     return {
       id: evento.id,
+      entidade: evento.entidade,
       sessao_id: evento.sessao_id,
       terapeuta_id: evento.terapeuta_id,
       terapeuta_nome: evento.terapeuta_nome,
       terapeuta_email: evento.terapeuta_email,
       paciente_id: evento.paciente_id,
       paciente_nome: evento.paciente_nome,
+      clinica_id: evento.clinica_id,
+      clinica_nome: evento.clinica_nome,
+      recurso_id: evento.recurso_id,
       jogo_nome: evento.jogo_nome,
       origem: evento.origem,
       acao: evento.acao,
@@ -62,12 +70,7 @@ export class AuditoriaController {
   }
 
   /**
-   * Handles GET /api/auditoria/sessao/:sessaoId to retrieve the audit trail and timeline of a session.
-   * Returns events wrapped in Categorized Envelope Pattern ({ data: { auditoria: [...], registros: [...], meta: { total } }, message }).
-   *
-   * @param req - Express request containing session UUID in URL parameter `:sessaoId`.
-   * @param res - Express response returning the array of audit events and total count.
-   * @returns Resolves when the HTTP response has been sent.
+   * Handles GET /api/auditoria/sessao/:sessaoId (SuperAdmin only).
    */
   static async consultarLinhaDoTempo(req: Request, res: Response): Promise<void> {
     try {
@@ -91,7 +94,6 @@ export class AuditoriaController {
         },
       };
 
-      // Compatibilidade retroativa para callers em memória em testes legados
       Object.defineProperty(dataObj, 'map', {
         value: Array.prototype.map.bind(eventosSanitizados),
         enumerable: false,
@@ -117,16 +119,20 @@ export class AuditoriaController {
   }
 
   /**
-   * Handles GET /api/auditoria (and GET /api/admin/auditoria) to list audit events with pagination and filters.
-   * Returns events wrapped in Categorized Envelope Pattern ({ data: { auditoria: [...], registros: [...], meta }, message }).
-   *
-   * @param req - Express request with query parameters.
-   * @param res - Express response returning paginated audit events.
-   * @returns Resolves when the HTTP response has been sent.
+   * Handles GET /api/auditoria (SuperAdmin only) to list unified audit events with pagination and filters.
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
       const usuarioLogado = (req as AuthenticatedRequest).user;
+      const isSuperAdmin = await AuditoriaService.verificarSuperAdmin(usuarioLogado);
+
+      if (!isSuperAdmin) {
+        res.status(403).json({
+          error: 'Acesso negado: a consulta à trilha global de auditoria é restrita exclusivamente a SuperAdmins (RF07 / RF08).',
+        });
+        return;
+      }
+
       const query = (req.query || {}) as Record<string, string | undefined>;
 
       const pacienteIdRaw = query.pacienteId || query.paciente_id;
@@ -140,14 +146,27 @@ export class AuditoriaController {
         return;
       }
 
+      const clinicaIdRaw = query.clinicaId || query.clinica_id;
+      const clinicaId =
+        typeof clinicaIdRaw === 'string' && clinicaIdRaw.trim() !== ''
+          ? clinicaIdRaw.trim()
+          : undefined;
+
+      if (clinicaId && !validarUUID(clinicaId)) {
+        res.status(400).json({ error: 'O parâmetro clinicaId deve ser um UUID válido.' });
+        return;
+      }
+
       const page = Math.max(1, Number(query.page) || 1);
       const limit = Math.max(1, Math.min(100, Number(query.limit) || 10));
 
       const { auditoria, total } = await AuditoriaService.listarComFiltros(
         {
           busca: query.busca,
+          entidade: query.entidade,
           terapeutaId: query.terapeutaId,
           ...(pacienteId ? { pacienteId } : {}),
+          ...(clinicaId ? { clinicaId } : {}),
           tipoAcao: query.tipoAcao,
           dataInicio: query.dataInicio,
           dataFim: query.dataFim,
@@ -197,16 +216,20 @@ export class AuditoriaController {
   }
 
   /**
-   * Handles GET /api/auditoria/estatisticas (and GET /api/admin/auditoria/estatisticas).
-   * Returns aggregated statistics wrapped in Categorized Envelope Pattern ({ data: { estatisticas }, message }).
-   *
-   * @param req - Express request.
-   * @param res - Express response returning audit metric statistics.
-   * @returns Resolves when the HTTP response has been sent.
+   * Handles GET /api/auditoria/estatisticas (SuperAdmin only).
    */
   static async obterEstatisticas(req: Request, res: Response): Promise<void> {
     try {
       const usuarioLogado = (req as AuthenticatedRequest).user;
+      const isSuperAdmin = await AuditoriaService.verificarSuperAdmin(usuarioLogado);
+
+      if (!isSuperAdmin) {
+        res.status(403).json({
+          error: 'Acesso negado: as estatísticas de auditoria são restritas exclusivamente a SuperAdmins (RF07 / RF08).',
+        });
+        return;
+      }
+
       const stats = await AuditoriaService.obterEstatisticas(usuarioLogado);
 
       res.status(200).json({
@@ -223,17 +246,12 @@ export class AuditoriaController {
 
   /**
    * Handles POST /api/auditoria to formally record an immutable audit event for a clinical session (RF13, RNF06).
-   * Returns the created event wrapped in Categorized Envelope Pattern ({ data: { evento }, message }).
-   *
-   * @param req - Express request containing session UUID, origin, action, and details in body.
-   * @param res - Express response returning the created audit event.
-   * @returns Resolves when the HTTP response has been sent.
    */
   static async registrarEvento(req: Request, res: Response): Promise<void> {
     try {
       const usuarioLogado = (req as AuthenticatedRequest).user;
       const body = (req.body || {}) as Record<string, unknown>;
-      const { sessao_id, origem, acao, detalhes_json, terapeuta_id: terapeutaIdBody } = body;
+      const { sessao_id, origem, acao, entidade, detalhes_json, terapeuta_id: terapeutaIdBody } = body;
 
       if (!sessao_id || typeof sessao_id !== 'string' || !validarUUID(sessao_id)) {
         res.status(400).json({ error: 'Parâmetro sessao_id ausente ou inválido.' });
@@ -251,40 +269,32 @@ export class AuditoriaController {
       }
 
       // Guarda Anti-Spoofing de terapeuta (RF21)
-      const isSuperAdmin =
-        hasSuperAdminClaim(usuarioLogado) ||
-        usuarioLogado?.is_super_admin === true;
-
       if (
         terapeutaIdBody &&
         typeof terapeutaIdBody === 'string' &&
         usuarioLogado?.id &&
-        terapeutaIdBody !== usuarioLogado.id &&
-        !isSuperAdmin
+        terapeutaIdBody !== usuarioLogado.id
       ) {
-        res.status(403).json({
-          error: 'Acesso negado: tentativa de registrar auditoria para outro terapeuta não autorizada (RF21).',
-        });
-        return;
+        const isSuperAdmin = await AuditoriaService.verificarSuperAdmin(usuarioLogado);
+        if (!isSuperAdmin) {
+          res.status(403).json({
+            error: 'Acesso negado: tentativa de registrar auditoria para outro terapeuta não autorizada (RF21).',
+          });
+          return;
+        }
       }
 
       // Validação de acesso e vínculo institucional com a sessão clínica (RN04)
-      const validacao = await AuditoriaService.validarAcessoLinhaDoTempo(sessao_id, usuarioLogado);
+      const validacao = await AuditoriaService.validarAcessoRegistroEvento(sessao_id, usuarioLogado);
       if (!validacao.autorizado) {
         res.status(validacao.statusHttp || 403).json({ error: validacao.motivo });
         return;
       }
 
-      const clientIp =
-        (typeof req.headers['x-forwarded-for'] === 'string'
-          ? req.headers['x-forwarded-for'].split(',')[0]?.trim()
-          : null) ||
-        req.socket?.remoteAddress ||
-        (typeof body.ip === 'string' ? body.ip : null);
-
+      const contextoHttp = extrairContextoHttp(req);
+      const clientIp = contextoHttp.ip || (typeof body.ip === 'string' ? body.ip : null);
       const clientUserAgent =
-        (typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null) ||
-        (typeof body.user_agent === 'string' ? body.user_agent : null);
+        contextoHttp.userAgent || (typeof body.user_agent === 'string' ? body.user_agent : null);
 
       const detalhesSanitizados = AuditoriaController.sanitizarDetalhesJson(
         typeof detalhes_json === 'object' && detalhes_json !== null
@@ -293,8 +303,10 @@ export class AuditoriaController {
       );
 
       const novoEvento = await AuditoriaService.registrarEvento({
+        entidade: typeof entidade === 'string' && entidade.trim() !== '' ? entidade.trim() : 'sessao',
         sessao_id,
         terapeuta_id: usuarioLogado?.id || (typeof terapeutaIdBody === 'string' ? terapeutaIdBody : null),
+        recurso_id: sessao_id,
         origem: origem.trim(),
         acao: acao.trim(),
         detalhes_json: detalhesSanitizados,
@@ -322,7 +334,7 @@ export class AuditoriaController {
   }
 
   /**
-   * Consulta registros de auditoria de acessos ao prontuário médico com suporte a filtro por período e terapeuta (RF08, RNF06).
+   * Consulta registros de auditoria de acessos ao prontuário médico (SuperAdmin only via rota).
    */
   static async consultarAcessosProntuario(req: Request, res: Response): Promise<void> {
     try {
@@ -370,4 +382,3 @@ export class AuditoriaController {
     }
   }
 }
-

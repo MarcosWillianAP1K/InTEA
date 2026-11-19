@@ -11,6 +11,33 @@ import type { Sessao } from '../../api/sessao/models/sessao.model.js';
 /**
  * Formal, strictly typed domain event catalog for the InTEA ecosystem.
  */
+export type EntidadeAuditoria =
+  | 'autenticacao'
+  | 'terapeuta'
+  | 'paciente'
+  | 'vinculo'
+  | 'sessao'
+  | 'anotacao'
+  | 'clinica'
+  | 'jogo'
+  | 'exportacao'
+  | string;
+
+export interface AuditoriaEventoPayload {
+  entidade: EntidadeAuditoria;
+  acao: string;
+  origem: string;
+  terapeutaId?: string | null;
+  pacienteId?: string | null;
+  sessaoId?: string | null;
+  clinicaId?: string | null;
+  recursoId?: string | null;
+  descricao?: string | null;
+  detalhes?: Record<string, unknown>;
+  ip?: string | null;
+  userAgent?: string | null;
+}
+
 export interface EventosDoSistema {
   'sessao:finalizada': {
     sessao: Sessao;
@@ -46,6 +73,7 @@ export interface EventosDoSistema {
     ip: string | null;
     userAgent: string | null;
   };
+  'auditoria:evento': AuditoriaEventoPayload;
 }
 
 export class InTeaEventBus extends EventEmitter {

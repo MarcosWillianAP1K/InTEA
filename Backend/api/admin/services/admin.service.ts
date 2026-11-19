@@ -79,6 +79,9 @@ export interface FiltrosTerapeutaAdminDTO {
 export interface FiltrosAuditoriaConsolidadaDTO {
   clinicaId?: string;
   terapeutaId?: string;
+  pacienteId?: string;
+  entidade?: string;
+  busca?: string;
   dataInicio?: string;
   dataFim?: string;
   tipoAcao?: string;
@@ -99,15 +102,27 @@ export interface RespostaListagemPaginada<T> {
 
 export interface EventoAuditoriaAdmin {
   id: string;
-  sessao_id: string;
+  entidade?: string;
+  recurso_id?: string | null;
+  clinica_id?: string | null;
+  clinica_nome?: string;
+  sessao_id: string | null;
   terapeuta_id: string | null;
+  terapeuta_nome?: string;
+  terapeuta_email?: string;
+  paciente_id?: string | null;
+  paciente_nome?: string;
+  jogo_nome?: string;
   origem: string;
   acao: string;
+  descricao?: string | null;
   detalhes_json: Record<string, unknown>;
   ip: string | null;
   user_agent: string | null;
   created_at: string;
   terapeuta?: { id: string; nome: string; email: string } | null;
+  paciente?: { id: string; nome: string } | null;
+  clinica?: { id: string; nome: string } | null;
 }
 
 export interface ResumoAuditoriaConsolidada {
@@ -568,8 +583,8 @@ export class AdminService {
       terapeutasIdsDaClinica = (terapeutasClinica || []).map((t) => t.id);
     }
 
-    let query = supabase.from('auditoria_sessao').select(
-      'id, sessao_id, terapeuta_id, origem, acao, detalhes_json, ip, user_agent, created_at, terapeuta:terapeuta_id (id, nome, email)',
+    let query = supabase.from('auditoria_evento').select(
+      'id, entidade, recurso_id, clinica_id, sessao_id, paciente_id, terapeuta_id, origem, acao, descricao, detalhes_json, ip, user_agent, created_at, terapeuta:terapeuta_id (id, nome, email), paciente:paciente_id (id, nome), clinica:clinica_id (id, nome)',
       { count: 'exact' }
     );
 
@@ -592,18 +607,29 @@ export class AdminService {
       }
     }
 
-    if (filtros.terapeutaId) {
+    if (filtros.terapeutaId && filtros.terapeutaId !== 'todos') {
       if (!validarUUID(filtros.terapeutaId)) {
         throw new AdminServiceError('terapeutaId deve ser um UUID válido.', 400);
       }
       query = query.eq('terapeuta_id', filtros.terapeutaId);
     }
 
-    if (filtros.tipoAcao) {
+    if (filtros.pacienteId) {
+      if (!validarUUID(filtros.pacienteId)) {
+        throw new AdminServiceError('pacienteId deve ser um UUID válido.', 400);
+      }
+      query = query.eq('paciente_id', filtros.pacienteId);
+    }
+
+    if (filtros.entidade && filtros.entidade !== 'todas') {
+      query = query.eq('entidade', filtros.entidade);
+    }
+
+    if (filtros.tipoAcao && filtros.tipoAcao !== 'todas') {
       query = query.eq('acao', filtros.tipoAcao);
     }
 
-    if (filtros.origem) {
+    if (filtros.origem && filtros.origem !== 'todas') {
       query = query.eq('origem', filtros.origem);
     }
 
@@ -624,8 +650,40 @@ export class AdminService {
       throw new AdminServiceError('Falha ao consultar logs de auditoria consolidada.', 500, error.message);
     }
 
-    const eventos = (data as unknown as EventoAuditoriaAdmin[]) || [];
-    const total = count || 0;
+    let eventos = ((data as unknown as EventoAuditoriaAdmin[]) || []).map((ev) => ({
+      ...ev,
+      entidade: ev.entidade || 'sessao',
+      terapeuta_nome: ev.terapeuta_nome || ev.terapeuta?.nome,
+      terapeuta_email: ev.terapeuta_email || ev.terapeuta?.email,
+      paciente_nome: ev.paciente_nome || ev.paciente?.nome,
+      clinica_nome: ev.clinica_nome || ev.clinica?.nome || clinicaInfo?.nome,
+    }));
+
+    if (filtros.busca && filtros.busca.trim() !== '') {
+      const termo = filtros.busca.trim().toLowerCase();
+      eventos = eventos.filter((ev) =>
+        [
+          ev.terapeuta_nome,
+          ev.terapeuta_email,
+          ev.paciente_nome,
+          ev.clinica_nome,
+          ev.entidade,
+          ev.acao,
+          ev.origem,
+          ev.descricao,
+          ev.ip,
+          ev.sessao_id,
+          ev.paciente_id,
+          ev.terapeuta_id,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(termo)
+      );
+    }
+
+    const total = count ?? eventos.length;
     const totalPages = Math.ceil(total / limit);
 
     // Agregação estatística de ações nos eventos recuperados

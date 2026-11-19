@@ -1,8 +1,13 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ListaPacientes } from "../components/ListaPacientes";
+import { useAuthStore } from "@/features/autenticacao";
 
 describe("Componente ListaPacientes (Alternador Tabela vs Grid de Cards)", () => {
+  beforeEach(() => {
+    useAuthStore.setState({ user: null, isAuthenticated: false });
+  });
   it("deve renderizar inicialmente em modo Grid com CardAdicionarPaciente e CardPacienteGrid", () => {
     render(<ListaPacientes initialVisualMode="grid" />);
 
@@ -94,5 +99,55 @@ describe("Componente ListaPacientes (Alternador Tabela vs Grid de Cards)", () =>
     fireEvent.change(inputBusca, { target: { value: "NomeInexistenteXYZ" } });
 
     expect(screen.getByText("Nenhum paciente vinculado")).toBeDefined();
+  });
+
+  it("deve navegar para /pacientes/cadastrar quando SuperAdmin clica em Cadastrar Paciente dentro do Router e ocultar para terapeuta comum", () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: {
+        id: "terap-comum",
+        nome: "Terapeuta Comum",
+        email: "comum@intea.com.br",
+        clinica_id: "cli-1",
+        status_ativo: true,
+        is_super_admin: false,
+        role: "terapeuta",
+      },
+    });
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <ListaPacientes initialVisualMode="grid" />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("button", { name: /Cadastrar Paciente/i })).toBeNull();
+    expect(screen.queryByTestId("card-adicionar-paciente")).toBeNull();
+    unmount();
+
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: {
+        id: "admin-1",
+        nome: "Super Admin",
+        email: "admin@intea.com.br",
+        clinica_id: "cli-1",
+        status_ativo: true,
+        is_super_admin: true,
+        role: "super_admin",
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/pacientes"]}>
+        <Routes>
+          <Route path="/pacientes" element={<ListaPacientes initialVisualMode="grid" />} />
+          <Route path="/pacientes/cadastrar" element={<div data-testid="rota-cadastrar-paciente">Cadastrar</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const btnCadastrar = screen.getByRole("button", { name: /Cadastrar Paciente/i });
+    fireEvent.click(btnCadastrar);
+    expect(screen.getByTestId("rota-cadastrar-paciente")).toBeDefined();
   });
 });

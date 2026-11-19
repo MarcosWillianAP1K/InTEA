@@ -1,8 +1,7 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Jogo, FiltrosJogos } from "../types";
-import { jogosService, JOGOS_MOCK } from "../services/jogos.service";
-import { USE_MOCK_DATA } from "@/core/api/http-client";
+import { jogosService } from "../services/jogos.service";
 import { JogoCard } from "../components/JogoCard";
 import { JogosFiltros } from "../components/JogosFiltros";
 import { useSessionStore } from "@/features/sessao";
@@ -27,16 +26,9 @@ export function BibliotecaJogosPage() {
   const [sessaoLivre, setSessaoLivre] = useState<SessaoModoLivreAtiva | null>(null);
   const [copiadoLivre, setCopiadoLivre] = useState(false);
 
-  const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
+  const [objetivosCatalogo, setObjetivosCatalogo] = useState<string[]>([]);
 
-  const objetivosDisponiveis = useMemo(() => {
-    const isMockOrTest = USE_MOCK_DATA || import.meta.env.MODE === "test";
-    const fonte = isMockOrTest ? JOGOS_MOCK : jogos;
-    const list = fonte
-      .map((j) => j.objetivoTerapeutico)
-      .filter((obj): obj is string => Boolean(obj));
-    return Array.from(new Set(list));
-  }, [jogos]);
+  const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
 
   useEffect(() => {
     async function carregarJogos() {
@@ -44,6 +36,30 @@ export function BibliotecaJogosPage() {
       try {
         const dados = await jogosService.listar(filtros);
         setJogos(dados);
+
+        const semFiltros =
+          !(filtros.busca ?? "").trim() &&
+          (!filtros.objetivo || filtros.objetivo === "todos");
+
+        const extraidos = dados
+          .map(
+            (j) =>
+              j.objetivo_clinico ||
+              j.manifesto?.objetivo_clinico ||
+              j.manifesto_json?.objetivo_clinico ||
+              j.objetivoTerapeutico
+          )
+          .filter((obj): obj is string => Boolean(obj));
+
+        if (semFiltros) {
+          setObjetivosCatalogo(Array.from(new Set(extraidos)));
+        } else {
+          setObjetivosCatalogo((prev) =>
+            prev.length === 0 && extraidos.length > 0
+              ? Array.from(new Set(extraidos))
+              : prev
+          );
+        }
       } catch {
         toast.error("Erro ao carregar a biblioteca de jogos");
       } finally {
@@ -153,7 +169,7 @@ export function BibliotecaJogosPage() {
               variant="outline"
               size="sm"
               onClick={() => void handleCopiarPinLivre()}
-              className="min-h-[44px] px-3 rounded-xl gap-1.5 text-xs font-semibold cursor-pointer"
+              className="min-h-11 px-3 rounded-xl gap-1.5 text-xs font-semibold cursor-pointer"
               title="Copiar código de Modo Livre"
             >
               {copiadoLivre ? (
@@ -169,7 +185,7 @@ export function BibliotecaJogosPage() {
               size="sm"
               data-testid="btn-fechar-modo-livre"
               onClick={() => setSessaoLivre(null)}
-              className="min-h-[44px] px-3 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+              className="min-h-11 px-3 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
               title="Encerrar Modo Livre"
             >
               <X className="h-4 w-4 mr-1" />
@@ -186,7 +202,7 @@ export function BibliotecaJogosPage() {
         onFiltroObjetivo={(objetivo) =>
           setFiltros((prev) => ({ ...prev, objetivo }))
         }
-        objetivosDisponiveis={objetivosDisponiveis}
+        objetivosDisponiveis={objetivosCatalogo}
       />
 
       {/* LISTA DE JOGOS */}
@@ -200,8 +216,20 @@ export function BibliotecaJogosPage() {
           ))}
         </div>
       ) : jogos.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/50 py-16 text-center text-sm text-muted-foreground">
-          Nenhum jogo encontrado para os filtros selecionados.
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/50 py-16 px-4 text-center text-sm text-muted-foreground">
+          <p>Nenhum jogo encontrado para os filtros selecionados.</p>
+          {((filtros.busca ?? "").trim() || (filtros.objetivo && filtros.objetivo !== "todos")) && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="btn-limpar-filtros-jogos"
+              onClick={() => setFiltros({ busca: "", objetivo: "todos" })}
+              className="min-h-11 px-4 rounded-xl text-xs font-semibold cursor-pointer"
+            >
+              Limpar filtros
+            </Button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-3.5">

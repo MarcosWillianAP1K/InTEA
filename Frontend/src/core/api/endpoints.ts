@@ -74,6 +74,11 @@ export const ENDPOINTS = {
     BASE: "/settings",
     USUARIO: (id: string) => `/settings/${id}`,
   },
+  ADMIN: {
+    CLINICAS: "/admin/clinicas",
+    AUDITORIA: "/admin/auditoria",
+    AUDITORIA_ESTATISTICAS: "/admin/auditoria/estatisticas",
+  },
   TEMPLATES: {
     AUTH_LOGIN: "/auth/login",
     AUTH_REFRESH: "/auth/refresh",

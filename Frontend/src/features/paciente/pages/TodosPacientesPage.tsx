@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, ArrowLeft, Eye, CheckCircle2, Clock } from "lucide-react";
+import { Search, Plus, ArrowLeft, Eye, Pencil } from "lucide-react";
+import { AvatarClinico } from "@/shared/components/AvatarClinico";
+import { ESTADO_CLINICO_NAO_INFORMADO } from "../constants/condicoesClinicas";
 import { pacienteService } from "../services/paciente.service";
 import type { Paciente } from "../types/paciente.types";
-import { DialogFormularioPaciente } from "../components/DialogFormularioPaciente";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Badge } from "@/shared/components/ui/badge";
@@ -38,12 +39,14 @@ export function TodosPacientesPage() {
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
-  const [modalCadastroAberto, setModalCadastroAberto] = useState(false);
 
   const carregarPacientes = async () => {
     try {
       setLoading(true);
-      const dados = await pacienteService.listar({ all: true });
+      const dados = await pacienteService.listar({
+        all: true,
+        incluirInativos: true,
+      });
       setPacientes(dados || []);
     } catch {
       toast.error("Erro ao carregar lista completa de pacientes.");
@@ -120,7 +123,7 @@ export function TodosPacientesPage() {
         </div>
 
         <Button
-          onClick={() => setModalCadastroAberto(true)}
+          onClick={() => navigate("/pacientes/cadastrar")}
           className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-md shadow-primary/20 cursor-pointer"
         >
           <Plus className="h-4 w-4" />
@@ -192,14 +195,16 @@ export function TodosPacientesPage() {
                     {/* COLUNA 1: PACIENTE */}
                     <TableCell className="py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                          {p.nome.slice(0, 2).toUpperCase()}
-                        </div>
+                        <AvatarClinico
+                          nome={p.nome}
+                          src={p.foto_url || p.photoUrl}
+                          size="sm"
+                        />
                         <div className="flex flex-col min-w-0">
                           <span className="font-semibold text-xs text-foreground truncate max-w-64">
                             {p.nome}
                           </span>
-                          <span className="text-[11px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             {p.cpf ? `CPF: ${p.cpf}` : "CPF não informado"}
                           </span>
                         </div>
@@ -218,30 +223,45 @@ export function TodosPacientesPage() {
 
                     {/* COLUNA 4: ESTADO CLÍNICO */}
                     <TableCell className="py-3.5">
-                      {ativo ? (
-                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[11px] font-medium gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          <span>Ativo em tratamento</span>
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20 text-[11px] font-medium gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>Inativo</span>
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-medium text-foreground">
+                          {p.dados_clinicos?.diagnostico_base?.trim() ||
+                            p.estado_clinico?.trim() ||
+                            ESTADO_CLINICO_NAO_INFORMADO}
+                        </span>
+                        {!ativo && (
+                          <Badge
+                            variant="outline"
+                            className="bg-muted text-muted-foreground border-border text-xs font-medium"
+                          >
+                            Inativo
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
 
                     {/* COLUNA 5: AÇÕES */}
                     <TableCell className="text-right py-3.5 pr-6">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/pacientes/${p.id}`)}
-                        className="h-8 px-3 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>Ver Perfil</span>
-                      </Button>
+                      <div className="inline-flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/pacientes/${p.id}/editar`)}
+                          className="h-8 px-3 text-xs font-semibold gap-1.5 cursor-pointer"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          <span>Editar</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/pacientes/${p.id}`)}
+                          className="h-8 px-3 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary cursor-pointer"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>Ver Perfil</span>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -250,17 +270,6 @@ export function TodosPacientesPage() {
           </TableBody>
         </Table>
       </div>
-
-      {/* Modal de Cadastro de Paciente */}
-      <DialogFormularioPaciente
-        open={modalCadastroAberto}
-        onOpenChange={(open) => {
-          setModalCadastroAberto(open);
-          if (!open) {
-            void carregarPacientes();
-          }
-        }}
-      />
     </div>
   );
 }

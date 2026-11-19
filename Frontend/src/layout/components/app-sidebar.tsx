@@ -86,7 +86,7 @@ export function AppSidebar({
         ]
       : []),
     {
-      name: "Registro de Atendimentos",
+      name: "Histórico de Sessões",
       url: "/historico",
       icon: History,
     },

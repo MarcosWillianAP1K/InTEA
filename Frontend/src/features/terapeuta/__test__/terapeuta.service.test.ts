@@ -118,6 +118,7 @@ describe("Dominio Terapeuta — terapeutaService", () => {
       expect(putSpy).toHaveBeenCalledWith(
         ENDPOINTS.TERAPEUTA.BY_ID(MOCK_TERAPEUTA_MARCOS.id),
         dto,
+        { timeoutMs: 45_000 },
       );
       expect(resultado?.telefone).toBe("(86) 91111-9999");
     });

@@ -3,6 +3,8 @@ import { AuthModel, LoginDTO, RecuperarSenhaDTO, RedefinirSenhaDTO } from '../mo
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { SessoesAtivasService } from '../../../core/auth/sessoes-ativas.service.js';
 import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
+import { eventBus } from '../../../core/events/event-bus.js';
+import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 
 // ==============================================================================
 // CONTROLLER: AuthController
@@ -31,6 +33,19 @@ export class AuthController {
       }
 
       const resultado = await AuthModel.login(dto);
+      const { ip: ipLogin, userAgent: uaLogin } = extrairContextoHttp(req);
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'autenticacao',
+        acao: 'login_realizado',
+        origem: 'terapeuta_web',
+        terapeutaId: resultado.user.id,
+        recursoId: resultado.user.id,
+        descricao: 'Autenticação realizada com sucesso no painel InTEA.',
+        detalhes: { email: dto.email },
+        ip: ipLogin,
+        userAgent: uaLogin,
+      });
 
       const tokens = {
         access_token: resultado.access_token,
@@ -111,9 +126,20 @@ export class AuthController {
    * @param _req - Express request.
    * @param res - Express response acknowledging logout with data: null and message.
    */
-  static async logout(_req: Request, res: Response): Promise<void> {
+  static async logout(req: Request, res: Response): Promise<void> {
     try {
       await AuthModel.logout();
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'autenticacao',
+        acao: 'logout_realizado',
+        origem: 'terapeuta_web',
+        terapeutaId: (req as AuthenticatedRequest).user?.id ?? null,
+        descricao: 'Encerramento de sessão autenticada (logout).',
+        detalhes: {},
+        ip,
+        userAgent,
+      });
       res.status(200).json({
         data: null,
         message: 'Logout realizado com sucesso.',
@@ -190,6 +216,16 @@ export class AuthController {
       }
 
       const resultado = await AuthModel.redefinirSenha(token.trim(), body.novaSenha.trim());
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'autenticacao',
+        acao: 'senha_alterada',
+        origem: 'terapeuta_web',
+        descricao: 'Redefinição de senha realizada via token de recuperação.',
+        detalhes: { fluxo: 'redefinir_senha' },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: null,
@@ -230,6 +266,18 @@ export class AuthController {
         return;
       }
       const resultado = await AuthModel.alterarSenha(usuarioLogado.id, novaSenha.trim());
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'autenticacao',
+        acao: 'senha_alterada',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogado.id,
+        recursoId: usuarioLogado.id,
+        descricao: 'Alteração voluntária de senha realizada pelo usuário autenticado.',
+        detalhes: { fluxo: 'alterar_senha' },
+        ip,
+        userAgent,
+      });
       res.status(200).json({
         data: null,
         message: resultado.message,
@@ -361,6 +409,18 @@ export class AuthController {
       }
 
       const resultado = await SessoesAtivasService.revogarOutrasSessoes(usuarioLogado.id, tokenAtual);
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'autenticacao',
+        acao: 'sessao_auth_revogada',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogado.id,
+        recursoId: usuarioLogado.id,
+        descricao: 'Desconexão remota de todas as outras sessões ativas.',
+        detalhes: { modo: 'logout_all', revogadas: resultado.revogadas },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: null,
@@ -391,6 +451,20 @@ export class AuthController {
       }
 
       const revogado = await SessoesAtivasService.revogarSessaoPorId(usuarioLogado.id, sessaoId);
+      if (revogado) {
+        const { ip, userAgent } = extrairContextoHttp(req);
+        eventBus.emitir('auditoria:evento', {
+          entidade: 'autenticacao',
+          acao: 'sessao_auth_revogada',
+          origem: 'terapeuta_web',
+          terapeutaId: usuarioLogado.id,
+          recursoId: sessaoId,
+          descricao: 'Revogação remota de sessão autenticada específica.',
+          detalhes: { modo: 'revogar_sessao', sessao_auth_id: sessaoId },
+          ip,
+          userAgent,
+        });
+      }
       if (!revogado) {
         res.status(404).json({ error: 'Sessão ativa não encontrada ou já revogada.' });
         return;

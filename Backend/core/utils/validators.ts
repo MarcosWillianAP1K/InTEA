@@ -171,6 +171,82 @@ export interface AtualizarPacientePayloadRaw {
  * @param payload - The request body object containing patient and optional guardian details.
  * @returns Object containing boolean status `valido` and array of validation errors `erros`.
  */
+function validarBlocoResponsavel(
+  respRaw: unknown,
+  label: string,
+  erros: string[],
+  exigirNomeQuandoObjeto: boolean
+): void {
+  if (!respRaw || typeof respRaw !== 'object') return;
+  const resp = respRaw as Record<string, unknown>;
+
+  const possuiAlgumDado =
+    Boolean(typeof resp.nome === 'string' && resp.nome.trim()) ||
+    Boolean(typeof resp.cpf === 'string' && resp.cpf.trim()) ||
+    Boolean(typeof resp.telefone === 'string' && resp.telefone.trim()) ||
+    Boolean(typeof resp.email === 'string' && resp.email.trim()) ||
+    Boolean(typeof resp.cep === 'string' && resp.cep.trim()) ||
+    Boolean(typeof resp.endereco === 'string' && resp.endereco.trim());
+
+  if (!exigirNomeQuandoObjeto && !possuiAlgumDado) {
+    return;
+  }
+
+  if (!resp.nome || typeof resp.nome !== 'string' || resp.nome.trim().length < 2) {
+    erros.push(`${label} deve conter um "nome" válido.`);
+  }
+  if (resp.cpf && typeof resp.cpf === 'string' && !validarCPF(resp.cpf)) {
+    erros.push(`O CPF ${label === 'O responsável' ? 'do responsável' : 'do responsável extra'} é inválido.`);
+  }
+  if (resp.telefone && typeof resp.telefone === 'string' && !validarTelefone(resp.telefone)) {
+    erros.push(
+      `O telefone ${label === 'O responsável' ? 'do responsável' : 'do responsável extra'} é inválido. Deve conter DDD e o dígito 9 na frente.`
+    );
+  }
+  if (resp.cep && typeof resp.cep === 'string' && !validarCEP(resp.cep)) {
+    erros.push(
+      `O CEP ${label === 'O responsável' ? 'do responsável' : 'do responsável extra'} é inválido. Utilize o formato 00000-000 ou 8 dígitos numéricos.`
+    );
+  }
+  if (resp.data_nascimento && typeof resp.data_nascimento === 'string') {
+    const checagemData = validarDataNascimento(resp.data_nascimento);
+    if (!checagemData.valida) {
+      erros.push(checagemData.erro!);
+    }
+  }
+}
+
+function validarBlocoDadosClinicos(dcRaw: unknown, erros: string[]): void {
+  if (!dcRaw || typeof dcRaw !== 'object') return;
+  const dc = dcRaw as Record<string, unknown>;
+
+  if (
+    dc.diagnostico_base !== undefined &&
+    dc.diagnostico_base !== null &&
+    typeof dc.diagnostico_base !== 'string'
+  ) {
+    erros.push('O campo "diagnostico_base" dos dados clínicos deve ser uma string.');
+  }
+
+  if (
+    dc.observacoes_gerais !== undefined &&
+    dc.observacoes_gerais !== null &&
+    typeof dc.observacoes_gerais !== 'string'
+  ) {
+    erros.push('O campo "observacoes_gerais" dos dados clínicos deve ser uma string.');
+  }
+
+  if (dc.gatilhos_sensoriais !== undefined && dc.gatilhos_sensoriais !== null) {
+    if (Array.isArray(dc.gatilhos_sensoriais)) {
+      if (!dc.gatilhos_sensoriais.every((item) => typeof item === 'string')) {
+        erros.push('Todos os itens de "gatilhos_sensoriais" devem ser strings.');
+      }
+    } else if (typeof dc.gatilhos_sensoriais !== 'string') {
+      erros.push('O campo "gatilhos_sensoriais" deve ser uma lista de strings ou texto separado por vírgulas.');
+    }
+  }
+}
+
 export function validarCriarPacienteDTO(payload: unknown): { valido: boolean; erros: string[] } {
   const p = (payload && typeof payload === 'object') ? (payload as Record<string, unknown>) : null;
   const erros: string[] = [];
@@ -205,21 +281,9 @@ export function validarCriarPacienteDTO(payload: unknown): { valido: boolean; er
     }
   }
 
-  // Responsável opcional
-  if (p?.responsavel && typeof p.responsavel === 'object') {
-    const resp = p.responsavel as Record<string, unknown>;
-    if (!resp.nome || typeof resp.nome !== 'string' || resp.nome.trim().length < 2) {
-      erros.push('O responsável deve conter um "nome" válido.');
-    }
-    if (resp.cpf && typeof resp.cpf === 'string' && !validarCPF(resp.cpf)) {
-      erros.push('O CPF do responsável é inválido.');
-    }
-    if (resp.telefone && typeof resp.telefone === 'string') {
-      if (!validarTelefone(resp.telefone)) {
-        erros.push('O telefone do responsável é inválido. Deve conter DDD e o dígito 9 na frente.');
-      }
-    }
-  }
+  validarBlocoResponsavel(p?.responsavel, 'O responsável', erros, true);
+  validarBlocoResponsavel(p?.responsavel_extra, 'O responsável extra', erros, false);
+  validarBlocoDadosClinicos(p?.dados_clinicos, erros);
 
   return {
     valido: erros.length === 0,
@@ -266,11 +330,15 @@ export function validarAtualizarPacienteDTO(payload: unknown): { valido: boolean
     }
   }
 
-  if (p?.telefone !== undefined && p.telefone !== null) {
+  if (p?.telefone !== undefined && p.telefone !== null && p.telefone !== '') {
     if (typeof p.telefone !== 'string' || !validarTelefone(p.telefone)) {
       erros.push('O telefone informado é inválido. Deve conter DDD válido e o dígito 9 na frente.');
     }
   }
+
+  validarBlocoResponsavel(p?.responsavel, 'O responsável', erros, false);
+  validarBlocoResponsavel(p?.responsavel_extra, 'O responsável extra', erros, false);
+  validarBlocoDadosClinicos(p?.dados_clinicos, erros);
 
   return {
     valido: erros.length === 0,

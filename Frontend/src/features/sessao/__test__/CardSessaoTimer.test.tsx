@@ -113,4 +113,38 @@ describe("Componente CardSessaoTimer (Figma: 'sessão - InTEA' 61:759)", () => {
 
     expect(screen.queryByTestId("btn-toggle-pausa")).toBeNull();
   });
+
+  it("deve desabilitar botão Concluir sessão quando concluindo=true", () => {
+    const handleConcluir = vi.fn();
+    renderWithRouter(
+      <CardSessaoTimer
+        status="em_andamento"
+        tempoFormatado="25:00"
+        concluindo={true}
+        onConcluirClick={handleConcluir}
+      />,
+    );
+
+    const botaoConcluindo = screen.getByRole("button", { name: /Concluindo/i }) as HTMLButtonElement;
+    expect(botaoConcluindo.disabled).toBe(true);
+    fireEvent.click(botaoConcluindo);
+    expect(handleConcluir).not.toHaveBeenCalled();
+  });
+
+  it.each(["cancelada", "expirada", "interrompida"])(
+    "não deve exibir botão 'Ver Relatório' quando o status for '%s'",
+    (status) => {
+      renderWithRouter(
+        <CardSessaoTimer
+          sessaoId={`s-${status}`}
+          status={status}
+          tempoFormatado="10:00"
+          onVerRelatorioClick={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByRole("button", { name: /Ver Relatório/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Cockpit/i })).toBeNull();
+    },
+  );
 });

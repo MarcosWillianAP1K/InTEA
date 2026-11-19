@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Gamepad2, Clock, CheckCircle2, Activity, Eye, XCircle, Play, Pause } from "lucide-react";
+import { Gamepad2, Clock, CheckCircle2, Activity, Eye, XCircle, Play, Pause, Loader2 } from "lucide-react";
 import { useClinicalTimer } from "../hooks/useClinicalTimer";
 import { useSessionStore } from "../store/sessionStore";
 import { SessionSocketManager } from "@/core/web.socket";
@@ -23,6 +23,7 @@ export interface CardSessaoTimerProps {
   dataHoraInicio?: string;
   status?: "conectado" | "em_andamento" | "pausada" | "finalizada" | "cancelada" | "expirada" | string;
   isPausado?: boolean;
+  concluindo?: boolean;
   onTogglePausa?: () => void;
   onCockpitClick?: () => void;
   onConcluirClick?: () => void;
@@ -54,6 +55,7 @@ export function CardSessaoTimer({
   dataHoraInicio,
   status = "conectado",
   isPausado: isPausadoProp,
+  concluindo = false,
   onTogglePausa,
   onCockpitClick,
   onConcluirClick,
@@ -106,10 +108,11 @@ export function CardSessaoTimer({
 
   const handleConcluir = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (concluindo) return;
     if (onConcluirClick) {
       onConcluirClick();
     } else if (sessaoId) {
-      navigate(`/sessao/${sessaoId}/resultado`);
+      navigate(`/sessao/${sessaoId}/monitoramento`);
     }
   };
 
@@ -205,10 +208,18 @@ export function CardSessaoTimer({
           {isEmAndamento && (
             <button
               type="button"
+              disabled={concluindo}
               onClick={handleConcluir}
-              className="flex items-center justify-center px-3.5 py-1.5 rounded-full bg-primary-dark hover:bg-primary-hover text-primary-foreground text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              className="flex items-center justify-center px-3.5 py-1.5 rounded-full bg-primary-dark hover:bg-primary-hover text-primary-foreground text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Concluir sessão
+              {concluindo ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  <span>Concluindo...</span>
+                </>
+              ) : (
+                "Concluir sessão"
+              )}
             </button>
           )}
 

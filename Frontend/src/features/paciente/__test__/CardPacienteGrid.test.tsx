@@ -30,7 +30,7 @@ describe("Componente CardPacienteGrid (Figma: 'Card paciente' 67:1592)", () => {
     expect(screen.getByText("Lucas Martins")).toBeDefined();
     expect(screen.getByText("8 anos")).toBeDefined();
     expect(screen.getByText("TEA Nível 2")).toBeDefined();
-    expect(screen.getByText("Ativo")).toBeDefined();
+    expect(screen.queryByText("Ativo")).toBeNull();
     expect(screen.getByText(/Última sessão: 08\/09\/2026/i)).toBeDefined();
     expect(screen.getByRole("button", { name: /Ver Perfil/i })).toBeDefined();
   });

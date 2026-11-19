@@ -9,6 +9,8 @@ import {
   Paciente,
   CriarPacienteDTO,
   AtualizarPacienteDTO,
+  CriarResponsavelDTO,
+  DadosClinicosInputDTO,
   FiltrosPacienteDTO,
   RespostaListagemPaciente,
   ResponsavelVinculado,
@@ -110,6 +112,184 @@ export class PacienteService {
     return false;
   }
 
+  private static async validarClinicaInstitucional(clinicaId?: string | null): Promise<string> {
+    if (!clinicaId || !validarUUID(clinicaId)) {
+      throw new PacienteServiceError(
+        'O vínculo institucional (clinica_id válido) é obrigatório para o paciente.',
+        400
+      );
+    }
+
+    const clientClinica = supabase.from('clinica');
+    if (clientClinica && typeof clientClinica.select === 'function') {
+      const selectBuilder = clientClinica.select('id, status_ativo') as unknown as {
+        eq?: (col: string, val: string) => {
+          maybeSingle?: () => Promise<{
+            data?: { id?: string; status_ativo?: boolean } | null;
+            error?: { message?: string } | null;
+          }>;
+        };
+      };
+      if (selectBuilder && typeof selectBuilder.eq === 'function') {
+        const eqQuery = selectBuilder.eq('id', clinicaId);
+        if (eqQuery && typeof eqQuery.maybeSingle === 'function') {
+          const { data, error } = await eqQuery.maybeSingle();
+          if (error) {
+            throw new PacienteServiceError('Falha ao validar a clínica institucional informada.', 400);
+          }
+          if (!data || data.status_ativo === false) {
+            throw new PacienteServiceError(
+              'A clínica institucional informada não existe ou encontra-se inativa.',
+              400
+            );
+          }
+        }
+      }
+    }
+
+    return clinicaId;
+  }
+
+  private static normalizarRelacoesEDadosClinicos(paciente: Paciente): Paciente {
+    const responsaveisNormalizados: ResponsavelVinculado[] = Array.isArray(paciente.responsaveis)
+      ? paciente.responsaveis.map((r: unknown) => {
+          if (r && typeof r === 'object' && 'responsavel' in r) {
+            const wrapper = r as {
+              responsavel: ResponsavelVinculado;
+              tipo_responsavel?: string;
+              parentesco?: string | null;
+            };
+            return {
+              ...wrapper.responsavel,
+              ...(wrapper.parentesco && !wrapper.responsavel?.parentesco
+                ? { parentesco: wrapper.parentesco }
+                : {}),
+              ...(wrapper.tipo_responsavel ? { tipo_responsavel: wrapper.tipo_responsavel } : {}),
+              ...(wrapper.tipo_responsavel === 'principal' ? { principal: true } : {}),
+            };
+          }
+          return r as ResponsavelVinculado;
+        })
+      : [];
+
+    const terapeutasNormalizados: TerapeutaVinculado[] = Array.isArray(paciente.terapeutas)
+      ? paciente.terapeutas.map((t: unknown) => {
+          if (t && typeof t === 'object' && 'terapeuta' in t) {
+            const wrapper = t as { terapeuta: TerapeutaVinculado; created_at?: string };
+            return {
+              ...wrapper.terapeuta,
+              ...(wrapper.created_at && !wrapper.terapeuta?.created_at
+                ? { created_at: wrapper.created_at }
+                : {}),
+            };
+          }
+          return t as TerapeutaVinculado;
+        })
+      : [];
+
+    const rawDadosClinicos = (paciente as { dados_clinicos?: unknown }).dados_clinicos;
+    let dadosClinicosObj: Record<string, unknown> | null = null;
+    if (Array.isArray(rawDadosClinicos)) {
+      dadosClinicosObj =
+        rawDadosClinicos.length > 0 && rawDadosClinicos[0] && typeof rawDadosClinicos[0] === 'object'
+          ? { ...(rawDadosClinicos[0] as Record<string, unknown>) }
+          : null;
+    } else if (rawDadosClinicos && typeof rawDadosClinicos === 'object') {
+      dadosClinicosObj = { ...(rawDadosClinicos as Record<string, unknown>) };
+    }
+
+    if (dadosClinicosObj) {
+      if (typeof dadosClinicosObj.diagnostico_base === 'string') {
+        dadosClinicosObj.diagnostico_base = CryptoService.decifrarSeCifrado(
+          dadosClinicosObj.diagnostico_base
+        );
+      }
+      if (typeof dadosClinicosObj.observacoes_gerais === 'string') {
+        dadosClinicosObj.observacoes_gerais = CryptoService.decifrarSeCifrado(
+          dadosClinicosObj.observacoes_gerais
+        );
+      }
+    }
+
+    let terapeutaResponsavelId: string | null = null;
+    const rawTerResp = (paciente as { terapeuta_responsavel?: unknown }).terapeuta_responsavel;
+    if (Array.isArray(rawTerResp) && rawTerResp.length > 0) {
+      const first = rawTerResp[0] as { terapeuta_id?: unknown } | null;
+      if (first && typeof first.terapeuta_id === 'string') {
+        terapeutaResponsavelId = first.terapeuta_id;
+      }
+    } else if (rawTerResp && typeof rawTerResp === 'object' && 'terapeuta_id' in rawTerResp) {
+      const val = (rawTerResp as { terapeuta_id?: unknown }).terapeuta_id;
+      if (typeof val === 'string') {
+        terapeutaResponsavelId = val;
+      }
+    }
+
+    if (!terapeutaResponsavelId && terapeutasNormalizados.length > 0 && terapeutasNormalizados[0]?.id) {
+      terapeutaResponsavelId = String(terapeutasNormalizados[0].id);
+    }
+
+    return {
+      ...paciente,
+      responsaveis: responsaveisNormalizados,
+      terapeutas: terapeutasNormalizados,
+      ...(dadosClinicosObj ? { dados_clinicos: dadosClinicosObj } : {}),
+      terapeuta_responsavel_id: terapeutaResponsavelId,
+    };
+  }
+
+  private static prepararResponsavelDTO(
+    resp?: CriarResponsavelDTO | null,
+    enderecoPaciente?: {
+      cep?: string | null;
+      cidade?: string | null;
+      estado?: string | null;
+      endereco?: string | null;
+      bairro?: string | null;
+      numero?: string | null;
+      complemento?: string | null;
+    }
+  ): void {
+    if (!resp) return;
+    if (resp.cpf) resp.cpf = formatarCPF(resp.cpf);
+    if (resp.cep) resp.cep = formatarCEP(resp.cep);
+    if (resp.telefone) resp.telefone = formatarTelefone(resp.telefone);
+    if (resp.mesmo_endereco_paciente && enderecoPaciente) {
+      resp.cep = enderecoPaciente.cep ?? resp.cep ?? null;
+      resp.cidade = enderecoPaciente.cidade ?? resp.cidade ?? null;
+      resp.estado = enderecoPaciente.estado ?? resp.estado ?? null;
+      resp.endereco = enderecoPaciente.endereco ?? resp.endereco ?? null;
+      resp.bairro = enderecoPaciente.bairro ?? resp.bairro ?? null;
+      resp.numero = enderecoPaciente.numero ?? resp.numero ?? null;
+      resp.complemento = enderecoPaciente.complemento ?? resp.complemento ?? null;
+    }
+  }
+
+  private static prepararDadosClinicosDTO(dc?: DadosClinicosInputDTO | null): void {
+    if (!dc) return;
+
+    if (typeof dc.diagnostico_base === 'string') {
+      const limpo = dc.diagnostico_base.trim();
+      dc.diagnostico_base = limpo.length > 0 ? CryptoService.cifrarSeNaoCifrado(limpo) : null;
+    }
+
+    if (typeof dc.observacoes_gerais === 'string') {
+      const limpo = dc.observacoes_gerais.trim();
+      dc.observacoes_gerais = limpo.length > 0 ? CryptoService.cifrarSeNaoCifrado(limpo) : null;
+    }
+
+    if (typeof dc.gatilhos_sensoriais === 'string') {
+      dc.gatilhos_sensoriais = dc.gatilhos_sensoriais
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    } else if (Array.isArray(dc.gatilhos_sensoriais)) {
+      dc.gatilhos_sensoriais = dc.gatilhos_sensoriais
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+  }
+
   /**
    * Lists patients with search filters, pagination, and institutional visibility rules (RN04).
    *
@@ -166,7 +346,11 @@ export class PacienteService {
       filtros.terapeutaId = usuarioLogado.id;
     }
 
-    return await PacienteModel.listar(filtros);
+    const resultado = await PacienteModel.listar(filtros);
+    return {
+      ...resultado,
+      data: (resultado.data || []).map((p) => this.normalizarRelacoesEDadosClinicos(p)),
+    };
   }
 
   /**
@@ -189,93 +373,7 @@ export class PacienteService {
       return null;
     }
 
-    // Normalização segura sem `any`
-    const responsaveisNormalizados: ResponsavelVinculado[] = Array.isArray(paciente.responsaveis)
-      ? paciente.responsaveis.map((r: unknown) => {
-          if (r && typeof r === 'object' && 'responsavel' in r) {
-            const wrapper = r as {
-              responsavel: ResponsavelVinculado;
-              tipo_responsavel?: string;
-              parentesco?: string | null;
-            };
-            return {
-              ...wrapper.responsavel,
-              ...(wrapper.parentesco && !wrapper.responsavel?.parentesco
-                ? { parentesco: wrapper.parentesco }
-                : {}),
-              ...(wrapper.tipo_responsavel === 'principal' ? { principal: true } : {}),
-            };
-          }
-          return r as ResponsavelVinculado;
-        })
-      : [];
-
-    const terapeutasNormalizados: TerapeutaVinculado[] = Array.isArray(paciente.terapeutas)
-      ? paciente.terapeutas.map((t: unknown) => {
-          if (t && typeof t === 'object' && 'terapeuta' in t) {
-            const wrapper = t as { terapeuta: TerapeutaVinculado; created_at?: string };
-            return {
-              ...wrapper.terapeuta,
-              ...(wrapper.created_at && !wrapper.terapeuta?.created_at
-                ? { created_at: wrapper.created_at }
-                : {}),
-            };
-          }
-          return t as TerapeutaVinculado;
-        })
-      : [];
-
-    // Decifragem segura em repouso de dados clínicos sensíveis (LGPD / RNF06)
-    const rawDadosClinicos = (paciente as { dados_clinicos?: unknown }).dados_clinicos;
-    let dadosClinicosObj: Record<string, unknown> | null = null;
-    if (Array.isArray(rawDadosClinicos)) {
-      dadosClinicosObj =
-        rawDadosClinicos.length > 0 && rawDadosClinicos[0] && typeof rawDadosClinicos[0] === 'object'
-          ? { ...(rawDadosClinicos[0] as Record<string, unknown>) }
-          : null;
-    } else if (rawDadosClinicos && typeof rawDadosClinicos === 'object') {
-      dadosClinicosObj = { ...(rawDadosClinicos as Record<string, unknown>) };
-    }
-
-    if (dadosClinicosObj) {
-      if (typeof dadosClinicosObj.diagnostico_base === 'string') {
-        dadosClinicosObj.diagnostico_base = CryptoService.decifrarSeCifrado(
-          dadosClinicosObj.diagnostico_base
-        );
-      }
-      if (typeof dadosClinicosObj.observacoes_gerais === 'string') {
-        dadosClinicosObj.observacoes_gerais = CryptoService.decifrarSeCifrado(
-          dadosClinicosObj.observacoes_gerais
-        );
-      }
-    }
-
-    // Extração resiliente do terapeuta responsável (líder)
-    let terapeutaResponsavelId: string | null = null;
-    const rawTerResp = (paciente as { terapeuta_responsavel?: unknown }).terapeuta_responsavel;
-    if (Array.isArray(rawTerResp) && rawTerResp.length > 0) {
-      const first = rawTerResp[0] as { terapeuta_id?: unknown } | null;
-      if (first && typeof first.terapeuta_id === 'string') {
-        terapeutaResponsavelId = first.terapeuta_id;
-      }
-    } else if (rawTerResp && typeof rawTerResp === 'object' && 'terapeuta_id' in rawTerResp) {
-      const val = (rawTerResp as { terapeuta_id?: unknown }).terapeuta_id;
-      if (typeof val === 'string') {
-        terapeutaResponsavelId = val;
-      }
-    }
-
-    if (!terapeutaResponsavelId && terapeutasNormalizados.length > 0 && terapeutasNormalizados[0]?.id) {
-      terapeutaResponsavelId = String(terapeutasNormalizados[0].id);
-    }
-
-    return {
-      ...paciente,
-      responsaveis: responsaveisNormalizados,
-      terapeutas: terapeutasNormalizados,
-      ...(dadosClinicosObj ? { dados_clinicos: dadosClinicosObj } : {}),
-      terapeuta_responsavel_id: terapeutaResponsavelId,
-    };
+    return this.normalizarRelacoesEDadosClinicos(paciente);
   }
 
   /**
@@ -295,7 +393,7 @@ export class PacienteService {
       throw new PacienteServiceError('Erro de validação nos dados do paciente.', 400, validacao.erros);
     }
 
-    // 2. Isolamento Institucional e Anti-Spoofing de Clínica (RN04)
+    // 2. Isolamento Institucional e Obrigatoriedade de Clínica (RN04)
     if (usuarioLogado) {
       const isSuperAdmin =
         usuarioLogado.is_super_admin === true ||
@@ -310,37 +408,16 @@ export class PacienteService {
       }
     }
 
+    dto.clinica_id = await this.validarClinicaInstitucional(dto.clinica_id);
+
     // 3. Normalização e aplicação de máscaras canônicas
     dto.cpf = formatarCPF(dto.cpf);
     if (dto.cep) dto.cep = formatarCEP(dto.cep);
     if (dto.telefone) dto.telefone = formatarTelefone(dto.telefone);
 
-    if (dto.responsavel) {
-      if (dto.responsavel.cpf) dto.responsavel.cpf = formatarCPF(dto.responsavel.cpf);
-      if (dto.responsavel.telefone) dto.responsavel.telefone = formatarTelefone(dto.responsavel.telefone);
-    }
-
-    // 3.1. Cifragem simétrica AES-256-GCM para dados clínicos sensíveis em repouso (LGPD / RNF06)
-    const dtoClinico = dto as CriarPacienteDTO & {
-      dados_clinicos?: {
-        diagnostico_base?: string | null;
-        observacoes_gerais?: string | null;
-        [key: string]: unknown;
-      };
-    };
-
-    if (dtoClinico.dados_clinicos) {
-      if (typeof dtoClinico.dados_clinicos.diagnostico_base === 'string') {
-        dtoClinico.dados_clinicos.diagnostico_base = CryptoService.cifrarSeNaoCifrado(
-          dtoClinico.dados_clinicos.diagnostico_base
-        );
-      }
-      if (typeof dtoClinico.dados_clinicos.observacoes_gerais === 'string') {
-        dtoClinico.dados_clinicos.observacoes_gerais = CryptoService.cifrarSeNaoCifrado(
-          dtoClinico.dados_clinicos.observacoes_gerais
-        );
-      }
-    }
+    this.prepararResponsavelDTO(dto.responsavel, dto);
+    this.prepararResponsavelDTO(dto.responsavel_extra, dto);
+    this.prepararDadosClinicosDTO(dto.dados_clinicos);
 
     // 4. Persistência e auto-vínculo do criador
     if (usuarioLogado?.id) {
@@ -370,10 +447,17 @@ export class PacienteService {
       throw new PacienteServiceError('Erro de validação na atualização do paciente.', 400, validacao.erros);
     }
 
-    // Normalização de máscaras
+    // Normalização de máscaras e dados relacionados
     if (dto.cpf) dto.cpf = formatarCPF(dto.cpf);
     if (dto.cep) dto.cep = formatarCEP(dto.cep);
     if (dto.telefone) dto.telefone = formatarTelefone(dto.telefone);
+    this.prepararResponsavelDTO(dto.responsavel, dto);
+    this.prepararResponsavelDTO(dto.responsavel_extra, dto);
+    this.prepararDadosClinicosDTO(dto.dados_clinicos);
+
+    if (dto.clinica_id !== undefined) {
+      dto.clinica_id = await this.validarClinicaInstitucional(dto.clinica_id);
+    }
 
     const existente = await PacienteModel.buscarPorId(id);
     if (!existente) {
@@ -407,7 +491,8 @@ export class PacienteService {
     }
 
     try {
-      return await PacienteModel.atualizar(id, dto);
+      const atualizado = await PacienteModel.atualizar(id, dto);
+      return this.normalizarRelacoesEDadosClinicos(atualizado);
     } catch (err: unknown) {
       const errTyped = err as { statusCode?: number; status?: number; message?: string; detalhes?: unknown };
       if (errTyped?.statusCode === 409 || errTyped?.status === 409) {

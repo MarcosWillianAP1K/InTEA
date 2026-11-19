@@ -252,6 +252,7 @@ export interface FinalizarSessaoResposta {
 export interface BuscarResultadoResposta {
   sucesso: boolean;
   data?: DadosResultadoSessao;
+  status?: number;
   error?: string;
 }
 

@@ -1,8 +1,7 @@
 export * from "./types";
 export * from "./services";
 export * from "./store/paciente.store";
-export * from "./components/ConteudoCriarPaciente";
-export * from "./components/DialogFormularioPaciente";
+export * from "./components/FormularioPaciente";
 export * from "./components/DialogDetalhesPaciente";
 export * from "./components/ConteudoPacientes";
 export * from "./components/ListaPacientes";
@@ -23,5 +22,6 @@ export * from "./components/FiltrosHistoricoAvancado";
 export * from "./components/LinhaDoTempoSessoes";
 export * from "./pages/PacientesPage";
 export * from "./pages/PerfilPacientePage";
+export * from "./pages/FormularioPacientePage";
 export * from "./pages/TodosPacientesPage";
 export * from "./pages/HistoricoPacientePage";

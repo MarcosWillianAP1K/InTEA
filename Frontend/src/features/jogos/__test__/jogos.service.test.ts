@@ -150,4 +150,44 @@ describe("Domínio Jogos — jogosService (Clean Architecture)", () => {
       );
     });
   });
+
+  describe("Normalização de objetivo_clinico vindo da API (W1-C)", () => {
+    it("deve mapear objetivo_clinico do backend sem preencher 'Estimulação Cognitiva e Sensorial' quando ausente", async () => {
+      vi.spyOn(http, "get").mockResolvedValueOnce({
+        data: {
+          jogos: [
+            {
+              id: "jogo-api-1",
+              nome: "Aventura API",
+              versao: "1.0.0",
+              descricao: "Jogo sem tag hardcoded",
+              objetivo_clinico: "foco_atencional",
+              manifesto_json: {
+                id_jogo: "aventura-api",
+                objetivo_clinico: "foco_atencional",
+                metricas_suportadas: [],
+              },
+            },
+            {
+              id: "jogo-api-2",
+              nome: "Sem Objetivo API",
+              versao: "1.0.0",
+              descricao: "Jogo sem objetivo no manifesto",
+              manifesto_json: {
+                id_jogo: "sem-obj",
+                metricas_suportadas: [],
+              },
+            },
+          ],
+        },
+      });
+
+      const resultado = await jogosService.listar();
+      expect(resultado).toHaveLength(2);
+      expect(resultado[0].objetivo_clinico).toBe("foco_atencional");
+      expect(resultado[0].objetivoTerapeutico).toBe("foco_atencional");
+      expect(resultado[1].objetivo_clinico).toBeNull();
+      expect(resultado[1].objetivoTerapeutico).toBe("");
+    });
+  });
 });

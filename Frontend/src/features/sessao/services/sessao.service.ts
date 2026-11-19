@@ -748,6 +748,7 @@ export const sessaoService = {
         } | null;
         return {
           sucesso: false,
+          status: response.status,
           error:
             errorJson?.error ||
             `Falha ao consultar resultado da sessão (status ${response.status})`,

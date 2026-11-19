@@ -414,7 +414,7 @@ pacienteRoutes.get('/:id/historico/jogo/:jogoId', authMiddleware, verificarVisib
  *             example:
  *               error: "Erro interno ao cadastrar paciente."
  */
-pacienteRoutes.post('/', authMiddleware, PacienteController.criar);
+pacienteRoutes.post('/', authMiddleware, adminMiddleware, PacienteController.criar);
 
 /**
  * @swagger
@@ -483,8 +483,8 @@ pacienteRoutes.post('/', authMiddleware, PacienteController.criar);
  *             example:
  *               error: "Erro interno ao atualizar paciente."
  */
-pacienteRoutes.put('/:id', authMiddleware, verificarVisibilidadePaciente, auditoriaProntuarioMiddleware, PacienteController.atualizar);
-pacienteRoutes.patch('/:id', authMiddleware, verificarVisibilidadePaciente, auditoriaProntuarioMiddleware, PacienteController.atualizar);
+pacienteRoutes.put('/:id', authMiddleware, adminMiddleware, verificarVisibilidadePaciente, auditoriaProntuarioMiddleware, PacienteController.atualizar);
+pacienteRoutes.patch('/:id', authMiddleware, adminMiddleware, verificarVisibilidadePaciente, auditoriaProntuarioMiddleware, PacienteController.atualizar);
 
 // ------------------------------------------------------------------------------
 // 3. Exclusão e Reativação (Soft Delete e Hard Delete)
