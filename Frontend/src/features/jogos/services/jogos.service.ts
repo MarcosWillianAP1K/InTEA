@@ -24,6 +24,7 @@ import {
   buscarJogoMockPorId,
   obterManifestoJogoMock,
 } from "../types/bdmock";
+import { formatarObjetivoClinico } from "../utils/formatarObjetivoClinico";
 
 export { JOGOS_MOCK };
 
@@ -70,6 +71,7 @@ function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
     descricao?: string;
     descricaoClinica?: string;
     publico_alvo?: string;
+    objetivo_clinico?: string | null;
     objetivoTerapeutico?: string;
     manifesto_json?: {
       id_jogo?: string;
@@ -91,11 +93,13 @@ function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
   const titulo = raw.titulo || raw.nome || "Jogo Terapêutico";
   const versao = raw.versao || "1.0.0";
   const descricaoClinica = raw.descricaoClinica || raw.descricao || "";
-  const objetivoTerapeutico =
-    raw.objetivoTerapeutico ||
+  const objetivoCodigo =
+    raw.objetivo_clinico ||
     raw.manifesto_json?.objetivo_clinico ||
+    raw.objetivoTerapeutico ||
     raw.publico_alvo ||
-    "Estimulação Cognitiva e Sensorial";
+    null;
+  const objetivoTerapeutico = objetivoCodigo || "";
 
   const metricasRaw =
     raw.metricas_suportadas ||
@@ -116,6 +120,7 @@ function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
     versao,
     descricaoClinica,
     objetivoTerapeutico,
+    objetivo_clinico: objetivoCodigo ?? undefined,
     metricasSuportadas,
   };
 
@@ -126,6 +131,7 @@ function normalizarJogoSeNecessario(jogo: Jogo): Jogo {
     versao,
     descricaoClinica,
     objetivoTerapeutico,
+    objetivo_clinico: objetivoCodigo,
     bannerUrl: raw.bannerUrl || "",
     status_jogo: raw.status_ativo === false ? "desativado" : (raw.status_jogo || "ativo"),
     manifesto,
@@ -166,7 +172,13 @@ export const jogosService = {
             (j) =>
               j.titulo?.toLowerCase().includes(termo) ||
               j.descricaoClinica?.toLowerCase().includes(termo) ||
-              j.objetivoTerapeutico?.toLowerCase().includes(termo)
+              j.objetivoTerapeutico?.toLowerCase().includes(termo) ||
+              j.objetivo_clinico?.toLowerCase().includes(termo) ||
+              formatarObjetivoClinico(
+                j.objetivo_clinico || j.manifesto?.objetivo_clinico || j.objetivoTerapeutico,
+              )
+                .toLowerCase()
+                .includes(termo),
           );
         }
 

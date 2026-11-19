@@ -125,6 +125,7 @@ describe('Filtro por Objetivo e Paginação de Jogos (RF19)', () => {
       expect(getStatus()).toBe(200);
       expect(getJson().data.jogos.length).toBe(1);
       expect(getJson().data.jogos[0].nome).toBe('Aventura das Cores');
+      expect(getJson().data.jogos[0].objetivo_clinico).toBe('foco_atencional');
     });
 
     it('deve respeitar ?page=2&limit=2 retornando metadados corretos', async () => {

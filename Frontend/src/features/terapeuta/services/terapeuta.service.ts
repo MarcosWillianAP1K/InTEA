@@ -91,6 +91,7 @@ export const terapeutaService = {
         const resposta = await http.put<TerapeutaRespostaApi>(
           ENDPOINTS.TERAPEUTA.BY_ID(id),
           dto,
+          { timeoutMs: 45_000 },
         );
         return resposta.data?.terapeuta ?? null;
       },

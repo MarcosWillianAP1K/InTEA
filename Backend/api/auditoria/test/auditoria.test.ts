@@ -274,20 +274,32 @@ describe('AuditoriaService — Regras de Negócio e Segurança', () => {
     expect(res.autorizado).toBe(true);
   });
 
-  it('validarAcessoLinhaDoTempo deve autorizar o terapeuta responsável pela sessão', async () => {
+  it('validarAcessoLinhaDoTempo deve negar acesso com 403 para terapeuta comum mesmo dono da sessão (somente SuperAdmin lê auditoria)', async () => {
     vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
       id: sessaoIdValido,
       terapeuta_id: terapeutaIdValido,
     } as Sessao);
 
+    vi.spyOn(supabase, 'from').mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: { id: terapeutaIdValido, is_super_admin: false, status_ativo: true },
+            error: null,
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof supabase.from>);
+
     const res = await AuditoriaService.validarAcessoLinhaDoTempo(sessaoIdValido, {
       id: terapeutaIdValido,
     });
 
-    expect(res.autorizado).toBe(true);
+    expect(res.autorizado).toBe(false);
+    expect(res.statusHttp).toBe(403);
   });
 
-  it('validarAcessoLinhaDoTempo deve negar acesso com 403 se o terapeuta não tiver vínculo (RN04)', async () => {
+  it('validarAcessoLinhaDoTempo deve negar acesso com 403 se o terapeuta não tiver vínculo (RN04 / RF07)', async () => {
     vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
       id: sessaoIdValido,
       terapeuta_id: 'terapeuta-dono',
@@ -301,7 +313,7 @@ describe('AuditoriaService — Regras de Negócio e Segurança', () => {
     expect(res.statusHttp).toBe(403);
   });
 
-  it('validarAcessoLinhaDoTempo deve autorizar coterapeuta da mesma clínica com vínculo ativo em terapeuta_paciente (RN04)', async () => {
+  it('validarAcessoRegistroEvento deve autorizar coterapeuta da mesma clínica com vínculo ativo em terapeuta_paciente (RN04)', async () => {
     vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
       id: sessaoIdValido,
       terapeuta_id: 'outro-terapeuta-dono',
@@ -350,7 +362,7 @@ describe('AuditoriaService — Regras de Negócio e Segurança', () => {
       return {};
     }) as unknown as typeof supabase.from);
 
-    const res = await AuditoriaService.validarAcessoLinhaDoTempo(sessaoIdValido, {
+    const res = await AuditoriaService.validarAcessoRegistroEvento(sessaoIdValido, {
       id: terapeutaIdValido,
     });
 
@@ -440,7 +452,7 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
     expect((getJson() as { error: string }).error).toContain('não encontrada');
   });
 
-  it('GET /api/auditoria/sessao/:sessaoId: deve retornar 403 se o terapeuta não tiver vínculo (RN04)', async () => {
+  it('GET /api/auditoria/sessao/:sessaoId: deve retornar 403 se o usuário não for SuperAdmin (RF07 / RF08)', async () => {
     vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
       id: sessaoIdValido,
       terapeuta_id: 'outro-terapeuta',
@@ -456,10 +468,10 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
     await AuditoriaController.consultarLinhaDoTempo(mockReq, mockRes);
 
     expect(getStatus()).toBe(403);
-    expect((getJson() as { error: string }).error).toContain('RN04');
+    expect((getJson() as { error: string }).error).toContain('SuperAdmin');
   });
 
-  it('GET /api/auditoria/sessao/:sessaoId: deve retornar 200 com Envelope Pattern Categorizado', async () => {
+  it('GET /api/auditoria/sessao/:sessaoId: deve retornar 200 com Envelope Pattern Categorizado para SuperAdmin', async () => {
     vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
       id: sessaoIdValido,
       terapeuta_id: terapeutaIdValido,
@@ -468,6 +480,7 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
     const mockEventos: AuditoriaSessao[] = [
       {
         id: 'evt-1',
+        entidade: 'sessao',
         sessao_id: sessaoIdValido,
         terapeuta_id: terapeutaIdValido,
         origem: 'dispositivo_jogo',
@@ -485,7 +498,7 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
       {},
       { sessaoId: sessaoIdValido },
       {},
-      { id: terapeutaIdValido }
+      { id: terapeutaIdValido, is_super_admin: true }
     );
 
     await AuditoriaController.consultarLinhaDoTempo(mockReq, mockRes);
@@ -529,10 +542,11 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
   // POST /api/auditoria
   // --------------------------------------------------------------------------
   it('POST /api/auditoria: deve registrar evento com sucesso retornando 201 e Envelope Pattern { data: { evento }, message }', async () => {
-    vi.spyOn(AuditoriaService, 'validarAcessoLinhaDoTempo').mockResolvedValue({ autorizado: true });
+    vi.spyOn(AuditoriaService, 'validarAcessoRegistroEvento').mockResolvedValue({ autorizado: true });
 
     const mockEventoCriado: AuditoriaSessao = {
       id: 'novo-evt-id',
+      entidade: 'sessao',
       sessao_id: sessaoIdValido,
       terapeuta_id: terapeutaIdValido,
       origem: 'terapeuta_web',
@@ -635,7 +649,7 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
   });
 
   it('POST /api/auditoria: deve retornar 403 se o terapeuta não tiver vínculo com a sessão (RN04)', async () => {
-    vi.spyOn(AuditoriaService, 'validarAcessoLinhaDoTempo').mockResolvedValue({
+    vi.spyOn(AuditoriaService, 'validarAcessoRegistroEvento').mockResolvedValue({
       autorizado: false,
       statusHttp: 403,
       motivo: 'Acesso negado: sem vínculo com o paciente (RN04)',
@@ -659,7 +673,7 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
   });
 
   it('POST /api/auditoria: deve retornar 500 se o service falhar ao salvar evento', async () => {
-    vi.spyOn(AuditoriaService, 'validarAcessoLinhaDoTempo').mockResolvedValue({ autorizado: true });
+    vi.spyOn(AuditoriaService, 'validarAcessoRegistroEvento').mockResolvedValue({ autorizado: true });
     vi.spyOn(AuditoriaService, 'registrarEvento').mockResolvedValue(null);
 
     const { mockReq, mockRes, getStatus } = criarMocks(
@@ -678,12 +692,29 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
     expect(getStatus()).toBe(500);
   });
   // --------------------------------------------------------------------------
-  // GET /api/auditoria (Listar com Paginação e Filtros)
+  // GET /api/auditoria (Listar com Paginação e Filtros — Exclusivo SuperAdmin)
   // --------------------------------------------------------------------------
+  it('GET /api/auditoria: deve retornar 403 se o usuário não for SuperAdmin', async () => {
+    vi.spyOn(AuditoriaService, 'verificarSuperAdmin').mockResolvedValue(false);
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {},
+      {},
+      { page: '1', limit: '10' },
+      { id: terapeutaIdValido, is_super_admin: false }
+    );
+
+    await AuditoriaController.listar(mockReq, mockRes);
+
+    expect(getStatus()).toBe(403);
+    expect((getJson() as { error: string }).error).toContain('SuperAdmin');
+  });
+
   it('GET /api/auditoria: deve listar eventos retornando Envelope Pattern { data: { auditoria, meta }, message }', async () => {
     const mockEventos: AuditoriaSessao[] = [
       {
         id: 'evt-1',
+        entidade: 'sessao',
         sessao_id: sessaoIdValido,
         terapeuta_id: terapeutaIdValido,
         terapeuta_nome: 'Dr. Marcos Terapeuta',
@@ -701,7 +732,12 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
       total: 1,
     });
 
-    const { mockReq, mockRes, getStatus, getJson } = criarMocks({}, {}, { page: '1', limit: '10' });
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {},
+      {},
+      { page: '1', limit: '10' },
+      { id: terapeutaIdValido, is_super_admin: true }
+    );
 
     await AuditoriaController.listar(mockReq, mockRes);
 
@@ -721,7 +757,12 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
   it('GET /api/auditoria: deve retornar 500 se ocorrer exceção no serviço', async () => {
     vi.spyOn(AuditoriaService, 'listarComFiltros').mockRejectedValue(new Error('Erro no banco'));
 
-    const { mockReq, mockRes, getStatus } = criarMocks({}, {}, {});
+    const { mockReq, mockRes, getStatus } = criarMocks(
+      {},
+      {},
+      {},
+      { id: terapeutaIdValido, is_super_admin: true }
+    );
 
     await AuditoriaController.listar(mockReq, mockRes);
 
@@ -729,8 +770,24 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
   });
 
   // --------------------------------------------------------------------------
-  // GET /api/auditoria/estatisticas (Consolidado de Métricas)
+  // GET /api/auditoria/estatisticas (Consolidado de Métricas — Exclusivo SuperAdmin)
   // --------------------------------------------------------------------------
+  it('GET /api/auditoria/estatisticas: deve retornar 403 se o usuário não for SuperAdmin', async () => {
+    vi.spyOn(AuditoriaService, 'verificarSuperAdmin').mockResolvedValue(false);
+
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {},
+      {},
+      {},
+      { id: terapeutaIdValido, is_super_admin: false }
+    );
+
+    await AuditoriaController.obterEstatisticas(mockReq, mockRes);
+
+    expect(getStatus()).toBe(403);
+    expect((getJson() as { error: string }).error).toContain('SuperAdmin');
+  });
+
   it('GET /api/auditoria/estatisticas: deve retornar métricas consolidadas em Envelope Pattern { data: { estatisticas }, message }', async () => {
     vi.spyOn(AuditoriaService, 'obterEstatisticas').mockResolvedValue({
       totalEventos: 15,
@@ -739,7 +796,12 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
       alertasSeguranca: 2,
     });
 
-    const { mockReq, mockRes, getStatus, getJson } = criarMocks();
+    const { mockReq, mockRes, getStatus, getJson } = criarMocks(
+      {},
+      {},
+      {},
+      { id: terapeutaIdValido, is_super_admin: true }
+    );
 
     await AuditoriaController.obterEstatisticas(mockReq, mockRes);
 
@@ -766,7 +828,12 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
   it('GET /api/auditoria/estatisticas: deve retornar 500 se ocorrer exceção no serviço', async () => {
     vi.spyOn(AuditoriaService, 'obterEstatisticas').mockRejectedValue(new Error('Falha estatísticas'));
 
-    const { mockReq, mockRes, getStatus } = criarMocks();
+    const { mockReq, mockRes, getStatus } = criarMocks(
+      {},
+      {},
+      {},
+      { id: terapeutaIdValido, is_super_admin: true }
+    );
 
     await AuditoriaController.obterEstatisticas(mockReq, mockRes);
 

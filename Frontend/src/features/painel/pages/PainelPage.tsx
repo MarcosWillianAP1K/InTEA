@@ -25,10 +25,10 @@ import {
   ModalAnotacaoSessaoAtiva,
   sessaoService,
 } from "@/features/sessao";
+import { AvatarClinico } from "@/shared/components/AvatarClinico";
 import { usePacienteStore } from "@/features/paciente/store/paciente.store";
 import { SessionSocketManager } from "@/core/web.socket";
 import { toast } from "sonner";
-
 
 export function PainelPage() {
   const navigate = useNavigate();
@@ -37,6 +37,7 @@ export function PainelPage() {
   const [alertas, setAlertas] = useState<AlertaClinico[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalAnotacaoAtivaAberto, setModalAnotacaoAtivaAberto] = useState(false);
+  const [concluindoSessaoId, setConcluindoSessaoId] = useState<string | null>(null);
 
   const abrirModalPreSessao = useSessionStore((state) => state.abrirModalPreSessao);
   const { patients, setSelectedPatientId, fetchPatients } = usePacienteStore();
@@ -124,6 +125,29 @@ export function PainelPage() {
     }
   };
 
+  const handleConcluirSessao = async (sessaoId: string) => {
+    if (concluindoSessaoId === sessaoId) return;
+    setConcluindoSessaoId(sessaoId);
+    try {
+      const resposta = await sessaoService.finalizar(sessaoId);
+      if (!resposta.sucesso) {
+        toast.error(resposta.error || "Não foi possível concluir a sessão.");
+        return;
+      }
+      setSessoesRecentes((prev) =>
+        prev.map((item) =>
+          item.id === sessaoId ? { ...item, status: "finalizada" } : item,
+        ),
+      );
+      toast.success("Sessão concluída com sucesso.");
+      navigate(`/sessao/${sessaoId}/resultado`);
+    } catch {
+      toast.error("Erro ao concluir sessão. Tente novamente.");
+    } finally {
+      setConcluindoSessaoId(null);
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col gap-8 w-full max-w-7xl mx-auto pb-12">
       {/* SESSÃO ATIVA EM TEMPO REAL COM ACESSO DIRETO AO COCKPIT E ANOTAÇÕES (RF12, RF16) */}
@@ -154,9 +178,13 @@ export function PainelPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative shrink-0">
-                <div className="h-14 w-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-xl shadow-md">
-                  {pacienteDestaque.name.slice(0, 2).toUpperCase()}
-                </div>
+                <AvatarClinico
+                  nome={pacienteDestaque.name}
+                  src={pacienteDestaque.photoUrl || null}
+                  size="lg"
+                  shape="rounded"
+                  className="bg-primary text-primary-foreground border-transparent shadow-md"
+                />
                 <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-emerald-500 dark:border-background" />
               </div>
 
@@ -296,9 +324,10 @@ export function PainelPage() {
               duracaoSegundos={sessao.duracaoSegundos}
               dataHoraInicio={sessao.dataHora}
               status={sessao.status}
+              concluindo={concluindoSessaoId === sessao.id}
               onTogglePausa={() => handleTogglePausa(sessao.id, sessao.status)}
               onCockpitClick={() => navigate(`/sessao/${sessao.id}/monitoramento`)}
-              onConcluirClick={() => navigate(`/sessao/${sessao.id}/resultado`)}
+              onConcluirClick={() => void handleConcluirSessao(sessao.id)}
               onVerRelatorioClick={() => navigate(`/sessao/${sessao.id}/resultado`)}
             />
           ))}
@@ -342,9 +371,11 @@ export function PainelPage() {
                 {listaPacientes.slice(0, 5).map((p) => (
                   <tr key={p.id} className="transition-colors hover:bg-slate-50/50 dark:hover:bg-muted/30">
                     <td className="px-6 py-4 font-semibold text-foreground flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs dark:bg-primary/20 dark:text-primary-foreground">
-                        {p.name.slice(0, 2).toUpperCase()}
-                      </div>
+                      <AvatarClinico
+                        nome={p.name}
+                        src={p.photoUrl || null}
+                        size="sm"
+                      />
                       <span>{p.name}</span>
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">

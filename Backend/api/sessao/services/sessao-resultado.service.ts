@@ -605,7 +605,7 @@ export class SessaoResultadoService {
 
       // Extração de Diagnóstico e Gatilhos (RN03 e 3FN)
       const diagnosticoBase =
-        dadosClinicosRes?.diagnostico_base || 'Transtorno do Espectro Autista (TEA)';
+        dadosClinicosRes?.diagnostico_base || 'Não informado';
       const gatilhosDda: string[] = Array.isArray(sessao.contexto_dda_json?.gatilhos_a_evitar)
         ? (sessao.contexto_dda_json.gatilhos_a_evitar as string[])
         : Array.isArray(dadosClinicosRes?.gatilhos_sensoriais)

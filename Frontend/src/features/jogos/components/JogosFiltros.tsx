@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import type { FiltrosJogos } from "../types";
+import { formatarObjetivoClinico } from "../utils/formatarObjetivoClinico";
 
 interface JogosFiltrosProps {
   filtros: FiltrosJogos;
@@ -93,7 +94,7 @@ export function JogosFiltros({
             <SelectItem value="todos">Todos os objetivos</SelectItem>
             {objetivosDisponiveis.map((obj) => (
               <SelectItem key={obj} value={obj}>
-                {obj}
+                {formatarObjetivoClinico(obj)}
               </SelectItem>
             ))}
           </SelectContent>

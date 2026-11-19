@@ -1,7 +1,7 @@
 // ==============================================================================
-// InTEA: Service da Trilha de Auditoria Clínica de Sessão e Vínculos (Sprint 9 / Sprint 13)
+// InTEA: Service da Trilha Unificada de Auditoria do Ecossistema (Item 3)
 // ==============================================================================
-// Conformidade: RF08, RF13, RNF06 (LGPD), RN04 (Vínculo Institucional), RN05
+// Conformidade: RF07, RF08, RF13, RNF06 (LGPD), RN04 (Vínculo), RN05
 // ==============================================================================
 
 import {
@@ -9,6 +9,7 @@ import {
   AuditoriaSessao,
   AuditoriaVinculoRegistro,
   CriarAuditoriaDTO,
+  CriarAuditoriaEventoDTO,
   CriarAuditoriaVinculoDTO,
   FiltrosAuditoriaDTO,
   EstatisticasAuditoriaModel,
@@ -40,10 +41,64 @@ export interface ResultadoValidacaoAcesso {
 
 export class AuditoriaService {
   /**
+   * Verifies via server-signed claims or database whether the user is an active SuperAdmin.
+   */
+  static async verificarSuperAdmin(usuario?: UsuarioAutenticadoInfo): Promise<boolean> {
+    if (!usuario) return false;
+    if (usuario.is_super_admin === true || hasSuperAdminClaim(usuario)) {
+      return true;
+    }
+
+    if (!usuario.id || !validarUUID(usuario.id)) {
+      return false;
+    }
+
+    try {
+      const { data } = await supabase
+        .from('terapeuta')
+        .select('id, is_super_admin, status_ativo')
+        .eq('id', usuario.id)
+        .maybeSingle();
+
+      return Boolean(data && data.status_ativo !== false && data.is_super_admin === true);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Formally records a unified ecosystem event in `public.auditoria_evento`.
+   */
+  static async registrarEventoUnificado(dto: CriarAuditoriaEventoDTO): Promise<AuditoriaSessao | null> {
+    if (!dto.entidade || !dto.acao || !dto.origem) {
+      return null;
+    }
+
+    const dtoSanitizado: CriarAuditoriaEventoDTO = {
+      ...dto,
+      terapeuta_id: dto.terapeuta_id && validarUUID(dto.terapeuta_id) ? dto.terapeuta_id : null,
+      paciente_id: dto.paciente_id && validarUUID(dto.paciente_id) ? dto.paciente_id : null,
+      sessao_id: dto.sessao_id && validarUUID(dto.sessao_id) ? dto.sessao_id : null,
+      clinica_id: dto.clinica_id && validarUUID(dto.clinica_id) ? dto.clinica_id : null,
+      recurso_id: dto.recurso_id && validarUUID(dto.recurso_id) ? dto.recurso_id : null,
+    };
+
+    return AuditoriaModel.registrarEventoUnificado(dtoSanitizado);
+  }
+
+  /**
+   * Silently records a unified ecosystem event without propagating errors to callers.
+   */
+  static async registrarEventoUnificadoSilencioso(dto: CriarAuditoriaEventoDTO): Promise<void> {
+    try {
+      await this.registrarEventoUnificado(dto);
+    } catch (err) {
+      console.error('[AuditoriaService] Falha ao registrar evento unificado silencioso:', err);
+    }
+  }
+
+  /**
    * Formally records an event in the clinical audit trail.
-   *
-   * @param dto - Data transfer object for audit entry creation.
-   * @returns Created audit record or null on validation error.
    */
   static async registrarEvento(dto: CriarAuditoriaDTO): Promise<AuditoriaSessao | null> {
     if (!dto.sessao_id || !validarUUID(dto.sessao_id)) {
@@ -56,9 +111,6 @@ export class AuditoriaService {
 
   /**
    * Silently and asynchronously records an audit event without throwing errors to the caller.
-   *
-   * @param dto - Data transfer object for audit entry creation.
-   * @returns Resolves when the recording completes or fails silently.
    */
   static async registrarSilencioso(dto: CriarAuditoriaDTO): Promise<void> {
     try {
@@ -69,10 +121,7 @@ export class AuditoriaService {
   }
 
   /**
-   * Formally records an immutable team link audit event in 'auditoria_vinculo_acesso' (RF08, RN05).
-   *
-   * @param dto - Data transfer object for team link audit entry creation.
-   * @returns Created audit record or null on validation error.
+   * Formally records an immutable team link audit event in `public.auditoria_evento` (RF08, RN05).
    */
   static async registrarVinculo(dto: CriarAuditoriaVinculoDTO): Promise<AuditoriaVinculoRegistro | null> {
     if (
@@ -97,9 +146,6 @@ export class AuditoriaService {
 
   /**
    * Silently and asynchronously records a team link audit event without throwing errors to the caller (RF08).
-   *
-   * @param dto - Data transfer object for team link audit entry creation.
-   * @returns Resolves when the recording completes or fails silently.
    */
   static async registrarVinculoSilencioso(dto: CriarAuditoriaVinculoDTO): Promise<void> {
     try {
@@ -110,11 +156,7 @@ export class AuditoriaService {
   }
 
   /**
-   * Validates access permission to the session audit timeline based on clinical rule RN04.
-   *
-   * @param sessaoId - UUID of the clinical session.
-   * @param usuario - Authenticated user info.
-   * @returns Access validation result object.
+   * Validates SuperAdmin-only read access to the chronological session audit timeline.
    */
   static async validarAcessoLinhaDoTempo(
     sessaoId: string,
@@ -129,16 +171,39 @@ export class AuditoriaService {
       return { autorizado: false, statusHttp: 404, motivo: 'Sessão clínica não encontrada' };
     }
 
-    const isSuperAdmin =
-      hasSuperAdminClaim(usuario) ||
-      usuario?.is_super_admin === true;
-    const isDonoDaSessao = Boolean(usuario?.id && sessao.terapeuta_id === usuario.id);
+    const isSuperAdmin = await this.verificarSuperAdmin(usuario);
+    if (!isSuperAdmin) {
+      return {
+        autorizado: false,
+        statusHttp: 403,
+        motivo: 'Acesso negado: a visualização da trilha de auditoria é restrita exclusivamente a SuperAdmins (RF07 / RF08).',
+      };
+    }
 
-    if (isSuperAdmin || isDonoDaSessao) {
+    return { autorizado: true };
+  }
+
+  /**
+   * Validates permission for recording a clinical session audit event via POST /api/auditoria (RF13, RN04).
+   */
+  static async validarAcessoRegistroEvento(
+    sessaoId: string,
+    usuario?: UsuarioAutenticadoInfo
+  ): Promise<ResultadoValidacaoAcesso> {
+    if (!sessaoId || !validarUUID(sessaoId)) {
+      return { autorizado: false, statusHttp: 400, motivo: 'ID da sessão inválido' };
+    }
+
+    const sessao = await SessaoModel.buscarPorId(sessaoId);
+    if (!sessao) {
+      return { autorizado: false, statusHttp: 404, motivo: 'Sessão clínica não encontrada' };
+    }
+
+    const isDonoDaSessao = Boolean(usuario?.id && sessao.terapeuta_id === usuario.id);
+    if (isDonoDaSessao || (await this.verificarSuperAdmin(usuario))) {
       return { autorizado: true };
     }
 
-    // Regra RN04: Permite acesso se pertencer à mesma clinica_id e possuir vínculo ativo em terapeuta_paciente
     if (!sessao.paciente_id || !usuario?.id) {
       return {
         autorizado: false,
@@ -215,9 +280,6 @@ export class AuditoriaService {
 
   /**
    * Lists chronological audit events for a clinical session.
-   *
-   * @param sessaoId - UUID of the clinical session.
-   * @returns Array of audit records.
    */
   static async listarPorSessao(sessaoId: string): Promise<AuditoriaSessao[]> {
     if (!sessaoId || !validarUUID(sessaoId)) return [];
@@ -225,73 +287,20 @@ export class AuditoriaService {
   }
 
   /**
-   * Lists audit events with filters and pagination, enforcing institutional clinic isolation (RN04) for non-SuperAdmins.
-   *
-   * @param filtros - Search, filter, and pagination options.
-   * @param usuario - Authenticated user info.
-   * @returns Paginated list and total count.
+   * Lists unified audit events with filters and pagination (SuperAdmin only at route/controller boundary).
    */
   static async listarComFiltros(
     filtros: FiltrosAuditoriaDTO = {},
-    usuario?: UsuarioAutenticadoInfo
+    _usuario?: UsuarioAutenticadoInfo
   ): Promise<{ auditoria: AuditoriaSessao[]; total: number }> {
-    const isSuperAdmin =
-      usuario?.is_super_admin === true ||
-      hasSuperAdminClaim(usuario);
-
-    if (!isSuperAdmin && usuario) {
-      let clinicaId: string | null | undefined = usuario.clinica_id ?? filtros.clinicaId;
-
-      if (!clinicaId && usuario.id) {
-        try {
-          const tabelaTerapeuta = supabase.from('terapeuta') as unknown as {
-            select?: (cols: string) => {
-              eq?: (col: string, val: string) => {
-                maybeSingle?: () => Promise<{
-                  data?: { clinica_id?: string | null; is_super_admin?: boolean } | null;
-                }>;
-              };
-            };
-          };
-
-          const maybeSingleFn = tabelaTerapeuta
-            ?.select?.('clinica_id, is_super_admin')
-            ?.eq?.('id', usuario.id)
-            ?.maybeSingle;
-
-          if (typeof maybeSingleFn === 'function') {
-            const resTerapeuta = await maybeSingleFn();
-            if (resTerapeuta?.data?.is_super_admin === true) {
-              return AuditoriaModel.listarComFiltros(filtros);
-            }
-            if (resTerapeuta?.data?.clinica_id) {
-              clinicaId = resTerapeuta.data.clinica_id;
-            }
-          }
-        } catch {
-          // Mantém resiliência se o mock de teste não implementar a tabela 'terapeuta'
-        }
-      }
-
-      if (clinicaId) {
-        return AuditoriaModel.listarComFiltros({
-          ...filtros,
-          clinicaId,
-        });
-      }
-    }
-
     return AuditoriaModel.listarComFiltros(filtros);
   }
 
   /**
-   * Retrieves aggregated clinical audit statistics.
-   *
-   * @param usuario - Authenticated user info.
-   * @returns Consolidated counts for audit metric cards.
+   * Retrieves aggregated clinical and ecosystem audit statistics.
    */
   static async obterEstatisticas(
-    usuario?: UsuarioAutenticadoInfo
+    _usuario?: UsuarioAutenticadoInfo
   ): Promise<EstatisticasAuditoriaModel> {
     return AuditoriaModel.obterEstatisticas();
   }

@@ -167,12 +167,19 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
     });
 
     expect(spyModelRegistrar).toHaveBeenCalledTimes(1);
-    expect(fromSpy).toHaveBeenCalledWith('auditoria_vinculo_acesso');
+    expect(fromSpy).toHaveBeenCalledWith('auditoria_evento');
     expect(insertMock).toHaveBeenCalledWith({
-      paciente_id: pacienteIdValido,
-      terapeuta_autor_id: terapeutaAutorId,
-      terapeuta_alvo_id: terapeutaAlvoId,
+      entidade: 'vinculo',
       acao: 'vinculo_equipe_criado',
+      origem: 'terapeuta_web',
+      paciente_id: pacienteIdValido,
+      terapeuta_id: terapeutaAutorId,
+      recurso_id: terapeutaAlvoId,
+      detalhes_json: {
+        paciente_id: pacienteIdValido,
+        terapeuta_autor_id: terapeutaAutorId,
+        terapeuta_alvo_id: terapeutaAlvoId,
+      },
       ip: '192.168.10.25',
       user_agent: 'Mozilla/5.0 (InTEA Clinical Workstation)',
     });
@@ -181,7 +188,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
   // ============================================================================
   // 2. Emissão de 'vinculo:removido' em PacienteController.desvincularTerapeuta
   // ============================================================================
-  it('2. deve emitir "vinculo:removido" em PacienteController.desvincularTerapeuta (200) e persistir com acao "vinculo_equipe_removido"', async () => {
+  it('2. deve emitir "vinculo:removido" em PacienteController.desvincularTerapeuta (200) e persistir em auditoria_evento com acao "vinculo_equipe_removido"', async () => {
     vi.spyOn(PacienteService, 'desvincularTerapeuta').mockResolvedValue(undefined);
 
     const registroEsperado: AuditoriaVinculoRegistro = {
@@ -248,12 +255,19 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
     });
 
     expect(spyModelRegistrar).toHaveBeenCalledTimes(1);
-    expect(fromSpy).toHaveBeenCalledWith('auditoria_vinculo_acesso');
+    expect(fromSpy).toHaveBeenCalledWith('auditoria_evento');
     expect(insertMock).toHaveBeenCalledWith({
-      paciente_id: pacienteIdValido,
-      terapeuta_autor_id: terapeutaAutorId,
-      terapeuta_alvo_id: terapeutaAlvoId,
+      entidade: 'vinculo',
       acao: 'vinculo_equipe_removido',
+      origem: 'terapeuta_web',
+      paciente_id: pacienteIdValido,
+      terapeuta_id: terapeutaAutorId,
+      recurso_id: terapeutaAlvoId,
+      detalhes_json: {
+        paciente_id: pacienteIdValido,
+        terapeuta_autor_id: terapeutaAutorId,
+        terapeuta_alvo_id: terapeutaAlvoId,
+      },
       ip: '172.16.0.14',
       user_agent: 'Chrome/130.0 InTEA',
     });
@@ -383,18 +397,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
     };
 
     vi.spyOn(supabase, 'from').mockImplementation(((tabela: string) => {
-      if (tabela === 'auditoria_sessao') {
-        const rangeMock = vi.fn().mockResolvedValue({ data: [], error: null, count: 0 });
-        const orderMock = vi.fn().mockReturnValue({ range: rangeMock });
-        const eqMock = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnThis(), order: orderMock });
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: eqMock,
-            order: orderMock,
-          }),
-        };
-      }
-      if (tabela === 'auditoria_vinculo_acesso') {
+      if (tabela === 'auditoria_evento') {
         const rangeMock = vi.fn().mockResolvedValue({
           data: [linhaVinculoBruta],
           error: null,
@@ -422,7 +425,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
         page: '1',
         limit: '10',
       },
-      user: { id: terapeutaAutorId, clinica_id: clinicaAId },
+      user: { id: terapeutaAutorId, clinica_id: clinicaAId, is_super_admin: true },
     });
 
     await AuditoriaController.listar(ctxFiltro.mockReq, ctxFiltro.mockRes);
@@ -458,7 +461,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
     // 5.2 Consulta via GET /api/auditoria/vinculo
     const ctxVinculo = criarContextoHttp({
       query: { tipoAcao: 'vinculo_equipe_criado' },
-      user: { id: terapeutaAutorId, clinica_id: clinicaAId },
+      user: { id: terapeutaAutorId, clinica_id: clinicaAId, is_super_admin: true },
     });
 
     await AuditoriaController.listar(ctxVinculo.mockReq, ctxVinculo.mockRes);
@@ -476,7 +479,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
         pacienteId: 'paciente-nao-uuid-123',
         tipoAcao: 'vinculo_equipe_criado',
       },
-      user: { id: terapeutaAutorId },
+      user: { id: terapeutaAutorId, is_super_admin: true },
     });
 
     await AuditoriaController.listar(mockReq, mockRes);
@@ -491,34 +494,38 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
   // ============================================================================
   // 7. Isolamento Institucional por clinica_id (RN04) vs Visão Global SuperAdmin
   // ============================================================================
-  it('7. deve isolar eventos por clinica_id (RN04) para terapeuta comum da Clínica A (ocultando Clínica B) e permitir visão global ao SuperAdmin', async () => {
+  it('7. deve bloquear acesso de terapeuta comum com 403 em GET /api/auditoria e permitir visão global (e filtrada por clínica) apenas ao SuperAdmin', async () => {
     const pacienteClinicaA = '11111111-1111-4111-a111-111111111111';
     const pacienteClinicaB = '44444444-4444-4444-a444-444444444444';
 
     const registrosBanco = [
       {
         id: 'aaaaaaaa-0001-4000-a000-000000000001',
+        entidade: 'vinculo',
         paciente_id: pacienteClinicaA,
-        terapeuta_autor_id: terapeutaAutorId,
-        terapeuta_alvo_id: terapeutaAlvoId,
+        terapeuta_id: terapeutaAutorId,
+        clinica_id: clinicaAId,
+        recurso_id: terapeutaAlvoId,
         acao: 'vinculo_equipe_criado',
         ip: '10.0.1.10',
         user_agent: 'InTEA/ClinicaA',
         created_at: '2026-11-03T15:00:00.000Z',
         paciente: { id: pacienteClinicaA, nome: 'Paciente Clínica A', clinica_id: clinicaAId },
-        autor: { id: terapeutaAutorId, nome: 'Terapeuta Clínica A', clinica_id: clinicaAId },
+        terapeuta: { id: terapeutaAutorId, nome: 'Terapeuta Clínica A', clinica_id: clinicaAId },
       },
       {
         id: 'bbbbbbbb-0002-4000-a000-000000000002',
+        entidade: 'vinculo',
         paciente_id: pacienteClinicaB,
-        terapeuta_autor_id: '55555555-5555-4555-a555-555555555555',
-        terapeuta_alvo_id: '66666666-6666-4666-a666-666666666666',
+        terapeuta_id: '55555555-5555-4555-a555-555555555555',
+        clinica_id: clinicaBId,
+        recurso_id: '66666666-6666-4666-a666-666666666666',
         acao: 'vinculo_equipe_criado',
         ip: '10.0.2.20',
         user_agent: 'InTEA/ClinicaB',
         created_at: '2026-11-03T15:10:00.000Z',
         paciente: { id: pacienteClinicaB, nome: 'Paciente Clínica B', clinica_id: clinicaBId },
-        autor: {
+        terapeuta: {
           id: '55555555-5555-4555-a555-555555555555',
           nome: 'Terapeuta Clínica B',
           clinica_id: clinicaBId,
@@ -532,24 +539,14 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
               maybeSingle: vi.fn().mockResolvedValue({
-                data: { clinica_id: clinicaAId, is_super_admin: false },
+                data: { clinica_id: clinicaAId, is_super_admin: false, status_ativo: true },
                 error: null,
               }),
             }),
           }),
         };
       }
-      if (tabela === 'auditoria_sessao') {
-        const rangeMock = vi.fn().mockResolvedValue({ data: [], error: null, count: 0 });
-        const orderMock = vi.fn().mockReturnValue({ range: rangeMock });
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({ order: orderMock }),
-            order: orderMock,
-          }),
-        };
-      }
-      if (tabela === 'auditoria_vinculo_acesso') {
+      if (tabela === 'auditoria_evento') {
         const rangeMock = vi.fn().mockResolvedValue({
           data: registrosBanco,
           error: null,
@@ -559,6 +556,8 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnThis(),
+            gte: vi.fn().mockReturnThis(),
+            lte: vi.fn().mockReturnThis(),
             order: orderMock,
           }),
         };
@@ -566,7 +565,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
       return {};
     }) as unknown as typeof supabase.from);
 
-    // 7.1 Terapeuta comum da Clínica A consulta GET /api/auditoria?tipoAcao=vinculo_equipe_criado
+    // 7.1 Terapeuta comum da Clínica A é bloqueado com 403 em GET /api/auditoria
     const ctxTerapeutaClinicaA = criarContextoHttp({
       query: { tipoAcao: 'vinculo_equipe_criado' },
       user: { id: terapeutaAutorId, is_super_admin: false },
@@ -574,15 +573,8 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
 
     await AuditoriaController.listar(ctxTerapeutaClinicaA.mockReq, ctxTerapeutaClinicaA.mockRes);
 
-    expect(ctxTerapeutaClinicaA.getStatus()).toBe(200);
-    const bodyClinicaA = ctxTerapeutaClinicaA.getJson() as {
-      data: { auditoria: AuditoriaSessao[]; meta: { total: number } };
-    };
-
-    expect(bodyClinicaA.data.auditoria).toHaveLength(1);
-    expect(bodyClinicaA.data.auditoria[0].id).toBe('aaaaaaaa-0001-4000-a000-000000000001');
-    expect(bodyClinicaA.data.auditoria[0].paciente_id).toBe(pacienteClinicaA);
-    expect(bodyClinicaA.data.meta.total).toBe(1);
+    expect(ctxTerapeutaClinicaA.getStatus()).toBe(403);
+    expect((ctxTerapeutaClinicaA.getJson() as { error: string }).error).toContain('SuperAdmin');
 
     // 7.2 SuperAdmin consulta GET /api/auditoria?tipoAcao=vinculo_equipe_criado e enxerga ambas as clínicas
     const ctxSuperAdmin = criarContextoHttp({
@@ -606,6 +598,28 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
     expect(idsRetornados).toContain('aaaaaaaa-0001-4000-a000-000000000001');
     expect(idsRetornados).toContain('bbbbbbbb-0002-4000-a000-000000000002');
     expect(bodySuperAdmin.data.meta.total).toBe(2);
+
+    // 7.3 SuperAdmin filtrando clinicaId específica recebe apenas Clínica A
+    const ctxSuperAdminClinicaA = criarContextoHttp({
+      query: { tipoAcao: 'vinculo_equipe_criado', clinicaId: clinicaAId },
+      user: {
+        id: '99999999-0000-4000-a000-999999999999',
+        is_super_admin: true,
+        app_metadata: { is_super_admin: true },
+      },
+    });
+
+    await AuditoriaController.listar(
+      ctxSuperAdminClinicaA.mockReq,
+      ctxSuperAdminClinicaA.mockRes
+    );
+
+    expect(ctxSuperAdminClinicaA.getStatus()).toBe(200);
+    const bodyClinicaA = ctxSuperAdminClinicaA.getJson() as {
+      data: { auditoria: AuditoriaSessao[]; meta: { total: number } };
+    };
+    expect(bodyClinicaA.data.auditoria).toHaveLength(1);
+    expect(bodyClinicaA.data.auditoria[0].id).toBe('aaaaaaaa-0001-4000-a000-000000000001');
   });
 
   // ============================================================================
@@ -680,7 +694,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
       return {};
     }) as unknown as typeof supabase.from);
 
-    const resPacInativo = await AuditoriaService.validarAcessoLinhaDoTempo(sessaoId, { id: terapeutaAutorId });
+    const resPacInativo = await AuditoriaService.validarAcessoRegistroEvento(sessaoId, { id: terapeutaAutorId });
     expect(resPacInativo.autorizado).toBe(false);
     expect(resPacInativo.statusHttp).toBe(403);
 
@@ -713,7 +727,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
       return {};
     }) as unknown as typeof supabase.from);
 
-    const resClinicaDif = await AuditoriaService.validarAcessoLinhaDoTempo(sessaoId, { id: terapeutaAutorId });
+    const resClinicaDif = await AuditoriaService.validarAcessoRegistroEvento(sessaoId, { id: terapeutaAutorId });
     expect(resClinicaDif.autorizado).toBe(false);
     expect(resClinicaDif.statusHttp).toBe(403);
 
@@ -757,15 +771,15 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
       return {};
     }) as unknown as typeof supabase.from);
 
-    const resSemVinculo = await AuditoriaService.validarAcessoLinhaDoTempo(sessaoId, { id: terapeutaAutorId });
+    const resSemVinculo = await AuditoriaService.validarAcessoRegistroEvento(sessaoId, { id: terapeutaAutorId });
     expect(resSemVinculo.autorizado).toBe(false);
     expect(resSemVinculo.statusHttp).toBe(403);
 
-    // 8.6 Exceção no banco durante validarAcessoLinhaDoTempo -> 403 seguro
+    // 8.6 Exceção no banco durante validarAcessoRegistroEvento -> 403 seguro
     vi.spyOn(supabase, 'from').mockImplementation(() => {
       throw new Error('DB Error');
     });
-    const resExcecao = await AuditoriaService.validarAcessoLinhaDoTempo(sessaoId, { id: terapeutaAutorId });
+    const resExcecao = await AuditoriaService.validarAcessoRegistroEvento(sessaoId, { id: terapeutaAutorId });
     expect(resExcecao.autorizado).toBe(false);
     expect(resExcecao.statusHttp).toBe(403);
 

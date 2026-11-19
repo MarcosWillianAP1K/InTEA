@@ -12,6 +12,8 @@ import { SessaoIaAnaliseService } from './sessao-ia-analise.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { AuthenticatedRequest, UsuarioAutenticado } from '../../../core/middlewares/auth.middleware.js';
 import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
+import { eventBus } from '../../../core/events/event-bus.js';
+import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 
 
 export interface CabecalhoLaudo {
@@ -426,14 +428,32 @@ export class SessaoExportarService {
       const resultado = await SessaoExportarService.gerarLaudoExportacao(sessaoId, usuarioLogado);
 
       if (!resultado.sucesso) {
-        res.status(resultado.statusHttp).json({ error: resultado.erro });
+
+
+      res.status(resultado.statusHttp).json({ error: resultado.erro });
         return;
       }
+
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'exportacao',
+        acao: 'exportacao_laudo',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogado?.id ?? null,
+        pacienteId: resultado.dados?.paciente?.id ?? null,
+        sessaoId,
+        recursoId: sessaoId,
+        descricao: 'Exportação do laudo clínico estruturado da sessão.',
+        detalhes: { formato: 'PDF/JSON', sessao_id: sessaoId },
+        ip,
+        userAgent,
+      });
 
       res.status(resultado.statusHttp).json({
         data: {
           laudo: resultado.dados,
         },
+
         message: 'Laudo clínico emitido com sucesso para exportação.',
       });
     } catch (error) {

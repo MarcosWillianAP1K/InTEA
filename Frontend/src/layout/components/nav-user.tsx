@@ -7,11 +7,6 @@ import {
 import { useInRouterContext, useNavigate } from "react-router-dom";
 
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/shared/components/ui/avatar";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -20,6 +15,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import { AvatarClinico } from "@/shared/components/AvatarClinico";
+import { USE_MOCK_DATA } from "@/core/api/http-client";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
 import { MOCK_CREDENCIAIS_VALIDAS } from "@/features/autenticacao/types/bdmock";
 
@@ -38,37 +35,29 @@ interface NavUserContentProps extends NavUserProps {
   onNavigateSettings?: () => void;
 }
 
-function extrairIniciaisTerapeuta(nomeCompleto: string): string {
-  const partes = nomeCompleto
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (partes.length === 0) return "T";
-  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
-  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-}
-
 function NavUserContent({ user, onNavigateLogin, onNavigateSettings }: NavUserContentProps) {
   const authUser = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
-  const fixtureMatch = MOCK_CREDENCIAIS_VALIDAS.find(
-    (item) => item.usuario.id === authUser?.id || item.usuario.email === authUser?.email
-  )?.usuario;
+  const fixtureMatch = USE_MOCK_DATA
+    ? MOCK_CREDENCIAIS_VALIDAS.find(
+        (item) => item.usuario.id === authUser?.id || item.usuario.email === authUser?.email
+      )?.usuario
+    : undefined;
 
   const displayName =
     user?.name ||
     authUser?.nome ||
     fixtureMatch?.nome ||
-    "Dr. Hermeson Alves";
+    "Terapeuta InTEA";
 
   const displayEmail =
     user?.email ||
     authUser?.email ||
     fixtureMatch?.email ||
-    "hermeson.alves@intea.clinica.com";
+    "";
 
-  const displayAvatar = user?.avatar || authUser?.avatar || (fixtureMatch as { avatar?: string })?.avatar;
+  const displayAvatar = user?.avatar || authUser?.avatar || (fixtureMatch as { avatar?: string } | undefined)?.avatar || null;
 
   const displayRole =
     user?.roleLabel ||
@@ -82,9 +71,7 @@ function NavUserContent({ user, onNavigateLogin, onNavigateSettings }: NavUserCo
     authUser?.crefito ||
     fixtureMatch?.registro_profissional ||
     fixtureMatch?.crefito ||
-    "CREFITO-14/87654-TO";
-
-  const iniciais = extrairIniciaisTerapeuta(displayName);
+    "—";
 
   const handleLogout = async () => {
     await logout();
@@ -99,14 +86,12 @@ function NavUserContent({ user, onNavigateLogin, onNavigateSettings }: NavUserCo
           aria-label={`Menu de perfil de ${displayName}`}
           className="flex flex-row items-center gap-3 p-1 pr-3 rounded-full hover:bg-surface-alt transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Avatar className="h-9 w-9 rounded-full border border-primary-light">
-            {displayAvatar ? (
-              <AvatarImage src={displayAvatar} alt={displayName} />
-            ) : null}
-            <AvatarFallback className="rounded-full bg-primary/10 text-primary font-semibold text-xs">
-              {iniciais}
-            </AvatarFallback>
-          </Avatar>
+          <AvatarClinico
+            nome={displayName}
+            src={displayAvatar}
+            size="md"
+            className="size-9 border-primary-light"
+          />
 
           <div className="hidden sm:flex flex-col text-left">
             <span className="text-[14px] font-semibold text-foreground-heading leading-tight">

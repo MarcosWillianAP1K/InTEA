@@ -15,6 +15,7 @@ import { PacienteServiceError } from '../../paciente/services/paciente.service.j
 import { SessaoContextoDdaService, ContextoPacienteContrato2, EntradaContextoDDA } from '../services/sessao-contexto-dda.service.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 import { eventBus } from '../../../core/events/event-bus.js';
+import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { hasSuperAdminClaim } from '../../../core/auth/privilegios.js';
 import { REGEX_PIN_PAREAMENTO } from '../../../core/middlewares/sessao.middleware.js';
@@ -246,6 +247,25 @@ export class SessaoController {
         return;
       }
 
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'sessao',
+        acao: 'sessao_criada',
+        origem: 'terapeuta_web',
+        terapeutaId: novaSessao.terapeuta_id,
+        pacienteId: novaSessao.paciente_id,
+        sessaoId: novaSessao.id,
+        recursoId: novaSessao.id,
+        descricao:
+          novaSessao.modo_sessao === MODO_SESSAO.MODO_LIVRE
+            ? 'Sessão em modo livre criada.'
+            : 'Sessão terapêutica criada para atendimento clínico.',
+        detalhes: {
+          modo_sessao: novaSessao.modo_sessao,
+          jogo_id: novaSessao.jogo_id,
+        },
+        ...extrairContextoHttp(req),
+      });
+
       const pacoteContrato2 = SessaoContextoDdaService.montarPacoteContrato2(
         novaSessao.session_token,
         novaSessao.terapeuta_id,
@@ -431,7 +451,7 @@ export class SessaoController {
       }
 
       // Dispara evento de domínio desacoplado para auditoria e efeitos colaterais
-      const ipOrigemFinalizar = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
+      const { ip: ipOrigemFinalizar } = extrairContextoHttp(req);
       const usuarioLogadoFinalizar = (req as AuthenticatedRequest).user;
       const anotacoesRecebidas = req.body?.anotacoes_clinicas || req.body?.anotacoes || req.body?.observacoes;
 
@@ -554,7 +574,7 @@ export class SessaoController {
       }
 
       // Dispara evento de domínio desacoplado para auditoria
-      const ipOrigemCancelar = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
+      const { ip: ipOrigemCancelar } = extrairContextoHttp(req);
       const usuarioLogadoCancelar = (req as AuthenticatedRequest).user;
 
       await eventBus.emitirAsync('sessao:cancelada', {
@@ -724,7 +744,7 @@ export class SessaoController {
       }
 
       // Dispara evento de domínio desacoplado para auditoria
-      const ipOrigemParear = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
+      const { ip: ipOrigemParear } = extrairContextoHttp(req);
       await eventBus.emitirAsync('sessao:pareada', {
         sessao: sessaoAtualizada,
         terapeutaId: sessaoAtualizada.terapeuta_id,
@@ -918,6 +938,31 @@ export class SessaoController {
       }
 
       const sessaoAtualizada = await SessaoModel.atualizarStatus(id, status as StatusSessao);
+      if (sessaoAtualizada) {
+        const acaoStatus =
+          status === STATUS_SESSAO.PAUSADA
+            ? 'sessao_pausada'
+            : status === STATUS_SESSAO.EM_ANDAMENTO
+              ? 'sessao_retomada'
+              : 'status_sessao_atualizado';
+        const { ip, userAgent } = extrairContextoHttp(req);
+        eventBus.emitir('auditoria:evento', {
+          entidade: 'sessao',
+          acao: acaoStatus,
+          origem: 'terapeuta_web',
+          terapeutaId: authReq.user?.id ?? sessaoAtualizada.terapeuta_id,
+          pacienteId: sessaoAtualizada.paciente_id,
+          sessaoId: sessaoAtualizada.id,
+          recursoId: sessaoAtualizada.id,
+          descricao: `Status da sessão atualizado para '${status}'.`,
+          detalhes: {
+            status_anterior: sessaoExistente.status_sessao,
+            status_novo: status,
+          },
+          ip,
+          userAgent,
+        });
+      }
 
       if (!sessaoAtualizada) {
         res.status(404).json({ error: 'Sessão não encontrada para atualização de status' });

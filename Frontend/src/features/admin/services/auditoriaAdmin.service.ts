@@ -2,7 +2,7 @@
  * ============================================================================
  * SERVIÇO DE AUDITORIA ADMINISTRATIVA (auditoriaAdmin.service.ts)
  * Comunicação com endpoints restritos de auditoria (/api/admin/auditoria)
- * com fallback em memória resiliente (bdmock) para testes e desenvolvimento.
+ * com fallback em memória resiliente para testes e desenvolvimento offline.
  * Conformidade: RF07 (SuperAdmin), RF08 (Auditoria de Acessos), RNF06 (LGPD).
  * ============================================================================
  */
@@ -15,10 +15,105 @@ import type {
   EstatisticasAuditoria,
 } from "../types/admin.types";
 
+function extrairRegistroRelacional(
+  valor: unknown
+): { id?: string; nome?: string; email?: string } | null {
+  if (!valor || typeof valor !== "object") return null;
+  const obj = valor as Record<string, unknown>;
+  return {
+    id: typeof obj.id === "string" ? obj.id : undefined,
+    nome: typeof obj.nome === "string" ? obj.nome : undefined,
+    email: typeof obj.email === "string" ? obj.email : undefined,
+  };
+}
+
+export function normalizarEventoAuditoria(
+  raw: Partial<EventoAuditoria> & Record<string, unknown>
+): EventoAuditoria {
+  const terapeutaRel = extrairRegistroRelacional(raw.terapeuta);
+  const pacienteRel = extrairRegistroRelacional(raw.paciente);
+  const clinicaRel = extrairRegistroRelacional(raw.clinica);
+  const sessaoRel =
+    raw.sessao && typeof raw.sessao === "object"
+      ? (raw.sessao as Record<string, unknown>)
+      : null;
+  const sessaoPacienteRel = extrairRegistroRelacional(sessaoRel?.paciente);
+  const sessaoJogoRel = extrairRegistroRelacional(sessaoRel?.jogo);
+
+  const terapeutaId =
+    typeof raw.terapeuta_id === "string"
+      ? raw.terapeuta_id
+      : terapeutaRel?.id ?? null;
+  const pacienteId =
+    typeof raw.paciente_id === "string"
+      ? raw.paciente_id
+      : pacienteRel?.id ??
+        (typeof sessaoRel?.paciente_id === "string"
+          ? sessaoRel.paciente_id
+          : sessaoPacienteRel?.id ?? null);
+  const sessaoId =
+    typeof raw.sessao_id === "string"
+      ? raw.sessao_id
+      : typeof sessaoRel?.id === "string"
+        ? sessaoRel.id
+        : null;
+  const clinicaId =
+    typeof raw.clinica_id === "string" ? raw.clinica_id : clinicaRel?.id ?? null;
+  const recursoId =
+    typeof raw.recurso_id === "string"
+      ? raw.recurso_id
+      : sessaoId ?? pacienteId ?? terapeutaId ?? null;
+
+  const detalhes =
+    raw.detalhes_json && typeof raw.detalhes_json === "object"
+      ? (raw.detalhes_json as Record<string, unknown>)
+      : {};
+
+  return {
+    id: String(raw.id || ""),
+    created_at: String(raw.created_at || new Date().toISOString()),
+    entidade: typeof raw.entidade === "string" ? raw.entidade : undefined,
+    recurso_id: recursoId,
+    clinica_id: clinicaId,
+    clinica_nome:
+      typeof raw.clinica_nome === "string"
+        ? raw.clinica_nome
+        : clinicaRel?.nome,
+    terapeuta_id: terapeutaId,
+    terapeuta_nome:
+      typeof raw.terapeuta_nome === "string"
+        ? raw.terapeuta_nome
+        : terapeutaRel?.nome,
+    terapeuta_email:
+      typeof raw.terapeuta_email === "string"
+        ? raw.terapeuta_email
+        : terapeutaRel?.email,
+    sessao_id: sessaoId,
+    paciente_id: pacienteId,
+    paciente_nome:
+      typeof raw.paciente_nome === "string"
+        ? raw.paciente_nome
+        : pacienteRel?.nome ?? sessaoPacienteRel?.nome,
+    jogo_nome:
+      typeof raw.jogo_nome === "string" ? raw.jogo_nome : sessaoJogoRel?.nome,
+    origem: typeof raw.origem === "string" ? raw.origem : "terapeuta_web",
+    acao: typeof raw.acao === "string" ? raw.acao : "",
+    descricao: typeof raw.descricao === "string" ? raw.descricao : undefined,
+    ip: typeof raw.ip === "string" && raw.ip.trim() !== "" ? raw.ip.trim() : null,
+    user_agent:
+      typeof raw.user_agent === "string" && raw.user_agent.trim() !== ""
+        ? raw.user_agent
+        : null,
+    detalhes_json: detalhes,
+  };
+}
+
 export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
   {
     id: "a1000000-0000-4000-8000-000000000001",
     created_at: "2026-10-21T18:15:30.000Z",
+    entidade: "sessao",
+    recurso_id: "11111111-1111-4111-a111-111111111111",
     terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
     terapeuta_nome: "Dr. Marcos Terapeuta",
     terapeuta_email: "marcos.terapeuta@intea.com.br",
@@ -41,6 +136,8 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
   {
     id: "a1000000-0000-4000-8000-000000000002",
     created_at: "2026-10-21T18:02:11.000Z",
+    entidade: "sessao",
+    recurso_id: "11111111-1111-4111-a111-111111111111",
     terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
     terapeuta_nome: "Dr. Marcos Terapeuta",
     terapeuta_email: "marcos.terapeuta@intea.com.br",
@@ -63,6 +160,8 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
   {
     id: "a1000000-0000-4000-8000-000000000003",
     created_at: "2026-10-21T17:51:04.000Z",
+    entidade: "sessao",
+    recurso_id: "11111111-1111-4111-a111-111111111111",
     terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
     terapeuta_nome: "Dr. Marcos Terapeuta",
     terapeuta_email: "marcos.terapeuta@intea.com.br",
@@ -84,6 +183,8 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
   {
     id: "a1000000-0000-4000-8000-000000000004",
     created_at: "2026-10-21T17:48:00.000Z",
+    entidade: "sessao",
+    recurso_id: "11111111-1111-4111-a111-111111111111",
     terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
     terapeuta_nome: "Dr. Marcos Terapeuta",
     terapeuta_email: "marcos.terapeuta@intea.com.br",
@@ -105,6 +206,8 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
   {
     id: "a1000000-0000-4000-8000-000000000005",
     created_at: "2026-10-21T16:30:20.000Z",
+    entidade: "paciente",
+    recurso_id: "p2222222-2222-4222-8222-222222222222",
     terapeuta_id: "b2222222-2222-4222-8222-222222222222",
     terapeuta_nome: "Dra. Luma Terapeuta",
     terapeuta_email: "luma.terapeuta@intea.com.br",
@@ -124,6 +227,8 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
   {
     id: "a1000000-0000-4000-8000-000000000006",
     created_at: "2026-10-21T15:10:45.000Z",
+    entidade: "anotacao",
+    recurso_id: "p2222222-2222-4222-8222-222222222222",
     terapeuta_id: "b2222222-2222-4222-8222-222222222222",
     terapeuta_nome: "Dra. Luma Terapeuta",
     terapeuta_email: "luma.terapeuta@intea.com.br",
@@ -143,6 +248,8 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
   {
     id: "a1000000-0000-4000-8000-000000000007",
     created_at: "2026-10-21T14:22:18.000Z",
+    entidade: "autenticacao",
+    recurso_id: "11111111-1111-4111-a111-111111111111",
     terapeuta_id: "c3333333-3333-4333-8333-333333333333",
     terapeuta_nome: "Dr. João Externo",
     terapeuta_email: "joao.externo@outraclinica.com.br",
@@ -164,6 +271,8 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
   {
     id: "a1000000-0000-4000-8000-000000000008",
     created_at: "2026-10-21T11:45:00.000Z",
+    entidade: "exportacao",
+    recurso_id: "11111111-1111-4111-a111-111111111111",
     terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
     terapeuta_nome: "Dr. Marcos Terapeuta",
     terapeuta_email: "marcos.terapeuta@intea.com.br",
@@ -184,6 +293,8 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
   {
     id: "a1000000-0000-4000-8000-000000000009",
     created_at: "2026-10-20T16:00:15.000Z",
+    entidade: "vinculo",
+    recurso_id: "p3333333-3333-4333-8333-333333333333",
     terapeuta_id: "b2222222-2222-4222-8222-222222222222",
     terapeuta_nome: "Dra. Luma Terapeuta",
     terapeuta_email: "luma.terapeuta@intea.com.br",
@@ -203,6 +314,8 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
   {
     id: "a1000000-0000-4000-8000-000000000010",
     created_at: "2026-10-20T09:12:00.000Z",
+    entidade: "autenticacao",
+    recurso_id: "a9849163-613f-4492-90cf-89985902d16e",
     terapeuta_id: "a9849163-613f-4492-90cf-89985902d16e",
     terapeuta_nome: "Dr. Marcos Terapeuta",
     terapeuta_email: "marcos.terapeuta@intea.com.br",
@@ -222,22 +335,26 @@ export const MOCK_EVENTOS_AUDITORIA: EventoAuditoria[] = [
 
 export const auditoriaAdminService = {
   /**
-   * Lists audit trail events with support for search, filters, and pagination.
-   * Institutional Audit (RF08, RNF06): Falls back to in-memory audit store if backend is unreachable.
-   *
-   * @param filtros - Search term, action, origin, date range, page, and limit
-   * @returns Paginated audit log response with metadata
+   * Lists unified audit trail events with support for search, filters, and pagination.
    */
   listar: async (filtros?: FiltrosAuditoriaDTO): Promise<RespostaPaginadaAuditoria> => {
     return await withFallback(
       async () => {
         const params: Record<string, string> = {};
         if (filtros?.busca) params.busca = filtros.busca;
+        if (filtros?.entidade && filtros.entidade !== "todas") {
+          params.entidade = filtros.entidade;
+        }
         if (filtros?.terapeutaId && filtros.terapeutaId !== "todos") {
           params.terapeutaId = filtros.terapeutaId;
         }
+        if (filtros?.pacienteId) params.pacienteId = filtros.pacienteId;
+        if (filtros?.clinicaId) params.clinicaId = filtros.clinicaId;
         if (filtros?.tipoAcao && filtros.tipoAcao !== "todas") {
           params.tipoAcao = filtros.tipoAcao;
+        }
+        if (filtros?.origem && filtros.origem !== "todas") {
+          params.origem = filtros.origem;
         }
         if (filtros?.dataInicio) params.dataInicio = filtros.dataInicio;
         if (filtros?.dataFim) params.dataFim = filtros.dataFim;
@@ -246,18 +363,20 @@ export const auditoriaAdminService = {
 
         const resposta = await http.get<
           | {
-              data: {
-                auditoria?: EventoAuditoria[];
-                registros?: EventoAuditoria[];
-                meta?: { page: number; limit: number; total: number; totalPages: number };
-              } | EventoAuditoria[];
+              data:
+                | {
+                    auditoria?: Array<Partial<EventoAuditoria> & Record<string, unknown>>;
+                    registros?: Array<Partial<EventoAuditoria> & Record<string, unknown>>;
+                    meta?: { page: number; limit: number; total: number; totalPages: number };
+                  }
+                | Array<Partial<EventoAuditoria> & Record<string, unknown>>;
               total?: number;
               meta?: { page: number; limit: number; total: number; totalPages: number };
             }
           | RespostaPaginadaAuditoria
         >("/admin/auditoria", { params });
 
-        let eventos: EventoAuditoria[] = [];
+        let eventosRaw: Array<Partial<EventoAuditoria> & Record<string, unknown>> = [];
         let total = 0;
         let meta = {
           page: Number(filtros?.page || 1),
@@ -270,11 +389,11 @@ export const auditoriaAdminService = {
           if ("data" in resposta && resposta.data) {
             const d = resposta.data as Record<string, unknown>;
             if (Array.isArray(d.auditoria)) {
-              eventos = d.auditoria as EventoAuditoria[];
+              eventosRaw = d.auditoria as Array<Partial<EventoAuditoria> & Record<string, unknown>>;
             } else if (Array.isArray(d.registros)) {
-              eventos = d.registros as EventoAuditoria[];
+              eventosRaw = d.registros as Array<Partial<EventoAuditoria> & Record<string, unknown>>;
             } else if (Array.isArray(resposta.data)) {
-              eventos = resposta.data as EventoAuditoria[];
+              eventosRaw = resposta.data as Array<Partial<EventoAuditoria> & Record<string, unknown>>;
             }
 
             if (d.meta && typeof d.meta === "object") {
@@ -282,27 +401,31 @@ export const auditoriaAdminService = {
               meta = {
                 page: m.page || meta.page,
                 limit: m.limit || meta.limit,
-                total: m.total ?? eventos.length,
-                totalPages: m.totalPages || Math.ceil((m.total ?? eventos.length) / meta.limit) || 1,
+                total: m.total ?? eventosRaw.length,
+                totalPages:
+                  m.totalPages || Math.ceil((m.total ?? eventosRaw.length) / meta.limit) || 1,
               };
               total = meta.total;
             } else if ("meta" in resposta && resposta.meta) {
               meta = resposta.meta as typeof meta;
               total = meta.total;
             } else {
-              total = ("total" in resposta && typeof resposta.total === "number") ? resposta.total : eventos.length;
+              total =
+                "total" in resposta && typeof resposta.total === "number"
+                  ? resposta.total
+                  : eventosRaw.length;
               meta.total = total;
               meta.totalPages = Math.ceil(total / meta.limit) || 1;
             }
           } else if (Array.isArray(resposta)) {
-            eventos = resposta;
-            total = eventos.length;
+            eventosRaw = resposta as Array<Partial<EventoAuditoria> & Record<string, unknown>>;
+            total = eventosRaw.length;
             meta.total = total;
           }
         }
 
         return {
-          data: eventos,
+          data: eventosRaw.map(normalizarEventoAuditoria),
           total,
           meta,
         };
@@ -317,12 +440,19 @@ export const auditoriaAdminService = {
               ev.terapeuta_nome?.toLowerCase().includes(termo) ||
               ev.terapeuta_email?.toLowerCase().includes(termo) ||
               ev.paciente_nome?.toLowerCase().includes(termo) ||
+              ev.entidade?.toLowerCase().includes(termo) ||
               ev.acao.toLowerCase().includes(termo) ||
               ev.descricao?.toLowerCase().includes(termo) ||
               ev.ip?.toLowerCase().includes(termo) ||
-              ev.sessao_id?.toLowerCase().includes(termo)
+              ev.sessao_id?.toLowerCase().includes(termo) ||
+              ev.terapeuta_id?.toLowerCase().includes(termo) ||
+              ev.paciente_id?.toLowerCase().includes(termo)
             );
           });
+        }
+
+        if (filtros?.entidade && filtros.entidade !== "todas") {
+          filtrados = filtrados.filter((ev) => ev.entidade === filtros.entidade);
         }
 
         if (filtros?.terapeutaId && filtros.terapeutaId !== "todos") {
@@ -331,6 +461,10 @@ export const auditoriaAdminService = {
               ev.terapeuta_id === filtros.terapeutaId ||
               ev.terapeuta_nome === filtros.terapeutaId
           );
+        }
+
+        if (filtros?.pacienteId) {
+          filtrados = filtrados.filter((ev) => ev.paciente_id === filtros.pacienteId);
         }
 
         if (filtros?.tipoAcao && filtros.tipoAcao !== "todas") {
@@ -378,9 +512,6 @@ export const auditoriaAdminService = {
 
   /**
    * Retrieves aggregated compliance statistics for the audit dashboard header.
-   * Compliance Overview: Aggregates total events, record accesses, active sessions, and security alerts.
-   *
-   * @returns Consolidated audit statistics
    */
   buscarEstatisticas: async (): Promise<EstatisticasAuditoria> => {
     return await withFallback(
@@ -440,23 +571,24 @@ export const auditoriaAdminService = {
   },
 
   /**
-   * Exports audit log events into a structured CSV file with UTF-8 BOM encoding for Excel compatibility.
-   * Report Export (RF20): Formats clinical action, therapist, patient, and timestamp fields into downloadable CSV.
-   *
-   * @param eventos - Array of audit events to export
-   * @param nomeArquivo - Optional custom filename for the exported CSV
+   * Exports audit log events into a structured CSV file aligned 1:1 with JSON fields.
    */
   exportarCSV: (eventos: EventoAuditoria[], nomeArquivo?: string): void => {
     const cabecalhos = [
       "ID do Evento",
       "Data e Hora (UTC)",
+      "Entidade",
+      "Acao",
+      "Origem",
+      "ID Terapeuta",
       "Terapeuta Responsavel",
       "E-mail Terapeuta",
-      "Acao Clinica",
-      "Origem",
+      "ID Paciente",
       "Paciente",
       "ID da Sessao",
+      "ID do Recurso",
       "Endereco IP",
+      "Descricao",
       "Detalhes Contextuais",
     ];
 
@@ -466,17 +598,26 @@ export const auditoriaAdminService = {
       return `"${texto.replace(/"/g, '""')}"`;
     };
 
-    const linhas = eventos.map((ev) =>
+    const normalizados = eventos.map((ev) =>
+      normalizarEventoAuditoria(ev as EventoAuditoria & Record<string, unknown>)
+    );
+
+    const linhas = normalizados.map((ev) =>
       [
         escapeCSV(ev.id),
         escapeCSV(ev.created_at),
-        escapeCSV(ev.terapeuta_nome || "N/A"),
-        escapeCSV(ev.terapeuta_email || "N/A"),
+        escapeCSV(ev.entidade || "sistema"),
         escapeCSV(ev.acao),
         escapeCSV(ev.origem),
-        escapeCSV(ev.paciente_nome || "N/A"),
+        escapeCSV(ev.terapeuta_id || "N/A"),
+        escapeCSV(ev.terapeuta_nome || "Sistema Automatizado"),
+        escapeCSV(ev.terapeuta_email || "N/A"),
+        escapeCSV(ev.paciente_id || "N/A"),
+        escapeCSV(ev.paciente_nome || "Sem paciente"),
         escapeCSV(ev.sessao_id || "N/A"),
-        escapeCSV(ev.ip || "N/A"),
+        escapeCSV(ev.recurso_id || "N/A"),
+        escapeCSV(ev.ip || "Não registrado"),
+        escapeCSV(ev.descricao || ""),
         escapeCSV(ev.detalhes_json),
       ].join(",")
     );
@@ -499,14 +640,34 @@ export const auditoriaAdminService = {
   },
 
   /**
-   * Exports audit log events into a formatted JSON file.
-   * Structured Export (RF20): Generates pretty-printed JSON blob and triggers browser file download.
-   *
-   * @param eventos - Array of audit events to export
-   * @param nomeArquivo - Optional custom filename for the exported JSON
+   * Exports audit log events into a normalized JSON file aligned 1:1 with CSV fields.
    */
   exportarJSON: (eventos: EventoAuditoria[], nomeArquivo?: string): void => {
-    const jsonFormatado = JSON.stringify(eventos, null, 2);
+    const payloadAlinhado = eventos.map((raw) => {
+      const ev = normalizarEventoAuditoria(raw as EventoAuditoria & Record<string, unknown>);
+      return {
+        id: ev.id,
+        created_at: ev.created_at,
+        entidade: ev.entidade || "sistema",
+        acao: ev.acao,
+        origem: ev.origem,
+        terapeuta_id: ev.terapeuta_id || null,
+        terapeuta_nome: ev.terapeuta_nome || "Sistema Automatizado",
+        terapeuta_email: ev.terapeuta_email || null,
+        paciente_id: ev.paciente_id || null,
+        paciente_nome: ev.paciente_nome || null,
+        sessao_id: ev.sessao_id || null,
+        clinica_id: ev.clinica_id || null,
+        clinica_nome: ev.clinica_nome || null,
+        recurso_id: ev.recurso_id || null,
+        ip: ev.ip || "Não registrado",
+        user_agent: ev.user_agent || null,
+        descricao: ev.descricao || null,
+        detalhes_json: ev.detalhes_json,
+      };
+    });
+
+    const jsonFormatado = JSON.stringify(payloadAlinhado, null, 2);
     const blob = new Blob([jsonFormatado], { type: "application/json;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

@@ -216,6 +216,7 @@ export function ResultadoSessaoPage({
 
   const [loading, setLoading] = useState<boolean>(!initialData);
   const [erro, setErro] = useState<string | null>(null);
+  const [indisponivelMotivo, setIndisponivelMotivo] = useState<string | null>(null);
   const [dados, setDados] = useState<DadosResultadoSessao | null>(
     initialData || null
   );
@@ -231,6 +232,7 @@ export function ResultadoSessaoPage({
 
     setLoading(true);
     setErro(null);
+    setIndisponivelMotivo(null);
 
     try {
       if (initialData) {
@@ -245,6 +247,19 @@ export function ResultadoSessaoPage({
 
       if (resposta.sucesso && resposta.data) {
         setDados(resposta.data);
+      } else if (
+        resposta.status === 400 ||
+        resposta.status === 409 ||
+        resposta.status === 422 ||
+        /s[oó]\s+est[aá]\s+dispon[ií]vel\s+para\s+sess[oõ]es\s+finalizadas|status atual|cancelada|expirada|interrompida|em andamento|aguardando|n[aã]o\s+possui\s+relat[oó]rio/i.test(
+          resposta.error || ""
+        )
+      ) {
+        setDados(null);
+        setIndisponivelMotivo(
+          resposta.error ||
+            "Este atendimento não foi concluído e ainda não possui relatório clínico consolidado."
+        );
       } else {
         // Fallback gracioso com dados locais do SessionStore se disponíveis
         if (storeConfig || storeToken) {
@@ -452,6 +467,52 @@ export function ResultadoSessaoPage({
         <div className="rounded-2xl border border-border bg-card p-6 h-48 flex flex-col gap-3">
           <Skeleton className="h-5 w-40 rounded-md" />
           <Skeleton className="h-24 w-full rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // ESTADO 1B: RELATÓRIO INDISPONÍVEL (Sessão cancelada, expirada ou ativa)
+  // ==========================================================================
+  if (indisponivelMotivo) {
+    return (
+      <div
+        data-testid="unavailable-state"
+        className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center"
+      >
+        <div className="max-w-md rounded-2xl border border-border bg-card p-8 shadow-sm">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <FileQuestion className="h-7 w-7" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground">
+            Relatório Ainda Não Disponível
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+            {indisponivelMotivo}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Relatórios clínicos consolidados são gerados somente após a conclusão do atendimento.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Button
+              type="button"
+              onClick={() => navigate("/historico")}
+              className="min-h-11 gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao Histórico
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate("/jogos")}
+              className="min-h-11 gap-2"
+            >
+              <Gamepad2 className="h-4 w-4" />
+              Ir para Jogos
+            </Button>
+          </div>
         </div>
       </div>
     );

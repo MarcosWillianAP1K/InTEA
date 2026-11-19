@@ -68,7 +68,7 @@ export async function adminMiddleware(
       return;
     }
 
-    // 3. Valida permissão de administrador (via tabela ou user_metadata do Supabase Auth)
+    // 3. Valida permissão de administrador (via tabela terapeuta ou app_metadata assinado pelo servidor)
     const isSuperAdmin =
       terapeuta.is_super_admin === true ||
       hasSuperAdminClaim(usuarioLogado);

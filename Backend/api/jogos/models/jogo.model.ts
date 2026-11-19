@@ -61,6 +61,7 @@ export interface JogoResumo {
   descricao: string;
   versao: string;
   status_jogo: StatusJogo;
+  objetivo_clinico?: string | null;
 }
 
 export interface FiltrosJogo {
@@ -302,7 +303,8 @@ export class JogoModel {
               nome: j.nome,
               descricao: j.descricao,
               versao: j.versao,
-              status_jogo: (j.status_jogo as StatusJogo) ?? 'ativo'
+              status_jogo: (j.status_jogo as StatusJogo) ?? 'ativo',
+              objetivo_clinico: j.manifesto_json?.objetivo_clinico ?? null
             })),
             total,
             page,
@@ -363,7 +365,8 @@ export class JogoModel {
         nome: j.nome,
         descricao: j.descricao,
         versao: j.versao,
-        status_jogo: j.status_jogo ?? 'ativo'
+        status_jogo: j.status_jogo ?? 'ativo',
+        objetivo_clinico: j.manifesto_json?.objetivo_clinico ?? null
       })),
       total,
       page,

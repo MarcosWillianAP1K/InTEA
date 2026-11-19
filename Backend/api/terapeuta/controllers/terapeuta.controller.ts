@@ -11,6 +11,8 @@ import { TerapeutaService, TerapeutaServiceError } from '../services/terapeuta.s
 import { obterMensagemErro } from '../../../core/utils/formatters.js';
 import { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
 import { validarUUID } from '../../../core/utils/validators.js';
+import { eventBus } from '../../../core/events/event-bus.js';
+import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 
 export class TerapeutaController {
   /**
@@ -167,7 +169,25 @@ export class TerapeutaController {
   static async criar(req: Request, res: Response): Promise<void> {
     try {
       const dto: CriarTerapeutaDTO = req.body;
+      const usuarioLogado = (req as AuthenticatedRequest).user;
       const novoTerapeuta = await TerapeutaService.criar(dto);
+      const { ip, userAgent } = extrairContextoHttp(req);
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'terapeuta',
+        acao: 'terapeuta_criado',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogado?.id ?? novoTerapeuta.id,
+        clinicaId: novoTerapeuta.clinica_id ?? null,
+        recursoId: novoTerapeuta.id,
+        descricao: `Cadastro de novo terapeuta (${novoTerapeuta.nome}).`,
+        detalhes: {
+          terapeuta_criado_id: novoTerapeuta.id,
+          email: novoTerapeuta.email,
+        },
+        ip,
+        userAgent,
+      });
 
       res.status(201).json({
         data: {
@@ -214,6 +234,20 @@ export class TerapeutaController {
       const usuarioLogado = (req as AuthenticatedRequest).user;
 
       const atualizado = await TerapeutaService.atualizar(id, dto, usuarioLogado);
+      const { ip, userAgent } = extrairContextoHttp(req);
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'terapeuta',
+        acao: 'terapeuta_atualizado',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogado?.id ?? id,
+        clinicaId: atualizado.clinica_id ?? null,
+        recursoId: id,
+        descricao: `Perfil profissional de '${atualizado.nome}' atualizado.`,
+        detalhes: { terapeuta_alvo_id: id },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {
@@ -260,6 +294,21 @@ export class TerapeutaController {
         return;
       }
 
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'terapeuta',
+        acao: 'terapeuta_desativado',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogado?.id ?? id,
+        clinicaId: terapeuta.clinica_id ?? null,
+        recursoId: id,
+        descricao: `Conta de terapeuta '${terapeuta.nome}' desativada logicamente.`,
+        detalhes: { terapeuta_alvo_id: id },
+        ip,
+        userAgent,
+      });
+
       res.status(200).json({
         data: {
           terapeuta,
@@ -294,6 +343,21 @@ export class TerapeutaController {
         return;
       }
       const reativado = await TerapeutaService.reativar(id);
+      const usuarioLogado = (req as AuthenticatedRequest).user;
+      const { ip, userAgent } = extrairContextoHttp(req);
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'terapeuta',
+        acao: 'terapeuta_reativado',
+        origem: 'terapeuta_web',
+        terapeutaId: usuarioLogado?.id ?? id,
+        clinicaId: reativado.clinica_id ?? null,
+        recursoId: id,
+        descricao: `Conta de terapeuta '${reativado.nome}' reativada.`,
+        detalhes: { terapeuta_alvo_id: id },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {

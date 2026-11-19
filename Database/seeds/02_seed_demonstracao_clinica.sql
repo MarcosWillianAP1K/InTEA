@@ -134,7 +134,7 @@ SET
 
 -- 4. Eventos de Telemetria Contínua (Contrato 3 - telemetria_evento)
 INSERT INTO public.telemetria_evento (sessao_id, tipo_evento, dados, data_hora)
-VALUES 
+VALUES
     (
         '44444444-4444-4444-8444-444444444444',
         'interacao_paciente',
@@ -160,33 +160,51 @@ VALUES
         TIMEZONE('utc', NOW()) - INTERVAL '10 minutes'
     );
 
--- 5. Trilha de Auditoria Clínica de Sessão (RF13, RN04, RN05)
-INSERT INTO public.auditoria_sessao (sessao_id, terapeuta_id, origem, acao, detalhes_json, created_at)
-VALUES 
+-- 5. Trilha Unificada de Auditoria Clínica de Sessão (RF13, RN04, RN05)
+INSERT INTO public.auditoria_evento (
+    id, entidade, acao, origem, terapeuta_id, paciente_id, sessao_id, recurso_id, descricao, detalhes_json, created_at
+)
+VALUES
     (
-        '44444444-4444-4444-8444-444444444444',
-        'a9849163-613f-4492-90cf-89985902d16e',
-        'terapeuta_web',
+        'e2500000-0000-4000-8000-000000000001',
+        'sessao',
         'sessao_criada',
+        'terapeuta_web',
+        'a9849163-613f-4492-90cf-89985902d16e',
+        '164a2d30-2ca1-464f-9b55-9070f06b2058',
+        '44444444-4444-4444-8444-444444444444',
+        '44444444-4444-4444-8444-444444444444',
+        'Sessão clínica iniciada para Aventura das Cores.',
         '{"modo": "sessao_clinica", "jogo": "Aventura das Cores"}'::jsonb,
         TIMEZONE('utc', NOW()) - INTERVAL '40 minutes'
     ),
     (
-        '44444444-4444-4444-8444-444444444444',
-        'a9849163-613f-4492-90cf-89985902d16e',
-        'dispositivo_jogo',
+        'e2500000-0000-4000-8000-000000000002',
+        'sessao',
         'dispositivo_pareado',
+        'dispositivo_jogo',
+        'a9849163-613f-4492-90cf-89985902d16e',
+        '164a2d30-2ca1-464f-9b55-9070f06b2058',
+        '44444444-4444-4444-8444-444444444444',
+        '44444444-4444-4444-8444-444444444444',
+        'Dispositivo pareado remotamente via código de sessão.',
         '{"token": "849-291", "dispositivo": "Tablet Samsung Galaxy Tab S9 FE"}'::jsonb,
         TIMEZONE('utc', NOW()) - INTERVAL '38 minutes'
     ),
     (
-        '44444444-4444-4444-8444-444444444444',
-        'a9849163-613f-4492-90cf-89985902d16e',
-        'terapeuta_web',
+        'e2500000-0000-4000-8000-000000000003',
+        'sessao',
         'sessao_finalizada',
+        'terapeuta_web',
+        'a9849163-613f-4492-90cf-89985902d16e',
+        '164a2d30-2ca1-464f-9b55-9070f06b2058',
+        '44444444-4444-4444-8444-444444444444',
+        '44444444-4444-4444-8444-444444444444',
+        'Sessão clínica finalizada normalmente após intervenção.',
         '{"motivo": "encerramento_regular", "duracao_minutos": 35}'::jsonb,
         TIMEZONE('utc', NOW()) - INTERVAL '5 minutes'
-    );
+    )
+ON CONFLICT (id) DO NOTHING;
 
 -- 6. Anotação Clínica da Sessão (RF16)
 INSERT INTO public.anotacao_clinica (

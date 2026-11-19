@@ -1,8 +1,8 @@
 // ==============================================================================
-// InTEA: Ouvintes de Eventos de Domínio para Trilha de Auditoria Clínica
+// InTEA: Ouvintes de Eventos de Domínio para Trilha Unificada de Auditoria
 // ==============================================================================
 // Escuta eventos emitidos pelo barramento central (EventBus) e persiste logs
-// imutáveis de auditoria forense sem acoplamento direto com os controllers.
+// imutáveis em `public.auditoria_evento` sem acoplamento direto com os controllers.
 // ==============================================================================
 
 import { eventBus } from '../../../core/events/event-bus.js';
@@ -12,10 +12,8 @@ import { MODO_SESSAO } from '../../sessao/models/sessao.model.js';
 let ouvintesRegistrados = false;
 
 /**
- * Initializes domain event listeners for the session and team link lifecycle, silently and
- * asynchronously recording immutable audit logs (RF08, RF13, RNF06, RN05).
- *
- * @returns Void.
+ * Initializes domain event listeners for the entire ecosystem lifecycle,
+ * recording immutable audit logs without blocking callers (RF07, RF08, RF13, RNF06, RN05).
  */
 export function inicializarAuditoriaListeners(): void {
   if (ouvintesRegistrados) {
@@ -27,10 +25,14 @@ export function inicializarAuditoriaListeners(): void {
   eventBus.ouvir('sessao:finalizada', async (dados) => {
     try {
       await AuditoriaService.registrarSilencioso({
+        entidade: 'sessao',
         sessao_id: dados.sessao.id,
         terapeuta_id: dados.terapeutaId,
+        paciente_id: dados.sessao.paciente_id || null,
+        recurso_id: dados.sessao.id,
         origem: 'terapeuta_web',
         acao: 'sessao_finalizada',
+        descricao: 'Sessão clínica finalizada e estado persistido no prontuário.',
         detalhes_json: {
           modo_sessao: dados.sessao.modo_sessao,
           data_hora_inicio: dados.sessao.data_hora_inicio,
@@ -52,10 +54,14 @@ export function inicializarAuditoriaListeners(): void {
   eventBus.ouvir('sessao:cancelada', async (dados) => {
     try {
       await AuditoriaService.registrarSilencioso({
+        entidade: 'sessao',
         sessao_id: dados.sessao.id,
         terapeuta_id: dados.terapeutaId,
+        paciente_id: dados.sessao.paciente_id || null,
+        recurso_id: dados.sessao.id,
         origem: 'terapeuta_web',
         acao: 'sessao_cancelada',
+        descricao: 'Sessão clínica cancelada antes da conclusão.',
         detalhes_json: {
           status_anterior: dados.statusAnterior,
         },
@@ -71,10 +77,14 @@ export function inicializarAuditoriaListeners(): void {
   eventBus.ouvir('sessao:pareada', async (dados) => {
     try {
       await AuditoriaService.registrarSilencioso({
+        entidade: 'sessao',
         sessao_id: dados.sessao.id,
         terapeuta_id: dados.terapeutaId,
+        paciente_id: dados.sessao.paciente_id || null,
+        recurso_id: dados.sessao.id,
         origem: 'dispositivo_jogo',
         acao: 'dispositivo_pareado',
+        descricao: 'Dispositivo externo pareado com a sessão terapêutica.',
         detalhes_json: {
           jogo_id: dados.sessao.jogo_id,
           dispositivo_info: dados.sessao.dispositivo_info || null,
@@ -117,6 +127,28 @@ export function inicializarAuditoriaListeners(): void {
       });
     } catch (err) {
       console.error('[AuditoriaListener] Falha ao processar evento vinculo:removido:', err);
+    }
+  });
+
+  // 6. Escuta eventos genéricos de auditoria do ecossistema completo
+  eventBus.ouvir('auditoria:evento', async (dados) => {
+    try {
+      await AuditoriaService.registrarEventoUnificadoSilencioso({
+        entidade: dados.entidade,
+        acao: dados.acao,
+        origem: dados.origem,
+        terapeuta_id: dados.terapeutaId ?? null,
+        paciente_id: dados.pacienteId ?? null,
+        sessao_id: dados.sessaoId ?? null,
+        clinica_id: dados.clinicaId ?? null,
+        recurso_id: dados.recursoId ?? null,
+        descricao: dados.descricao ?? null,
+        detalhes_json: dados.detalhes ?? {},
+        ip: dados.ip ?? null,
+        user_agent: dados.userAgent ?? null,
+      });
+    } catch (err) {
+      console.error('[AuditoriaListener] Falha ao processar evento auditoria:evento:', err);
     }
   });
 }

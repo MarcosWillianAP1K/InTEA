@@ -300,4 +300,25 @@ describe("Card 3.1 & 3.4 — Testes da Página Mestre de Resultados da Sessão (
     expect(screen.getByTestId("custom-insights-slot")).toBeDefined();
     expect(screen.getByTestId("custom-anotacoes-slot")).toBeDefined();
   });
+
+  it("deve exibir estado informativo 'Relatório Ainda Não Disponível' para sessão cancelada ou não finalizada sem usar fallback local", async () => {
+    vi.spyOn(sessaoService, "buscarResultado").mockResolvedValueOnce({
+      sucesso: false,
+      status: 400,
+      error: "A consulta consolidada de resultados só está disponível para sessões finalizadas. Status atual: 'cancelada'.",
+    });
+
+    render(
+      <BrowserRouter>
+        <ResultadoSessaoPage sessaoId="sessao-cancelada-999" />
+      </BrowserRouter>
+    );
+
+    const unavailable = await screen.findByTestId("unavailable-state");
+    expect(unavailable).toBeDefined();
+    expect(screen.getByText("Relatório Ainda Não Disponível")).toBeDefined();
+    expect(screen.queryByTestId("metricas-consolidadas-cards")).toBeNull();
+    expect(screen.getByRole("button", { name: /Voltar ao Histórico/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Ir para Jogos/i })).toBeDefined();
+  });
 });

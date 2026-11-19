@@ -595,7 +595,7 @@ export async function criarPacienteMock(
     ? {
         id: `dc-${Date.now()}`,
         paciente_id: novoId,
-        diagnostico_base: dto.dados_clinicos.diagnostico_base,
+        diagnostico_base: dto.dados_clinicos.diagnostico_base ?? "",
         gatilhos_sensoriais: dto.dados_clinicos.gatilhos_sensoriais ?? [],
         observacoes_gerais: dto.dados_clinicos.observacoes_gerais ?? null,
         created_at: agora,

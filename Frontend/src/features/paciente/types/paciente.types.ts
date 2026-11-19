@@ -6,6 +6,11 @@
  * ============================================================================
  */
 
+import {
+  ESTADO_CLINICO_NAO_INFORMADO,
+  ULTIMA_SESSAO_VAZIA,
+} from "../constants/condicoesClinicas";
+
 export interface Responsavel {
   id: string;
   nome: string;
@@ -14,6 +19,8 @@ export interface Responsavel {
   telefone: string;
   email?: string | null;
   parentesco?: string | null;
+  tipo_responsavel?: "principal" | "extra" | string | null;
+  principal?: boolean;
   cep?: string | null;
   cidade?: string | null;
   estado?: string | null;
@@ -144,6 +151,8 @@ export interface Paciente {
   status_ativo: boolean;
   consentimento_lgpd?: boolean;
   terapeuta_responsavel_id?: string | null;
+  ultima_sessao_em?: string | null;
+  estado_clinico?: string | null;
   created_at: string;
   updated_at: string;
   responsaveis?: Responsavel[];
@@ -158,17 +167,27 @@ export interface Paciente {
 // ============================================================================
 
 export interface CriarResponsavelDTO {
+  id?: string;
   nome: string;
   telefone: string;
   cpf?: string | null;
+  data_nascimento?: string | null;
   email?: string | null;
   parentesco?: string | null;
+  cep?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  endereco?: string | null;
+  bairro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  mesmo_endereco_paciente?: boolean;
 }
 
 export interface CriarDadosClinicosDTO {
-  diagnostico_base: string;
+  diagnostico_base?: string | null;
   gatilhos_sensoriais?: string[];
-  observacoes_gerais?: string;
+  observacoes_gerais?: string | null;
 }
 
 export interface CriarPacienteDTO {
@@ -185,6 +204,7 @@ export interface CriarPacienteDTO {
   numero?: string | null;
   complemento?: string | null;
   responsavel?: CriarResponsavelDTO | null;
+  responsavel_extra?: CriarResponsavelDTO | null;
   dados_clinicos?: CriarDadosClinicosDTO | null;
 }
 
@@ -204,6 +224,9 @@ export interface AtualizarPacienteDTO {
   numero?: string | null;
   complemento?: string | null;
   status_ativo?: boolean;
+  responsavel?: CriarResponsavelDTO | null;
+  responsavel_extra?: CriarResponsavelDTO | null;
+  dados_clinicos?: CriarDadosClinicosDTO | null;
 }
 
 export interface FiltroPacienteDTO {
@@ -312,6 +335,8 @@ export interface Patient {
   notes: string;
   phone?: string;
   cpf?: string;
+  clinicaId?: string | null;
+  statusAtivo?: boolean;
   address?: PatientAddress;
   responsible?: PatientResponsible;
   extraResponsible?: PatientResponsible;
@@ -321,24 +346,63 @@ export interface Patient {
  * Converts a backend Paciente domain entity to the frontend UI Patient view model.
  * View Model Adaptation: Computes age from birth date, formats guardian display, and maps clinical status.
  *
- * @param p - Raw Paciente entity received from backend REST API
+ * @param paciente - Raw Paciente entity received from backend REST API
  * @returns Formatted Patient view model ready for UI component rendering
  */
 export function pacienteToPatient(paciente: Paciente): Patient {
-  const responsavelPrincipal = paciente.responsaveis?.[0];
+  const responsaveisLista = Array.isArray(paciente.responsaveis) ? paciente.responsaveis : [];
+  const responsavelPrincipal =
+    responsaveisLista.find((r) => r.principal || r.tipo_responsavel === "principal") ||
+    responsaveisLista[0];
+  const responsavelExtra = responsaveisLista.find(
+    (r) =>
+      r.id !== responsavelPrincipal?.id &&
+      (r.tipo_responsavel === "extra" || r.principal === false),
+  );
   const dados = paciente.dados_clinicos;
 
   const birthDate = paciente.data_nascimento
     ? paciente.data_nascimento.split("-").reverse().join("/")
-    : "01/01/2019";
+    : "";
 
-  const anoNasc = parseInt(paciente.data_nascimento?.split("-")[0] || "2019", 10);
-  const age = Math.max(1, new Date().getFullYear() - anoNasc);
+  const anoNasc = paciente.data_nascimento
+    ? parseInt(paciente.data_nascimento.split("-")[0] || "0", 10)
+    : 0;
+  const age = anoNasc > 1900 ? Math.max(0, new Date().getFullYear() - anoNasc) : 0;
 
   const sensorySensitivities = [
-    ...(dados?.gatilhos_sensoriais || []),
+    ...(Array.isArray(dados?.gatilhos_sensoriais) ? dados.gatilhos_sensoriais : []),
     ...(paciente.gatilhos?.map((g) => g.gatilho?.nome || g.observacoes || "").filter(Boolean) || []),
   ];
+
+  const condicaoClinica =
+    dados?.diagnostico_base?.trim() ||
+    paciente.estado_clinico?.trim() ||
+    ESTADO_CLINICO_NAO_INFORMADO;
+
+  const lastSessionDate = paciente.ultima_sessao_em
+    ? new Date(paciente.ultima_sessao_em).toLocaleDateString("pt-BR")
+    : ULTIMA_SESSAO_VAZIA;
+
+  const mapearResponsavel = (resp?: Responsavel): PatientResponsible | undefined =>
+    resp
+      ? {
+          name: resp.nome || "",
+          birthDate: resp.data_nascimento ? resp.data_nascimento.split("-").reverse().join("/") : "",
+          phone: resp.telefone || "",
+          cpf: resp.cpf || "",
+          address: resp.cep || resp.endereco || resp.cidade
+            ? {
+                cep: resp.cep || "",
+                city: resp.cidade || "",
+                state: resp.estado || "",
+                street: resp.endereco || "",
+                neighborhood: resp.bairro || "",
+                number: resp.numero || "",
+              }
+            : undefined,
+        }
+      : undefined;
 
   return {
     id: paciente.id,
@@ -347,28 +411,36 @@ export function pacienteToPatient(paciente: Paciente): Patient {
     gender: "M",
     birthDate,
     photoUrl: paciente.foto_url || paciente.photoUrl || "",
-    category: dados?.diagnostico_base || "TEA Nível 1",
-    clinicalStatus: dados?.observacoes_gerais || dados?.diagnostico_base || "Em acompanhamento clínico",
+    category: condicaoClinica,
+    clinicalStatus: dados?.observacoes_gerais?.trim() || condicaoClinica,
     progress: paciente.status_ativo ? 50 : 100,
     performanceScore: undefined,
-    lastSessionDate: paciente.updated_at ? new Date(paciente.updated_at).toLocaleDateString("pt-BR") : "Recentemente",
+    lastSessionDate,
     status: paciente.status_ativo ? "IN_PROGRESS" : "FINISHED",
-    responsibleName: responsavelPrincipal ? `${responsavelPrincipal.nome} (${responsavelPrincipal.parentesco || "Responsável"})` : "Não informado",
-    responsiblePhone: responsavelPrincipal?.telefone || paciente.telefone || "(Não informado)",
-    therapist: paciente.terapeutas?.[0]?.terapeuta?.nome || "Dr. Marcos Vinicius",
-    communicationStyle: "Em avaliação clínica",
-    sensorySensitivities: sensorySensitivities.length > 0 ? sensorySensitivities : ["Nenhum gatilho severo relatado"],
-    notes: dados?.observacoes_gerais || "Sem observações adicionais",
+    statusAtivo: paciente.status_ativo !== false,
+    clinicaId: paciente.clinica_id ?? null,
+    responsibleName: responsavelPrincipal
+      ? `${responsavelPrincipal.nome}${responsavelPrincipal.parentesco ? ` (${responsavelPrincipal.parentesco})` : ""}`
+      : "Não informado",
+    responsiblePhone: responsavelPrincipal?.telefone || paciente.telefone || "",
+    therapist: paciente.terapeutas?.[0]?.terapeuta?.nome || "Não atribuído",
+    communicationStyle: condicaoClinica,
+    sensorySensitivities,
+    notes: dados?.observacoes_gerais || "",
     phone: paciente.telefone || undefined,
     cpf: paciente.cpf || undefined,
-    address: paciente.cep ? {
-      cep: paciente.cep,
-      city: paciente.cidade || "",
-      state: paciente.estado || "",
-      street: paciente.endereco || "",
-      neighborhood: paciente.bairro || "",
-      number: paciente.numero || "",
-    } : undefined,
+    address: paciente.cep || paciente.endereco || paciente.cidade
+      ? {
+          cep: paciente.cep || "",
+          city: paciente.cidade || "",
+          state: paciente.estado || "",
+          street: paciente.endereco || "",
+          neighborhood: paciente.bairro || "",
+          number: paciente.numero || "",
+        }
+      : undefined,
+    responsible: mapearResponsavel(responsavelPrincipal),
+    extraResponsible: mapearResponsavel(responsavelExtra),
   };
 }
 

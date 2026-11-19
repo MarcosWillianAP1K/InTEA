@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import { AuditoriaController } from '../controllers/auditoria.controller.js';
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
+import { superAdminMiddleware } from '../../../core/middlewares/admin.middleware.js';
 
 export const auditoriaRoutes = Router();
 
@@ -81,12 +82,14 @@ export const auditoriaRoutes = Router();
 auditoriaRoutes.get(
   '/prontuario',
   authMiddleware,
+  superAdminMiddleware,
   AuditoriaController.consultarAcessosProntuario
 );
 
 auditoriaRoutes.get(
   '/estatisticas',
   authMiddleware,
+  superAdminMiddleware,
   AuditoriaController.obterEstatisticas
 );
 
@@ -129,6 +132,7 @@ auditoriaRoutes.get(
 auditoriaRoutes.get(
   '/sessao/:sessaoId',
   authMiddleware,
+  superAdminMiddleware,
   AuditoriaController.consultarLinhaDoTempo
 );
 
@@ -182,12 +186,14 @@ auditoriaRoutes.get(
 auditoriaRoutes.get(
   '/',
   authMiddleware,
+  superAdminMiddleware,
   AuditoriaController.listar
 );
 
 auditoriaRoutes.get(
   '/vinculo',
   authMiddleware,
+  superAdminMiddleware,
   AuditoriaController.listar
 );
 

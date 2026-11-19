@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { BibliotecaJogosPage } from "../pages/BibliotecaJogosPage";
+import { jogosService } from "../services/jogos.service";
 import { useSessionStore } from "@/features/sessao";
 import { toast } from "sonner";
 import type { ReactNode } from "react";
@@ -104,5 +105,51 @@ describe("Card 4.3 — Integração do Fluxo 'Iniciar Sessão' na Biblioteca de 
     expect(state.isModalAberto).toBe(true);
     expect(state.config?.jogoId).toBe("jogo-2");
     expect(state.config?.jogoTitulo).toBe("Formas Calmas");
+  });
+
+  it("deve popular objetivos formatados dinamicamente, preservar filtros e exibir 'Limpar filtros' no empty state", async () => {
+    const spyListar = vi
+      .spyOn(jogosService, "listar")
+      .mockResolvedValueOnce([
+        {
+          id: "j-din-1",
+          titulo: "Jogo Foco",
+          versao: "1.0.0",
+          descricaoClinica: "Descrição foco",
+          objetivoTerapeutico: "foco_atencional",
+          objetivo_clinico: "foco_atencional",
+          manifesto: {
+            id_jogo: "j-din-1",
+            nome: "Jogo Foco",
+            versao: "1.0.0",
+            descricaoClinica: "Descrição foco",
+            objetivoTerapeutico: "foco_atencional",
+            objetivo_clinico: "foco_atencional",
+            metricasSuportadas: [],
+          },
+        },
+      ])
+      .mockResolvedValue([]);
+
+    render(<BibliotecaJogosPage />);
+
+    expect(await screen.findByText("Foco atencional")).toBeDefined();
+    expect(screen.getByTestId("jogo-badge-objetivo").textContent).toBe("Foco atencional");
+
+    const campoBusca = screen.getByRole("textbox");
+    fireEvent.change(campoBusca, { target: { value: "termo-inexistente-xyz" } });
+
+    expect(
+      await screen.findByText("Nenhum jogo encontrado para os filtros selecionados."),
+    ).toBeDefined();
+
+    // Barra de filtros permanece visível e o botão Limpar filtros restaura o catálogo
+    expect(screen.getByRole("textbox")).toBeDefined();
+    const btnLimpar = screen.getByTestId("btn-limpar-filtros-jogos");
+    fireEvent.click(btnLimpar);
+
+    await waitFor(() => {
+      expect(spyListar).toHaveBeenCalledWith({ busca: "", objetivo: "todos" });
+    });
   });
 });

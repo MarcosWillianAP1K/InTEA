@@ -191,7 +191,7 @@ describe('BD/Back: Trilha de Auditoria de Acessos ao Prontuário Médico (RF08, 
       expect(log.user_agent).toBe('Chrome/120.0 (Windows)');
     });
 
-    it('deve registrar alteração (PUT/PATCH) de prontuário adequadamente', async () => {
+    it('não deve duplicar alteração (PUT/PATCH) no middleware de visualização (mutação auditada no controller)', async () => {
       const { res, emitFinish } = mockResponse();
 
       const req = {
@@ -214,11 +214,10 @@ describe('BD/Back: Trilha de Auditoria de Acessos ao Prontuário Médico (RF08, 
         operacao: 'alteracao',
       });
 
-      expect(data).toHaveLength(1);
-      expect(data[0].operacao).toBe('alteracao');
+      expect(data).toHaveLength(0);
     });
 
-    it('deve registrar exclusão lógica (DELETE) de prontuário', async () => {
+    it('não deve duplicar exclusão lógica (DELETE) no middleware de visualização (mutação auditada no controller)', async () => {
       const { res, emitFinish } = mockResponse();
 
       const req = {
@@ -241,8 +240,7 @@ describe('BD/Back: Trilha de Auditoria de Acessos ao Prontuário Médico (RF08, 
         operacao: 'exclusao_logica',
       });
 
-      expect(data).toHaveLength(1);
-      expect(data[0].operacao).toBe('exclusao_logica');
+      expect(data).toHaveLength(0);
     });
   });
 

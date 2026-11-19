@@ -168,7 +168,7 @@ describe("Página: PerfilPacientePage (Prontuário e Equipe Especialista)", () =
     expect(screen.getByText(/Prontuário: #paciente/i)).toBeDefined();
     const avatar = screen.getByTestId("avatar-perfil-paciente");
     expect(avatar).toBeDefined();
-    expect(avatar.textContent).toContain("AV");
+    expect(avatar.textContent).toContain("AR");
 
     // 5 Seções Contínuas
     expect(screen.getByTestId("secao-visao-geral")).toBeDefined();
@@ -436,5 +436,103 @@ describe("Página: PerfilPacientePage (Prontuário e Equipe Especialista)", () =
 
     expect(screen.getByTestId("modal-comparar-multiplas-sessoes")).toBeDefined();
     expect(screen.getByText("Comparação Analítica Multi-Sessões")).toBeDefined();
+  });
+
+  it("deve exibir 'Sem PDF para baixar' desabilitado, condição 'Não informado' e selo discreto 'Ativo' quando não houver laudo nem diagnóstico (W2-B)", async () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: {
+        id: "terapeuta-1",
+        nome: "Dr. Hermeson",
+        email: "hermeson@intea.com.br",
+        clinica_id: "clinica-uuid-9999",
+        status_ativo: true,
+        is_super_admin: false,
+        role: "terapeuta",
+      },
+    });
+
+    const pacienteSemLaudo: Paciente = {
+      ...MOCK_PACIENTE,
+      laudos: [],
+      dados_clinicos: {
+        id: "dc-vazio",
+        paciente_id: MOCK_PACIENTE.id,
+        diagnostico_base: "",
+        gatilhos_sensoriais: [],
+        observacoes_gerais: "",
+      },
+    };
+
+    vi.spyOn(pacienteService, "buscarPorId").mockResolvedValue(pacienteSemLaudo);
+    vi.spyOn(sessaoService, "listar").mockResolvedValue({
+      data: [],
+      meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+    });
+    vi.spyOn(pacienteService, "listarTerapeutasVinculados").mockResolvedValue([]);
+    vi.spyOn(terapeutaService, "listar").mockResolvedValue([]);
+
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={[`/pacientes/${MOCK_PACIENTE.id}`]}>
+          <Routes>
+            <Route path="/pacientes/:id" element={<PerfilPacientePage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+    });
+
+    expect(await screen.findByText("Não informado")).toBeDefined();
+    expect(screen.queryByText(/6A02/i)).toBeNull();
+    expect(screen.queryByText(/Cadastro Ativo/i)).toBeNull();
+    expect(screen.getByText("Ativo")).toBeDefined();
+    expect(screen.getByTestId("contador-laudos-pdf").textContent).toBe("0");
+
+    const btnPdf = screen.getByTestId("btn-baixar-laudo-pdf") as HTMLButtonElement;
+    expect(btnPdf.disabled).toBe(true);
+    expect(btnPdf.textContent).toContain("Sem PDF para baixar");
+
+    expect(screen.queryByTestId("btn-editar-cadastro-paciente")).toBeNull();
+  });
+
+  it("deve exibir 'Editar Cadastro' para SuperAdmin e navegar para /pacientes/:id/editar", async () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: {
+        id: "admin-1",
+        nome: "Admin InTEA",
+        email: "admin@intea.com.br",
+        clinica_id: "clinica-uuid-9999",
+        status_ativo: true,
+        is_super_admin: true,
+        role: "super_admin",
+      },
+    });
+
+    vi.spyOn(pacienteService, "buscarPorId").mockResolvedValue(MOCK_PACIENTE);
+    vi.spyOn(sessaoService, "listar").mockResolvedValue({
+      data: [],
+      meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+    });
+    vi.spyOn(pacienteService, "listarTerapeutasVinculados").mockResolvedValue([]);
+    vi.spyOn(terapeutaService, "listar").mockResolvedValue([]);
+
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={[`/pacientes/${MOCK_PACIENTE.id}`]}>
+          <Routes>
+            <Route path="/pacientes/:id" element={<PerfilPacientePage />} />
+            <Route
+              path="/pacientes/:id/editar"
+              element={<div data-testid="pagina-edicao-paciente">Edição</div>}
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+    });
+
+    const btnEditar = await screen.findByTestId("btn-editar-cadastro-paciente");
+    fireEvent.click(btnEditar);
+    expect(await screen.findByTestId("pagina-edicao-paciente")).toBeDefined();
   });
 });

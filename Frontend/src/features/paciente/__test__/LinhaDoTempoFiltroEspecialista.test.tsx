@@ -288,5 +288,51 @@ describe("Task #187 — Filtro por Especialista Responsável na Linha do Tempo e
       );
     });
   });
+
+  describe("LinhaDoTempoSessoes — Restrição de 'Ver Resultados' por Status", () => {
+    it("deve exibir 'Ver Resultados' apenas para sessões finalizadas ou concluídas, ocultando para cancelada e interrompida", () => {
+      const sessoesMistas: SessaoHistoricoItem[] = [
+        {
+          sessao_id: "sessao-fin-1",
+          status_sessao: "finalizada",
+          data_hora_inicio: "2026-10-15T10:00:00.000Z",
+          data_hora_fim: "2026-10-15T10:30:00.000Z",
+          tempo_total_segundos: 1800,
+          terapeuta_id: "terap-to-111",
+          terapeuta_nome: "Dra. Beatriz Toledo",
+          especialidade: "Terapia Ocupacional",
+          jogo_id: "game-1",
+        },
+        {
+          sessao_id: "sessao-canc-2",
+          status_sessao: "cancelada",
+          data_hora_inicio: "2026-10-16T10:00:00.000Z",
+          tempo_total_segundos: 0,
+          terapeuta_id: "terap-to-111",
+          terapeuta_nome: "Dra. Beatriz Toledo",
+          especialidade: "Terapia Ocupacional",
+          jogo_id: "game-1",
+        },
+        {
+          sessao_id: "sessao-inter-3",
+          status_sessao: "interrompida",
+          data_hora_inicio: "2026-10-17T10:00:00.000Z",
+          tempo_total_segundos: 300,
+          terapeuta_id: "terap-to-111",
+          terapeuta_nome: "Dra. Beatriz Toledo",
+          especialidade: "Terapia Ocupacional",
+          jogo_id: "game-1",
+        },
+      ];
+
+      render(
+        <MemoryRouter>
+          <LinhaDoTempoSessoes sessoes={sessoesMistas} onNavegarResultado={vi.fn()} />
+        </MemoryRouter>
+      );
+
+      expect(screen.getAllByRole("button", { name: /Ver Resultados/i })).toHaveLength(1);
+    });
+  });
 });
 

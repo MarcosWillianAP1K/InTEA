@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useInRouterContext, useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/features/autenticacao";
 import { ListaPacientes } from "../components/ListaPacientes";
 import { usePacienteStore } from "../store/paciente.store";
 import type { Patient } from "../types/paciente.types";
@@ -22,8 +23,14 @@ export function ConteudoPacientes({
   className = "",
 }: ConteudoPacientesProps) {
   const { fetchPatients } = usePacienteStore();
+  const user = useAuthStore((s) => s.user);
   const inRouter = useInRouterContext();
   const navigate = inRouter ? useNavigate() : null;
+
+  const isSuperAdmin = Boolean(
+    user?.is_super_admin === true ||
+      (user as { role?: string } | null)?.role === "super_admin",
+  );
 
   useEffect(() => {
     void fetchPatients();
@@ -47,7 +54,8 @@ export function ConteudoPacientes({
       {/* LISTA / TABELA DE PACIENTES */}
       <ListaPacientes
         onSelectPatient={onSelectPatient}
-        permitirCadastro={false}
+        permitirCadastro={isSuperAdmin}
+        onOpenCreate={() => navigate?.("/pacientes/cadastrar")}
         onVerPerfil={(p) => {
           if (navigate) {
             navigate(`/pacientes/${p.id}`);

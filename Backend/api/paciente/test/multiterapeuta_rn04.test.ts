@@ -846,6 +846,13 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
         ) as unknown as ReturnType<typeof supabase.from>;
       }
 
+      if (tabela === 'clinica') {
+        return criarQueryBuilderInMemory(() => [
+          { id: clinica1Id, nome: 'Clínica Alpha', status_ativo: true },
+          { id: clinica2Id, nome: 'Clínica Beta', status_ativo: true },
+        ]) as unknown as ReturnType<typeof supabase.from>;
+      }
+
       return criarQueryBuilderInMemory(() => []) as unknown as ReturnType<typeof supabase.from>;
     });
   });
@@ -853,14 +860,33 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
   // ==========================================================================
   // 1. Cadastro pelo Terapeuta A e vinculação do Terapeuta B à equipe (201 Created)
   // ==========================================================================
-  it('1. Terapeuta A cadastra novo paciente (auto-vínculo como Líder) e vincula Terapeuta B da mesma clínica (201 Created)', async () => {
+  it('1. Admin cadastra novo paciente na clínica e Terapeuta A (Líder) vincula Terapeuta B à equipe (201 Created)', async () => {
     const handlersCriarPaciente = obterHandlersPaciente(pacienteRoutes, '/', 'post');
-    const mockCriar = criarMockReqResPaciente({
+
+    // Terapeuta comum não pode cadastrar paciente via POST /api/paciente (403)
+    const mockCriarTerapeuta = criarMockReqResPaciente({
       headers: { authorization: `Bearer ${TOKEN_A}` },
+      body: {
+        nome: 'Tentativa Não Admin',
+        data_nascimento: '2019-08-15',
+        cpf: '11144477735',
+        clinica_id: clinica1Id,
+      },
+    });
+    await executarPipelinePaciente(
+      handlersCriarPaciente,
+      mockCriarTerapeuta.req,
+      mockCriarTerapeuta.res
+    );
+    expect(mockCriarTerapeuta.getStatus()).toBe(403);
+
+    const mockCriar = criarMockReqResPaciente({
+      headers: { authorization: `Bearer ${TOKEN_ADMIN}` },
       body: {
         nome: 'Lucas Gabriel Multidisciplinar',
         data_nascimento: '2019-08-15',
         cpf: '11144477735',
+        clinica_id: clinica1Id,
       },
     });
 

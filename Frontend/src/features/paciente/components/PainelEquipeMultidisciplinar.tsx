@@ -18,6 +18,7 @@ import {
   Loader2,
   Award,
 } from "lucide-react";
+import { AvatarClinico } from "@/shared/components/AvatarClinico";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -47,19 +48,6 @@ export interface PainelEquipeMultidisciplinarProps {
   onRetry?: () => void;
   /** Classes CSS adicionais */
   className?: string;
-}
-
-/**
- * Extrai até duas iniciais do nome do especialista para exibição no avatar circular.
- */
-function extrairIniciaisEspecialista(nome: string): string {
-  const limpo = nome
-    .replace(/^(Dr\.|Dra\.|Prof\.|Profa\.)\s+/i, "")
-    .trim();
-  const partes = limpo.split(/\s+/).filter(Boolean);
-  if (partes.length === 0) return "ES";
-  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
-  return `${partes[0][0]}${partes[partes.length - 1][0]}`.toUpperCase();
 }
 
 export const PainelEquipeMultidisciplinar: React.FC<
@@ -251,15 +239,16 @@ export const PainelEquipeMultidisciplinar: React.FC<
                 }`}
               >
                 <div className="flex items-start gap-3.5 min-w-0">
-                  <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold text-sm shrink-0 ${
+                  <AvatarClinico
+                    nome={esp.nome}
+                    size="md"
+                    shape="rounded"
+                    className={`w-12 h-12 rounded-2xl text-sm shrink-0 ${
                       isUsuarioLogado
-                        ? "bg-indigo-600 text-white shadow-sm"
+                        ? "bg-indigo-600 text-white shadow-sm border-transparent"
                         : "bg-white border border-gray-200 text-indigo-700"
                     }`}
-                  >
-                    {extrairIniciaisEspecialista(esp.nome)}
-                  </div>
+                  />
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">

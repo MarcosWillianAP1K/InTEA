@@ -1,5 +1,8 @@
 import type { Request, Response } from 'express';
 import { AdminService, AdminServiceError } from '../services/admin.service.js';
+import type { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { eventBus } from '../../../core/events/event-bus.js';
+import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 
 /**
  * ==============================================================================
@@ -58,6 +61,21 @@ export class AdminController {
     try {
       const { nome, cnpj } = req.body;
       const clinica = await AdminService.criarClinica({ nome, cnpj });
+      const { ip, userAgent } = extrairContextoHttp(req);
+      const adminId = (req as AuthenticatedRequest).user?.id ?? null;
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'clinica',
+        acao: 'clinica_criada',
+        origem: 'sistema_admin',
+        terapeutaId: adminId,
+        clinicaId: clinica.id,
+        recursoId: clinica.id,
+        descricao: `Clínica '${clinica.nome}' cadastrada no painel administrativo.`,
+        detalhes: { clinica_id: clinica.id, nome: clinica.nome },
+        ip,
+        userAgent,
+      });
 
       res.status(201).json({
         data: {
@@ -76,6 +94,21 @@ export class AdminController {
       const { nome, cnpj, status_ativo } = req.body;
 
       const clinica = await AdminService.atualizarClinica(id, { nome, cnpj, status_ativo });
+      const { ip, userAgent } = extrairContextoHttp(req);
+      const adminId = (req as AuthenticatedRequest).user?.id ?? null;
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'clinica',
+        acao: 'clinica_atualizada',
+        origem: 'sistema_admin',
+        terapeutaId: adminId,
+        clinicaId: clinica.id,
+        recursoId: clinica.id,
+        descricao: `Dados cadastrais da clínica '${clinica.nome}' atualizados.`,
+        detalhes: { clinica_id: clinica.id, nome: clinica.nome },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {
@@ -92,6 +125,21 @@ export class AdminController {
     try {
       const id = String(req.params.id);
       const clinica = await AdminService.ativarClinica(id);
+      const { ip, userAgent } = extrairContextoHttp(req);
+      const adminId = (req as AuthenticatedRequest).user?.id ?? null;
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'clinica',
+        acao: 'clinica_ativada',
+        origem: 'sistema_admin',
+        terapeutaId: adminId,
+        clinicaId: clinica.id,
+        recursoId: clinica.id,
+        descricao: `Clínica '${clinica.nome}' ativada administrativamente.`,
+        detalhes: { clinica_id: clinica.id, status_ativo: true },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {
@@ -108,6 +156,21 @@ export class AdminController {
     try {
       const id = String(req.params.id);
       const clinica = await AdminService.desativarClinica(id);
+      const { ip, userAgent } = extrairContextoHttp(req);
+      const adminId = (req as AuthenticatedRequest).user?.id ?? null;
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'clinica',
+        acao: 'clinica_desativada',
+        origem: 'sistema_admin',
+        terapeutaId: adminId,
+        clinicaId: clinica.id,
+        recursoId: clinica.id,
+        descricao: `Clínica '${clinica.nome}' desativada administrativamente.`,
+        detalhes: { clinica_id: clinica.id, status_ativo: false },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {
@@ -183,6 +246,20 @@ export class AdminController {
         status_ativo,
       });
 
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'terapeuta',
+        acao: 'terapeuta_atualizado_admin',
+        origem: 'sistema_admin',
+        terapeutaId: (req as AuthenticatedRequest).user?.id ?? id,
+        clinicaId: terapeuta.clinica_id ?? null,
+        recursoId: terapeuta.id,
+        descricao: `Dados de terapeuta '${terapeuta.nome}' alterados pelo SuperAdmin.`,
+        detalhes: { terapeuta_alvo_id: terapeuta.id, is_super_admin: terapeuta.is_super_admin },
+        ip,
+        userAgent,
+      });
+
       res.status(200).json({
         data: {
           terapeuta,
@@ -198,6 +275,20 @@ export class AdminController {
     try {
       const id = String(req.params.id);
       const terapeuta = await AdminService.ativarTerapeuta(id);
+      const { ip, userAgent } = extrairContextoHttp(req);
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'terapeuta',
+        acao: 'terapeuta_ativado_admin',
+        origem: 'sistema_admin',
+        terapeutaId: (req as AuthenticatedRequest).user?.id ?? id,
+        clinicaId: terapeuta.clinica_id ?? null,
+        recursoId: terapeuta.id,
+        descricao: `Conta do terapeuta '${terapeuta.nome}' ativada pelo SuperAdmin.`,
+        detalhes: { terapeuta_alvo_id: terapeuta.id, status_ativo: true },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {
@@ -214,6 +305,20 @@ export class AdminController {
     try {
       const id = String(req.params.id);
       const terapeuta = await AdminService.desativarTerapeuta(id);
+      const { ip, userAgent } = extrairContextoHttp(req);
+
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'terapeuta',
+        acao: 'terapeuta_desativado_admin',
+        origem: 'sistema_admin',
+        terapeutaId: (req as AuthenticatedRequest).user?.id ?? id,
+        clinicaId: terapeuta.clinica_id ?? null,
+        recursoId: terapeuta.id,
+        descricao: `Conta do terapeuta '${terapeuta.nome}' desativada pelo SuperAdmin.`,
+        detalhes: { terapeuta_alvo_id: terapeuta.id, status_ativo: false },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {
@@ -232,15 +337,33 @@ export class AdminController {
 
   static async consultarAuditoriaConsolidada(req: Request, res: Response): Promise<void> {
     try {
-      const { clinicaId, clinica_id, terapeutaId, terapeuta_id, dataInicio, dataFim, tipoAcao, origem, page, limit } =
-        req.query;
+      const {
+        clinicaId,
+        clinica_id,
+        terapeutaId,
+        terapeuta_id,
+        pacienteId,
+        paciente_id,
+        entidade,
+        busca,
+        dataInicio,
+        dataFim,
+        tipoAcao,
+        origem,
+        page,
+        limit,
+      } = req.query;
 
       const clinicaParam = (req.params.clinicaId || clinicaId || clinica_id) as string | undefined;
       const terapeutaParam = (terapeutaId || terapeuta_id) as string | undefined;
+      const pacienteParam = (pacienteId || paciente_id) as string | undefined;
 
       const resultado = await AdminService.consultarAuditoriaConsolidada({
         clinicaId: clinicaParam,
         terapeutaId: terapeutaParam,
+        pacienteId: pacienteParam,
+        entidade: typeof entidade === 'string' ? entidade : undefined,
+        busca: typeof busca === 'string' ? busca : undefined,
         dataInicio: typeof dataInicio === 'string' ? dataInicio : undefined,
         dataFim: typeof dataFim === 'string' ? dataFim : undefined,
         tipoAcao: typeof tipoAcao === 'string' ? tipoAcao : undefined,

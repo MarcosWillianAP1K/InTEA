@@ -9,6 +9,9 @@ import { Request, Response } from 'express';
 import { FiltrosJogo, StatusJogo } from '../models/jogo.model.js';
 import { JogoService, JogoServiceError } from '../services/jogo.service.js';
 import { obterMensagemErro } from '../../../core/utils/formatters.js';
+import type { AuthenticatedRequest } from '../../../core/middlewares/auth.middleware.js';
+import { eventBus } from '../../../core/events/event-bus.js';
+import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 
 export class JogoController {
   /**
@@ -137,6 +140,22 @@ export class JogoController {
         metricas_suportadas,
       });
 
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'jogo',
+        acao: 'jogo_cadastrado',
+        origem: 'sistema_admin',
+        terapeutaId: (req as AuthenticatedRequest).user?.id ?? null,
+        recursoId: typeof jogoCriado.id === 'string' ? jogoCriado.id : null,
+        descricao: `Jogo terapêutico '${jogoCriado.nome}' cadastrado no catálogo.`,
+        detalhes: {
+          jogo_id: jogoCriado.id,
+          nome: jogoCriado.nome,
+        },
+        ip,
+        userAgent,
+      });
+
       res.status(201).json({
         data: {
           jogo: {
@@ -196,6 +215,22 @@ export class JogoController {
         metricas_suportadas,
       });
 
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'jogo',
+        acao: 'jogo_atualizado',
+        origem: 'sistema_admin',
+        terapeutaId: (req as AuthenticatedRequest).user?.id ?? null,
+        recursoId: typeof jogoAtualizado.id === 'string' ? jogoAtualizado.id : null,
+        descricao: `Jogo terapêutico '${jogoAtualizado.nome}' atualizado no catálogo.`,
+        detalhes: {
+          jogo_id: jogoAtualizado.id,
+          nome: jogoAtualizado.nome,
+        },
+        ip,
+        userAgent,
+      });
+
       res.status(200).json({
         data: {
           jogo: {
@@ -244,6 +279,19 @@ export class JogoController {
     try {
       const id = String(req.params.id);
       const idExcluido = await JogoService.excluir(id);
+
+      const { ip, userAgent } = extrairContextoHttp(req);
+      eventBus.emitir('auditoria:evento', {
+        entidade: 'jogo',
+        acao: 'jogo_excluido',
+        origem: 'sistema_admin',
+        terapeutaId: (req as AuthenticatedRequest).user?.id ?? null,
+        recursoId: typeof idExcluido === 'string' ? idExcluido : null,
+        descricao: `Jogo terapêutico removido do catálogo.`,
+        detalhes: { jogo_id: idExcluido },
+        ip,
+        userAgent,
+      });
 
       res.status(200).json({
         data: {

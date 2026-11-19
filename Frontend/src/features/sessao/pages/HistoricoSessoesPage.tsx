@@ -17,6 +17,7 @@ import {
 import { sessaoService } from "../services/sessao.service";
 import type { Sessao, FiltroSessaoDTO } from "../types/sessao.types";
 import { useAuthStore } from "@/features/autenticacao/store/authStore";
+import { AvatarClinico } from "@/shared/components/AvatarClinico";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Badge } from "@/shared/components/ui/badge";
@@ -184,7 +185,7 @@ export function HistoricoSessoesPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Registro de Atendimentos
+              Histórico de Sessões
             </h1>
             <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
               {isSuperAdmin && verTodasAdmin ? "Todas as Sessões (Admin)" : "Minhas Sessões"}
@@ -306,9 +307,7 @@ export function HistoricoSessoesPage() {
                     {/* COLUNA 1: PACIENTE */}
                     <TableCell className="py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                          {nomePaciente.slice(0, 2).toUpperCase()}
-                        </div>
+                        <AvatarClinico nome={nomePaciente} size="sm" />
                         <div className="flex flex-col min-w-0">
                           <span className="font-semibold text-xs text-foreground truncate max-w-56">
                             {nomePaciente}
@@ -342,7 +341,9 @@ export function HistoricoSessoesPage() {
 
                     {/* COLUNA 5: AÇÕES */}
                     <TableCell className="text-right py-4 pr-6">
-                      {sessao.status_sessao === "em_andamento" || sessao.status_sessao === "conectado" ? (
+                      {sessao.status_sessao === "em_andamento" ||
+                      sessao.status_sessao === "conectado" ||
+                      sessao.status_sessao === "pausada" ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -352,7 +353,8 @@ export function HistoricoSessoesPage() {
                           <Activity className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                           <span>Cockpit</span>
                         </Button>
-                      ) : (
+                      ) : sessao.status_sessao === "finalizada" ||
+                        sessao.status_sessao === "concluida" ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -362,6 +364,13 @@ export function HistoricoSessoesPage() {
                           <Eye className="h-3.5 w-3.5" />
                           <span>Ver Relatório</span>
                         </Button>
+                      ) : (
+                        <span
+                          className="text-xs text-muted-foreground"
+                          aria-label="Relatório indisponível"
+                        >
+                          —
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>

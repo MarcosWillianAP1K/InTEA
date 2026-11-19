@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { useInRouterContext, useNavigate } from "react-router-dom";
 import {
   Search,
   MoreVertical,
   RotateCcw,
   Eye,
   Check,
-  FileText,
   Plus,
   LayoutGrid,
   TableProperties,
@@ -16,6 +16,8 @@ import {
 import { CardPacienteGrid } from "./CardPacienteGrid";
 import { SparklineTendencia } from "./SparklineTendencia";
 import { CardAdicionarPaciente } from "./CardAdicionarPaciente";
+import { AvatarClinico } from "@/shared/components/AvatarClinico";
+import { useAuthStore } from "@/features/autenticacao";
 
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
@@ -44,8 +46,33 @@ import {
 
 import { usePacienteStore, PATIENTS_DICTIONARY } from "../store/paciente.store";
 import type { Patient, PatientStatus } from "../store/paciente.store";
-import { DialogFormularioPaciente } from "./DialogFormularioPaciente";
 import { DialogDetalhesPaciente } from "./DialogDetalhesPaciente";
+
+function BotaoComUseNavigate({
+  children,
+}: {
+  children: (onClick: () => void) => ReactNode;
+}) {
+  const navigate = useNavigate();
+  return <>{children(() => navigate("/pacientes/cadastrar"))}</>;
+}
+
+function BotaoCadastroRouter({
+  onOpenCreate,
+  children,
+}: {
+  onOpenCreate?: () => void;
+  children: (onClick: () => void) => ReactNode;
+}) {
+  const inRouter = useInRouterContext();
+  if (onOpenCreate) {
+    return <>{children(onOpenCreate)}</>;
+  }
+  if (!inRouter) {
+    return <>{children(() => window.location.assign("/pacientes/cadastrar"))}</>;
+  }
+  return <BotaoComUseNavigate>{children}</BotaoComUseNavigate>;
+}
 
 export { PATIENTS_DICTIONARY };
 export type { Patient, PatientStatus };
@@ -103,7 +130,12 @@ export function ListaPacientes({
   const [detailModalPatient, setDetailModalPatient] = useState<Patient | null>(
     null,
   );
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const isSuperAdmin = Boolean(
+    user?.is_super_admin === true ||
+      (user as { role?: string } | null)?.role === "super_admin",
+  );
+  const podeCadastrar = permitirCadastro && (!user || isSuperAdmin);
   const handleAbrirPerfil = (patient: Patient) => {
     if (onVerPerfil) onVerPerfil(patient);
     else setDetailModalPatient(patient);
@@ -224,28 +256,26 @@ export function ListaPacientes({
           </div>
 
           {/* BOTÃO CADASTRAR PACIENTE ESTILO NOVA SEÇÃO */}
-          {permitirCadastro && (
-            <Button
-              type="button"
-              onClick={() => {
-                if (onOpenCreate) {
-                  onOpenCreate();
-                } else {
-                  setIsCreateOpen(true);
-                }
-              }}
-              className="h-10 px-4 bg-primary text-primary-foreground hover:bg-primary-hover font-semibold rounded-lg flex items-center gap-2 cursor-pointer shadow-xs transition-all"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Cadastrar Paciente</span>
-            </Button>
+          {podeCadastrar && (
+            <BotaoCadastroRouter onOpenCreate={onOpenCreate}>
+              {(handleCadastrar) => (
+                <Button
+                  type="button"
+                  onClick={handleCadastrar}
+                  className="h-10 px-4 bg-primary text-primary-foreground hover:bg-primary-hover font-semibold rounded-lg flex items-center gap-2 cursor-pointer shadow-xs transition-all"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Cadastrar Paciente</span>
+                </Button>
+              )}
+            </BotaoCadastroRouter>
           )}
         </div>
       </div>
 
       {/* EXIBIÇÃO: GRID DE CARDS vs TABELA */}
       {visualMode === "grid" ? (
-        filteredPatients.length === 0 && !permitirCadastro ? (
+        filteredPatients.length === 0 && !podeCadastrar ? (
           <div
             data-testid="grid-pacientes-vazio"
             className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-border bg-card/50 my-2"
@@ -266,16 +296,12 @@ export function ListaPacientes({
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
           >
             {/* PRIMEIRO CARD: ADICIONAR PACIENTE */}
-            {permitirCadastro && (
-              <CardAdicionarPaciente
-                onClick={() => {
-                  if (onOpenCreate) {
-                    onOpenCreate();
-                  } else {
-                    setIsCreateOpen(true);
-                  }
-                }}
-              />
+            {podeCadastrar && (
+              <BotaoCadastroRouter onOpenCreate={onOpenCreate}>
+                {(handleCadastrar) => (
+                  <CardAdicionarPaciente onClick={handleCadastrar} />
+                )}
+              </BotaoCadastroRouter>
             )}
 
             {/* CARDS DOS PACIENTES FILTRADOS */}
@@ -313,7 +339,7 @@ export function ListaPacientes({
                   colSpan={7}
                   className="text-center py-12 text-muted-foreground text-sm"
                 >
-                  {!permitirCadastro
+                  {!podeCadastrar
                     ? "Nenhum paciente vinculado"
                     : "Nenhum paciente encontrado com os filtros selecionados."}
                 </TableCell>
@@ -337,17 +363,11 @@ export function ListaPacientes({
                     {/* COLUNA: PACIENTE */}
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="relative shrink-0 w-10 h-10 rounded-lg overflow-hidden border bg-muted flex items-center justify-center">
-                          <img
-                            src={patient.photoUrl}
-                            alt={patient.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                            }}
-                          />
-                          <FileText className="h-4 w-4 text-primary absolute" />
-                        </div>
+                        <AvatarClinico
+                          nome={patient.name}
+                          src={patient.photoUrl || null}
+                          size="md"
+                        />
 
                         <div className="flex flex-col min-w-0">
                           <span
@@ -360,7 +380,8 @@ export function ListaPacientes({
                             {patient.name}
                           </span>
                           <span className="text-xs text-muted-foreground truncate max-w-55">
-                            {patient.age} anos • {patient.clinicalStatus}
+                            {patient.age > 0 ? `${patient.age} anos • ` : ""}
+                            {patient.clinicalStatus}
                           </span>
                         </div>
                       </div>
@@ -391,7 +412,7 @@ export function ListaPacientes({
                     {/* COLUNA: DESEMPENHO (com SparklineTendencia) */}
                     <TableCell className="text-xs font-semibold text-foreground">
                       <div className="flex items-center gap-2">
-                        <span className="min-w-[32px]">
+                        <span className="min-w-8">
                           {patient.performanceScore !== undefined
                             ? `${patient.performanceScore}%`
                             : "—"}
@@ -505,11 +526,6 @@ export function ListaPacientes({
           setDetailModalPatient(null);
         }}
       />
-
-      {/* MODAL DE CADASTRO DE NOVO PACIENTE */}
-      {permitirCadastro && (
-        <DialogFormularioPaciente open={isCreateOpen} onOpenChange={setIsCreateOpen} />
-      )}
     </div>
   );
 }

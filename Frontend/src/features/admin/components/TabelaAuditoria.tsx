@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { EventoAuditoria } from "../types/admin.types";
 import { auditoriaAdminService } from "../services/auditoriaAdmin.service";
+import { AvatarClinico } from "@/shared/components/AvatarClinico";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import {
@@ -51,32 +52,39 @@ export interface TabelaAuditoriaProps {
   onRecarregar?: () => void | Promise<void>;
 }
 
+const LABELS_ENTIDADES: Record<string, string> = {
+  autenticacao: "Autenticação",
+  terapeuta: "Terapeuta",
+  paciente: "Paciente",
+  vinculo: "Vínculo",
+  sessao: "Sessão",
+  anotacao: "Anotação",
+  clinica: "Clínica",
+  jogo: "Jogo",
+  exportacao: "Exportação",
+};
+
+const ENTIDADES_PADRAO = Object.keys(LABELS_ENTIDADES);
+
 /**
- * Renders the administrative audit log table with column filtering and details drawer (RF08).
- * Institutional Audit Trail (RF08, RNF06): Displays timestamp, therapist, action, IP, and parameters.
- *
- * @param props - Table properties containing audit events, pagination, and selection callbacks
- * @returns Interactive audit table component
+ * Renders the administrative audit log table with column filtering and details dialog (RF07, RF08).
  */
 export function TabelaAuditoria({
   eventos,
   loading = false,
 }: TabelaAuditoriaProps) {
-  // Filtros locais
   const [busca, setBusca] = useState("");
+  const [entidadeFiltro, setEntidadeFiltro] = useState("todas");
   const [terapeutaFiltro, setTerapeutaFiltro] = useState("todos");
   const [acaoFiltro, setAcaoFiltro] = useState("todas");
   const [dataFiltro, setDataFiltro] = useState("");
 
-  // Paginação
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(10);
 
-  // Modal de Detalhes e Copiar
   const [eventoSelecionado, setEventoSelecionado] = useState<EventoAuditoria | null>(null);
   const [copiado, setCopiado] = useState(false);
 
-  // Lista de terapeutas únicos para o dropdown
   const terapeutasDisponiveis = useMemo(() => {
     const map = new Map<string, string>();
     eventos.forEach((ev) => {
@@ -87,27 +95,38 @@ export function TabelaAuditoria({
     return Array.from(map.entries()).map(([id, nome]) => ({ id, nome }));
   }, [eventos]);
 
-  // Lista de ações únicas para o dropdown
+  const entidadesDisponiveis = useMemo(() => {
+    const setEntidades = new Set<string>(ENTIDADES_PADRAO);
+    eventos.forEach((ev) => {
+      if (ev.entidade && ev.entidade.trim() !== "") {
+        setEntidades.add(ev.entidade.trim());
+      }
+    });
+    return Array.from(setEntidades);
+  }, [eventos]);
+
   const acoesDisponiveis = useMemo(() => {
     const setAcoes = new Set<string>();
     eventos.forEach((ev) => setAcoes.add(ev.acao));
     return Array.from(setAcoes);
   }, [eventos]);
 
-  // Filtragem dos eventos
   const eventosFiltrados = useMemo(() => {
     return eventos.filter((ev) => {
-      // 1. Busca textual
       if (busca.trim()) {
         const termo = busca.toLowerCase().trim();
         const textoBusca = [
           ev.terapeuta_nome,
           ev.terapeuta_email,
+          ev.terapeuta_id,
           ev.paciente_nome,
+          ev.paciente_id,
+          ev.entidade,
           ev.acao,
           ev.descricao,
           ev.ip,
           ev.sessao_id,
+          ev.recurso_id,
         ]
           .filter(Boolean)
           .join(" ")
@@ -118,21 +137,20 @@ export function TabelaAuditoria({
         }
       }
 
-      // 2. Filtro por terapeuta
+      if (entidadeFiltro !== "todas" && ev.entidade !== entidadeFiltro) {
+        return false;
+      }
+
       if (terapeutaFiltro !== "todos") {
         if (ev.terapeuta_id !== terapeutaFiltro && ev.terapeuta_nome !== terapeutaFiltro) {
           return false;
         }
       }
 
-      // 3. Filtro por ação clínica
-      if (acaoFiltro !== "todas") {
-        if (ev.acao !== acaoFiltro) {
-          return false;
-        }
+      if (acaoFiltro !== "todas" && ev.acao !== acaoFiltro) {
+        return false;
       }
 
-      // 4. Filtro por data
       if (dataFiltro) {
         const dataEvento = ev.created_at.split("T")[0];
         if (dataEvento !== dataFiltro) {
@@ -142,9 +160,8 @@ export function TabelaAuditoria({
 
       return true;
     });
-  }, [eventos, busca, terapeutaFiltro, acaoFiltro, dataFiltro]);
+  }, [eventos, busca, entidadeFiltro, terapeutaFiltro, acaoFiltro, dataFiltro]);
 
-  // Cálculos de paginação
   const totalRegistros = eventosFiltrados.length;
   const totalPaginas = Math.ceil(totalRegistros / itensPorPagina) || 1;
   const inicioIndice = (paginaAtual - 1) * itensPorPagina;
@@ -153,7 +170,6 @@ export function TabelaAuditoria({
     inicioIndice + itensPorPagina
   );
 
-  // Ações de exportação
   const handleExportarCSV = () => {
     if (eventosFiltrados.length === 0) {
       toast.warning("Não há registros de auditoria para exportar.");
@@ -174,6 +190,7 @@ export function TabelaAuditoria({
 
   const handleLimparFiltros = () => {
     setBusca("");
+    setEntidadeFiltro("todas");
     setTerapeutaFiltro("todos");
     setAcaoFiltro("todas");
     setDataFiltro("");
@@ -210,13 +227,11 @@ export function TabelaAuditoria({
     }
   };
 
-  /**
-   * Renders color-coded badge pill for clinical audit actions conforming to Figma design specifications.
-   * Visual Governance (RF08): Distinguishes session lifecycle, medical record access, and security alerts.
-   *
-   * @param acao - Audit action identifier
-   * @returns Styled badge element
-   */
+  const formatarEntidade = (entidade?: string) => {
+    if (!entidade) return "Sistema";
+    return LABELS_ENTIDADES[entidade] || entidade.replace(/_/g, " ");
+  };
+
   const renderBadgeAcao = (acao: string) => {
     switch (acao) {
       case "acesso_prontuario":
@@ -278,15 +293,18 @@ export function TabelaAuditoria({
   };
 
   const temFiltrosAtivos = Boolean(
-    busca || terapeutaFiltro !== "todos" || acaoFiltro !== "todas" || dataFiltro
+    busca ||
+      entidadeFiltro !== "todas" ||
+      terapeutaFiltro !== "todos" ||
+      acaoFiltro !== "todas" ||
+      dataFiltro
   );
 
   return (
     <div className="flex flex-col gap-4 w-full">
-      {/* Barra de Filtros, Busca e Exportação (Padrão InTEA) */}
+      {/* Barra de Filtros, Busca e Exportação */}
       <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between bg-card border border-border p-4 rounded-xl shadow-xs">
-        {/* Campo de Busca Textual */}
-        <div className="relative flex-1 min-w-60">
+        <div className="relative flex-1 min-w-52">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={busca}
@@ -294,14 +312,39 @@ export function TabelaAuditoria({
               setBusca(e.target.value);
               setPaginaAtual(1);
             }}
-            placeholder="Buscar por paciente, terapeuta, ação clínica ou IP..."
+            placeholder="Buscar por paciente, terapeuta, UUID, ação clínica ou IP..."
             className="pl-9 h-10 text-xs rounded-lg bg-background border-border"
             data-testid="input-busca-auditoria"
           />
         </div>
 
-        {/* Controles de Filtros e Botões */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Filtro por Entidade do Ecossistema */}
+          <div className="w-full sm:w-40">
+            <Select
+              value={entidadeFiltro}
+              onValueChange={(val) => {
+                setEntidadeFiltro(val);
+                setPaginaAtual(1);
+              }}
+            >
+              <SelectTrigger
+                className="h-10 text-xs rounded-lg bg-background border-border"
+                data-testid="select-entidade-filtro"
+              >
+                <SelectValue placeholder="Entidade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as entidades</SelectItem>
+                {entidadesDisponiveis.map((ent) => (
+                  <SelectItem key={ent} value={ent}>
+                    {formatarEntidade(ent)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Filtro por Terapeuta */}
           <div className="w-full sm:w-44">
             <Select
@@ -368,7 +411,6 @@ export function TabelaAuditoria({
             />
           </div>
 
-          {/* Botão Limpar Filtros */}
           {temFiltrosAtivos && (
             <Button
               variant="ghost"
@@ -382,10 +424,8 @@ export function TabelaAuditoria({
             </Button>
           )}
 
-          {/* Divisor Visual */}
           <div className="hidden sm:block h-6 w-px bg-border" aria-hidden="true" />
 
-          {/* Botões de Exportação Estruturada (CSV e JSON) */}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -414,7 +454,7 @@ export function TabelaAuditoria({
         </div>
       </div>
 
-      {/* Tabela de Eventos — Padrão Row Figma InTEA */}
+      {/* Tabela de Eventos */}
       <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
         <Table>
           <TableHeader>
@@ -457,8 +497,8 @@ export function TabelaAuditoria({
                     <span className="font-medium text-foreground">
                       Nenhum registro de auditoria corresponde aos filtros selecionados.
                     </span>
-                    <p className="text-[11px] text-muted-foreground">
-                      Tente alterar os termos da busca, o terapeuta ou a faixa de datas.
+                    <p className="text-xs text-muted-foreground">
+                      Tente alterar os termos da busca, entidade, terapeuta ou faixa de datas.
                     </p>
                     {temFiltrosAtivos && (
                       <Button
@@ -475,9 +515,10 @@ export function TabelaAuditoria({
               </TableRow>
             ) : (
               eventosPaginados.map((evento) => {
-                const inicialNome = evento.terapeuta_nome
-                  ? evento.terapeuta_nome.replace("Dr. ", "").replace("Dra. ", "").slice(0, 2).toUpperCase()
-                  : "ST";
+                const nomeResponsavel = evento.terapeuta_nome || "Sistema Automatizado";
+                const subtextoTerapeuta =
+                  evento.terapeuta_email ||
+                  (evento.terapeuta_id ? `ID: ${evento.terapeuta_id.slice(0, 8)}...` : "Sem e-mail registrado");
 
                 return (
                   <TableRow
@@ -486,74 +527,68 @@ export function TabelaAuditoria({
                     onClick={() => setEventoSelecionado(evento)}
                     data-testid={`row-auditoria-${evento.id}`}
                   >
-                    {/* Data / Hora */}
                     <TableCell className="text-xs font-medium text-foreground py-3.5">
                       <div className="flex flex-col">
                         <span className="font-semibold">{formatarData(evento.created_at)}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono">UTC</span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {formatarEntidade(evento.entidade)} • UTC
+                        </span>
                       </div>
                     </TableCell>
 
-                    {/* Terapeuta */}
                     <TableCell className="text-xs text-foreground py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                          {inicialNome}
-                        </div>
+                        <AvatarClinico nome={nomeResponsavel} size="sm" />
                         <div className="flex flex-col min-w-0">
                           <span className="font-semibold text-xs text-foreground truncate max-w-56">
-                            {evento.terapeuta_nome || "Sistema Automatizado"}
+                            {nomeResponsavel}
                           </span>
-                          <span className="text-[11px] text-muted-foreground truncate max-w-56">
-                            {evento.terapeuta_email || "sistema@intea.com.br"}
+                          <span className="text-xs text-muted-foreground truncate max-w-56">
+                            {subtextoTerapeuta}
                           </span>
                         </div>
                       </div>
                     </TableCell>
 
-                    {/* Ação Clínica */}
                     <TableCell className="text-xs py-3.5">
                       <div className="flex flex-col gap-1 items-start">
                         {renderBadgeAcao(evento.acao)}
                         {evento.descricao && (
-                          <span className="text-[11px] text-muted-foreground line-clamp-1 max-w-70">
+                          <span className="text-xs text-muted-foreground line-clamp-1 max-w-72">
                             {evento.descricao}
                           </span>
                         )}
                       </div>
                     </TableCell>
 
-                    {/* Paciente / Sessão */}
                     <TableCell className="text-xs text-foreground py-3.5">
                       <div className="flex flex-col">
                         <span className="font-medium text-foreground">
                           {evento.paciente_nome || "Modo Livre / Sem Paciente"}
                         </span>
                         {evento.sessao_id ? (
-                          <span className="text-[10px] text-muted-foreground font-mono">
+                          <span className="text-xs text-muted-foreground font-mono">
                             Sessão: {evento.sessao_id.slice(0, 8)}...
                           </span>
                         ) : (
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             Ação institucional
                           </span>
                         )}
                       </div>
                     </TableCell>
 
-                    {/* Origem & IP */}
                     <TableCell className="text-xs py-3.5">
                       <div className="flex flex-col">
-                        <span className="font-mono text-[11px] text-foreground">
-                          {evento.ip || "127.0.0.1"}
+                        <span className="font-mono text-xs text-foreground">
+                          {evento.ip || "Não registrado"}
                         </span>
-                        <span className="text-[10px] text-muted-foreground capitalize">
+                        <span className="text-xs text-muted-foreground capitalize">
                           {evento.origem.replace(/_/g, " ")}
                         </span>
                       </div>
                     </TableCell>
 
-                    {/* Ação Ver Detalhes */}
                     <TableCell className="text-right py-3.5 pr-6">
                       <Button
                         variant="ghost"
@@ -576,7 +611,6 @@ export function TabelaAuditoria({
           </TableBody>
         </Table>
 
-        {/* Rodapé da Tabela: Paginação Padrão InTEA */}
         <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-border bg-card gap-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Exibindo</span>
@@ -632,7 +666,7 @@ export function TabelaAuditoria({
         </div>
       </div>
 
-      {/* Modal / Dialog de Detalhes Contextuais do Evento */}
+      {/* Modal de Detalhes Contextuais do Evento */}
       <Dialog
         open={Boolean(eventoSelecionado)}
         onOpenChange={(aberto) => {
@@ -655,20 +689,40 @@ export function TabelaAuditoria({
               <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-surface-alt dark:bg-surface-highlight border border-border">
                 <div>
                   <span className="text-muted-foreground font-semibold">ID do Evento:</span>
-                  <p className="font-mono text-[11px] break-all">{eventoSelecionado.id}</p>
+                  <p className="font-mono text-xs break-all">{eventoSelecionado.id}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground font-semibold">Data / Hora:</span>
                   <p className="font-medium">{formatarData(eventoSelecionado.created_at)}</p>
                 </div>
                 <div>
+                  <span className="text-muted-foreground font-semibold">Entidade:</span>
+                  <p className="font-medium">{formatarEntidade(eventoSelecionado.entidade)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground font-semibold">ID do Recurso:</span>
+                  <p className="font-mono text-xs break-all">
+                    {eventoSelecionado.recurso_id || "N/A"}
+                  </p>
+                </div>
+                <div>
                   <span className="text-muted-foreground font-semibold">Terapeuta:</span>
-                  <p className="font-medium">{eventoSelecionado.terapeuta_nome || "Sistema"}</p>
-                  <p className="text-[11px] text-muted-foreground">{eventoSelecionado.terapeuta_email || "-"}</p>
+                  <p className="font-medium">
+                    {eventoSelecionado.terapeuta_nome || "Sistema Automatizado"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {eventoSelecionado.terapeuta_email || "Sem e-mail registrado"}
+                  </p>
+                  <p className="font-mono text-xs text-muted-foreground break-all mt-0.5">
+                    ID: {eventoSelecionado.terapeuta_id || "N/A"}
+                  </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground font-semibold">Paciente:</span>
                   <p className="font-medium">{eventoSelecionado.paciente_nome || "Nenhum"}</p>
+                  <p className="font-mono text-xs text-muted-foreground break-all mt-0.5">
+                    ID: {eventoSelecionado.paciente_id || "N/A"}
+                  </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground font-semibold">Ação Registrada:</span>
@@ -676,22 +730,24 @@ export function TabelaAuditoria({
                 </div>
                 <div>
                   <span className="text-muted-foreground font-semibold">Canal de Origem:</span>
-                  <p className="font-mono text-[11px] capitalize">{eventoSelecionado.origem}</p>
+                  <p className="font-mono text-xs capitalize">{eventoSelecionado.origem}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground font-semibold">Endereço IP:</span>
-                  <p className="font-mono text-[11px]">{eventoSelecionado.ip || "127.0.0.1"}</p>
+                  <p className="font-mono text-xs">{eventoSelecionado.ip || "Não registrado"}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground font-semibold">Sessão UUID:</span>
-                  <p className="font-mono text-[11px] break-all">{eventoSelecionado.sessao_id || "N/A"}</p>
+                  <p className="font-mono text-xs break-all">
+                    {eventoSelecionado.sessao_id || "N/A"}
+                  </p>
                 </div>
               </div>
 
               {eventoSelecionado.user_agent && (
                 <div className="p-3.5 rounded-xl bg-muted/30 border border-border">
                   <span className="text-muted-foreground font-semibold">User Agent / Dispositivo:</span>
-                  <p className="font-mono text-[11px] break-all mt-1">{eventoSelecionado.user_agent}</p>
+                  <p className="font-mono text-xs break-all mt-1">{eventoSelecionado.user_agent}</p>
                 </div>
               )}
 
@@ -711,13 +767,13 @@ export function TabelaAuditoria({
                     variant="ghost"
                     size="sm"
                     onClick={handleCopiarJSON}
-                    className="h-7 text-[11px] gap-1 text-muted-foreground hover:text-foreground cursor-pointer px-2"
+                    className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground cursor-pointer px-2"
                   >
                     {copiado ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
                     <span>{copiado ? "Copiado!" : "Copiar JSON"}</span>
                   </Button>
                 </div>
-                <pre className="p-3.5 rounded-xl bg-slate-950 text-slate-100 dark:bg-slate-900 font-mono text-[11px] overflow-x-auto max-h-48 leading-relaxed border border-border/40">
+                <pre className="p-3.5 rounded-xl bg-slate-950 text-slate-100 dark:bg-slate-900 font-mono text-xs overflow-x-auto max-h-48 leading-relaxed border border-border/40">
                   {JSON.stringify(eventoSelecionado.detalhes_json, null, 2)}
                 </pre>
               </div>

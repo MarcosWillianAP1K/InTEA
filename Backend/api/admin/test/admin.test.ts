@@ -427,7 +427,7 @@ describe('Feature Admin: Endpoints Administrativos para Gestão Global de Clíni
             }),
           } as any;
         }
-        if (table === 'auditoria_sessao') {
+        if (table === 'auditoria_evento') {
           return {
             select: vi.fn().mockReturnValue({
               in: vi.fn().mockReturnValue({

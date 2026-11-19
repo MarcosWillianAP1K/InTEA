@@ -22,6 +22,7 @@ dotenv.config();
 inicializarAuditoriaListeners();
 
 const app = express();
+app.set("trust proxy", 1);
 const port = process.env.PORT || 3000;
 const httpServer = http.createServer(app);
 
