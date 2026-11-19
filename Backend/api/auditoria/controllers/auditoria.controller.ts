@@ -269,19 +269,19 @@ export class AuditoriaController {
       }
 
       // Guarda Anti-Spoofing de terapeuta (RF21)
-      const isSuperAdmin = await AuditoriaService.verificarSuperAdmin(usuarioLogado);
-
       if (
         terapeutaIdBody &&
         typeof terapeutaIdBody === 'string' &&
         usuarioLogado?.id &&
-        terapeutaIdBody !== usuarioLogado.id &&
-        !isSuperAdmin
+        terapeutaIdBody !== usuarioLogado.id
       ) {
-        res.status(403).json({
-          error: 'Acesso negado: tentativa de registrar auditoria para outro terapeuta não autorizada (RF21).',
-        });
-        return;
+        const isSuperAdmin = await AuditoriaService.verificarSuperAdmin(usuarioLogado);
+        if (!isSuperAdmin) {
+          res.status(403).json({
+            error: 'Acesso negado: tentativa de registrar auditoria para outro terapeuta não autorizada (RF21).',
+          });
+          return;
+        }
       }
 
       // Validação de acesso e vínculo institucional com a sessão clínica (RN04)

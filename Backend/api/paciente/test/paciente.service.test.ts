@@ -557,6 +557,23 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
     const terapeutaBId = '33333333-3333-4333-8333-333333333333';
     const superAdminId = '99999999-9999-4999-8999-999999999999';
 
+    function mockTerapeutaBanco(isSuperAdmin: boolean) {
+      vi.spyOn(supabase, 'from').mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { is_super_admin: isSuperAdmin, status_ativo: true },
+              error: null,
+            }),
+          }),
+        }),
+      } as unknown as ReturnType<typeof supabase.from>);
+    }
+
+    beforeEach(() => {
+      mockTerapeutaBanco(false);
+    });
+
     describe('PacienteService.vincularTerapeuta', () => {
       it('deve rejeitar com 400 se pacienteId ou terapeutaId não forem UUIDs válidos', async () => {
         await expect(
@@ -724,16 +741,7 @@ describe('PacienteService — Camada de Domínio e Regras Clínicas', () => {
         expect(spyDesvincular).toHaveBeenCalledWith(pacienteId, terapeutaBId);
 
         // Teste com is_super_admin = false no objeto mas true na tabela terapeuta do banco
-        vi.spyOn(supabase, 'from').mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({
-                data: { is_super_admin: true, status_ativo: true },
-                error: null,
-              }),
-            }),
-          }),
-        } as unknown as ReturnType<typeof supabase.from>);
+        mockTerapeutaBanco(true);
 
         await expect(
           PacienteService.desvincularTerapeuta(pacienteId, terapeutaBId, {

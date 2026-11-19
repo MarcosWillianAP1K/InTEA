@@ -453,6 +453,7 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
   });
 
   it('GET /api/auditoria/sessao/:sessaoId: deve retornar 403 se o usuário não for SuperAdmin (RF07 / RF08)', async () => {
+    vi.spyOn(AuditoriaService, 'verificarSuperAdmin').mockResolvedValue(false);
     vi.spyOn(SessaoModel, 'buscarPorId').mockResolvedValue({
       id: sessaoIdValido,
       terapeuta_id: 'outro-terapeuta',
@@ -630,6 +631,7 @@ describe('AuditoriaController — Endpoints e Validações REST', () => {
   });
 
   it('POST /api/auditoria: deve retornar 403 se tentar registrar para outro terapeuta (RF21 Anti-Spoofing)', async () => {
+    vi.spyOn(AuditoriaService, 'verificarSuperAdmin').mockResolvedValue(false);
     const { mockReq, mockRes, getStatus, getJson } = criarMocks(
       {
         sessao_id: sessaoIdValido,
