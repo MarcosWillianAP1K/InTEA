@@ -43,7 +43,7 @@ const io = new SocketIOServer(httpServer, {
 // Inicializa o Gateway WebSocket de Sessões (/sessao)
 SessaoGateway.inicializar(io);
 
-// Conecta o hook assíncrono de persistência contínua de telemetria no PostgreSQL (RF12 / RN01)
+// Conecta o hook assíncrono de persistência contínua de telemetria no PostgreSQL
 SessaoGateway.registrarCallbackTelemetria(async (sessionToken, evento) => {
   try {
     await TelemetriaService.persistirEvento(sessionToken, {
@@ -92,7 +92,7 @@ const swaggerSpec = swaggerJsdoc({
     : ["./api/**/*.routes.ts"],
 });
 
-// Headers de segurança HTTP e bloqueio de clickjacking / CSP / HSTS (RNF03)
+// Headers de segurança HTTP e bloqueio de clickjacking / CSP / HSTS
 app.use(securityHeadersMiddleware);
 
 // Middleware CORS estrito com validação de origens confiáveis

@@ -1,13 +1,9 @@
 import type { DispositivoConectadoPayload } from "@/core/web.socket";
 
-/**
- * ============================================================================
- * TIPAGEM DE DOMÍNIO DE SESSÃO E PAREAMENTO REMOTO (InTEA)
- * Conformidade: RF10 (Pareamento), RF11 (Modo Livre - RN01), RF12 (Cockpit),
- *              RF13 (Finalização), RF14 (Resultados), RF17 (IA), RF20 (Exportação)
- * TypeScript estrito sem o uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// TIPAGEM DE DOMÍNIO DE SESSÃO E PAREAMENTO REMOTO (InTEA)
+// TypeScript estrito sem o uso de `any`
+// ============================================================================
 
 export type ModoSessao = "sessao_clinica" | "modo_livre";
 

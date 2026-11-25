@@ -49,6 +49,12 @@ function formatarDataPonto(iso?: string): string {
   });
 }
 
+/**
+ * Renders a boolean milestone indicator chart showing true/false outcomes across patient sessions.
+ *
+ * @param props - Boolean metric time series, optional title, loading flag, and CSS classes.
+ * @returns Rendered boolean metric indicator card.
+ */
 export function IndicadorBooleanoMetrica({
   serie,
   titulo,

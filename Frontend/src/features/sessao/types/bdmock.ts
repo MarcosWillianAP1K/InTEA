@@ -2,7 +2,7 @@
  * ============================================================================
  * FIXTURES E MOCKS EM MEMÓRIA DO DOMÍNIO SESSÃO (bdmock.ts)
  * Simulação de sessões clínicas, pareamento remoto (PIN/Token),
- * sessões em Modo Livre (RN01), telemetria agregada e laudos de IA.
+ * sessões em Modo Livre, telemetria agregada e laudos de IA.
  * ============================================================================
  */
 
@@ -292,6 +292,9 @@ export const FIXTURES_SESSOES: Sessao[] = [
 
 let sessoesMockState: Sessao[] = JSON.parse(JSON.stringify(FIXTURES_SESSOES));
 
+/**
+ * Resets the in-memory mock sessions list back to the baseline fixtures.
+ */
 export function resetarSessoesMock(): void {
   sessoesMockState = JSON.parse(JSON.stringify(FIXTURES_SESSOES));
 }
@@ -431,7 +434,7 @@ export async function atualizarStatusSessaoMock(
 }
 
 /**
- * Concludes clinical session and generates consolidated AI outcome (RF13, RF14).
+ * Concludes clinical session and generates consolidated AI outcome.
  */
 export async function finalizarSessaoMock(
   id: string,
@@ -530,7 +533,7 @@ export async function obterResultadoSessaoMock(
 }
 
 /**
- * Exports clinical report in structured format (RF20).
+ * Exports clinical report in structured format.
  */
 export async function exportarRelatorioSessaoMock(
   id: string,

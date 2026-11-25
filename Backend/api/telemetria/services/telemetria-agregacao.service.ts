@@ -200,7 +200,7 @@ export function obterModaCategorica(valores: string[]): string {
 export class TelemetriaAgregacaoService {
   /**
    * Pure in-memory statistical aggregation function.
-   * Compiles and summarizes raw telemetry events complying with clinical rule RN02.
+   * Compiles and summarizes raw telemetry events complying with game manifest typing rules.
    *
    * @param eventos - Array of raw telemetry events.
    * @param manifesto - Optional game manifest defining metric specifications.
@@ -248,7 +248,7 @@ export class TelemetriaAgregacaoService {
       }
     }
 
-    // 5. Agrupamento de valores brutos por indicador e rastreamento de violações RN02
+    // 5. Agrupamento de valores brutos por indicador e rastreamento de violações de tipagem estrita
     const amostrasNumericas = new Map<string, number[]>();
     const amostrasCategoricas = new Map<string, string[]>();
     const violacoesMap = new Map<string, { motivo: string; contagem: number }>();
@@ -277,11 +277,11 @@ export class TelemetriaAgregacaoService {
       // Se não há id_metrica definido nos dados, pula processamento de indicador
       if (!idMetrica) continue;
 
-      // Validação estrita RN02 quando manifesto estiver presente
+      // Validação estrita de tipagem quando manifesto estiver presente
       if (manifesto) {
         const homologada = mapaMetricasHomologadas.get(idMetrica);
 
-        // RN02: Métrica ausente do manifesto não pode ser aceita nem convertida
+        // Métrica ausente do manifesto não pode ser aceita nem convertida
         if (!homologada) {
           const motivo = `Métrica '${idMetrica}' não declarada no manifesto do jogo (RN02 - proibido fallback).`;
           const atual = violacoesMap.get(idMetrica) || { motivo, contagem: 0 };
@@ -290,7 +290,7 @@ export class TelemetriaAgregacaoService {
           continue;
         }
 
-        // RN02: Tipo obrigatório e deve ser 'numerica' ou 'categorica'
+        // Tipo obrigatório e deve ser 'numerica' ou 'categorica'
         const tipoDeclarado = homologada.tipo_metrica;
         if (tipoDeclarado !== 'numerica' && tipoDeclarado !== 'categorica') {
           const motivo = `Métrica '${idMetrica}' possui tipo inválido '${tipoDeclarado}' no manifesto (RN02).`;
@@ -420,7 +420,7 @@ export class TelemetriaAgregacaoService {
       duracaoEstimadaSegundos
     );
 
-    // 10. Lista de violações RN02 identificadas
+    // 10. Lista de violações de tipagem estrita identificadas
     const violacoesRN02: MetricaRejeitadaRN02[] = [];
     for (const [idMetrica, info] of violacoesMap.entries()) {
       violacoesRN02.push({

@@ -1,11 +1,10 @@
 // ==============================================================================
-// InTEA: Suíte de Testes Unitários - Concorrência Otimista em Paciente (RF18)
+// InTEA: Suíte de Testes Unitários - Concorrência Otimista em Paciente
 // ==============================================================================
-// REQUISITOS ATENDIDOS:
-// - RF06: Cadastro e Edição de Prontuário Clínico
-// - RF18: Suporte à Concorrência Multiusuário / Multiterapeuta
-// - RN04: Isolamento Institucional
-// - RNF05: SLA e Integridade de Dados
+// - Cadastro e Edição de Prontuário Clínico
+// - Suporte à Concorrência Multiusuário / Multiterapeuta
+// - Isolamento Institucional
+// - SLA e Integridade de Dados
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

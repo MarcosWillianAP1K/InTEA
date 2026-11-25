@@ -1,6 +1,5 @@
 // ==============================================================================
 // InTEA: Testes Unitários de Jogos de Atividades da Vida Diária (AVD) e Simulação de Rotinas
-// Conformidade: RF09 (Catálogo de Jogos), RF17 (Personalização Clínica), RN02 (Tipagem Estrita)
 // ==============================================================================
 
 import { describe, it, expect } from 'vitest';

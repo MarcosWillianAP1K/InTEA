@@ -1,13 +1,12 @@
 // ==============================================================================
 // InTEA: Testes de Unidade do Serviço e Controller de Histórico (Sprint 11)
 // ==============================================================================
-// REQUISITOS COBERTOS:
-// - RF15: Prontuário Longitudinal (Separação: Histórico Geral vs Séries por Jogo)
-// - RF19: Filtros e Paginação (sessaoId, dataInicio, dataFim, page, limit)
-// - RN01: Expurgo de Modo Livre
-// - RN02: Tipagem Estrita e Rejeição 422 sem Fallback
-// - RN04: Isolamento Institucional
-// - RN05: Inalterabilidade do Histórico
+// - Prontuário Longitudinal (Separação: Histórico Geral vs Séries por Jogo)
+// - Filtros e Paginação (sessaoId, dataInicio, dataFim, page, limit)
+// - Expurgo de Modo Livre
+// - Tipagem Estrita e Rejeição 422 sem Fallback
+// - Isolamento Institucional
+// - Inalterabilidade do Histórico
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';

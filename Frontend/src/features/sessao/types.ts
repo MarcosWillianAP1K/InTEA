@@ -1,5 +1,3 @@
-/**
- * Re-exporta os tipos canônicos do domínio sessão para garantir retrocompatibilidade.
- */
+// Re-exports canonical session domain types for backward compatibility.
 export * from "./types/sessao.types";
 export * from "./types/bdmock";

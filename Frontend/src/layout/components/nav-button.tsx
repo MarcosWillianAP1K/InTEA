@@ -8,6 +8,12 @@ import {
   SidebarMenuItem,
 } from "@/shared/components/ui/sidebar";
 
+/**
+ * Sidebar footer action button that triggers creation of a new clinical session.
+ *
+ * @param props - Optional click callback and loading state indicator.
+ * @returns Rendered sidebar button group.
+ */
 export function NewSection({
   onCreateChat,
   isCreating,

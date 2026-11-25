@@ -1,10 +1,7 @@
-/**
- * ============================================================================
- * TIPAGENS CANÔNICAS DO DOMÍNIO PACIENTE (InTEA)
- * Conformidade: RF06, RF10, RF18, RF19, RN04 (Visibilidade), RN05 (Soft Delete)
- * Regra: TypeScript estrito sem o uso de `any`, snakes_case da API REST
- * ============================================================================
- */
+// ============================================================================
+// TIPAGENS CANÔNICAS DO DOMÍNIO PACIENTE (InTEA)
+// Regra: TypeScript estrito sem o uso de `any`, snakes_case da API REST
+// ============================================================================
 
 import {
   ESTADO_CLINICO_NAO_INFORMADO,
@@ -103,7 +100,7 @@ export interface TerapeutaVinculado {
 }
 
 /**
- * Contrato canônico de Especialista integrante da Equipe Multidisciplinar vinculada ao paciente (RF18, RN04).
+ * Canonical contract for a Specialist belonging to a patient's Multidisciplinary Team.
  */
 export interface EspecialistaVinculado {
   id: string;
@@ -447,7 +444,7 @@ export function pacienteToPatient(paciente: Paciente): Patient {
 
 /**
  * ============================================================================
- * DTOs DE HISTORICO LONGITUDINAL E ENGAJAMENTO (RF15, RF19)
+ * DTOs DE HISTORICO LONGITUDINAL E ENGAJAMENTO
  * Reexportacoes canonicas e envelopes REST da API
  * ============================================================================
  */

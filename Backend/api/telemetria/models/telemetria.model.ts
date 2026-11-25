@@ -1,8 +1,8 @@
 import { supabase } from '../../../core/supabase/supabase.client.js';
 
 /**
- * Interface canônica de Telemetria Clínica (Contrato 3 - telemetria.json)
- * sessao_id e data_hora são estritamente obrigatórios para garantir vínculo e rastreabilidade temporal.
+ * Canonical Clinical Telemetry interface (Contract 3 - telemetria.json).
+ * `sessao_id` and `data_hora` are strictly required to guarantee session linkage and temporal traceability.
  */
 export interface TelemetriaEvento {
   id?: string;

@@ -1,5 +1,5 @@
 // ==============================================================================
-// InTEA: Utilitário de Verificação de Privilégios Administrativos (RNF06 / OWASP)
+// InTEA: Utilitário de Verificação de Privilégios Administrativos
 // ==============================================================================
 // Garante que claims de SuperAdmin sejam lidas exclusivamente de fontes confiáveis
 // (tabela public.terapeuta sincronizada em user.is_super_admin ou app_metadata
@@ -14,12 +14,12 @@ export type UsuarioComClaims = Pick<
 >;
 
 /**
- * Verifica se o objeto de usuário autenticado possui a claim confiável de SuperAdmin.
- * Avalia exclusivamente `user.is_super_admin` e `user.app_metadata.is_super_admin`.
- * Nunca confia em `user_metadata`.
+ * Checks whether the authenticated user object has a trusted SuperAdmin claim.
+ * Evaluates `user.is_super_admin` and `user.app_metadata.is_super_admin` exclusively.
+ * Never trusts `user_metadata`.
  *
- * @param user - Usuário autenticado ou parcial extraído do request.
- * @returns `true` se possuir privilégio de SuperAdmin confiável.
+ * @param user - Authenticated or partial user extracted from the request.
+ * @returns `true` if the user holds a trusted SuperAdmin privilege.
  */
 export function hasSuperAdminClaim(user?: UsuarioComClaims | null): boolean {
   return Boolean(

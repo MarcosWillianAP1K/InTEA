@@ -2,12 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { SessionSocketManager, type EventoTelemetriaPayload } from "@/core/web.socket";
 import type { MetricasTelemetria, PontoHistoricoTelemetria } from "../types";
 
-/**
- * ============================================================================
- * HOOK REATIVO: useLiveTelemetry (Front-end 2 — Luma Maiara)
- * Requisitos: RF12 (Gestão de Sessão), RN02 (Tipagem Estrita), RNF04
- * ============================================================================
- */
+// ============================================================================
+// HOOK REATIVO: useLiveTelemetry (Front-end 2 — Luma Maiara)
+// ============================================================================
 
 export interface UseLiveTelemetryOptions {
   habilitado?: boolean;
@@ -43,7 +40,7 @@ export function useLiveTelemetry(options: UseLiveTelemetryOptions = {}) {
   });
 
   /**
-   * Processa um evento unitário de telemetria atualizando contadores, tempos de resposta e série temporal.
+   * Processes a single telemetry payload event, updating hit/miss counters, response times, and the chart series.
    */
   const processarEvento = useCallback(
     (evento: EventoTelemetriaPayload) => {
@@ -141,7 +138,7 @@ export function useLiveTelemetry(options: UseLiveTelemetryOptions = {}) {
   }, [habilitado, processarEvento]);
 
   /**
-   * Reseta os contadores de métricas acumuladas e limpa os pontos do gráfico histórico.
+   * Resets accumulated metric counters and clears the historical telemetry chart series.
    */
   const limparTelemetria = useCallback(() => {
     setMetricas({

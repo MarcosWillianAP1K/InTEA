@@ -134,7 +134,7 @@ export interface TabelaComparativaMetricasProps {
 }
 
 /**
- * Renders comparative metric progression table between distinct clinical sessions (RF15, RN02).
+ * Renders comparative metric progression table between distinct clinical sessions.
  * Longitudinal Analysis: Highlights improvement, stabilization, or regression across therapeutic metrics.
  *
  * @param props - Component properties including session data and metrics

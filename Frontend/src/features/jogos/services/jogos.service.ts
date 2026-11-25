@@ -1,7 +1,6 @@
 /**
  * ============================================================================
  * REST SERVICE FOR GAMES DOMAIN
- * Compliance: RF04, RF07, RN02 (Tipagem Estrita de Métricas)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
@@ -211,7 +210,7 @@ export const jogosService = {
   },
 
   /**
-   * Retrieves technical and clinical manifest with strictly typed metrics (RN02).
+   * Retrieves technical and clinical manifest with strictly typed metrics.
    */
   obterManifesto: async (id: string): Promise<ManifestoJogo | null> => {
     if (!id || !id.trim()) return null;

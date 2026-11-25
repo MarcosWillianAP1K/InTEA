@@ -1,5 +1,5 @@
 /**
- * CARD 2.4 — BD: Seed com 3 Jogos de Exemplo (RF09)
+ * CARD 2.4 — BD: Seed com 3 Jogos de Exemplo
  *
  * Script idempotente: verifica se cada jogo já existe antes de inserir,
  * evitando duplicatas mesmo que seja executado múltiplas vezes.
@@ -112,7 +112,7 @@ const JOGOS_SEED = [
 ];
 
 /**
- * Executes idempotent seeding of sample therapeutic games into the database (RF09).
+ * Executes idempotent seeding of sample therapeutic games into the database.
  * Checks existing entries before insertion to prevent duplication.
  *
  * @returns Resolves when database seeding completes.

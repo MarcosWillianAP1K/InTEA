@@ -53,12 +53,10 @@ function formatarNomeMetricaLegivel(idOuNome?: string): string {
 /**
  * ============================================================================
  * CONTAINER DE EVOLUÇÃO DAS MÉTRICAS DO JOGO (InTEA)
- * Conformidade: RF15 (Prontuário Longitudinal), RN01 (Expurgo Modo Livre),
- * RN02 (Tipagem Estrita), RNF04 (Zero CLS), RNF07 (Acessibilidade)
  * ============================================================================
  */
 /**
- * Renders longitudinal game progress and engagement evolution chart across multiple sessions (RF15).
+ * Renders longitudinal game progress and engagement evolution chart across multiple sessions.
  * Game Trend Analysis: Plots score, duration, and performance evolution curves over time.
  *
  * @param props - Chart properties including session metric series and game title

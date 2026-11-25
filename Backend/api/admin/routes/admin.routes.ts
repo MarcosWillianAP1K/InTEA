@@ -4,14 +4,11 @@ import { superAdminMiddleware } from '../../../core/middlewares/admin.middleware
 import { AdminController } from '../controllers/admin.controller.js';
 import { AuditoriaController } from '../../auditoria/controllers/auditoria.controller.js';
 
-/**
- * ==============================================================================
- * InTEA: Rotas do Módulo Administrativo Global (SuperAdmin)
- * ==============================================================================
- * Conformidade: RF07, RF08, RNF06
- * Todas as rotas deste router exigem autenticação ativa e privilégio SuperAdmin.
- * ==============================================================================
- */
+// ==============================================================================
+// InTEA: Rotas do Módulo Administrativo Global (SuperAdmin)
+// ==============================================================================
+// Todas as rotas deste router exigem autenticação ativa e privilégio SuperAdmin.
+// ==============================================================================
 
 export const adminRoutes = Router();
 
@@ -19,7 +16,7 @@ export const adminRoutes = Router();
 adminRoutes.use(authMiddleware, superAdminMiddleware);
 
 // ==============================================================================
-// 1. GESTÃO INSTITUCIONAL DE CLÍNICAS (RF07)
+// 1. GESTÃO INSTITUCIONAL DE CLÍNICAS
 // ==============================================================================
 adminRoutes.get('/clinicas', AdminController.listarClinicas);
 adminRoutes.get('/clinica', AdminController.listarClinicas);
@@ -43,7 +40,7 @@ adminRoutes.patch('/clinicas/:id/desativar', AdminController.desativarClinica);
 adminRoutes.patch('/clinica/:id/desativar', AdminController.desativarClinica);
 
 // ==============================================================================
-// 2. GESTÃO INSTITUCIONAL DE TERAPEUTAS (RF07, RN04)
+// 2. GESTÃO INSTITUCIONAL DE TERAPEUTAS
 // ==============================================================================
 adminRoutes.get('/terapeutas', AdminController.listarTerapeutas);
 adminRoutes.get('/terapeuta', AdminController.listarTerapeutas);
@@ -64,7 +61,7 @@ adminRoutes.patch('/terapeutas/:id/desativar', AdminController.desativarTerapeut
 adminRoutes.patch('/terapeuta/:id/desativar', AdminController.desativarTerapeuta);
 
 // ==============================================================================
-// 3. CONSULTA CONSOLIDADA DE LOGS DE AUDITORIA POR INSTITUIÇÃO (RF08, RNF06)
+// 3. CONSULTA CONSOLIDADA DE LOGS DE AUDITORIA POR INSTITUIÇÃO
 // ==============================================================================
 adminRoutes.get('/auditoria/estatisticas', AuditoriaController.obterEstatisticas);
 adminRoutes.get('/auditoria/sessao/:sessaoId', AuditoriaController.consultarLinhaDoTempo);

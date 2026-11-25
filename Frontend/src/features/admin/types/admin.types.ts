@@ -2,8 +2,6 @@
  * ============================================================================
  * MODELOS CANÔNICOS DE AUDITORIA E ADMINISTRAÇÃO (admin.types.ts)
  * Tipagens estritas para trilha de auditoria forense, conformidade LGPD e filtros.
- * Conformidade com RF07 (Gestão SuperAdmin), RF08 (Auditoria de Acessos),
- * RN04 (Isolamento Institucional) e RN05 (Imutabilidade de Registros Clínicos).
  * TypeScript estrito sem o uso de `any`.
  * ============================================================================
  */

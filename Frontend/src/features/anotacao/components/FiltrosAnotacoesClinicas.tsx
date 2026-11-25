@@ -21,13 +21,11 @@ export interface FiltrosAnotacoesClinicasProps {
 /**
  * ============================================================================
  * COMPONENTE: FiltrosAnotacoesClinicas
- * Conformidade: RF16 (Prontuário e Anotações), RF19 (Filtros Longitudinais),
- *              RN05 (Visualização de Inativos), RNF07 (Acessibilidade)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
 /**
- * Filter controls bar for longitudinal clinical notes in patient health records (RF19).
+ * Filter controls bar for longitudinal clinical notes in patient health records.
  * Query Filtering: Provides full-text search, therapist author dropdown, date interval, and status filters.
  *
  * @param props - Component properties containing filter state and change dispatcher

@@ -194,7 +194,7 @@ export class SessaoGateway {
 
   /**
    * Initializes the singleton WebSocket gateway for the `/sessao` namespace.
-   * Real-Time Telemetry (RF10, RF13): Configures connection handlers, pairing rooms, and telemetry channels.
+   * Real-Time Telemetry: Configures connection handlers, pairing rooms, and telemetry channels.
    *
    * @param io - Root Socket.IO server instance
    * @returns Initialized SessaoGateway singleton instance
@@ -284,7 +284,7 @@ export class SessaoGateway {
    * @param socket - Connected client Socket.io instance.
    */
   private configurarSocket(socket: Socket): void {
-    // 0. Middleware de contenção de flood e rate limiting (Card 2.4 - RNF03)
+    // 0. Middleware de contenção de flood e rate limiting (Card 2.4)
     socket.use(([event, ...args], next) => {
       if (event === 'sessao:telemetria' || event === 'telemetria') {
         const limite = this.rateLimiter.verificarLimite(socket.id, event);
@@ -480,7 +480,7 @@ export class SessaoGateway {
 
     // Se o cliente conectando for o dispositivo do jogo:
     if (role === 'dispositivo') {
-      // Validação de jogo e injeção do pacote de pré-contexto DDA diretamente para o game (RN03)
+      // Validação de jogo e injeção do pacote de pré-contexto DDA diretamente para o game
       SessaoModel.buscarPorToken(tokenNormalizado).then(sessaoBanco => {
         if (sessaoBanco) {
           if (payload.jogo_id && payload.jogo_id !== sessaoBanco.jogo_id) {
@@ -643,8 +643,10 @@ export class SessaoGateway {
   }
 
   /**
-   * Emite para a sala da sessão o evento equipe_presenca_atualizada com
-   * o total e a lista de especialistas (terapeuta e observadores) acompanhando a sessão.
+   * Broadcasts the `equipe_presenca_atualizada` event to the session room with
+   * the count and list of connected specialists (conductor therapist and observers).
+   *
+   * @param sessionToken - Session PIN code.
    */
   emitirPresencaEquipe(sessionToken: string): void {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -668,7 +670,10 @@ export class SessaoGateway {
   }
 
   /**
-   * Retorna os especialistas conectados a uma sala de sessão.
+   * Returns the list of specialists currently connected to a session room.
+   *
+   * @param sessionToken - Session PIN code.
+   * @returns Array of connected specialist metadata objects.
    */
   obterEspecialistasConectados(sessionToken: string): EspecialistaConectado[] {
     const tokenNormalizado = this.normalizarToken(sessionToken);
@@ -926,7 +931,7 @@ export class SessaoGateway {
   }
 
   /**
-   * Validates clinical command sent by therapist (Card 2.2 / RF13 / RF21).
+   * Validates clinical command sent by therapist (Card 2.2).
    *
    * @param socket - Emitting client socket.
    * @param payloadRaw - Raw command data.
@@ -976,7 +981,7 @@ export class SessaoGateway {
       };
     }
 
-    // Permissão: observadores da equipe multidisciplinar possuem acesso exclusivamente de leitura (RF18, RF21)
+    // Permissão: observadores da equipe multidisciplinar possuem acesso exclusivamente de leitura
     if (socket.data.role === 'observador_equipe') {
       return {
         valido: false,
@@ -1112,7 +1117,7 @@ export class SessaoGateway {
       });
     }
 
-    // Se o comando for de pausa ou retomada, sincroniza a máquina de estados no banco (RF12, RF21)
+    // Se o comando for de pausa ou retomada, sincroniza a máquina de estados no banco
     const buscarSessao = async (tokenOuId: string) => {
       const sessaoPorToken = await SessaoModel.buscarPorToken(tokenOuId);
       if (sessaoPorToken) return sessaoPorToken;

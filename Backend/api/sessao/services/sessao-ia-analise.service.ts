@@ -7,7 +7,7 @@ import {
 
 export class SessaoIaAnaliseService {
   /**
-   * Synthesizes the AI analytical report in strict compliance with Contract 4 (RF14/RF17).
+   * Synthesizes the AI analytical report in strict compliance with Contract 4.
    *
    * @param sessao - Finalized clinical session entity.
    * @param telemetria - Consolidated telemetry statistics (optional).
@@ -25,7 +25,7 @@ export class SessaoIaAnaliseService {
       return null;
     }
 
-    // Guarda 2: RN01 - Modo livre e sessões sem paciente não acionam IA
+    // Guarda 2: Modo livre e sessões sem paciente não acionam IA
     if (sessao.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessao.paciente_id) {
       return null;
     }
@@ -48,7 +48,7 @@ export class SessaoIaAnaliseService {
     // 4. Mapeamento de métricas agregadas aderentes ao Contrato 4
     const metricasAgregadas = this.formatarMetricasAgregadas(telemetria);
 
-    // 5. Geração contextual dinâmica de pareceres analíticos da IA (RF17)
+    // 5. Geração contextual dinâmica de pareceres analíticos da IA
     const analisesIA = this.gerarAnalisesContextuais(
       sessao,
       telemetria,
@@ -80,7 +80,7 @@ export class SessaoIaAnaliseService {
     const sessao = await SessaoModel.buscarPorId(sessaoId);
     if (!sessao) return null;
 
-    // Regra RN01: Modo livre não aciona IA
+    // Modo livre não aciona IA
     if (sessao.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessao.paciente_id) {
       return null;
     }
@@ -242,7 +242,7 @@ export class SessaoIaAnaliseService {
       );
     }
 
-    // 3. Análise de Gatilhos Sensoriais e Metas Clínicas (RN03 / RF17)
+    // 3. Análise de Gatilhos Sensoriais e Metas Clínicas
     const gatilhos = contextoDDA.gatilhos_sensoriais_evitar || contextoDDA.gatilhos_a_evitar;
     if (Array.isArray(gatilhos) && gatilhos.length > 0) {
       analises.push(

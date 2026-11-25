@@ -136,6 +136,13 @@ async function buscarEnderecoPorCep(cepValue: string): Promise<{
   }
 }
 
+/**
+ * Renders the full patient creation and editing form, including guardian contacts,
+ * address auto-fill via CEP, sensory triggers, and clinical reports.
+ *
+ * @param props - Form mode (`create` or `edit`), initial patient data, clinics list, and submit/cancel handlers.
+ * @returns Rendered patient form component.
+ */
 export function FormularioPaciente({
   modo,
   pacienteInicial,

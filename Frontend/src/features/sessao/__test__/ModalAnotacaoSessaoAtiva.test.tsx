@@ -175,7 +175,7 @@ describe("Feature: Modal de Anotação Clínica em Tempo Real no Cockpit de Sess
     expect(sessionStorage.getItem(draftKey)).toBeNull();
     expect(textarea.value).toBe("");
 
-    // Feedback visual sutil (RNF05)
+    // Feedback visual sutil
     expect(toast.success).toHaveBeenCalledWith(
       "Anotação clínica registrada com sucesso no prontuário."
     );
@@ -247,7 +247,7 @@ describe("Feature: Modal de Anotação Clínica em Tempo Real no Cockpit de Sess
       );
     });
 
-    // Alerta de conformidade RN01 visível
+    // Alerta de conformidade visível
     expect(screen.getByTestId("alerta-modo-livre-modal")).toBeDefined();
     expect(screen.getByTestId("badge-modo-livre-modal").textContent).toBe("Modo Livre");
 
@@ -323,7 +323,7 @@ describe("Feature: Modal de Anotação Clínica em Tempo Real no Cockpit de Sess
     fireEvent.click(btnAnotacoes);
     expect(onAbrirAnotacoes).toHaveBeenCalledTimes(1);
 
-    // Sessão em Modo Livre (RN01)
+    // Sessão em Modo Livre
     rerender(
       <ControlesClinicos
         isPausado={false}

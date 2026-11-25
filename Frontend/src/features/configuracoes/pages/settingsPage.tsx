@@ -46,7 +46,6 @@ import { toast } from "sonner";
 /**
  * ============================================================================
  * PAGE: SETTINGS / THERAPIST PROFILE (InTEA)
- * Compliance: RF21 (Authentication/Authorship), RN04 (Clinic Association), RN05 (Soft Delete)
  * ============================================================================
  */
 function formatarTelefoneInput(valor: string): string {
@@ -64,6 +63,12 @@ function formatarTelefoneInput(valor: string): string {
   return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7, 11)}`;
 }
 
+/**
+ * Validates whether a Brazilian mobile phone number contains a valid 2-digit area code (DDD) and leading 9 digit.
+ *
+ * @param telefone - Raw or formatted phone number string.
+ * @returns `true` if valid Brazilian mobile format (11 digits or 13 with country code 55).
+ */
 function validarTelefoneBr(telefone: string): boolean {
   const digitos = telefone.replace(/\D/g, "");
   if (digitos.length === 11) {
@@ -75,6 +80,12 @@ function validarTelefoneBr(telefone: string): boolean {
   return false;
 }
 
+/**
+ * Therapist account and application settings page covering personal profile, appearance,
+ * security (password change), and account lifecycle actions.
+ *
+ * @returns Rendered settings page component.
+ */
 export function SettingsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -108,7 +119,7 @@ export function SettingsPage() {
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [alterandoSenha, setAlterandoSenha] = useState(false);
 
-  // Modal Deletar Conta (Soft Delete - RN05)
+  // Modal Deletar Conta (Soft Delete)
   const [modalDeletarAberto, setModalDeletarAberto] = useState(false);
   const [confirmacaoTexto, setConfirmacaoTexto] = useState("");
   const [deletandoConta, setDeletandoConta] = useState(false);
@@ -177,7 +188,7 @@ export function SettingsPage() {
 
         if (!ativo) return;
 
-        // 1. Pacientes sob seus cuidados (RN04)
+        // 1. Pacientes sob seus cuidados
         if (pacientesRes.status === "fulfilled") {
           setTotalPacientes(pacientesRes.value?.length || 0);
         }
@@ -322,7 +333,7 @@ export function SettingsPage() {
 
     setDeletandoConta(true);
     try {
-      // Soft Delete no backend (RN05: status_ativo = false)
+      // Soft Delete no backend (status_ativo = false)
       await terapeutaService.inativar(user.id);
       toast.success("Conta desativada com sucesso. Sessão encerrada.");
       setModalDeletarAberto(false);

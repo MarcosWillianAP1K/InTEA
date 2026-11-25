@@ -9,6 +9,11 @@ import {
 import logoIcon from "@/assets/image(1)(1).svg";
 import { cn } from "@/shared/lib/utils";
 
+/**
+ * Sidebar header displaying the InTEA brand wordmark when expanded or the collapsible icon trigger when collapsed.
+ *
+ * @returns Rendered sidebar header component.
+ */
 export function NavHeader() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";

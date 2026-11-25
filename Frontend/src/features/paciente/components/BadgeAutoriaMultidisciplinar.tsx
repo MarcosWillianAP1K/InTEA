@@ -13,6 +13,12 @@ export interface BadgeAutoriaMultidisciplinarProps {
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Resolves a human-readable specialist display name, falling back when the value is blank or a raw UUID.
+ *
+ * @param autorNome - Raw author name or UUID string.
+ * @returns Displayable author name.
+ */
 function resolverNomeAutor(autorNome?: string | null): string {
   const limpo = autorNome?.trim() ?? "";
   if (!limpo || UUID_REGEX.test(limpo)) {
@@ -22,8 +28,11 @@ function resolverNomeAutor(autorNome?: string | null): string {
 }
 
 /**
- * Componente atômico puro para identificação visual de autoria multidisciplinar
- * e indicação semântica de permissão de escrita em registros compartilhados (RF18, RF21, RNF07).
+ * Pure atomic badge component displaying multidisciplinary authorship and editability
+ * status on shared clinical records.
+ *
+ * @param props - Author metadata, currently logged-in therapist ID, and sizing options.
+ * @returns Rendered authorship badge component.
  */
 export function BadgeAutoriaMultidisciplinar({
   autorId,

@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Serviço de Pacientes (Camada de Domínio / Fat Service)
 // ==============================================================================
-// Conformidade: RF10, RN04 (Visibilidade Institucional), RN05 (Soft Delete)
 // ==============================================================================
 
 import {
@@ -112,6 +111,13 @@ export class PacienteService {
     return false;
   }
 
+  /**
+   * Validates that the provided institutional clinic UUID exists and is currently active.
+   *
+   * @param clinicaId - Clinic UUID associated with the patient.
+   * @returns Validated clinic UUID string.
+   * @throws {PacienteServiceError} If the clinic ID is missing, invalid, nonexistent, or inactive.
+   */
   private static async validarClinicaInstitucional(clinicaId?: string | null): Promise<string> {
     if (!clinicaId || !validarUUID(clinicaId)) {
       throw new PacienteServiceError(
@@ -150,6 +156,12 @@ export class PacienteService {
     return clinicaId;
   }
 
+  /**
+   * Normalizes nested Supabase guardian/therapist relations and decrypts sensitive clinical fields on read.
+   *
+   * @param paciente - Raw patient record retrieved from the database.
+   * @returns Normalized patient object with flattened relations and decrypted clinical notes.
+   */
   private static normalizarRelacoesEDadosClinicos(paciente: Paciente): Paciente {
     const responsaveisNormalizados: ResponsavelVinculado[] = Array.isArray(paciente.responsaveis)
       ? paciente.responsaveis.map((r: unknown) => {
@@ -238,6 +250,12 @@ export class PacienteService {
     };
   }
 
+  /**
+   * Formats guardian contact fields and copies the patient's address when `mesmo_endereco_paciente` is enabled.
+   *
+   * @param resp - Guardian DTO to normalize in place.
+   * @param enderecoPaciente - Optional patient address fields to inherit.
+   */
   private static prepararResponsavelDTO(
     resp?: CriarResponsavelDTO | null,
     enderecoPaciente?: {
@@ -265,6 +283,11 @@ export class PacienteService {
     }
   }
 
+  /**
+   * Sanitizes, normalizes sensory triggers, and encrypts sensitive clinical data fields before persistence.
+   *
+   * @param dc - Clinical data input DTO to transform in place.
+   */
   private static prepararDadosClinicosDTO(dc?: DadosClinicosInputDTO | null): void {
     if (!dc) return;
 
@@ -291,7 +314,7 @@ export class PacienteService {
   }
 
   /**
-   * Lists patients with search filters, pagination, and institutional visibility rules (RN04).
+   * Lists patients with search filters, pagination, and institutional visibility rules.
    *
    * @param filtros - Search, age, pagination, and active-status filters.
    * @param usuarioLogado - Authenticated user extracting clinician identity.
@@ -342,7 +365,7 @@ export class PacienteService {
       }
       // Administrador autorizado: lista todos os pacientes da base (não injeta filtros.terapeutaId)
     } else if (usuarioLogado?.id) {
-      // Regra RN04: Terapeutas comuns só visualizam seus próprios pacientes vinculados
+      // Terapeutas comuns só visualizam seus próprios pacientes vinculados
       filtros.terapeutaId = usuarioLogado.id;
     }
 
@@ -393,7 +416,7 @@ export class PacienteService {
       throw new PacienteServiceError('Erro de validação nos dados do paciente.', 400, validacao.erros);
     }
 
-    // 2. Isolamento Institucional e Obrigatoriedade de Clínica (RN04)
+    // 2. Isolamento Institucional e Obrigatoriedade de Clínica
     if (usuarioLogado) {
       const isSuperAdmin =
         usuarioLogado.is_super_admin === true ||
@@ -464,7 +487,7 @@ export class PacienteService {
       throw new PacienteServiceError('Paciente não encontrado para atualização.', 404);
     }
 
-    // Verificação de concorrência otimista (RF18)
+    // Verificação de concorrência otimista
     if (dto.ultimo_updated_at !== undefined) {
       const timestampRecebido = new Date(dto.ultimo_updated_at).getTime();
       if (isNaN(timestampRecebido)) {
@@ -507,7 +530,7 @@ export class PacienteService {
   }
 
   /**
-   * Soft deletes a patient (RN05: status_ativo = false).
+   * Soft deletes a patient (status_ativo = false).
    *
    * @param id - Patient UUID.
    * @returns Object indicating deactivated patient and whether it was already inactive.
@@ -735,8 +758,8 @@ export class PacienteService {
   }
 
   /**
-   * Sanitizes and redacts patient identification attributes for privacy-compliant logging (RNF06).
-   * Log Sanitization (RNF06): Masks CPF and sensitive health notes while preserving public IDs.
+   * Sanitizes and redacts patient identification attributes for privacy-compliant logging.
+   * Log Sanitization: Masks CPF and sensitive health notes while preserving public IDs.
    *
    * @param paciente - Patient data object to sanitize
    * @returns Redacted patient object safe for logging
@@ -746,8 +769,8 @@ export class PacienteService {
   }
 
   /**
-   * Encrypts sensitive clinical fields at rest using AES-256-GCM (RNF06).
-   * At-Rest Protection (RNF06): Conditionally encrypts diagnosis and notes before database insertion.
+   * Encrypts sensitive clinical fields at rest using AES-256-GCM.
+   * At-Rest Protection: Conditionally encrypts diagnosis and notes before database insertion.
    *
    * @param dadosClinicos - Clinical data payload containing potential plaintext fields
    * @returns Encrypted clinical data object
@@ -768,7 +791,10 @@ export class PacienteService {
   }
 
   /**
-   * Consulta o histórico e status vigente de consentimento parental (LGPD Art. 14 §1º).
+   * Retrieves the parental consent history and current active status for a patient (LGPD Art. 14 §1).
+   *
+   * @param pacienteId - UUID of the target patient.
+   * @returns Object containing validity flag (`vigente`), latest consent record, and full history.
    */
   static async obterConsentimento(pacienteId: string): Promise<{
     vigente: boolean;
@@ -806,7 +832,12 @@ export class PacienteService {
   }
 
   /**
-   * Registra formalmente um novo termo de consentimento parental ou revogação (LGPD Art. 14 §1º).
+   * Formally records a new parental consent term or revocation for a patient (LGPD Art. 14 §1).
+   *
+   * @param pacienteId - UUID of the target patient.
+   * @param dto - Consent payload containing guardian ID, version, purposes, and grant/revocation state.
+   * @param contexto - Request metadata including acting therapist ID, IP address, and User-Agent.
+   * @returns Persisted parental consent record.
    */
   static async registrarConsentimento(
     pacienteId: string,

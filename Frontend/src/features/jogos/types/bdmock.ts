@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * GAMES DOMAIN IN-MEMORY FIXTURES AND MOCKS
- * Therapeutic games with clinical manifests and strictly typed metrics (RN02).
+ * Therapeutic games with clinical manifests and strictly typed metrics.
  * ============================================================================
  */
 
@@ -525,6 +525,9 @@ export const JOGOS_MOCK: Jogo[] = [...FIXTURES_JOGOS];
 
 let jogosMockState: Jogo[] = JSON.parse(JSON.stringify(FIXTURES_JOGOS));
 
+/**
+ * Resets the in-memory mock therapeutic games catalog back to the baseline fixtures.
+ */
 export function resetarJogosMock(): void {
   jogosMockState = JSON.parse(JSON.stringify(FIXTURES_JOGOS));
 }

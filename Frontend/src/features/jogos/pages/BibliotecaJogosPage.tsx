@@ -16,6 +16,12 @@ interface SessaoModoLivreAtiva {
   sessaoId?: string;
 }
 
+/**
+ * Therapeutic games library page enabling therapists to browse games, filter by clinical objective,
+ * launch free-play pairing sessions, or open the pre-session clinical modal.
+ *
+ * @returns Rendered games catalog page.
+ */
 export function BibliotecaJogosPage() {
   const [jogos, setJogos] = useState<Jogo[]>([]);
   const [loading, setLoading] = useState(true);

@@ -2,19 +2,17 @@ import helmet from 'helmet';
 import cors, { CorsOptions } from 'cors';
 import type { Request, Response, NextFunction } from 'express';
 
-/**
- * ==============================================================================
- * InTEA: Headers de Segurança HTTP e Proteção CSRF / CORS Estrito (RNF03)
- * ==============================================================================
- * Camada de proteção de rede e cabeçalhos defensivos:
- * 1. Bloqueio total de Clickjacking em prontuários via X-Frame-Options: DENY e CSP frame-ancestors: 'none'.
- * 2. HSTS (Strict-Transport-Security) forçando conexões seguras HTTPS por 1 ano.
- * 3. Content Security Policy (CSP) restritiva com exceções controladas para Swagger UI.
- * 4. Validação estrita de Origem no CORS (apenas origens explicitamente confiáveis).
- * 5. Prevenção de MIME-Sniffing (X-Content-Type-Options: nosniff).
- * 6. Política de Referrer restrita (strict-origin-when-cross-origin).
- * ==============================================================================
- */
+// ==============================================================================
+// InTEA: Headers de Segurança HTTP e Proteção CSRF / CORS Estrito
+// ==============================================================================
+// Camada de proteção de rede e cabeçalhos defensivos:
+// 1. Bloqueio total de Clickjacking em prontuários via X-Frame-Options: DENY e CSP frame-ancestors: 'none'.
+// 2. HSTS (Strict-Transport-Security) forçando conexões seguras HTTPS por 1 ano.
+// 3. Content Security Policy (CSP) restritiva com exceções controladas para Swagger UI.
+// 4. Validação estrita de Origem no CORS (apenas origens explicitamente confiáveis).
+// 5. Prevenção de MIME-Sniffing (X-Content-Type-Options: nosniff).
+// 6. Política de Referrer restrita (strict-origin-when-cross-origin).
+// ==============================================================================
 
 /**
  * Default trusted origins for the InTEA ecosystem across development and staging environments.
@@ -71,7 +69,7 @@ export function obterOrigensAutorizadas(): string[] {
 
 /**
  * Verifies whether a requesting HTTP origin is authorized under strict CORS policies.
- * Origin Verification (RNF03): Allows same-origin/internal requests while rejecting untrusted domains.
+ * Origin Verification: Allows same-origin/internal requests while rejecting untrusted domains.
  *
  * @param origin - Request Origin header value sent by browser
  * @param origensPermitidas - Optional list of authorized origins for testing overrides
@@ -94,7 +92,7 @@ export function validarOrigemCORS(
 
 /**
  * Helmet security configuration and middleware instance for InTEA HTTP services.
- * HTTP Hardening (RNF03): Enforces strict CSP, HSTS, frameguard, and MIME sniffing protection.
+ * HTTP Hardening: Enforces strict CSP, HSTS, frameguard, and MIME sniffing protection.
  */
 export const securityHeadersMiddleware = helmet({
   // Bloqueia categoricamente clickjacking e injeção em iframes de terceiros (Critério de Aceite 3)

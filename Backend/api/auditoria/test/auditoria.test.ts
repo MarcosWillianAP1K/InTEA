@@ -3,7 +3,7 @@
 // ==============================================================================
 // Cobertura:
 // 1. AuditoriaModel: inserção de evento imutável, validação de campos e consulta
-// 2. AuditoriaService: validação de UUID, tratamento silencioso e regras de acesso RN04
+// 2. AuditoriaService: validação de UUID, tratamento silencioso e regras de acesso institucional
 // 3. AuditoriaController: Envelope Pattern Categorizado, sanitização estrita, GET e POST
 // 4. auditoriaRoutes: integridade do roteador Express
 // ==============================================================================

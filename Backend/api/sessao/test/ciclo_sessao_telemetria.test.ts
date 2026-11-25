@@ -3,9 +3,9 @@
 // ==============================================================================
 // Cobertura Integral dos Critérios de Aceite:
 // 1. Ciclo Clínico Completo (iniciar -> parear -> telemetria -> finalizar -> IA -> auditoria)
-// 2. Ciclo de Modo Livre (RN01: sem paciente, telemetria suprimida, sem relatório IA)
+// 2. Ciclo de Modo Livre (sem paciente, telemetria suprimida, sem relatório IA)
 // 3. Máquina de Estados e Guardas (409 telemetria inativa, 400 finalização inválida)
-// 4. Isolamento Institucional por Vínculo (RN04: 403 Forbidden em telemetria e auditoria)
+// 4. Isolamento Institucional por Vínculo (403 Forbidden em telemetria e auditoria)
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -251,14 +251,14 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
   });
 
   // ----------------------------------------------------------------------------
-  // CENÁRIO 2: CICLO DE MODO LIVRE (RN01)
+  // CENÁRIO 2: CICLO DE MODO LIVRE
   // ----------------------------------------------------------------------------
   describe('Cenário 2: Ciclo de Modo Livre (RN01 — Sem Persistência Clínica / Sem IA)', () => {
     it('deve aceitar telemetria em memória mas NÃO persistir no prontuário e NÃO gerar relatório de IA', async () => {
       let estadoSessao: Sessao = {
         id: sessaoId,
         terapeuta_id: terapeutaId,
-        paciente_id: null, // RN01: Modo livre não tem paciente
+        paciente_id: null, // Modo livre não tem paciente
         jogo_id: jogoId,
         modo_sessao: MODO_SESSAO.MODO_LIVRE,
         status_sessao: STATUS_SESSAO.EM_ANDAMENTO,
@@ -288,7 +288,7 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
       });
       await TelemetriaController.registrarLote(reqTel, resTel);
 
-      // Sucesso HTTP 200, mas persistido = false conforme RN01
+      // Sucesso HTTP 200, mas persistido = false em Modo Livre
       expect(statusTel()).toBe(200);
       expect((jsonTel() as any).data.meta.persistido).toBe(false);
       expect(spyRegistrarLote).not.toHaveBeenCalled();
@@ -397,7 +397,7 @@ describe('Task 1.4: Suíte Integrada de Ciclo de Sessão e Telemetria', () => {
   });
 
   // ----------------------------------------------------------------------------
-  // CENÁRIO 4: ISOLAMENTO INSTITUCIONAL (RN04)
+  // CENÁRIO 4: ISOLAMENTO INSTITUCIONAL
   // ----------------------------------------------------------------------------
   describe('Cenário 4: Conformidade com Vínculo Institucional (RN04)', () => {
     it('deve retornar 403 Forbidden ao consultar telemetria sem vínculo', async () => {

@@ -3,15 +3,15 @@
 // ==============================================================================
 //
 // Cards:
-//   - Gerador de Session Token Seguro e Amigável (RF10, RNF03)
-//   - Endpoint de Encerramento e Sumarização da Sessão (RF13, RF17, RN01, RN05)
+//   - Gerador de Session Token Seguro e Amigável
+//   - Endpoint de Encerramento e Sumarização da Sessão
 //
 // Critérios de aceite atendidos:
 //   [x] Entropia criptográfica via crypto.randomBytes (sem Math.random)
 //   [x] Formato XXXX-XXXX (alfanumérico maiúsculo, 8 chars + separador)
 //   [x] validarToken() verifica formato correto e prazo de validade (expira_em)
 //   [x] gerarRelatorioIA() em conformidade estrita com Contrato 4 (relatorio.json)
-//   [x] RN01: Modo livre não aciona IA nem gera prontuário
+//   [x] Modo livre não aciona IA nem gera prontuário
 // ==============================================================================
 
 import { randomBytes } from 'crypto';
@@ -68,7 +68,7 @@ export class SessaoTokenService {
    *
    * Business Rules and Guards:
    * 1. Only formally finished sessions (status_sessao = 'finalizada') can be processed.
-   * 2. Free play mode (RN01) and sessions without linked patient return null.
+   * 2. Free play mode and sessions without linked patient return null.
    *
    * Responsibility Separation:
    * - Backend: computes deterministic real duration (data_hora_fim - data_hora_inicio in seconds).
@@ -84,7 +84,7 @@ export class SessaoTokenService {
       return null;
     }
 
-    // Guarda 2: RN01 - Modo livre e sessões sem paciente não acionam IA
+    // Guarda 2: Modo livre e sessões sem paciente não acionam IA
     if (sessao.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessao.paciente_id) {
       return null;
     }
@@ -115,7 +115,7 @@ export class SessaoTokenService {
   }
 
   /**
-   * Processes session for dispatch to Contextual AI Engine. Returns null if session is not finished, in free play (RN01), or lacks patient.
+   * Processes session for dispatch to Contextual AI Engine. Returns null if session is not finished, in free play, or lacks patient.
    */
   static async processarSessao(sessao: Sessao): Promise<RelatorioIAContrato | null> {
     return this.gerarRelatorioIA(sessao);

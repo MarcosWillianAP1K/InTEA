@@ -1,6 +1,5 @@
 // ==============================================================================
 // InTEA: Service da Trilha de Auditoria de Acessos ao Prontuário Médico
-// Conformidade: RF08 (Auditoria de Vínculos e Acessos), RNF06 (Segurança / LGPD)
 // ==============================================================================
 
 import crypto from 'node:crypto';
@@ -68,6 +67,11 @@ export interface ResultadoPaginadoAuditoriaProntuario {
 export class AuditoriaProntuarioService {
   private static memoriaAuditoria: AuditoriaAcessoProntuario[] = [];
 
+  /**
+   * Checks whether a real or mocked Supabase client is available for audit queries.
+   *
+   * @returns `true` if Supabase can be queried, `false` to fall back to in-memory storage.
+   */
   private static isSupabaseAvailable(): boolean {
     if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
       const fromObj = supabase?.from as unknown as { _isMockFunction?: boolean; mock?: unknown };
@@ -79,7 +83,10 @@ export class AuditoriaProntuarioService {
   }
 
   /**
-   * Registra um novo acesso ou modificação na trilha imutável de prontuário.
+   * Records a new access or modification entry in the immutable patient health record audit trail.
+   *
+   * @param dto - Payload describing the accessed patient, acting therapist, operation type, and HTTP metadata.
+   * @returns Created audit record, or `null` when the patient UUID is invalid.
    */
   static async registrarAcesso(dto: RegistrarAcessoProntuarioDTO): Promise<AuditoriaAcessoProntuario | null> {
     if (!dto.paciente_id || !validarUUID(dto.paciente_id)) {
@@ -149,7 +156,9 @@ export class AuditoriaProntuarioService {
   }
 
   /**
-   * Registra o evento de forma assíncrona e silenciosa para não degradar a latência da requisição HTTP do usuário.
+   * Records the access event asynchronously and silently so HTTP request latency is not degraded.
+   *
+   * @param dto - Payload describing the patient record access event.
    */
   static async registrarSilencioso(dto: RegistrarAcessoProntuarioDTO): Promise<void> {
     try {
@@ -160,7 +169,10 @@ export class AuditoriaProntuarioService {
   }
 
   /**
-   * Consulta a trilha de auditoria de prontuário com filtros por período, terapeuta e paginação.
+   * Queries the patient health record audit trail with date range, therapist, operation, and pagination filters.
+   *
+   * @param filtros - Optional filter and pagination criteria.
+   * @returns Paginated list of patient health record access events.
    */
   static async consultarAcessos(filtros: FiltrosAuditoriaProntuario = {}): Promise<ResultadoPaginadoAuditoriaProntuario> {
     const page = Math.max(1, Number(filtros.page) || 1);
@@ -270,7 +282,7 @@ export class AuditoriaProntuarioService {
   }
 
   /**
-   * Limpa a memória de auditoria (útil para suítes de testes isoladas).
+   * Clears the in-memory fallback audit log store (used for isolated test suites).
    */
   static limparMemoria(): void {
     this.memoriaAuditoria = [];

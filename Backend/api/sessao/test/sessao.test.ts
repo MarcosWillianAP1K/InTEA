@@ -189,7 +189,7 @@ describe('SessaoController.atualizarStatus', () => {
 });
 
 // =============================================================================
-// iniciar — validações de entrada e regras RN01
+// iniciar — validações de entrada e regras
 // =============================================================================
 describe('SessaoController.iniciar', () => {
   it('deve rejeitar sem jogo_id', async () => {
@@ -828,7 +828,7 @@ describe('SessaoController.parear', () => {
 
 // =============================================================================
 // SessaoTokenService — Card: Gerador de Session Token Seguro e Amigável
-// Cobre todos os critérios de aceite (RF10, RNF03)
+// Cobre todos os critérios de aceite
 // =============================================================================
 describe('SessaoTokenService — Geração e Validação de Token', () => {
   it('deve gerar token no formato XXXX-XXXX (alfanumérico maiúsculo)', () => {

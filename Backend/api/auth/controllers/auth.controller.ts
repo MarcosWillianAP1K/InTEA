@@ -54,7 +54,7 @@ export class AuthController {
         expires_in: resultado.session.expires_in,
       };
 
-      // Rastreia a nova sessão ativa do terapeuta (RF02)
+      // Rastreia a nova sessão ativa do terapeuta
       try {
         const xForwardedFor = req.headers?.['x-forwarded-for'];
         const ip =
@@ -192,7 +192,7 @@ export class AuthController {
    */
 
   /**
-   * Handles POST /api/auth/redefinir-senha to validate ephemeral recovery token and apply new password (RF01, RNF03).
+   * Handles POST /api/auth/redefinir-senha to validate ephemeral recovery token and apply new password.
    *
    * @param req - Express request containing token (in body or Authorization header) and novaSenha.
    * @param res - Express response acknowledging password reset with Envelope Pattern { data: null, message }.
@@ -253,6 +253,12 @@ export class AuthController {
     }
   }
 
+  /**
+   * Handles password updates for the currently authenticated therapist and emits an audit event.
+   *
+   * @param req - Authenticated Express request containing `novaSenha` in the body.
+   * @param res - Express response confirming the password change.
+   */
   static async alterarSenha(req: Request, res: Response): Promise<void> {
     try {
       const usuarioLogado = (req as AuthenticatedRequest).user;
@@ -364,7 +370,7 @@ export class AuthController {
   }
 
   /**
-   * Handles GET /api/auth/sessoes to list all active sessions for authenticated therapist (RF02).
+   * Handles GET /api/auth/sessoes to list all active sessions for authenticated therapist.
    */
   static async listarSessoes(req: Request, res: Response): Promise<void> {
     try {
@@ -390,7 +396,7 @@ export class AuthController {
   }
 
   /**
-   * Handles POST /api/auth/logout-all to remotely disconnect all other active sessions (RF02).
+   * Handles POST /api/auth/logout-all to remotely disconnect all other active sessions.
    */
   static async logoutAll(req: Request, res: Response): Promise<void> {
     try {

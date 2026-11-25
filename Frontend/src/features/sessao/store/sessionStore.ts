@@ -6,13 +6,10 @@ import type {
 } from "../types";
 import type { DispositivoConectadoPayload } from "@/core/web.socket";
 
-/**
- * ============================================================================
- * STORE REATIVA DE SESSÃO E PAREAMENTO (Zustand) — InTEA
- * Requisitos: RF10 (Pareamento Remoto), RF12 (Ciclo de Sessão)
- * Regra: TypeScript estrito sem o uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// STORE REATIVA DE SESSÃO E PAREAMENTO (Zustand) — InTEA
+// Regra: TypeScript estrito sem o uso de `any`
+// ============================================================================
 
 const initialState: SessionState = {
   status: "ocioso",
@@ -72,7 +69,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ isModalAberto: false });
   },
 
-  /** Associates patient with active session configuration (RF21, RN04). */
+  /** Associates patient with active session configuration. */
   selecionarPaciente: (paciente: { id: string; nome: string }) => {
     const currentConfig = get().config;
     if (!currentConfig) return;
@@ -99,11 +96,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Transitions to 'aguardando_pareamento' and saves backend session_token (RF10, RNF03). */
+  /** Transitions to 'aguardando_pareamento' and saves backend session_token. */
   iniciarPareamento: ({
     sessionToken,
     expiraEm,
-    tempoValidadeSegundos = 900, // 15 minutos padrão (RNF03)
+    tempoValidadeSegundos = 900, // 15 minutos padrão
   }: {
     sessionToken: string;
     expiraEm?: string;
@@ -125,7 +122,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Confirms remote device handshake and transitions status to 'pareado' (RF10). */
+  /** Confirms remote device handshake and transitions status to 'pareado'. */
   confirmarConexaoDispositivo: (dispositivo: DispositivoConectadoPayload) => {
     const currentPareamento = get().pareamento;
     if (!currentPareamento) return;
@@ -140,7 +137,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Handles remote device connection drop without interrupting active session (RNF04). */
+  /** Handles remote device connection drop without interrupting active session. */
   notificarDesconexaoDispositivo: () => {
     const currentPareamento = get().pareamento;
     const currentStatus = get().status;
@@ -171,7 +168,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }
   },
 
-  /** Formally starts clinical intervention, transitioning to 'em_andamento' and starting timer. (RF12, RF13) */
+  /** Formally starts clinical intervention, transitioning to 'em_andamento' and starting timer. */
   iniciarIntervencao: () => {
     const { status, config, pareamento } = get();
 
@@ -189,7 +186,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Pauses timer and signals remote game that intervention is suspended (RF21). */
+  /** Pauses timer and signals remote game that intervention is suspended. */
   pausarSessao: () => {
     const agora = Date.now();
     set({
@@ -198,7 +195,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Resumes timer and restarts intervention flow after pause without accumulating paused time (RF21). */
+  /** Resumes timer and restarts intervention flow after pause without accumulating paused time. */
   retomarSessao: () => {
     const agora = Date.now();
     const ultima = get().timestampUltimaPausa;
@@ -210,7 +207,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Updates DDA level (1-5) sent to remote game for difficulty adaptation (RF17, RN03). */
+  /** Updates DDA level (1-5) sent to remote game for difficulty adaptation. */
   ajustarDda: (novoNivel: number) => {
     set({ nivelDdaAtual: Math.min(5, Math.max(1, novoNivel)) });
   },
@@ -220,12 +217,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ sessaoId: id });
   },
 
-  /** Saves therapist preliminary clinical notes during session (RF17). */
+  /** Saves therapist preliminary clinical notes during session. */
   salvarAnotacoes: (anotacoes: string) => {
     set({ anotacoesClinicas: anotacoes });
   },
 
-  /** Formally concludes session in store, records end timestamp and consolidates notes (RF13, RN05). */
+  /** Formally concludes session in store, records end timestamp and consolidates notes. */
   finalizarSessao: (anotacoes?: string) => {
     set({
       status: "finalizada",
@@ -235,7 +232,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Rehydrates session state from sessionStorage after page refresh (RNF04). */
+  /** Rehydrates session state from sessionStorage after page refresh. */
   restaurarSessao: (dados: Partial<SessionState>) => {
     set((state) => ({
       ...state,
@@ -243,7 +240,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }));
   },
 
-  /** Cancels session prior to formal completion, logging reason for audit trail (RF12, RN05) */
+  /** Cancels session prior to formal completion, logging reason for audit trail */
   cancelarSessao: (motivo?: string) => {
     set({
       status: "cancelada",
@@ -252,7 +249,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
   },
 
-  /** Transitions session state to 'expirada' when pairing token exceeds 15-minute TTL (RNF03). */
+  /** Transitions session state to 'expirada' when pairing token exceeds 15-minute TTL. */
   expirarToken: () => {
     set({
       status: "expirada",

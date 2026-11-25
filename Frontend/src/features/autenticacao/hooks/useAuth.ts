@@ -1,10 +1,8 @@
-/**
- * ============================================================================
- * HOOK REATIVO DE AUTENTICAÇÃO (useAuth.ts)
- * Facade ergonômica para consumo do estado e ações de autenticação nos componentes.
- * Integrado ao useAuthStore e ao authService.
- * ============================================================================
- */
+// ============================================================================
+// HOOK REATIVO DE AUTENTICAÇÃO (useAuth.ts)
+// Facade ergonômica para consumo do estado e ações de autenticação nos componentes.
+// Integrado ao useAuthStore e ao authService.
+// ============================================================================
 
 import { useCallback } from "react";
 import { useAuthStore } from "../store/authStore";
@@ -40,7 +38,11 @@ export function useAuth(): UseAuthReturn {
   const storeRefresh = useAuthStore((s) => s.refresh);
 
   /**
-   * Realiza login autenticando credenciais do terapeuta contra a API ou fallback mock.
+   * Authenticates therapist credentials against the REST API or mock fallback.
+   *
+   * @param usernameOrEmail - Therapist email address or login identifier.
+   * @param password - Plaintext password.
+   * @returns Login response containing issued authentication tokens and optional user profile.
    */
   const login = useCallback(
     async (usernameOrEmail: string, password: string): Promise<LoginResponse> => {

@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Serviço de Terapeutas (Camada de Domínio / Fat Service)
 // ==============================================================================
-// Conformidade: RF21 (Autoria), RN04 (Vínculo), RN05 (Soft Delete)
 // ==============================================================================
 
 import {
@@ -45,7 +44,7 @@ export class TerapeutaService {
   }
 
   /**
-   * Lists registered therapists, normalizing areas_foco and enforcing clinic scope (RN04).
+   * Lists registered therapists, normalizing areas_foco and enforcing clinic scope.
    *
    * @param incluirInativos - If true, includes soft-deleted therapists.
    * @param usuarioLogado - Optional authenticated user to scope list by clinic when not SuperAdmin.
@@ -78,7 +77,7 @@ export class TerapeutaService {
   }
 
   /**
-   * Retrieves therapist details by UUID and validates institutional isolation (RN04).
+   * Retrieves therapist details by UUID and validates institutional isolation.
    *
    * @param id - Therapist UUID.
    * @param usuarioLogado - Optional authenticated user to check clinic matching if not SuperAdmin/self.
@@ -170,7 +169,7 @@ export class TerapeutaService {
   }
 
   /**
-   * Lists patients linked to a therapist (terapeuta_paciente), enforcing clinic boundaries (RN04).
+   * Lists patients linked to a therapist (terapeuta_paciente), enforcing clinic boundaries.
    *
    * @param terapeutaId - Target therapist UUID.
    * @param usuarioLogado - Authenticated user performing the request.
@@ -353,7 +352,7 @@ export class TerapeutaService {
   }
 
   /**
-   * Soft deletes a therapist account (RN05: status_ativo = false).
+   * Soft deletes a therapist account (status_ativo = false).
    *
    * @param id - Therapist UUID.
    * @returns Object with deactivated record and whether it was already inactive.

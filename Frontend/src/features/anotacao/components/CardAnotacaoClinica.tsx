@@ -54,15 +54,12 @@ function formatarDataHora(isoString?: string): string {
 /**
  * ============================================================================
  * COMPONENTE: CardAnotacaoClinica
- * Conformidade: RF16 (Prontuário e Anotações), RF21 (Autoria Indelével),
- *              RN04 (Vínculo Clínico), RN05 (Inalterabilidade / Soft Delete),
- *              RNF07 (Acessibilidade e Alvos de Toque >= 44x44px)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
 /**
  * Renders an individual clinical note card with therapist author badge, timestamp, and action menu.
- * Author Identification (RF21, RN05): Displays therapist credentials (CREFITO/Council) and soft-delete toggle.
+ * Author Identification: Displays therapist credentials (CREFITO/Council) and soft-delete toggle.
  *
  * @param props - Clinical note card properties including note data, permission flags, and update callbacks
  * @returns Interactive clinical note card component
@@ -81,7 +78,7 @@ export function CardAnotacaoClinica({
   const [confirmandoInativar, setConfirmandoInativar] = useState(false);
   const [salvandoLocal, setSalvandoLocal] = useState(false);
 
-  // Verificação estrita de autor (RF21) ou override por prop
+  // Verificação estrita de autor ou override por prop
   const ehAutor = Boolean(
     usuarioLogadoId && anotacao.terapeuta_id === usuarioLogadoId,
   );
@@ -90,7 +87,7 @@ export function CardAnotacaoClinica({
   const isInativa = anotacao.soft_delete === true || anotacao.status_ativo === false;
   const ocupado = isSubmitting || salvandoLocal;
 
-  // Extração de autoria com prioridade absoluta aos metadados completos (RF21)
+  // Extração de autoria com prioridade absoluta aos metadados completos
   const autorNome =
     anotacao.autor?.nome || anotacao.terapeuta_nome || "Terapeuta Responsável";
   const conselho =

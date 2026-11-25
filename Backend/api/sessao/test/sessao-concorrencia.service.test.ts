@@ -1,6 +1,5 @@
 // ==============================================================================
 // InTEA: Testes Unitários de Concorrência e Permissões Multi-terapeuta
-// Sprint 13 — RF13, RF18, RF21, RN01, RN04
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';

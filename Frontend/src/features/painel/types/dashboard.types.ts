@@ -2,7 +2,6 @@
  * ============================================================================
  * MODELOS CANÔNICOS DO DASHBOARD CLÍNICO (dashboard.types.ts)
  * Indicadores analíticos agregados, sessões recentes, alertas clínicos e atividades.
- * Conformidade: RF19 (Painel do Terapeuta), RF20 (Relatórios), RN04 (Clínica)
  * ============================================================================
  */
 

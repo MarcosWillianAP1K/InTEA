@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Rotas da Trilha de Auditoria Clínica de Sessão e Vínculos (Sprint 9 / Sprint 13)
 // ==============================================================================
-// Conformidade: RF13, RNF06 (LGPD / Segurança), RN04, RN05, RF21, RF07, RF08
 // Padrão Arquitetural: Envelope Pattern Categorizado Estrito ({ data: { ... }, message })
 // ==============================================================================
 
@@ -18,7 +17,7 @@ export const auditoriaRoutes = Router();
  *   get:
  *     tags:
  *       - Auditoria
- *     summary: Obtém estatísticas consolidadas de conformidade para auditoria (RF07, RF08)
+ * summary: Obtém estatísticas consolidadas de conformidade para auditoria
  *     description: Retorna contadores agregados para os cartões de conformidade e governança clínica.
  *     security:
  *       - bearerAuth: []
@@ -36,7 +35,7 @@ export const auditoriaRoutes = Router();
  *   get:
  *     tags:
  *       - Auditoria
- *     summary: Consulta registros de auditoria de acessos ao prontuário médico (RF08, RNF06)
+ * summary: Consulta registros de auditoria de acessos ao prontuário médico
  *     description: Retorna acessos a dados de pacientes filtráveis por período e por terapeuta com status 200.
  *     security:
  *       - bearerAuth: []
@@ -99,11 +98,11 @@ auditoriaRoutes.get(
  *   get:
  *     tags:
  *       - Auditoria
- *     summary: Consulta a linha do tempo cronológica da sessão clínica (RF13, RNF06, RN04, RN05)
+ * summary: Consulta a linha do tempo cronológica da sessão clínica
  *     description: >
  *       Retorna a lista de registros imutáveis de auditoria gerados durante o ciclo de vida
  *       da intervenção clínica (pareamento, finalização, cancelamento, intervenções).
- *       Acesso estritamente restrito aos terapeutas vinculados à sessão clínica (RN04) ou SuperAdmins.
+ * Acesso estritamente restrito aos terapeutas vinculados à sessão clínica ou SuperAdmins.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -123,7 +122,7 @@ auditoriaRoutes.get(
  *       401:
  *         description: Token de autenticação ausente ou inválido
  *       403:
- *         description: Acesso negado - terapeuta sem vínculo institucional com a sessão clínica (RN04)
+ * description: Acesso negado - terapeuta sem vínculo institucional com a sessão clínica
  *       404:
  *         description: Sessão clínica não encontrada
  *       500:
@@ -142,7 +141,7 @@ auditoriaRoutes.get(
  *   get:
  *     tags:
  *       - Auditoria
- *     summary: Lista eventos de auditoria com suporte a busca, filtros e paginação (RF07, RF08, RNF06)
+ * summary: Lista eventos de auditoria com suporte a busca, filtros e paginação
  *     description: Retorna lista paginada de eventos imutáveis para fiscalização institucional.
  *     security:
  *       - bearerAuth: []
@@ -167,7 +166,7 @@ auditoriaRoutes.get(
  *         schema:
  *           type: string
  *           format: uuid
- *         description: UUID do paciente para filtrar eventos clínicos e de vínculo da equipe (RF08)
+ * description: UUID do paciente para filtrar eventos clínicos e de vínculo da equipe
  *       - in: query
  *         name: tipoAcao
  *         schema:
@@ -203,10 +202,10 @@ auditoriaRoutes.get(
  *   post:
  *     tags:
  *       - Auditoria
- *     summary: Registra evento imutável na trilha de auditoria clínica (RF13, RNF06, RN04, RN05, RF21)
+ * summary: Registra evento imutável na trilha de auditoria clínica
  *     description: >
  *       Grava formalmente uma ação clínica ou intervenção na tabela de auditoria forense da sessão.
- *       Garante autoria pelo JWT (RF21) e vínculo com a sessão clínica (RN04).
+ * Garante autoria pelo JWT e vínculo com a sessão clínica.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -241,7 +240,7 @@ auditoriaRoutes.get(
  *       401:
  *         description: Não autenticado
  *       403:
- *         description: Sem vínculo clínico (RN04) ou tentativa de spoofing (RF21)
+ * description: Sem vínculo clínico ou tentativa de spoofing
  *       500:
  *         description: Erro interno de persistência
  */

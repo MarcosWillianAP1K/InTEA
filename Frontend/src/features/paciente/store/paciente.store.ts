@@ -39,6 +39,9 @@ interface PatientsState {
   getCategories: () => string[];
 }
 
+/**
+ * Zustand store managing the linked patients dictionary, active selection, and client-side search/filter state.
+ */
 export const usePatientsStore = create<PatientsState>((set, get) => ({
   patients: isMockOrTest ? PATIENTS_DICTIONARY : {},
   selectedPatientId: isMockOrTest ? "pac-001" : null,

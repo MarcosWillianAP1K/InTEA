@@ -5,7 +5,7 @@ import { hasSuperAdminClaim } from '../auth/privilegios.js';
 import { validarUUID } from '../utils/validators.js';
 
 /**
- * Authorization middleware for controlling access and visibility to clinical patient records (RN04).
+ * Authorization middleware for controlling access and visibility to clinical patient records.
  *
  * Enforces the following rules:
  * 1. Requesting user must be authenticated via Supabase JWT (`authMiddleware`).
@@ -29,7 +29,7 @@ export async function verificarVisibilidadePaciente(
   next: NextFunction
 ): Promise<void> {
   try {
-    // 1. Partidas em modo livre (RN01) não possuem paciente vinculado
+    // 1. Partidas em modo livre não possuem paciente vinculado
     // Se pacienteAlvoId estiver injetado (ex: rotas de anotação), o bypass de modo_livre é ignorado
     if (!req.pacienteAlvoId && req.body?.modo_sessao === 'modo_livre' && !req.body?.paciente_id) {
       return next();

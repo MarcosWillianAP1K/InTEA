@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Model da Trilha Unificada de Auditoria do Ecossistema (Item 3)
 // ==============================================================================
-// Conformidade: RF07, RF08, RF13, RNF05, RNF06 (LGPD / Segurança), RN04, RN05
 // Tabela única append-only: public.auditoria_evento
 // ==============================================================================
 
@@ -158,6 +157,12 @@ interface ItemAuditoriaNormalizado {
   clinicaId?: string | null;
 }
 
+/**
+ * Infers the audited domain entity name from an action identifier string.
+ *
+ * @param acao - Audit action name (e.g., `vinculo_criado`, `acesso_prontuario`).
+ * @returns Canonical entity category string.
+ */
 function inferirEntidadePorAcao(acao: string): string {
   if (acao === 'acesso_prontuario' || acao.startsWith('paciente_') || acao === 'consentimento_lgpd_registrado') {
     return 'paciente';
@@ -269,7 +274,7 @@ export class AuditoriaModel {
   }
 
   /**
-   * Records a new immutable team link audit event in `public.auditoria_evento` (RF08, RN05).
+   * Records a new immutable team link audit event in `public.auditoria_evento`.
    */
   static async registrarVinculo(dto: CriarAuditoriaVinculoDTO): Promise<AuditoriaVinculoRegistro | null> {
     try {
@@ -471,6 +476,13 @@ export class AuditoriaModel {
     };
   }
 
+  /**
+   * Applies optional audit filter criteria onto a dynamic Supabase PostgREST query builder.
+   *
+   * @param queryInicial - Base Supabase query builder instance.
+   * @param filtros - Audit filtering parameters (entity, therapist, patient, clinic, action, origin, date range).
+   * @returns Query builder with applicable filter constraints applied.
+   */
   private static aplicarFiltrosNaQuery(queryInicial: unknown, filtros: FiltrosAuditoriaDTO): unknown {
     let query = queryInicial;
 

@@ -27,11 +27,14 @@ import {
 } from "@/shared/components/ui/select";
 import { toast } from "sonner";
 
+// ============================================================================
+// PAGE: ALL PATIENTS (InTEA)
+// Permission: Unrestricted access for administrators (GET /api/paciente?all=true)
+// ============================================================================
 /**
- * ============================================================================
- * PAGE: ALL PATIENTS (InTEA)
- * Permission: Unrestricted access for administrators (GET /api/paciente?all=true)
- * ============================================================================
+ * SuperAdmin patient directory page listing all active and inactive patients across clinics.
+ *
+ * @returns Rendered full patient directory page.
  */
 export function TodosPacientesPage() {
   const navigate = useNavigate();

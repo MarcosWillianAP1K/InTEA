@@ -68,7 +68,7 @@ export const pacienteRoutes = Router();
  *         schema:
  *           type: boolean
  *           default: false
- *         description: Se true, solicita listagem de todos os pacientes cadastrados (requer privilégios de administrador - RN04)
+ * description: Se true, solicita listagem de todos os pacientes cadastrados (requer privilégios de administrador)
  *     responses:
  *       200:
  *         description: Lista de pacientes e metadados de paginação retornados com sucesso
@@ -98,7 +98,7 @@ export const pacienteRoutes = Router();
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso proibido (tentativa de listar todos os pacientes sem privilégios de administrador - RN04)
+ * description: Acesso proibido (tentativa de listar todos os pacientes sem privilégios de administrador)
  *         content:
  *           application/json:
  *             example:
@@ -174,7 +174,7 @@ pacienteRoutes.get('/', authMiddleware, validarIntervaloHistorico, PacienteContr
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado: terapeuta não possui vínculo com este paciente (RN04)."
+ * error: "Acesso negado: terapeuta não possui vínculo com este paciente."
  *       404:
  *         description: Paciente não encontrado
  *         content:
@@ -194,7 +194,7 @@ pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, audito
  * @swagger
  * /api/paciente/{id}/historico:
  *   get:
- *     summary: Recupera prontuário longitudinal com engajamento geral e séries por jogo (RF15, RF19, RN01, RN02, RN04, RN05)
+ * summary: Recupera prontuário longitudinal com engajamento geral e séries por jogo
  *     tags: [Paciente]
  *     security:
  *       - bearerAuth: []
@@ -265,25 +265,22 @@ pacienteRoutes.get('/:id', authMiddleware, verificarVisibilidadePaciente, audito
  *       401:
  *         description: Não autorizado (token ausente ou expirado)
  *       403:
- *         description: Proibido por ausência de vínculo clínico institucional (RN04)
+ * description: Proibido por ausência de vínculo clínico institucional
  *       404:
  *         description: Paciente ou jogo não encontrado
  *       422:
- *         description: Violação de tipagem estrita de métricas no manifesto (RN02)
+ * description: Violação de tipagem estrita de métricas no manifesto
  *       500:
  *         description: Erro interno no servidor
  */
-/**
- * Rota 1: Histórico Geral de Engajamento do Paciente (RF15).
- * Retorna dados limpos e simples de engajamento e catálogo de jogos para cards de perfil.
- */
+// Route 1: General Patient Engagement History - clean engagement metrics and game catalog for profile cards.
 pacienteRoutes.get('/:id/historico', authMiddleware, verificarVisibilidadePaciente, PacienteController.buscarHistoricoGeral);
 
 /**
  * @swagger
  * /api/paciente/{id}/historico/jogo/{jogoId}:
  *   get:
- *     summary: Recupera séries evolutivas de um jogo específico para o paciente (RF15, RN02, RN04, RN05)
+ * summary: Recupera séries evolutivas de um jogo específico para o paciente
  *     description: Retorna as métricas homologadas do jogo. Se informado sessaoId, limita o histórico até a data da sessão.
  *     tags: [Paciente]
  *     security:
@@ -337,11 +334,11 @@ pacienteRoutes.get('/:id/historico', authMiddleware, verificarVisibilidadePacien
  *       401:
  *         description: Não autorizado
  *       403:
- *         description: Vínculo clínico não autorizado (RN04)
+ * description: Vínculo clínico não autorizado
  *       404:
  *         description: Paciente, jogo ou sessão de referência não encontrado
  *       422:
- *         description: Violação de tipagem estrita de métricas no manifesto (RN02)
+ * description: Violação de tipagem estrita de métricas no manifesto
  *       500:
  *         description: Erro interno no servidor
  */
@@ -469,7 +466,7 @@ pacienteRoutes.post('/', authMiddleware, adminMiddleware, PacienteController.cri
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado: terapeuta não possui vínculo com este paciente (RN04)."
+ * error: "Acesso negado: terapeuta não possui vínculo com este paciente."
  *       404:
  *         description: Paciente não encontrado
  *         content:
@@ -708,11 +705,11 @@ pacienteRoutes.patch('/:id/reativar', authMiddleware, adminMiddleware, PacienteC
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado (sem vínculo ativo com o paciente - RN04)
+ * description: Acesso negado (sem vínculo ativo com o paciente)
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado: terapeuta não possui vínculo com este paciente (RN04)."
+ * error: "Acesso negado: terapeuta não possui vínculo com este paciente."
  *       404:
  *         description: Paciente não encontrado
  *         content:
@@ -773,7 +770,7 @@ pacienteRoutes.get('/:id/terapeutas', authMiddleware, verificarVisibilidadePacie
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado (sem vínculo ativo com o paciente ou clínica divergente - RN04)
+ * description: Acesso negado (sem vínculo ativo com o paciente ou clínica divergente)
  *         content:
  *           application/json:
  *             example:
@@ -845,7 +842,7 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado (sem vínculo ativo ou tentativa de remover membro sem ser o Terapeuta Responsável Líder ou SuperAdmin - RN04)
+ * description: Acesso negado (sem vínculo ativo ou tentativa de remover membro sem ser o Terapeuta Responsável Líder ou SuperAdmin)
  *         content:
  *           application/json:
  *             example:
@@ -872,14 +869,14 @@ pacienteRoutes.post('/:id/terapeutas', authMiddleware, verificarVisibilidadePaci
 pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, verificarVisibilidadePaciente, PacienteController.desvincularTerapeuta);
 
 // ------------------------------------------------------------------------------
-// 5. Exportação de Prontuário Longitudinal (RF20)
+// 5. Exportação de Prontuário Longitudinal
 // ------------------------------------------------------------------------------
 
 /**
  * @swagger
  * /api/paciente/{id}/prontuario/exportar:
  *   get:
- *     summary: Exporta o prontuário longitudinal do paciente em PDF formatado (RF20)
+ * summary: Exporta o prontuário longitudinal do paciente em PDF formatado
  *     tags: [Paciente]
  *     security:
  *       - bearerAuth: []
@@ -904,9 +901,9 @@ pacienteRoutes.delete('/:id/terapeutas/:terapeutaId', authMiddleware, verificarV
  *       401:
  *         description: Não autorizado
  *       403:
- *         description: Acesso proibido por regra institucional (RN04)
+ * description: Acesso proibido por regra institucional
  *       404:
- *         description: Paciente não encontrado ou inativo (RN05)
+ * description: Paciente não encontrado ou inativo
  *       500:
  *         description: Erro interno do servidor
  */

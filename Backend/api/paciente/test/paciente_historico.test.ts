@@ -1,14 +1,13 @@
 // ==============================================================================
 // InTEA: Suíte de Testes de Integração do Histórico Clínico (Sprint 11)
 // ==============================================================================
-// REQUISITOS ATENDIDOS:
-// - RF15: Prontuário Longitudinal (Separação: Engajamento Geral vs Séries por Jogo)
-// - RF19: Filtros Temporais e Paginação (dataInicio, dataFim, page, limit)
-// - RN01: Expurgo Estrito de Modo Livre (paciente_id = NULL)
-// - RN02: Fallback Proibido e Tipagem Estrita (Rejeição 422 Unprocessable Entity)
-// - RN04: Isolamento Institucional por Vínculo Ativo e Mesma Clínica (403 Forbidden)
-// - RN05: Inalterabilidade do Histórico Clínico e Soft Delete de Relatórios
-// - RNF02: Resiliência e Integridade de Dados
+// - Prontuário Longitudinal (Separação: Engajamento Geral vs Séries por Jogo)
+// - Filtros Temporais e Paginação (dataInicio, dataFim, page, limit)
+// - Expurgo Estrito de Modo Livre (paciente_id = NULL)
+// - Fallback Proibido e Tipagem Estrita (Rejeição 422 Unprocessable Entity)
+// - Isolamento Institucional por Vínculo Ativo e Mesma Clínica (403 Forbidden)
+// - Inalterabilidade do Histórico Clínico e Soft Delete de Relatórios
+// - Resiliência e Integridade de Dados
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -159,7 +158,7 @@ function mockSupabaseFluent(data: unknown) {
 }
 
 /**
- * Configura os mocks padrão do Supabase para que a verificação de visibilidade clínica (RN04)
+ * Configura os mocks padrão do Supabase para que a verificação de visibilidade clínica
  * responda de forma determinística em cada caso de teste.
  */
 function configurarVisibilidadeMock({
@@ -382,7 +381,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
           metricas_suportadas: [
             {
               id_metrica: 'metrica_sem_tipo',
-              tipo_metrica: '' as unknown as string, // Violação frontal da RN02
+              tipo_metrica: '' as unknown as string, // Violação frontal de tipagem estrita
             },
           ],
         },
@@ -445,7 +444,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
   });
 
   // ============================================================================
-  // 2. VALIDAÇÃO MATEMÁTICA DO CÔMPUTO DE ENGAJAMENTO GLOBAL (RF15)
+  // 2. VALIDAÇÃO MATEMÁTICA DO CÔMPUTO DE ENGAJAMENTO GLOBAL
   // ============================================================================
   describe('2. Validação Matemática do Engajamento Global e Estatísticas (RF15)', () => {
     it('deve calcular taxa de conclusão exata: 8 finalizadas de 10 iniciadas = 80%', async () => {
@@ -509,7 +508,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
   });
 
   // ============================================================================
-  // 3. SUPRESSÃO COMPROVADA DE MODO LIVRE (RN01)
+  // 3. SUPRESSÃO COMPROVADA DE MODO LIVRE
   // ============================================================================
   describe('3. Garantia Inviolável da RN01: Supressão Estrita de Modo Livre', () => {
     it('RN01: sessões com paciente_id = NULL ou modo_sessao = modo_livre jamais devem ser computadas no prontuário', async () => {
@@ -563,7 +562,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
   });
 
   // ============================================================================
-  // 4. INALTERABILIDADE E SOFT DELETE DE RELATÓRIOS CLÍNICOS (RN05)
+  // 4. INALTERABILIDADE E SOFT DELETE DE RELATÓRIOS CLÍNICOS
   // ============================================================================
   describe('4. Inalterabilidade do Histórico Clínico e Soft Delete (RN05)', () => {
     it('RN05: sessões cujo relatório clínico possui soft_delete = true devem ser excluídas das séries temporais', async () => {
@@ -615,7 +614,7 @@ describe('Suíte de Testes de Integração do Histórico Longitudinal (RF15, RF1
   });
 
   // ============================================================================
-  // 5. ISOLAMENTO INSTITUCIONAL E PERMISSÕES (RN04)
+  // 5. ISOLAMENTO INSTITUCIONAL E PERMISSÕES
   // ============================================================================
   describe('5. Isolamento Institucional e Permissões de Acesso (RN04)', () => {
     it('RN04: Super Administrador deve conseguir acessar histórico mesmo com clínicas divergentes', async () => {

@@ -179,7 +179,7 @@ describe("Card 3.1 & 3.4 — Testes da Página Mestre de Resultados da Sessão (
     expect(screen.getByText("Gabriel Lima")).toBeDefined();
     expect(screen.getByTestId("badge-sessao-finalizada")).toBeDefined();
 
-    // Terapeuta Autor (RF21)
+    // Terapeuta Autor
     const terapeutaInfo = screen.getByTestId("terapeuta-responsavel-header");
     expect(terapeutaInfo.textContent).toContain("Hermeson Alves");
     expect(terapeutaInfo.textContent).toContain("CRP 11/04589");

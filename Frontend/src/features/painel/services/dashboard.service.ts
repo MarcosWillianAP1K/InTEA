@@ -2,7 +2,6 @@
  * ============================================================================
  * REST SERVICE FOR DASHBOARD DOMAIN
  * Consumes metrics, recent sessions, and therapist alert endpoints.
- * Compliance: RF19 (Therapist Dashboard), RF20 (Clinical Reports)
  * ============================================================================
  */
 
@@ -69,6 +68,12 @@ function extrairArray<T>(res: unknown, chave: string): T[] {
   return [];
 }
 
+/**
+ * Maps raw backend session status strings into normalized dashboard summary statuses.
+ *
+ * @param status - Raw status string returned by the sessions API.
+ * @returns Normalized `StatusSessaoResumo` value.
+ */
 function mapearStatusSessaoResumo(status?: string): StatusSessaoResumo {
   const s = (status || "").toLowerCase();
   if (s === "finalizada" || s === "concluida") return "finalizada";
@@ -84,6 +89,12 @@ function mapearStatusSessaoResumo(status?: string): StatusSessaoResumo {
   return "agendada";
 }
 
+/**
+ * Computes effective session duration in seconds from paused DDA context, explicit duration, or timestamps.
+ *
+ * @param sessao - Raw session item returned by the API.
+ * @returns Session duration in whole seconds.
+ */
 function calcularDuracaoSegundos(sessao: RawSessaoApiItem): number {
   const ctx = (sessao.contexto_dda_json as Record<string, unknown>) || {};
   if (typeof ctx.duracao_pausada_segundos === "number" && ctx.duracao_pausada_segundos > 0) {

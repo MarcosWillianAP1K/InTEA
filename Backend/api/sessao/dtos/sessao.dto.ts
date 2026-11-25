@@ -79,7 +79,7 @@ export interface RespostaListagemSessao<T = unknown> {
 }
 
 // ==============================================================================
-// DTOs de Concorrência e Permissões Multi-terapeuta (Sprint 13 — RF13, RF18, RF21)
+// DTOs de Concorrência e Permissões Multi-terapeuta
 // ==============================================================================
 
 export interface EspecialistaResponsavelDTO {

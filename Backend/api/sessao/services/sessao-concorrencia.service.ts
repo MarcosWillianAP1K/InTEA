@@ -1,6 +1,5 @@
 // ==============================================================================
 // InTEA: Serviço de Controle de Concorrência de Sessões Ativas por Paciente
-// Sprint 13 — RF13, RF18, RF21, RN01, RN04
 // Responsável: João Marcos (@JM3L0)
 // ==============================================================================
 
@@ -36,7 +35,7 @@ interface RawSessaoData {
 
 export class SessaoConcorrenciaService {
   /**
-   * Status considerados ativos para bloqueio de concorrência clínica.
+   * Session statuses treated as active for clinical concurrency locking.
    */
   private static readonly STATUS_ATIVOS = [
     STATUS_SESSAO.AGUARDANDO_PAREAMENTO,
@@ -45,23 +44,23 @@ export class SessaoConcorrenciaService {
   ];
 
   /**
-   * Consulta se o paciente já possui uma sessão clínica ativa no momento (RF13, RF18, RN01, RN04).
+   * Checks whether the patient already has an active clinical session at the moment.
    *
-   * Regras:
-   * - RN01 (Modo Livre): sessões sem paciente_id (null/undefined) não geram trava de concorrência.
-   * - Sessões em status terminal ('finalizada', 'cancelada', 'expirada', 'interrompida_por_queda') não geram bloqueio.
-   * - Em 'aguardando_pareamento': se expira_em já ultrapassou o horário atual, é tratada como expirada e não gera bloqueio.
-   * - Caso exista sessão ativa: retorna conflito: true, statusHttp: 409 com dados da sessão e especialista responsável.
+   * Rules:
+   * - sessions without `paciente_id` (`null`/`undefined`) do not trigger concurrency locks.
+   * - Sessions in terminal statuses (`finalizada`, `cancelada`, `expirada`, `interrompida_por_queda`) do not block.
+   * - In `aguardando_pareamento`: if `expira_em` has already elapsed, the session is treated as expired and ignored.
+   * - When an active session exists: returns `conflito: true` and `statusHttp: 409` with session and responsible specialist details.
    *
-   * @param pacienteId - UUID do paciente clínico (ou null para modo livre)
-   * @param terapeutaSolicitanteId - UUID do terapeuta autenticado solicitando o início da sessão
-   * @returns ResultadoConcorrenciaDTO
+   * @param pacienteId - Clinical patient UUID (or `null` for free mode).
+   * @param terapeutaSolicitanteId - Authenticated therapist UUID requesting session start.
+   * @returns Concurrency check result DTO.
    */
   static async verificarSessaoAtivaConcorrente(
     pacienteId?: string | null,
     terapeutaSolicitanteId?: string
   ): Promise<ResultadoConcorrenciaDTO> {
-    // RN01: Modo livre não grava em prontuário e não bloqueia concorrência
+    // Modo livre não grava em prontuário e não bloqueia concorrência
     if (!pacienteId || typeof pacienteId !== 'string' || pacienteId.trim() === '') {
       return { conflito: false };
     }
@@ -175,13 +174,13 @@ export class SessaoConcorrenciaService {
   }
 
   /**
-   * Garante que ações mutáveis críticas da máquina de estados (finalizar, cancelar)
-   * sejam executadas exclusivamente pelo terapeuta condutor ou SuperAdmin (RF21).
+   * Ensures critical state machine mutations (finish, cancel) are executed exclusively
+   * by the conducting therapist or a SuperAdmin.
    *
-   * @param sessao - Objeto da sessão clínica ou identificador de autoria
-   * @param usuarioLogadoId - UUID do usuário extraído do JWT autenticado (RF21)
-   * @param isSuperAdmin - Indicador se o usuário possui privilégios de SuperAdmin
-   * @returns ResultadoPermissaoMutacaoDTO
+   * @param sessao - Clinical session object containing authorship metadata.
+   * @param usuarioLogadoId - User UUID extracted from the authenticated JWT.
+   * @param isSuperAdmin - Whether the requesting user holds SuperAdmin privileges.
+   * @returns Mutation permission result DTO.
    */
   static validarPermissaoMutacaoSessao(
     sessao: (Pick<Sessao, 'id'> & { terapeuta_id?: string | null }) | null | undefined,
@@ -214,7 +213,7 @@ export class SessaoConcorrenciaService {
       return { permitido: true };
     }
 
-    // 2. Bloqueio RF21: Segundo terapeuta da equipe multidisciplinar não pode finalizar/cancelar sessão alheia
+    // 2. Bloqueio: Segundo terapeuta da equipe multidisciplinar não pode finalizar/cancelar sessão alheia
     if (sessao.terapeuta_id && sessao.terapeuta_id !== usuarioLogadoId) {
       return {
         permitido: false,

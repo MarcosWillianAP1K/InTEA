@@ -1,9 +1,8 @@
 // ==============================================================================
 // InTEA: Controller da Trilha Unificada de Auditoria Clínica e Ecossistema (Item 3)
 // ==============================================================================
-// Conformidade: RF07, RF08, RF13, RNF06 (LGPD / Segurança), RN04, RN05, RF21
 // Padrão Arquitetural: Envelope Pattern Categorizado Estrito ({ data: { ... }, message })
-// Leitura 100% restrita a SuperAdmins; escrita de eventos de sessão via POST validada por RN04.
+// Leitura 100% restrita a SuperAdmins; escrita de eventos de sessão via POST validada por vínculo institucional.
 // ==============================================================================
 
 import { Request, Response } from 'express';
@@ -16,7 +15,7 @@ import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 
 export class AuditoriaController {
   /**
-   * Recursively sanitizes JSON details by removing tokens, secrets, and sensitive data (LGPD / RNF06).
+   * Recursively sanitizes JSON details by removing tokens, secrets, and sensitive data (LGPD).
    */
   static sanitizarDetalhesJson(detalhes?: Record<string, unknown>): Record<string, unknown> {
     if (!detalhes || typeof detalhes !== 'object') return {};
@@ -245,7 +244,7 @@ export class AuditoriaController {
   }
 
   /**
-   * Handles POST /api/auditoria to formally record an immutable audit event for a clinical session (RF13, RNF06).
+   * Handles POST /api/auditoria to formally record an immutable audit event for a clinical session.
    */
   static async registrarEvento(req: Request, res: Response): Promise<void> {
     try {
@@ -268,7 +267,7 @@ export class AuditoriaController {
         return;
       }
 
-      // Guarda Anti-Spoofing de terapeuta (RF21)
+      // Guarda Anti-Spoofing de terapeuta
       if (
         terapeutaIdBody &&
         typeof terapeutaIdBody === 'string' &&
@@ -284,7 +283,7 @@ export class AuditoriaController {
         }
       }
 
-      // Validação de acesso e vínculo institucional com a sessão clínica (RN04)
+      // Validação de acesso e vínculo institucional com a sessão clínica
       const validacao = await AuditoriaService.validarAcessoRegistroEvento(sessao_id, usuarioLogado);
       if (!validacao.autorizado) {
         res.status(validacao.statusHttp || 403).json({ error: validacao.motivo });
@@ -334,7 +333,10 @@ export class AuditoriaController {
   }
 
   /**
-   * Consulta registros de auditoria de acessos ao prontuário médico (SuperAdmin only via rota).
+   * Handles GET /api/auditoria/prontuario to query patient health record access audit logs (SuperAdmin only).
+   *
+   * @param req - Express request containing filter query params (`paciente_id`, `terapeuta_id`, `operacao`, `periodo`, `page`, `limit`).
+   * @param res - Express response returning paginated access audit records.
    */
   static async consultarAcessosProntuario(req: Request, res: Response): Promise<void> {
     try {

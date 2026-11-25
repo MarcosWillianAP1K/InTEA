@@ -1,10 +1,7 @@
-/**
- * ============================================================================
- * MÓDULO DE RECONEXÃO E RESILIÊNCIA DE SESSÃO ATIVA (Card 2.3 / Sprint 9)
- * Requisitos: RNF04 (Tolerância a Falhas e Tempo Real)
- * Regra: TypeScript estrito sem o uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// MÓDULO DE RECONEXÃO E RESILIÊNCIA DE SESSÃO ATIVA (Card 2.3 / Sprint 9)
+// Regra: TypeScript estrito sem o uso de `any`
+// ============================================================================
 
 import { SessaoModel, STATUS_SESSAO } from '../../api/sessao/models/sessao.model.js';
 import { AuditoriaService } from '../../api/auditoria/services/auditoria.service.js';
@@ -53,7 +50,7 @@ export interface EventoSessaoInterrompida {
 
 export class SessaoReconnectionManager {
   private static instance?: SessaoReconnectionManager;
-  private janelaToleranciaMs: number = 60_000; // Padrão: 60 segundos conforme RNF04
+  private janelaToleranciaMs: number = 60_000; // Padrão: 60 segundos para tolerância a falhas
   private temporizadores: Map<string, NodeJS.Timeout> = new Map();
   private estados: Map<string, EstadoReconexaoSessao> = new Map();
 

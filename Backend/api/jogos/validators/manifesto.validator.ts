@@ -10,9 +10,9 @@ export class ManifestoValidator {
   private static readonly TIPOS_METRICA_PERMITIDOS = ['numerica', 'categorica'];
 
   /**
-   * Termos e mecânicas proibidos no ecossistema clínico InTEA conforme a Diretriz Clínica de Não-Competitividade.
-   * Jogos para pessoas no espectro autista não podem conter mecânicas punitivas, disputas interpessoais ou rankings
-   * que gerem sobrecarga sensorial, aversão ou desregulação emocional.
+   * Terms and mechanics prohibited in the InTEA clinical ecosystem under the Non-Competitiveness Clinical Guideline.
+   * Games for autistic children must not include punitive mechanics, interpersonal competition, or leaderboards
+   * that may cause sensory overload, aversion, or emotional dysregulation.
    */
   public static readonly TERMOS_COMPETITIVOS_PUNITIVOS_PROIBIDOS: readonly string[] = [
     'competitivo',
@@ -33,12 +33,12 @@ export class ManifestoValidator {
   ];
 
   /**
-   * Verifica se o manifesto cumpre a Diretriz Clínica de Não-Competitividade.
-   * Barra manifestos com mecânicas punitivas, rankings ou disputas competitivas eliminatórias,
-   * assegurando foco exclusivo em cooperação, autorregulação e estímulos positivos adaptativos.
+   * Verifies whether a game manifest complies with the Non-Competitiveness Clinical Guideline.
+   * Rejects manifests containing punitive mechanics, leaderboards, or elimination competition,
+   * ensuring exclusive focus on cooperation, self-regulation, and adaptive positive reinforcement.
    *
-   * @param manifesto - O objeto de manifesto a ser inspecionado.
-   * @returns Resultado indicando conformidade clínica booleana e array de violações detalhadas.
+   * @param manifesto - Raw game manifest object to inspect.
+   * @returns Object indicating boolean clinical compliance (`conforme`) and detailed violation messages (`violacoes`).
    */
   static verificarConformidadeNaoCompetitividade(manifesto: unknown): { conforme: boolean; violacoes: string[] } {
     const violacoes: string[] = [];
@@ -149,7 +149,7 @@ export class ManifestoValidator {
   }
 
   /**
-   * Validates the structural and clinical compliance of a game manifest JSON object according to Contract 1 (RNF02 & RN02).
+   * Validates the structural and clinical compliance of a game manifest JSON object according to Contract 1 (&).
    * Incorporates strict validation of the Clinical Non-Competitiveness Guideline.
    *
    * @param manifesto - The untyped game manifest payload to validate.
@@ -212,7 +212,7 @@ export class ManifestoValidator {
           erros.push(`${prefixo}: 'id_metrica' é obrigatório e deve ser uma string não vazia.`);
         }
 
-        // 6.2. tipo_metrica (RN02: Validação Estrita sem Fallback)
+        // 6.2. tipo_metrica (Validação Estrita sem Fallback)
         const tipoMetrica = typeof metrica.tipo_metrica === 'string' ? metrica.tipo_metrica : undefined;
         if (!tipoMetrica || tipoMetrica.trim() === '') {
           erros.push(`Métrica ${idLabel}: 'tipo_metrica' é obrigatório e não pode ser nulo ou ausente (RN02: proibido fallback automático para categórica).`);

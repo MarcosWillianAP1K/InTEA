@@ -18,7 +18,7 @@ import { useAuthStore } from "@/features/autenticacao";
 import { useSessionPersistence } from "@/features/sessao/hooks/useSessionPersistence";
 
 /**
- * Authenticated route guard (RF21 / RN04).
+ * Authenticated route guard.
  * Redirects unauthenticated users to /login.
  */
 export function ProtectedRoute() {
@@ -32,6 +32,12 @@ export function ProtectedRoute() {
   return <Outlet />;
 }
 
+/**
+ * Root application router defining public authentication routes,
+ * therapist protected routes, SuperAdmin-only routes, and focus-mode session views.
+ *
+ * @returns Configured React Router tree.
+ */
 export function Routes() {
   return (
     <RouterRoutes>

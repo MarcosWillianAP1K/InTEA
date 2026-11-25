@@ -24,13 +24,12 @@ export interface TabletDiagnosticCardProps {
 /**
  * ============================================================================
  * COMPONENTE: TabletDiagnosticCard (Front-end 2 — Luma Maiara / Card 4.2)
- * Requisitos: RF12, RNF04
  * Monitora saúde do tablet: latência de rede, bateria, sinal e alertas de queda
  * ============================================================================
  */
 
 /**
- * Connectivity and hardware integrity telemetry card for paired tablet (RF12, RNF04).
+ * Connectivity and hardware integrity telemetry card for paired tablet.
  * Displays latency, battery level, and visual disconnection alerts.
  */
 export function TabletDiagnosticCard({

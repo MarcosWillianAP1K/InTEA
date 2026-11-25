@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Serviço de Regras de Negócio de Anotações Clínicas
 // ==============================================================================
-// Conformidade: RF16 (Prontuário e Anotações), RF21 (Autoria JWT), RN04, RN05
 // Padrão de Camadas Limpas: Lógica de negócio pura isolada do Controller
 // ==============================================================================
 
@@ -116,7 +115,7 @@ export class AnotacaoService {
   }
 
   /**
-   * Updates the content of an active clinical note, enforcing author ownership (RF21).
+   * Updates the content of an active clinical note, enforcing author ownership.
    *
    * @param anotacao - Existing clinical note record.
    * @param usuarioLogadoId - UUID of the authenticated user.
@@ -173,8 +172,8 @@ export class AnotacaoService {
   }
 
   /**
-   * Applies logical soft delete to a clinical note (`soft_delete = true`), preserving history (RN05).
-   * Validates strict author ownership (RF21).
+   * Applies logical soft delete to a clinical note (`soft_delete = true`), preserving history.
+   * Validates strict author ownership.
    *
    * @param alvo - Existing clinical note record or its UUID.
    * @param usuarioLogadoId - UUID of the authenticated user.
@@ -221,8 +220,8 @@ export class AnotacaoService {
   }
 
   /**
-   * Reactivates a soft-deleted clinical note (`soft_delete = false`, RN05).
-   * Validates author ownership (RF21) or SuperAdmin privileges.
+   * Reactivates a soft-deleted clinical note (`soft_delete = false`).
+   * Validates author ownership or SuperAdmin privileges.
    *
    * @param id - UUID of the clinical note to reactivate.
    * @param usuarioLogadoId - UUID of the authenticated user.

@@ -1,5 +1,5 @@
 // ==============================================================================
-// InTEA: Suíte de Testes para o Middleware validarIntervaloHistorico (RNF03, RNF05)
+// InTEA: Suíte de Testes para o Middleware validarIntervaloHistorico
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';

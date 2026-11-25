@@ -1,11 +1,8 @@
-/**
- * ============================================================================
- * TELA DE LOGIN OFICIAL — InTEA (Figma Frame: 'Login - InTEA', Node 23:108)
- * Porta de entrada principal da aplicação de Orquestração Clínica.
- * Integrada ao useAuth / useAuthStore.
- * Conformidade: RF21 (Autenticação e Autoria), RN04 (Vínculo Institucional).
- * ============================================================================
- */
+// ============================================================================
+// TELA DE LOGIN OFICIAL — InTEA (Figma Frame: 'Login - InTEA', Node 23:108)
+// Porta de entrada principal da aplicação de Orquestração Clínica.
+// Integrada ao useAuth / useAuthStore.
+// ============================================================================
 
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
@@ -26,6 +23,11 @@ import { useAuth } from "../hooks/useAuth";
 import { useAuthStore } from "../store/authStore";
 import { authService } from "../services/auth.service";
 
+/**
+ * Primary therapist authentication page handling login credentials and password-recovery modal flow.
+ *
+ * @returns Rendered login screen component.
+ */
 export function LoginPage() {
   const navigate = useNavigate();
   const { login, loading, error } = useAuth();

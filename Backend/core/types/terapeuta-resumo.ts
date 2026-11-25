@@ -1,10 +1,10 @@
 // ==============================================================================
-// InTEA: Tipo Compartilhado de Resumo Público do Especialista (RF18 / RN04)
+// InTEA: Tipo Compartilhado de Resumo Público do Especialista
 // ==============================================================================
 
 /**
  * Public, sanitized professional summary of a therapist for multidisciplinary
- * session listings and longitudinal patient history (RF18, RNF06).
+ * session listings and longitudinal patient history.
  * Strictly excludes private credentials, email, and phone numbers.
  */
 export interface TerapeutaResumoPublico {

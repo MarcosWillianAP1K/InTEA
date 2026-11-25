@@ -22,13 +22,11 @@ export interface GraficoPolimorficoMetricaProps {
 /**
  * ============================================================================
  * COMPONENTE RENDERIZADOR POLIMÓRFICO DE MÉTRICAS (InTEA)
- * Conformidade: RF15 (Prontuário Longitudinal), RN02 (Tipagem Estrita no Manifesto),
- * RNF04 (Feedback e Ergonomia), RNF07 (Acessibilidade)
  * ============================================================================
  */
 /**
- * Polymorphic telemetry metric visualization chart dynamically adapting to metric data types (RF15, RN02).
- * Manifest-Driven Rendering (RN02): Renders continuous line plots or discrete step charts according to metric type.
+ * Polymorphic telemetry metric visualization chart dynamically adapting to metric data types.
+ * Manifest-Driven Rendering: Renders continuous line plots or discrete step charts according to metric type.
  *
  * @param props - Component properties with series data, unit labels, and metric definitions
  * @returns Polymorphic metric chart component
@@ -101,7 +99,7 @@ export function GraficoPolimorficoMetrica({
     );
   }
 
-  // 2. GARANTIA INVIOLÁVEL DA REGRA CLÍNICA RN02 (Rejeição de Fallback Automático)
+  // 2. GARANTIA INVIOLÁVEL DE TIPAGEM ESTRITA DE MÉTRICAS (Rejeição de Fallback Automático)
   // Toda métrica DEVE ter tipo_metrica explicitamente homologado no manifesto.
   const tipo = serie.tipo_metrica?.trim()?.toLowerCase();
 

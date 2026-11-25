@@ -1,5 +1,5 @@
 // ==============================================================================
-// InTEA: Suíte de Integração — Equipe Multidisciplinar e Visibilidade (RN04, RF18, RF21, RN01)
+// InTEA: Suíte de Integração — Equipe Multidisciplinar e Visibilidade
 // ==============================================================================
 // Simula o ciclo de vida completo de uma clínica multidisciplinar com:
 // - Terapeuta A (Líder / Terapeuta Responsável) e Terapeuta B (Clínica 1, vinculados ao Paciente X)
@@ -929,7 +929,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
   });
 
   // ==========================================================================
-  // 2. Visibilidade compartilhada para Terapeuta B vinculado (RF18)
+  // 2. Visibilidade compartilhada para Terapeuta B vinculado
   // ==========================================================================
   it('2. Terapeuta B vinculado consulta prontuário, histórico geral, histórico por jogo enriquecido, sessões da equipe e anotações de A (200 OK - RF18)', async () => {
     dbVinculos.push({
@@ -1020,7 +1020,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
   });
 
   // ==========================================================================
-  // 3. Bloqueio de GET /api/sessao?pacienteId=:id para Terapeuta C e D (RN04) e 400
+  // 3. Bloqueio de GET /api/sessao?pacienteId=:id para Terapeuta C e D e 400
   // ==========================================================================
   it('3. GET /api/sessao?pacienteId=:id bloqueia Terapeuta C (Clínica 2) e Terapeuta D (sem vínculo) com 403 Forbidden (RN04) e rejeita UUID inválido com 400', async () => {
     const handlersSessoes = obterHandlersPaciente(sessaoRoutes, '/', 'get');
@@ -1051,7 +1051,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
   });
 
   // ==========================================================================
-  // 4. Autoria estrita de anotações clínicas na equipe multidisciplinar (RF21)
+  // 4. Autoria estrita de anotações clínicas na equipe multidisciplinar
   // ==========================================================================
   it('4. Terapeuta B cria sua própria anotação (201 Created), mas recebe 403 Forbidden ao tentar editar ou excluir anotação de Terapeuta A (RF21)', async () => {
     dbVinculos.push({
@@ -1102,7 +1102,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
   });
 
   // ==========================================================================
-  // 5. Bloqueio de vinculação de terapeuta de outra clínica (403 Forbidden - RN04)
+  // 5. Bloqueio de vinculação de terapeuta de outra clínica (403 Forbidden)
   // ==========================================================================
   it('5. Tentativa de vincular Terapeuta C (Clínica 2) ao Paciente X (Clínica 1) retorna 403 Forbidden (RN04)', async () => {
     const handlersVincular = obterHandlersPaciente(pacienteRoutes, '/:id/terapeutas', 'post');
@@ -1303,7 +1303,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
   });
 
   // ==========================================================================
-  // 12. RN01: Sessões em modo_livre permanecem isoladas ao criador e nunca vazam
+  // 12. Sessões em modo_livre permanecem isoladas ao criador e nunca vazam
   // ==========================================================================
   it('12. RN01: Sessões em modo_livre permanecem isoladas ao criador e nunca vazam na listagem compartilhada do paciente ou de outros terapeutas', async () => {
     dbVinculos.push({
@@ -1331,7 +1331,7 @@ describe('Integração Multi-Terapeuta, Visibilidade Compartilhada e Isolamento 
     );
     expect(sessoesCompartilhadas.some((s) => s.id === sessaoModoLivreAId)).toBe(false);
 
-    // 12.2. Listagem combinando pacienteId + modo=modo_livre retorna lista vazia (RN01)
+    // 12.2. Listagem combinando pacienteId + modo=modo_livre retorna lista vazia
     const mockModoLivreComPaciente = criarMockReqResPaciente({
       headers: { authorization: `Bearer ${TOKEN_B}` },
       query: { pacienteId: pacienteXId, modo: MODO_SESSAO.MODO_LIVRE },

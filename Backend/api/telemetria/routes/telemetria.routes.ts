@@ -15,9 +15,9 @@ export const telemetriaRoutes = Router();
  *     summary: Ingestão de evento individual de telemetria clínica
  *     description: |
  *       Recebe um evento de telemetria emitido pelo tablet ou jogo durante a sessão.
- *       Se a sessão estiver em Modo Livre (RN01), o evento é processado apenas em memória
+ * Se a sessão estiver em Modo Livre, o evento é processado apenas em memória
  *       sem persistência no prontuário clínico. Métricas não homologadas no manifesto
- *       ou com tipo incompatível são rejeitadas com 422 Unprocessable Entity (RN02).
+ * ou com tipo incompatível são rejeitadas com 422 Unprocessable Entity.
  *     tags: [Telemetria]
  *     requestBody:
  *       required: true
@@ -79,7 +79,7 @@ export const telemetriaRoutes = Router();
  *                   persistido: true
  *               message: "Evento de telemetria registrado com sucesso"
  *       200:
- *         description: Evento processado em memória (Modo Livre não persiste telemetria - RN01)
+ * description: Evento processado em memória (Modo Livre não persiste telemetria)
  *         content:
  *           application/json:
  *             example:
@@ -88,7 +88,7 @@ export const telemetriaRoutes = Router();
  *                 meta:
  *                   persistido: false
  *                   modo_sessao: "modo_livre"
- *               message: "Evento processado em memória (Modo Livre não persiste telemetria - RN01)"
+ * message: "Evento processado em memória (Modo Livre não persiste telemetria)"
  *       400:
  *         description: Dados incompletos ou payload inválido
  *         content:
@@ -109,11 +109,11 @@ export const telemetriaRoutes = Router();
  *               error: "Não é possível registrar telemetria para uma sessão que não está em andamento."
  *               detalhes: "sessao_inativa"
  *       422:
- *         description: Violação de tipagem clínica ou métrica não declarada no manifesto (RN02)
+ * description: Violação de tipagem clínica ou métrica não declarada no manifesto
  *         content:
  *           application/json:
  *             example:
- *               error: "Métrica 'tempo_resposta' não declarada no manifesto do jogo (RN02 - proibido fallback)."
+ * error: "Métrica 'tempo_resposta' não declarada no manifesto do jogo (proibido fallback)."
  *       500:
  *         description: Erro interno ao registrar evento de telemetria
  *         content:
@@ -189,7 +189,7 @@ telemetriaRoutes.post('/', TelemetriaController.registrar);
  *                   persistido: true
  *               message: "Lote de telemetria registrado com sucesso"
  *       200:
- *         description: Lote processado em memória (Modo Livre - RN01)
+ * description: Lote processado em memória (Modo Livre)
  *         content:
  *           application/json:
  *             example:
@@ -199,7 +199,7 @@ telemetriaRoutes.post('/', TelemetriaController.registrar);
  *                   total_processados: 2
  *                   persistido: false
  *                   modo_sessao: "modo_livre"
- *               message: "Lote processado em memória (Modo Livre não persiste telemetria - RN01)"
+ * message: "Lote processado em memória (Modo Livre não persiste telemetria)"
  *       400:
  *         description: Parâmetros inválidos, elemento do lote malformado ou limite de 500 excedido
  *         content:
@@ -220,11 +220,11 @@ telemetriaRoutes.post('/', TelemetriaController.registrar);
  *               error: "Não é possível registrar telemetria para uma sessão que não está em andamento."
  *               detalhes: "sessao_inativa"
  *       422:
- *         description: Violação de tipagem clínica ou métrica não declarada no manifesto (RN02)
+ * description: Violação de tipagem clínica ou métrica não declarada no manifesto
  *         content:
  *           application/json:
  *             example:
- *               error: "Métrica 'tempo_resposta' não declarada no manifesto do jogo (RN02 - proibido fallback)."
+ * error: "Métrica 'tempo_resposta' não declarada no manifesto do jogo (proibido fallback)."
  *       500:
  *         description: Erro interno ao registrar lote
  *         content:
@@ -239,7 +239,7 @@ telemetriaRoutes.post('/lote', TelemetriaController.registrarLote);
  * /api/telemetria/sessao/{sessaoId}:
  *   get:
  *     summary: Consulta o histórico de eventos de telemetria de uma sessão
- *     description: Retorna a série temporal cronológica dos eventos de telemetria persistidos da sessão clínica, com filtro opcional por ID de métrica e paginação (protegido por RN04).
+ * description: Retorna a série temporal cronológica dos eventos de telemetria persistidos da sessão clínica, com filtro opcional por ID de métrica e paginação (protegido por vínculo institucional).
  *     tags: [Telemetria]
  *     security:
  *       - bearerAuth: []
@@ -305,11 +305,11 @@ telemetriaRoutes.post('/lote', TelemetriaController.registrarLote);
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo institucional com a sessão clínica (RN04)
+ * description: Acesso negado — terapeuta sem vínculo institucional com a sessão clínica
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04)."
+ * error: "Acesso negado: você não possui vínculo institucional com esta sessão clínica."
  *       404:
  *         description: Sessão não encontrada
  *         content:
@@ -333,7 +333,7 @@ telemetriaRoutes.get('/sessao/:sessaoId', authMiddleware, TelemetriaController.l
  *     description: |
  *       Consolida dados analíticos dos eventos brutos da sessão: contagem por tipo,
  *       taxa de precisão (acertos vs. erros), tempo de reação médio/mediano, estabilidade
- *       de atenção por janelas temporais e métricas consolidadas com tipagem estrita (RN02).
+ * de atenção por janelas temporais e métricas consolidadas com tipagem estrita.
  *     tags: [Telemetria]
  *     security:
  *       - bearerAuth: []
@@ -383,11 +383,11 @@ telemetriaRoutes.get('/sessao/:sessaoId', authMiddleware, TelemetriaController.l
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo institucional com a sessão clínica (RN04)
+ * description: Acesso negado — terapeuta sem vínculo institucional com a sessão clínica
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado: você não possui vínculo institucional com esta sessão clínica (RN04)."
+ * error: "Acesso negado: você não possui vínculo institucional com esta sessão clínica."
  *       404:
  *         description: Sessão não encontrada ou sem dados
  *         content:

@@ -51,6 +51,12 @@ interface OverlayNotificacoesProps {
   onFechar: () => void;
 }
 
+/**
+ * Notification popover panel displaying clinical, session, and device alerts with read-state toggling.
+ *
+ * @param props - Overlay visibility flag and close callback.
+ * @returns Rendered notification popover, or `null` when closed.
+ */
 export const OverlayNotificacoes: React.FC<OverlayNotificacoesProps> = ({ aberto, onFechar }) => {
   const [notificacoes, setNotificacoes] = useState<NotificacaoItem[]>(NOTIFICACOES_INICIAIS);
 

@@ -1,8 +1,6 @@
 /**
  * ============================================================================
  * TIPAGENS CANÔNICAS DO DOMÍNIO ANOTAÇÕES CLÍNICAS (InTEA)
- * Conformidade: RF16 (Prontuário e Anotações), RF21 (Autoria do Terapeuta),
- *              RN04 (Vínculo Institucional), RN05 (Inalterabilidade / Soft Delete)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
@@ -21,7 +19,7 @@ export interface AnotacaoClinica {
   paciente_id: string; // UUID do paciente
   sessao_id: string | null; // UUID da sessão opcional
   conteudo: string; // Texto clínico
-  soft_delete: boolean; // Flag de exclusão lógica (RN05)
+  soft_delete: boolean; // Flag de exclusão lógica
   status_ativo: boolean; // Espelho de !soft_delete
   terapeuta_nome?: string;
   paciente_nome?: string;

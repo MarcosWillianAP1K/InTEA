@@ -1,10 +1,8 @@
-/**
- * ============================================================================
- * COMPONENTE: PAINEL DA EQUIPE MULTIDISCIPLINAR DO PACIENTE
- * Conformidade: RF18, RN04, RNF07 (Alvos de toque >= 44px), Seção 7.7 do PDF
- * Nomenclatura clínica obrigatória: "Equipe Multidisciplinar" / "Especialistas Vinculados"
- * ============================================================================
- */
+// ============================================================================
+// COMPONENTE: PAINEL DA EQUIPE MULTIDISCIPLINAR DO PACIENTE
+// Conformidade: Seção 7.7 do PDF
+// Nomenclatura clínica obrigatória: "Equipe Multidisciplinar" / "Especialistas Vinculados"
+// ============================================================================
 
 import React from "react";
 import {
@@ -28,28 +26,35 @@ import type { EspecialistaVinculado } from "../types/paciente.types";
 export type EspecialistaEquipeItem = EspecialistaVinculado;
 
 export interface PainelEquipeMultidisciplinarProps {
-  /** Lista de especialistas vinculados à equipe do paciente */
+  /** List of specialists linked to the patient's multidisciplinary team. */
   especialistas: EspecialistaVinculado[];
-  /** ID do especialista autenticado na sessão atual para destaque "Você (Logado)" */
+  /** Authenticated specialist UUID used to highlight the current user badge. */
   usuarioLogadoId?: string | null;
-  /** ID explícito do terapeuta responsável (líder) da equipe */
+  /** Explicit UUID of the lead responsible therapist for the patient. */
   terapeutaResponsavelId?: string | null;
-  /** Estado de carregamento assíncrono (Skeleton Loader) */
+  /** Asynchronous loading indicator rendering skeleton placeholders. */
   loading?: boolean;
-  /** Mensagem de erro caso a busca de vínculos falhe */
+  /** Error message shown when fetching team links fails. */
   erro?: string | null;
-  /** ID do especialista que está sendo desvinculado no momento (trava de clique duplo) */
+  /** ID of the specialist currently being unlinked (prevents double clicks). */
   removendoId?: string | null;
-  /** Callback para abrir o modal de vinculação de especialista da clínica */
+  /** Callback invoked to open the clinic specialist linkage modal. */
   onAbrirModalVincular?: () => void;
-  /** Callback disparada ao solicitar desvinculação de um especialista */
+  /** Callback triggered when requesting removal of a linked specialist. */
   onDesvincularEspecialista?: (terapeutaId: string) => void | Promise<void>;
-  /** Callback opcional de retentativa em caso de erro de rede */
+  /** Optional retry callback on network failure. */
   onRetry?: () => void;
-  /** Classes CSS adicionais */
+  /** Additional CSS class names. */
   className?: string;
 }
 
+/**
+ * Panel displaying the patient's multidisciplinary team of linked specialists,
+ * highlighting the lead therapist and allowing authorized linkage or unlinking.
+ *
+ * @param props - Linked specialists list, loading/error states, and team management callbacks.
+ * @returns Rendered multidisciplinary team panel.
+ */
 export const PainelEquipeMultidisciplinar: React.FC<
   PainelEquipeMultidisciplinarProps
 > = ({

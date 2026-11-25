@@ -1,12 +1,11 @@
 // ==============================================================================
 // InTEA: Modelo de Histórico Clínico e Engajamento Longitudinal (Sprint 11)
 // ==============================================================================
-// REQUISITOS ATENDIDOS:
-// - RF15: Prontuário Longitudinal e Gráficos Evolutivos
-// - RNF05: Otimização de I/O e Índices de Alta Performance
-// - RN01: Expurgo Estrito de Partidas em Modo Livre (paciente_id = NULL)
-// - RN04: Isolamento Institucional por Vínculo
-// - RN05: Inalterabilidade do Histórico Clínico (Soft Delete de Relatórios)
+// - Prontuário Longitudinal e Gráficos Evolutivos
+// - Otimização de I/O e Índices de Alta Performance
+// - Expurgo Estrito de Partidas em Modo Livre (paciente_id = NULL)
+// - Isolamento Institucional por Vínculo
+// - Inalterabilidade do Histórico Clínico (Soft Delete de Relatórios)
 // ==============================================================================
 
 import { supabase } from '../../../core/supabase/supabase.client.js';
@@ -29,7 +28,7 @@ export interface MetricasEngajamentoGeral {
 }
 
 /**
- * Filter and pagination parameters for clinical history queries (RF19).
+ * Filter and pagination parameters for clinical history queries.
  */
 export interface FiltrosHistoricoDTO {
   dataInicio?: string;
@@ -105,7 +104,7 @@ export class HistoricoSessaoModel {
   /**
    * Calculates transversal metrics of clinical engagement and patient attendance.
    * Uses PostgreSQL partial index `idx_sessao_paciente_engajamento`.
-   * Strictly excludes free play sessions (RN01: paciente_id = NULL).
+   * Strictly excludes free play sessions (paciente_id = NULL).
    *
    * @param pacienteId - UUID of the patient.
    * @param filtros - Optional time range filters (dataInicio, dataFim).
@@ -190,7 +189,7 @@ export class HistoricoSessaoModel {
   /**
    * Retrieves detailed longitudinal history of completed sessions for a specific game.
    * Uses compound partial index `idx_sessao_paciente_jogo_fim` and joins with `relatorio_sessao`.
-   * Strictly excludes free play mode (RN01) and ignores soft-deleted reports (RN05).
+   * Strictly excludes free play mode and ignores soft-deleted reports.
    *
    * @param pacienteId - UUID of the patient.
    * @param jogoId - UUID of the therapeutic game.
@@ -270,7 +269,7 @@ export class HistoricoSessaoModel {
           ? row.relatorio_sessao[0]
           : row.relatorio_sessao;
 
-        // RN05: Ignora relatórios com soft delete ativado
+        // Ignora relatórios com soft delete ativado
         if (relatorio && relatorio.soft_delete === true) {
           continue;
         }
@@ -325,7 +324,7 @@ export class HistoricoSessaoModel {
 
   /**
    * Counts total completed sessions with active clinical report for a patient and game.
-   * Used for accurate pagination (RF19).
+   * Used for accurate pagination.
    *
    * @param pacienteId - UUID of the patient.
    * @param jogoId - UUID of the therapeutic game.

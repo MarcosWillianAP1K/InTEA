@@ -1,41 +1,42 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-/**
- * ============================================================================
- * CUSTOM HOOK: useAnotacaoDraft (InTEA)
- * Conformidade: RF16 (Prontuário e Anotações), RNF07 (Ergonomia e Usabilidade)
- * TypeScript Estrito: Sem o uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// CUSTOM HOOK: useAnotacaoDraft (InTEA)
+// TypeScript Estrito: Sem o uso de `any`
+// ============================================================================
 
 export interface UseAnotacaoDraftOptions {
-  /** Tempo de debounce em milissegundos antes de persistir no storage (padrão: 500ms) */
+  /** Debounce delay in milliseconds before persisting to storage (default: 500ms). */
   debounceMs?: number;
-  /** Valor inicial opcional caso não haja rascunho salvo */
+  /** Optional initial text value when no saved draft exists. */
   initialValue?: string;
 }
 
 export interface UseAnotacaoDraftReturn {
-  /** Conteúdo textual atual do rascunho */
+  /** Current draft text content. */
   draft: string;
-  /** Função para atualizar o texto do rascunho com salvamento automático via debounce */
+  /** Updates draft text and schedules debounced auto-save to sessionStorage. */
   setDraft: (novoTexto: string) => void;
-  /** Indica se um rascunho não finalizado foi restaurado da sessão anterior */
+  /** Indicates whether an unfinished draft was restored from a previous session. */
   hasRestoredDraft: boolean;
-  /** Indica se o salvamento do debounce está em andamento */
+  /** Indicates whether a debounced save operation is currently pending. */
   isSavingDraft: boolean;
-  /** Data/hora da última persistência no sessionStorage */
+  /** Timestamp of the most recent persistence into sessionStorage. */
   lastSavedAt: Date | null;
-  /** Limpa o rascunho do sessionStorage e limpa o texto no estado (após salvar na API ou limpar formulário) */
+  /** Clears the draft from sessionStorage and resets editor state (after saving or resetting the form). */
   clearDraft: () => void;
-  /** Descarta o rascunho restaurado, expurgando do sessionStorage e limpando o editor */
+  /** Discards a restored draft, purging it from sessionStorage and clearing the editor. */
   discardDraft: () => void;
-  /** Oculta o badge de "Rascunho restaurado" mantendo o texto no editor */
+  /** Hides the "Restored draft" badge while preserving the current text in the editor. */
   dismissRestoredBadge: () => void;
 }
 
 /**
- * Gera chave única e isolada no sessionStorage combinando pacienteId e sessaoId.
+ * Generates an isolated `sessionStorage` key combining `pacienteId` and optional `sessaoId`.
+ *
+ * @param pacienteId - Optional UUID of the patient owning the health record.
+ * @param sessaoId - Optional UUID of the linked clinical session.
+ * @returns Unique storage key string.
  */
 export function getDraftStorageKey(pacienteId?: string, sessaoId?: string): string {
   const pId = pacienteId && pacienteId.trim() ? pacienteId.trim() : "geral";
@@ -44,13 +45,13 @@ export function getDraftStorageKey(pacienteId?: string, sessaoId?: string): stri
 }
 
 /**
- * Hook para auto-save local de rascunhos de anotações clínicas com debounce de 500ms.
- * Protege terapeutas contra perda acidental de anotações não salvas em F5 ou trocas de aba.
+ * React hook for local auto-saving of clinical note drafts with a 500ms debounce.
+ * Protects therapists against accidental loss of unsaved notes across page reloads or tab switches.
  *
- * @param pacienteId - Identificador do paciente dono do prontuário
- * @param sessaoId - Opcional identificador da sessão clínica vinculada
- * @param options - Opções de configuração (debounceMs, initialValue)
- * @returns Objeto com estado do rascunho, setters e métodos de expurgo
+ * @param pacienteId - Identifier of the patient owning the health record.
+ * @param sessaoId - Optional identifier of the linked clinical session.
+ * @param options - Configuration options (`debounceMs`, `initialValue`).
+ * @returns Object containing draft state, setters, and draft lifecycle helpers.
  */
 export function useAnotacaoDraft(
   pacienteId?: string,

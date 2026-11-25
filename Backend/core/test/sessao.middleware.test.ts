@@ -127,7 +127,7 @@ describe('Core Middleware: Verificação de Sessão Clínica e Anti-IDOR (verifi
     expect(next).not.toHaveBeenCalled();
   });
 
-  // 4. 403 IDOR em modo livre (RN01)
+  // 4. 403 IDOR em modo livre
   it('4. deve retornar 403 (RN01) se terapeuta não-autor e não-admin tentar acessar sessão em modo livre', async () => {
     const req = {
       params: { id: sessaoId },
@@ -152,7 +152,7 @@ describe('Core Middleware: Verificação de Sessão Clínica e Anti-IDOR (verifi
     expect(next).not.toHaveBeenCalled();
   });
 
-  // 5. 403 IDOR sessão clínica sem vínculo em terapeuta_paciente (RN04)
+  // 5. 403 IDOR sessão clínica sem vínculo em terapeuta_paciente
   it('5. deve retornar 403 (RN04) se coterapeuta da mesma clínica não possuir vínculo ativo com o paciente', async () => {
     const req = {
       params: { id: sessaoId },

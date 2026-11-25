@@ -1,15 +1,13 @@
 import rateLimit, { MemoryStore } from 'express-rate-limit';
 import type { Request, Response, NextFunction } from 'express';
 
-/**
- * ==============================================================================
- * RATE LIMITING CONTRA FORÇA BRUTA (RF01, RNF03)
- * Módulo de segurança para proteção de autenticação e pareamento remoto.
- * - Limite de 5 tentativas de login por IP a cada 15 minutos (HTTP 429).
- * - Limite de 10 checagens de PIN em /api/sessao/parear contra enumeração exaustiva.
- * - Injeção padronizada de header Retry-After com o tempo restante de bloqueio.
- * ==============================================================================
- */
+// ==============================================================================
+// RATE LIMITING CONTRA FORÇA BRUTA
+// Módulo de segurança para proteção de autenticação e pareamento remoto.
+// - Limite de 5 tentativas de login por IP a cada 15 minutos (HTTP 429).
+// - Limite de 10 checagens de PIN em /api/sessao/parear contra enumeração exaustiva.
+// - Injeção padronizada de header Retry-After com o tempo restante de bloqueio.
+// ==============================================================================
 
 export const loginMemoryStore = new MemoryStore();
 export const parearMemoryStore = new MemoryStore();
@@ -24,8 +22,8 @@ export function resetarRateLimits(): void {
 }
 
 /**
- * Rate limiting middleware for authentication and login endpoints (RNF03).
- * Brute Force Protection (RNF03): Restricts requests to 5 attempts per IP per 15-minute window.
+ * Rate limiting middleware for authentication and login endpoints.
+ * Brute Force Protection: Restricts requests to 5 attempts per IP per 15-minute window.
  */
 export const loginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
@@ -60,7 +58,7 @@ export const loginRateLimiter = rateLimit({
 });
 
 /**
- * Rate limiting middleware for remote game pairing handshake endpoints (RNF03).
+ * Rate limiting middleware for remote game pairing handshake endpoints.
  * PIN Brute Force Guard: Restricts pairing attempts to 10 requests per IP per 15-minute window.
  */
 export const parearRateLimiter = rateLimit({

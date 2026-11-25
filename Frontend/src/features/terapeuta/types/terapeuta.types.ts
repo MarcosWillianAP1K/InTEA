@@ -1,7 +1,6 @@
 /**
  * ============================================================================
  * TIPAGENS CANÔNICAS DO DOMÍNIO TERAPEUTA (InTEA)
- * Conformidade: RF21 (Autoria do Terapeuta), RN04 (Vínculo e Clínica), RN05 (Soft Delete)
  * Regra: TypeScript estrito sem o uso de `any`, snakes_case da API REST
  * ============================================================================
  */

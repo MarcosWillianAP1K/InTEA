@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Rotas do Módulo de Anotações Clínicas (Prontuário e Sessão)
 // ==============================================================================
-// Conformidade: RF16 (Anotações), RF21 (Autoria JWT), RN04 (Vínculo), RN05 (Soft Delete)
 // ==============================================================================
 
 import { Router } from 'express';
@@ -76,7 +75,7 @@ export const anotacaoRoutes = Router();
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
  *       403:
- *         description: Acesso negado por falta de vínculo institucional ativo (RN04)
+ * description: Acesso negado por falta de vínculo institucional ativo
  *       404:
  *         description: Sessão ou paciente não encontrado
  */
@@ -99,7 +98,7 @@ anotacaoRoutes.post(
  * /api/anotacao/{id}:
  *   get:
  *     summary: Consulta uma anotação clínica pelo ID (UUID)
- *     description: Retorna os dados da anotação clínica. Requer vínculo institucional ativo com o paciente (RN04).
+ * description: Retorna os dados da anotação clínica. Requer vínculo institucional ativo com o paciente.
  *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
@@ -132,7 +131,7 @@ anotacaoRoutes.post(
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
  *       403:
- *         description: Acesso negado por falta de vínculo ativo ou clínica divergente (RN04)
+ * description: Acesso negado por falta de vínculo ativo ou clínica divergente
  *       404:
  *         description: Anotação clínica não encontrada
  *       500:
@@ -151,7 +150,7 @@ anotacaoRoutes.get(
  * /api/anotacao/{id}:
  *   patch:
  *     summary: Atualiza o conteúdo de uma anotação clínica existente
- *     description: Permite alterar exclusivamente o texto da anotação. Acesso restrito ao terapeuta autor da nota (RF21) com vínculo ativo (RN04).
+ * description: Permite alterar exclusivamente o texto da anotação. Acesso restrito ao terapeuta autor da nota com vínculo ativo.
  *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
@@ -192,7 +191,7 @@ anotacaoRoutes.get(
  *       401:
  *         description: Não autorizado
  *       403:
- *         description: Usuário não é o autor da anotação ou sem vínculo ativo (RN04)
+ * description: Usuário não é o autor da anotação ou sem vínculo ativo
  *       404:
  *         description: Anotação não encontrada
  */
@@ -209,7 +208,7 @@ anotacaoRoutes.patch(
  * /api/anotacao/{id}/reativar:
  *   patch:
  *     summary: Reativa uma anotação clínica inativada (soft_delete = false)
- *     description: Restaura o registro da anotação clínica no histórico do paciente (RN05). Acesso restrito ao terapeuta autor da nota (RF21) ou SuperAdmin institucional, com vínculo ativo ao paciente (RN04).
+ * description: Restaura o registro da anotação clínica no histórico do paciente. Acesso restrito ao terapeuta autor da nota ou SuperAdmin institucional, com vínculo ativo ao paciente.
  *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
@@ -249,7 +248,7 @@ anotacaoRoutes.patch(
  *       401:
  *         description: Não autorizado
  *       403:
- *         description: Acesso negado — apenas o autor ou SuperAdmin com vínculo ativo pode reativar (RF21, RN04)
+ * description: Acesso negado — apenas o autor ou SuperAdmin com vínculo ativo pode reativar
  *       404:
  *         description: Anotação não encontrada
  *       500:
@@ -308,7 +307,7 @@ anotacaoRoutes.delete(
  * /api/anotacao/{id}:
  *   delete:
  *     summary: Exclusão lógica (soft delete) de anotação clínica
- *     description: Inativa a anotação clínica preservando o histórico imutável (RN05). Restrito ao terapeuta autor da anotação (RF21) com vínculo ativo (RN04).
+ * description: Inativa a anotação clínica preservando o histórico imutável. Restrito ao terapeuta autor da anotação com vínculo ativo.
  *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
@@ -337,7 +336,7 @@ anotacaoRoutes.delete(
  *       401:
  *         description: Não autorizado
  *       403:
- *         description: Acesso negado — apenas o autor com vínculo ativo pode inativar a anotação (RF21, RN04)
+ * description: Acesso negado — apenas o autor com vínculo ativo pode inativar a anotação
  *       404:
  *         description: Anotação não encontrada
  *       500:
@@ -360,7 +359,7 @@ anotacaoRoutes.delete(
  * /api/anotacao/paciente:
  *   post:
  *     summary: Registra anotação clínica geral para o paciente
- *     description: Cria uma nota vinculada exclusivamente ao prontuário do paciente (sessao_id = null). Autoria obtida do token JWT (RF21). Requer vínculo ativo (RN04).
+ * description: Cria uma nota vinculada exclusivamente ao prontuário do paciente (sessao_id = null). Autoria obtida do token JWT. Requer vínculo ativo.
  *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
@@ -402,7 +401,7 @@ anotacaoRoutes.delete(
  *       401:
  *         description: Não autorizado
  *       403:
- *         description: Sem vínculo com o paciente (RN04)
+ * description: Sem vínculo com o paciente
  */
 anotacaoRoutes.post(
   '/paciente',
@@ -452,7 +451,7 @@ anotacaoRoutes.post(
  *       401:
  *         description: Não autorizado
  *       403:
- *         description: Sem vínculo ativo (RN04)
+ * description: Sem vínculo ativo
  *       404:
  *         description: Paciente não encontrado
  */
@@ -526,7 +525,7 @@ anotacaoRoutes.patch(
  * /api/anotacao/paciente/{id}/reativar:
  *   patch:
  *     summary: Reativa uma anotação clínica geral de paciente (soft_delete = false)
- *     description: Restaura o registro da anotação clínica de paciente preservando a imutabilidade do histórico (RN05). Restrito ao autor ou SuperAdmin com vínculo ativo (RF21, RN04).
+ * description: Restaura o registro da anotação clínica de paciente preservando a imutabilidade do histórico. Restrito ao autor ou SuperAdmin com vínculo ativo.
  *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
@@ -561,7 +560,7 @@ anotacaoRoutes.patch(
  * /api/anotacao/paciente/{id}:
  *   delete:
  *     summary: Exclusão lógica (soft delete) de anotação de paciente
- *     description: Marca a anotação como inativa, preservando a imutabilidade do histórico clínico (RN05). Restrito ao autor.
+ * description: Marca a anotação como inativa, preservando a imutabilidade do histórico clínico. Restrito ao autor.
  *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
@@ -643,7 +642,7 @@ anotacaoRoutes.delete(
  * /api/anotacao/sessao:
  *   post:
  *     summary: Registra anotação clínica associada a uma sessão
- *     description: Vincula a nota à sessão e ao paciente correspondente. Sessão cancelada retorna 400. Autoria via JWT (RF21).
+ * description: Vincula a nota à sessão e ao paciente correspondente. Sessão cancelada retorna 400. Autoria via JWT.
  *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []
@@ -685,7 +684,7 @@ anotacaoRoutes.delete(
  *       401:
  *         description: Não autorizado
  *       403:
- *         description: Sem permissão institucional (RN04)
+ * description: Sem permissão institucional
  *       404:
  *         description: Sessão não encontrada
  */
@@ -736,7 +735,7 @@ anotacaoRoutes.post(
  *       401:
  *         description: Não autorizado
  *       403:
- *         description: Sem permissão institucional (RN04)
+ * description: Sem permissão institucional
  *       404:
  *         description: Sessão não encontrada
  */
@@ -809,7 +808,7 @@ anotacaoRoutes.patch(
  * /api/anotacao/sessao/{id}/reativar:
  *   patch:
  *     summary: Reativa uma anotação clínica vinculada a sessão (soft_delete = false)
- *     description: Restaura o registro da anotação de sessão clínica (RN05). Restrito ao autor ou SuperAdmin com vínculo ativo (RF21, RN04).
+ * description: Restaura o registro da anotação de sessão clínica. Restrito ao autor ou SuperAdmin com vínculo ativo.
  *     tags: [Anotações Clínicas]
  *     security:
  *       - bearerAuth: []

@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Testes de Auditoria Institucional de Vínculos Multiterapeuta (Sprint 13 - Card 1.4)
 // ==============================================================================
-// Conformidade: RF08, RNF05, RNF06 (LGPD), RN04 (Isolamento por Clínica), RN05 (Imutabilidade)
 // Cobertura:
 // 1. Emissão de 'vinculo:criado' em PacienteController.vincularTerapeuta (201) -> Listener -> Service -> Model
 // 2. Emissão de 'vinculo:removido' em PacienteController.desvincularTerapeuta (200) -> Listener -> Service -> Model
@@ -9,7 +8,7 @@
 // 4. Validação estrita de UUIDs e acao em AuditoriaService.registrarVinculo (retorna null sem consultar banco)
 // 5. Consulta GET /api/auditoria?pacienteId=:id&tipoAcao=vinculo_equipe_criado e GET /api/auditoria/vinculo (200 Envelope)
 // 6. Rejeição com 400 Bad Request quando pacienteId na query não for um UUID válido
-// 7. Isolamento Institucional por clinica_id (RN04): Terapeuta da Clínica A vê apenas Clínica A; SuperAdmin vê todas
+// 7. Isolamento Institucional por clinica_id: Terapeuta da Clínica A vê apenas Clínica A; SuperAdmin vê todas
 // 8. Cobertura integral de branches de AuditoriaService (validarAcessoLinhaDoTempo, listarPorSessao, obterEstatisticas)
 // ==============================================================================
 
@@ -492,7 +491,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
   });
 
   // ============================================================================
-  // 7. Isolamento Institucional por clinica_id (RN04) vs Visão Global SuperAdmin
+  // 7. Isolamento Institucional por clinica_id vs Visão Global SuperAdmin
   // ============================================================================
   it('7. deve bloquear acesso de terapeuta comum com 403 em GET /api/auditoria e permitir visão global (e filtrada por clínica) apenas ao SuperAdmin', async () => {
     const pacienteClinicaA = '11111111-1111-4111-a111-111111111111';
@@ -623,7 +622,7 @@ describe('Auditoria Institucional de Vínculos Multiterapeuta (RF08 / RNF05 / RN
   });
 
   // ============================================================================
-  // 8. Cobertura de Branches de Segurança em AuditoriaService (RN04)
+  // 8. Cobertura de Branches de Segurança em AuditoriaService
   // ============================================================================
   it('8. deve validar todos os cenários de autorização RN04 e métodos auxiliares em AuditoriaService', async () => {
     const sessaoId = '11111111-1111-4111-a111-111111111111';

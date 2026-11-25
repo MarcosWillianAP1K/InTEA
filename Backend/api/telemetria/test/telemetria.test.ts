@@ -4,7 +4,7 @@
 //
 // Cobertura:
 // 1. TelemetriaModel: persistência individual, lote e busca com filtro
-// 2. TelemetriaService: resolução de sessão, RN01 (Modo Livre) e persistência clínica
+// 2. TelemetriaService: resolução de sessão, e persistência clínica
 // 3. TelemetriaController: validação de payload, códigos de status (201, 200, 400, 404, 500)
 // 4. TelemetriaRoutes: integridade do roteador e rotas registradas
 // ==============================================================================

@@ -1,12 +1,7 @@
-/**
- * ============================================================================
- * TIPAGENS CANÔNICAS DE HISTÓRICO CLÍNICO E ENGAJAMENTO (InTEA)
- * Conformidade: RF15 (Prontuário Longitudinal), RF19 (Filtros),
- * RN01 (Modo Livre Expurgo), RN02 (Tipagem Estrita de Métricas),
- * RN04 (Vínculo Clínico), RN05 (Inalterabilidade / Soft Delete)
- * TypeScript Estrito: Sem o uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// TIPAGENS CANÔNICAS DE HISTÓRICO CLÍNICO E ENGAJAMENTO (InTEA)
+// TypeScript Estrito: Sem o uso de `any`
+// ============================================================================
 
 export type TipoMetricaCanonica = "numerica" | "categorica" | "ordinal" | "booleana";
 
@@ -18,8 +13,7 @@ export const TIPOS_METRICA_VALIDOS = [
 ] as const;
 
 /**
- * Métricas universais consolidadas de engajamento do paciente.
- * Compartilhadas transversalmente por todos os jogos terapêuticos (Nível 1).
+ * Consolidated universal patient engagement metrics shared across all therapeutic games (Level 1).
  */
 export interface MetricasEngajamentoGeral {
   total_sessoes: number;
@@ -33,7 +27,7 @@ export interface MetricasEngajamentoGeral {
 }
 
 /**
- * Ponto individual em uma série temporal de métrica de jogo.
+ * Single data point in a game metric time series.
  */
 export interface PontoSerieMetrica {
   sessao_id: string;
@@ -45,12 +39,12 @@ export interface PontoSerieMetrica {
 }
 
 /**
- * Série temporal de métricas exclusivas de um jogo (Nível 2).
+ * Game-specific metric time series (Level 2).
  */
 export interface SerieMetricaJogo {
   id_metrica: string;
   nome_metrica?: string;
-  tipo_metrica: TipoMetricaCanonica | string; // Permite string para que RN02 possa validar e rejeitar
+  tipo_metrica: TipoMetricaCanonica | string; // Permite string para permitir validação estrita e rejeição
   unidade?: string;
   valores?: string[]; // Categorias ou níveis ordinais possíveis
   pontos: PontoSerieMetrica[];
@@ -64,7 +58,7 @@ export interface SerieMetricaJogo {
 }
 
 /**
- * Declaração formal de métrica no manifesto do jogo (Contrato 1).
+ * Formal metric declaration inside a game manifest (Contract 1).
  */
 export interface MetricaManifestoJogo {
   id_metrica: string;
@@ -76,7 +70,7 @@ export interface MetricaManifestoJogo {
 }
 
 /**
- * Resumo de jogo já experimentado pelo paciente no histórico.
+ * Summary of a therapeutic game previously played by the patient.
  */
 export interface ResumoJogoPaciente {
   jogo_id: string;
@@ -85,14 +79,14 @@ export interface ResumoJogoPaciente {
   total_sessoes: number;
   ultima_sessao: string;
   icone?: string;
-  /** @deprecated Use jogo_id */
+  /** @deprecated Use `jogo_id`. */
   id?: string | number;
-  /** @deprecated Use ultima_sessao */
+  /** @deprecated Use `ultima_sessao`. */
   data_ultima_sessao?: string;
 }
 
 /**
- * Sessão resumida vinculada ao histórico do jogo.
+ * Summarized session entry linked to a game's clinical history.
  */
 export interface SessaoHistoricoItem {
   sessao_id: string;
@@ -110,7 +104,7 @@ export interface SessaoHistoricoItem {
 }
 
 /**
- * Especialista da equipe multidisciplinar presente no histórico do paciente (Issue #187).
+ * Multidisciplinary team specialist metadata present in patient history (Issue #187).
  */
 export interface EspecialistaHistorico {
   id: string;
@@ -120,7 +114,7 @@ export interface EspecialistaHistorico {
 }
 
 /**
- * Resposta de histórico detalhado por jogo selecionado.
+ * Detailed longitudinal history response for a selected therapeutic game.
  */
 export interface HistoricoJogoDetalhado {
   tipo: "detalhado";
@@ -140,7 +134,7 @@ export interface HistoricoJogoDetalhado {
 }
 
 /**
- * Resposta de catálogo de jogos jogados pelo paciente (sem jogoId selecionado).
+ * Catalog response of therapeutic games played by the patient (when no `jogoId` is selected).
  */
 export interface HistoricoJogoCatalogo {
   tipo: "catalogo";
@@ -150,7 +144,7 @@ export interface HistoricoJogoCatalogo {
 export type HistoricoPorJogo = HistoricoJogoDetalhado | HistoricoJogoCatalogo;
 
 /**
- * Payload completo retornado pelo backend REST para a rota de histórico.
+ * Complete REST backend payload returned by the patient history endpoint.
  */
 export interface RespostaHistoricoPaciente {
   paciente_id: string;
@@ -159,12 +153,12 @@ export interface RespostaHistoricoPaciente {
 }
 
 /**
- * Filtros para consultas de histórico clínico (RF19).
+ * Query filters for clinical history requests.
  */
 export interface FiltrosHistorico {
   jogoId?: string;
   sessaoId?: string;
-  /** UUID do especialista para filtragem da linha do tempo da equipe multidisciplinar (Issue #187) */
+  /** Specialist UUID for filtering the multidisciplinary team timeline (Issue #187). */
   terapeutaId?: string;
   periodo?: "7d" | "30d" | "3m" | "personalizado" | "todos";
   dataInicio?: string;

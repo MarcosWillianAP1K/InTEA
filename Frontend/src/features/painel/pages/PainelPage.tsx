@@ -30,6 +30,11 @@ import { usePacienteStore } from "@/features/paciente/store/paciente.store";
 import { SessionSocketManager } from "@/core/web.socket";
 import { toast } from "sonner";
 
+/**
+ * Therapist home dashboard displaying active session timers, clinical KPIs, recent sessions, and alerts.
+ *
+ * @returns Rendered main dashboard page.
+ */
 export function PainelPage() {
   const navigate = useNavigate();
   const [metricas, setMetricas] = useState<DashboardMetricas | null>(null);
@@ -117,7 +122,7 @@ export function PainelPage() {
       toast.info("Intervenção pausada.");
     }
 
-    // 3. Persistência no Banco de Dados (RF12, RF21)
+    // 3. Persistência no Banco de Dados
     try {
       await sessaoService.atualizarStatus(sessaoId, novoStatus);
     } catch (err) {

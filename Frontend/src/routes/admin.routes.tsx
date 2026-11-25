@@ -1,10 +1,8 @@
-/**
- * ============================================================================
- * ROTAS ADMINISTRATIVAS E GUARDIÃO SUPERADMIN (admin.routes.tsx)
- * Proteção de rota restrita para recursos administrativos (RF07, RF08).
- * Impede o acesso indevido de terapeutas comuns sem privilégio de SuperAdmin.
- * ============================================================================
- */
+// ============================================================================
+// ROTAS ADMINISTRATIVAS E GUARDIÃO SUPERADMIN (admin.routes.tsx)
+// Proteção de rota restrita para recursos administrativos.
+// Impede o acesso indevido de terapeutas comuns sem privilégio de SuperAdmin.
+// ============================================================================
 
 import { type ReactNode } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
@@ -17,8 +15,8 @@ export interface SuperAdminGuardProps {
 }
 
 /**
- * Route guard component that restricts access exclusively to users with SuperAdmin privileges (RF07).
- * Role-Based Access Control (RF07): Unauthenticated users are redirected to /login, non-admins to /painel.
+ * Route guard component that restricts access exclusively to users with SuperAdmin privileges.
+ * Role-Based Access Control: Unauthenticated users are redirected to /login, non-admins to /painel.
  *
  * @param props - Guard properties including optional children and fallback redirect path
  * @returns Protected child components, Outlet, or Navigate redirection

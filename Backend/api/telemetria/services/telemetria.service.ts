@@ -3,12 +3,11 @@
 // ==============================================================================
 //
 // Responsável: Marcos Willian (@MarcosWillianAP1K)
-// Requisitos: RF12, RN01, RN02, RNF05
 //
 // Regras Clínicas:
-// - RN01 (Modo Livre sem Persistência): Se a sessão for 'modo_livre' ou não tiver
+// - Se a sessão for 'modo_livre' ou não tiver
 //   paciente vinculado, a persistência no banco é suprimida automaticamente.
-// - RN02 (Fallback Proibido / Tipagem Estrita): Toda métrica deve ter tipo_metrica
+// - Toda métrica deve ter tipo_metrica
 //   declarado no manifesto do jogo e ser compatível com seu domínio. Rejeita com 422.
 // - Sessões Clínicas gravam telemetria na tabela 'telemetria_evento'.
 // ==============================================================================
@@ -40,18 +39,29 @@ export class TelemetriaService {
     { valor: { manifesto_json?: ManifestoJogo | null } | null; expiraEm: number }
   > = new Map();
 
+  /**
+   * Checks whether in-memory caching is enabled (disabled under test runners).
+   *
+   * @returns `true` outside test environments, `false` when running under Vitest or `NODE_ENV=test`.
+   */
   private static isCacheHabilitado(): boolean {
     return process.env.NODE_ENV !== 'test' && !process.env.VITEST;
   }
 
   /**
-   * Limpa o cache em memória de sessões e manifestos de jogos.
+   * Clears the in-memory cache of active sessions and game manifests.
    */
   static limparCache(): void {
     this.sessaoCache.clear();
     this.jogoCache.clear();
   }
 
+  /**
+   * Resolves a game record by ID using the short-lived in-memory manifest cache when enabled.
+   *
+   * @param jogoId - UUID of the therapeutic game.
+   * @returns Game object containing `manifesto_json`, or `null` if not found.
+   */
   private static async resolverJogoComCache(
     jogoId: string
   ): Promise<{ manifesto_json?: ManifestoJogo | null } | null> {
@@ -104,7 +114,7 @@ export class TelemetriaService {
   }
 
   /**
-   * Validates strict compliance of an event with the game clinical manifest according to RN02.
+   * Validates strict compliance of an event with the game clinical manifest according to the game clinical manifest.
    * Forbids automatic fallback and requires compatible metric types (number or domain category).
    *
    * @param evento - Received telemetry event.
@@ -166,7 +176,7 @@ export class TelemetriaService {
   }
 
   /**
-   * Persists an individual clinical telemetry event adhering to rule RN01 and RN02.
+   * Persists an individual clinical telemetry event adhering to free-mode and manifest typing rules.
    *
    * @param sessaoIdentificador - Session UUID or pairing code.
    * @param evento - Telemetry event data payload.
@@ -193,7 +203,7 @@ export class TelemetriaService {
       };
     }
 
-    // Regra RN01: Modo livre não grava telemetria em prontuário
+    // Modo livre não grava telemetria em prontuário
     if (sessao.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessao.paciente_id) {
       return {
         persistido: false,
@@ -201,7 +211,7 @@ export class TelemetriaService {
       };
     }
 
-    // Regra RN02: Validação estrita contra o manifesto clínico do jogo
+    // Validação estrita contra o manifesto clínico do jogo
     if (sessao.jogo_id) {
       const jogo = await this.resolverJogoComCache(sessao.jogo_id);
       if (jogo?.manifesto_json) {
@@ -232,7 +242,7 @@ export class TelemetriaService {
   }
 
   /**
-   * Persists a batch array of telemetry events adhering to rule RN01 and RN02.
+   * Persists a batch array of telemetry events adhering to free-mode and manifest typing rules.
    *
    * @param sessaoIdentificador - Session UUID or pairing code.
    * @param eventos - Array of telemetry events to ingest.
@@ -264,7 +274,7 @@ export class TelemetriaService {
       };
     }
 
-    // Regra RN01: Modo livre não grava telemetria em prontuário
+    // Modo livre não grava telemetria em prontuário
     if (sessao.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessao.paciente_id) {
       return {
         persistido: false,
@@ -273,7 +283,7 @@ export class TelemetriaService {
       };
     }
 
-    // Regra RN02: Validação estrita do lote contra o manifesto clínico do jogo
+    // Validação estrita do lote contra o manifesto clínico do jogo
     if (sessao.jogo_id) {
       const jogo = await this.resolverJogoComCache(sessao.jogo_id);
       if (jogo?.manifesto_json) {

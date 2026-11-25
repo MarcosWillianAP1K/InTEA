@@ -3,8 +3,6 @@
  * SERVIÇO REST DO DOMÍNIO ANOTAÇÕES CLÍNICAS (anotacao.service.ts)
  * Consome os endpoints centralizados ENDPOINTS.ANOTACAO via http-client
  * com fallback resiliente para bdmock.ts em caso de indisponibilidade.
- * Conformidade: RF16 (Prontuário e Anotações), RF21 (Autoria do Terapeuta),
- *              RN04 (Vínculo e Clínica), RN05 (Inalterabilidade / Soft Delete)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
@@ -58,7 +56,7 @@ function serializarFiltros(
 }
 
 /**
- * Normalizes a raw clinical annotation object ensuring strictly defined RN05 boolean flags.
+ * Normalizes a raw clinical annotation object ensuring strictly defined soft-delete boolean flags.
  *
  * @param raw - Raw candidate clinical note object.
  * @returns Validated AnotacaoClinica entity, or null if invalid or malformed.
@@ -129,7 +127,7 @@ function extrairListaAnotacoes(
 
 export const anotacaoService = {
   /**
-   * Lists clinical annotations for a patient (RF16, RN04, RN05).
+   * Lists clinical annotations for a patient.
    */
   listarPorPaciente: async (
     pacienteId: string,
@@ -151,7 +149,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Lists clinical annotations linked to an active or concluded session (RF16).
+   * Lists clinical annotations linked to an active or concluded session.
    */
   listarPorSessao: async (sessaoId: string): Promise<AnotacaoClinica[]> => {
     if (!sessaoId || !sessaoId.trim()) return [];
@@ -169,7 +167,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Retrieves a clinical annotation by UUID (RF16, RN04).
+   * Retrieves a clinical annotation by UUID.
    */
   buscarPorId: async (id: string): Promise<AnotacaoClinica | null> => {
     if (!id || !id.trim()) return null;
@@ -187,7 +185,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Creates new clinical note in medical record or linked to session (RF16, RF21).
+   * Creates new clinical note in medical record or linked to session.
    */
   criar: async (dto: CriarAnotacaoDTO): Promise<AnotacaoClinica> => {
     return await withFallback(
@@ -203,7 +201,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Updates textual content of clinical note (RF16, RF21).
+   * Updates textual content of clinical note.
    */
   atualizar: async (
     id: string,
@@ -224,7 +222,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Inactivates clinical note applying soft delete (RN05).
+   * Inactivates clinical note applying soft delete.
    */
   inativar: async (id: string): Promise<AnotacaoClinica | null> => {
     if (!id || !id.trim()) return null;
@@ -242,7 +240,7 @@ export const anotacaoService = {
   },
 
   /**
-   * Reactivates previously inactivated clinical note (RN05).
+   * Reactivates previously inactivated clinical note.
    */
   reativar: async (id: string): Promise<AnotacaoClinica | null> => {
     if (!id || !id.trim()) return null;

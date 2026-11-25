@@ -73,7 +73,7 @@ export async function authMiddleware(
       return;
     }
 
-    // Valida se o token não foi revogado remotamente via logout-all (RF02)
+    // Valida se o token não foi revogado remotamente via logout-all
     const tokenRevogado = await SessoesAtivasService.isTokenRevogado(token);
     if (tokenRevogado) {
       res.status(401).json({

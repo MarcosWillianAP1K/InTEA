@@ -1,13 +1,10 @@
-/**
- * ============================================================================
- * RATE LIMITING E PREVENÇÃO DE FLOOD EM WEBSOCKET (Card 2.4 / Sprint 9)
- * Requisitos: RNF03 (Segurança e Integridade), RNF04 (Tempo Real)
- * Regra: TypeScript estrito sem o uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// RATE LIMITING E PREVENÇÃO DE FLOOD EM WEBSOCKET (Card 2.4 / Sprint 9)
+// Regra: TypeScript estrito sem o uso de `any`
+// ============================================================================
 
 export interface SocketLimiterOpcoes {
-  maxEventosPorJanela?: number; // Padrão: 20 eventos por segundo (RNF03)
+  maxEventosPorJanela?: number; // Padrão: 20 eventos por segundo
   janelaMs?: number;           // Padrão: 1.000 ms (1 segundo)
 }
 

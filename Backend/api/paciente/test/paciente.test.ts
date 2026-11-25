@@ -457,7 +457,7 @@ describe('Backend: PacienteModel (CRUD, Soft Delete, Hard Delete, Vínculos e Fi
 });
 
 // ==============================================================================
-// TESTES DE INTEGRAÇÃO: POST /api/paciente E EQUIPE MULTIDISCIPLINAR (RN04)
+// TESTES DE INTEGRAÇÃO: POST /api/paciente E EQUIPE MULTIDISCIPLINAR
 // ==============================================================================
 
 import {

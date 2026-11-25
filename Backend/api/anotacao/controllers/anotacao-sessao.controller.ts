@@ -33,7 +33,7 @@ export class AnotacaoSessaoController {
 
       const { terapeuta_id: terapeutaIdBody, sessao_id, conteudo } = req.body || {};
 
-      // Guarda Anti-Spoofing (RF21)
+      // Guarda Anti-Spoofing
       if (terapeutaIdBody && terapeutaIdBody !== usuarioLogadoId) {
         res.status(403).json({
           error: 'Acesso negado: tentativa de registrar anotação para outro terapeuta não autorizada.',
@@ -196,7 +196,7 @@ export class AnotacaoSessaoController {
 
   /**
    * Handles DELETE /api/anotacao/sessao/:id to logically delete (soft delete) a session note.
-   * Preserves clinical history (RN05) and returns the updated deactivated record.
+   * Preserves clinical history and returns the updated deactivated record.
    *
    * @param req - Authenticated Express request containing note ID in URL parameter `:id`.
    * @param res - Express response returning status 200 with deactivated note payload.

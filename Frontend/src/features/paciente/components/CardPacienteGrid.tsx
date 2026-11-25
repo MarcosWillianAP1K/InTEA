@@ -7,14 +7,11 @@ import {
 } from "../constants/condicoesClinicas";
 import type { Patient } from "../types/paciente.types";
 
-/**
- * ============================================================================
- * COMPONENTE CARD PACIENTE GRID (InTEA)
- * Figma: 'Card paciente' (Node ID: '67:1592')
- * Conformidade: RF06 (Visualização de Pacientes), RN04 (Visibilidade Clínica)
- * TypeScript Estrito: Sem uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// COMPONENTE CARD PACIENTE GRID (InTEA)
+// Figma: 'Card paciente' (Node ID: '67:1592')
+// TypeScript Estrito: Sem uso de `any`
+// ============================================================================
 
 export interface CardPacienteGridProps {
   patient: Patient;
@@ -24,6 +21,12 @@ export interface CardPacienteGridProps {
   className?: string;
 }
 
+/**
+ * Grid card displaying a patient summary (avatar, age, clinical state, last session) and profile navigation button.
+ *
+ * @param props - Patient record, selection state, and click callbacks.
+ * @returns Rendered patient grid card component.
+ */
 export function CardPacienteGrid({
   patient,
   onVerPerfil,

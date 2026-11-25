@@ -9,7 +9,6 @@ import { sessaoService } from "../services/sessao.service";
  * ============================================================================
  * COMPONENTE CARD SESSÃO COM TIMER SINCRONIZADO (InTEA)
  * Figma: 'sessão - InTEA' (Node ID: '61:759')
- * Conformidade: RF12 (Cockpit da Sessão), RF13 (Finalização da Sessão), RF21 (Pausa e Retomada)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
@@ -41,7 +40,7 @@ function formatarSegundos(segundos?: number): string {
 
 /**
  * Renders high-precision clinical intervention countdown/elapsed timer with pause and resume controls.
- * Temporal Synchronization (RF13, RF21): Uses high-precision `useClinicalTimer` persisting across refreshes.
+ * Temporal Synchronization: Uses high-precision `useClinicalTimer` persisting across refreshes.
  *
  * @param props - Component properties including duration limit, active state, and tick callback
  * @returns Synchronized clinical timer card component
@@ -81,7 +80,7 @@ export function CardSessaoTimer({
     isPausadoProp ?? (status === "pausada" || (isEmAndamento && isMesmaSessao && storeIsPausado))
   );
 
-  // Utiliza o hook clínico unificado compartilhado com o Cockpit (RF12, RF21)
+  // Utiliza o hook clínico unificado compartilhado com o Cockpit
   const timer = useClinicalTimer({
     sessaoId: sessaoId || "sessao-ativa",
     ativo: isEmAndamento,

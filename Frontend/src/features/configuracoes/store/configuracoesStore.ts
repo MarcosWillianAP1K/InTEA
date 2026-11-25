@@ -15,6 +15,9 @@ interface SettingState {
 
 export type ConfiguracoesState = SettingState;
 
+/**
+ * Persistent Zustand store managing therapist appearance and application preferences.
+ */
 export const useSettingStore = create<SettingState>()(
   persist(
     (set) => ({

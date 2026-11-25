@@ -246,7 +246,7 @@ describe('Card 2.1 — TelemetriaAgregacaoService.agregarEventos (Pura em Memór
 
     const consolidado = TelemetriaAgregacaoService.agregarEventos(eventos, manifestoExemplo);
 
-    // RN02: Não pode criar fallback categórico automático para metrica_inexistente
+    // Não pode criar fallback categórico automático para metrica_inexistente
     const encontrouAgregada = consolidado.metricas_agregadas.some((m) => m.id_metrica === 'metrica_inexistente');
     expect(encontrouAgregada).toBe(false);
 

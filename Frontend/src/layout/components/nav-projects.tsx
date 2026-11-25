@@ -10,6 +10,12 @@ import {
 import { cn } from "@/shared/lib/utils";
 import { Link, useLocation } from "react-router-dom";
 
+/**
+ * Primary sidebar route navigation list highlighting active routes and live session indicators.
+ *
+ * @param props - Navigation route definitions with label, target URL, icon, and optional live flag.
+ * @returns Rendered sidebar navigation list.
+ */
 export function NavProjects({
   projects,
 }: {

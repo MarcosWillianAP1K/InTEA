@@ -259,7 +259,7 @@ export class JogoModel {
   }
 
   /**
-   * Lists available games with optional filtering by clinical objective, positive/adaptive stimuli, and pagination (RF19).
+   * Lists available games with optional filtering by clinical objective, positive/adaptive stimuli, and pagination.
    * Strictly enforces the Clinical Non-Competitiveness Guideline, purging any non-compliant entries.
    *
    * @param filtros - Search, filter, and pagination options (objetivo, foco, adaptativo, page, limit).
@@ -277,7 +277,7 @@ export class JogoModel {
           .from('jogo')
           .select('id, nome, descricao, versao, status_jogo, manifesto_json', { count: 'exact' });
 
-        // Filtro por objetivo_clinico dentro do JSONB (RF19)
+        // Filtro por objetivo_clinico dentro do JSONB
         if (filtros.objetivo && filtros.objetivo !== 'todos' && filtros.objetivo !== 'all') {
           query = query.eq('manifesto_json->>objetivo_clinico', filtros.objetivo);
         }

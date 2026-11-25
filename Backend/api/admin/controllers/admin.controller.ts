@@ -4,19 +4,23 @@ import type { AuthenticatedRequest } from '../../../core/middlewares/auth.middle
 import { eventBus } from '../../../core/events/event-bus.js';
 import { extrairContextoHttp } from '../../../core/utils/http-context.js';
 
-/**
- * ==============================================================================
- * InTEA: Controller de Administração Global (SuperAdmin)
- * ==============================================================================
- * Conformidade: RF07, RF08, Envelope Pattern estrito ({ data, message })
- * ==============================================================================
- */
+// ==============================================================================
+// InTEA: Controller de Administração Global (SuperAdmin)
+// ==============================================================================
+// Padrão: Envelope Pattern estrito ({ data, message })
+// ==============================================================================
 
 export class AdminController {
   // ============================================================================
   // MÓDULO DE CLÍNICAS
   // ============================================================================
 
+  /**
+   * Handles GET /api/admin/clinicas to list registered clinics with optional filters and pagination.
+   *
+   * @param req - Express request containing query filters (`busca`, `status_ativo`, `page`, `limit`).
+   * @param res - Express response returning paginated clinics and metadata.
+   */
   static async listarClinicas(req: Request, res: Response): Promise<void> {
     try {
       const { busca, status_ativo, page, limit } = req.query;
@@ -41,6 +45,12 @@ export class AdminController {
     }
   }
 
+  /**
+   * Handles GET /api/admin/clinicas/:id to retrieve a single clinic by UUID.
+   *
+   * @param req - Express request containing the clinic UUID in `params.id`.
+   * @param res - Express response returning the clinic record.
+   */
   static async buscarClinicaPorId(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
@@ -57,6 +67,12 @@ export class AdminController {
     }
   }
 
+  /**
+   * Handles POST /api/admin/clinicas to register a new clinic and emit an audit event.
+   *
+   * @param req - Authenticated Express request containing clinic `nome` and optional `cnpj`.
+   * @param res - Express response returning HTTP 201 with the created clinic record.
+   */
   static async criarClinica(req: Request, res: Response): Promise<void> {
     try {
       const { nome, cnpj } = req.body;
@@ -88,6 +104,12 @@ export class AdminController {
     }
   }
 
+  /**
+   * Handles PATCH /api/admin/clinicas/:id to update clinic details and emit an audit event.
+   *
+   * @param req - Authenticated Express request containing clinic UUID and fields to update.
+   * @param res - Express response returning the updated clinic record.
+   */
   static async atualizarClinica(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
@@ -121,6 +143,12 @@ export class AdminController {
     }
   }
 
+  /**
+   * Handles PATCH /api/admin/clinicas/:id/ativar (or /reativar) to reactivate a clinic.
+   *
+   * @param req - Authenticated Express request containing the clinic UUID in `params.id`.
+   * @param res - Express response returning the reactivated clinic record.
+   */
   static async ativarClinica(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
@@ -152,6 +180,12 @@ export class AdminController {
     }
   }
 
+  /**
+   * Handles PATCH /api/admin/clinicas/:id/desativar to deactivate a clinic (soft delete).
+   *
+   * @param req - Authenticated Express request containing the clinic UUID in `params.id`.
+   * @param res - Express response returning the deactivated clinic record.
+   */
   static async desativarClinica(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
@@ -187,6 +221,12 @@ export class AdminController {
   // MÓDULO DE TERAPEUTAS
   // ============================================================================
 
+  /**
+   * Handles GET /api/admin/terapeutas to list therapists across clinics with filters and pagination.
+   *
+   * @param req - Express request containing filter query params (`busca`, `clinica_id`, `status_ativo`, `is_super_admin`, `page`, `limit`).
+   * @param res - Express response returning paginated therapist records and metadata.
+   */
   static async listarTerapeutas(req: Request, res: Response): Promise<void> {
     try {
       const { busca, clinica_id, status_ativo, is_super_admin, page, limit } = req.query;
@@ -214,6 +254,12 @@ export class AdminController {
     }
   }
 
+  /**
+   * Handles GET /api/admin/terapeutas/:id to retrieve a therapist profile by UUID.
+   *
+   * @param req - Express request containing the therapist UUID in `params.id`.
+   * @param res - Express response returning the therapist profile.
+   */
   static async buscarTerapeutaPorId(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
@@ -230,6 +276,12 @@ export class AdminController {
     }
   }
 
+  /**
+   * Handles PATCH /api/admin/terapeutas/:id to update therapist attributes or privileges as SuperAdmin.
+   *
+   * @param req - Authenticated Express request containing therapist UUID and fields to update.
+   * @param res - Express response returning the updated therapist record.
+   */
   static async atualizarTerapeuta(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
@@ -271,6 +323,12 @@ export class AdminController {
     }
   }
 
+  /**
+   * Handles PATCH /api/admin/terapeutas/:id/ativar (or /reativar) to reactivate a therapist account.
+   *
+   * @param req - Authenticated Express request containing the therapist UUID in `params.id`.
+   * @param res - Express response returning the reactivated therapist record.
+   */
   static async ativarTerapeuta(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
@@ -301,6 +359,12 @@ export class AdminController {
     }
   }
 
+  /**
+   * Handles PATCH /api/admin/terapeutas/:id/desativar to deactivate a therapist account.
+   *
+   * @param req - Authenticated Express request containing the therapist UUID in `params.id`.
+   * @param res - Express response returning the deactivated therapist record.
+   */
   static async desativarTerapeuta(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
@@ -335,6 +399,12 @@ export class AdminController {
   // MÓDULO DE AUDITORIA CONSOLIDADA
   // ============================================================================
 
+  /**
+   * Handles GET /api/admin/auditoria to query consolidated audit logs with institutional summary metrics.
+   *
+   * @param req - Express request containing filter query params and optional `clinicaId` route parameter.
+   * @param res - Express response returning audit events, consolidated metrics, and pagination metadata.
+   */
   static async consultarAuditoriaConsolidada(req: Request, res: Response): Promise<void> {
     try {
       const {
@@ -389,6 +459,13 @@ export class AdminController {
   // HANDLER PADRONIZADO DE ERROS
   // ============================================================================
 
+  /**
+   * Maps service-layer and unexpected errors into standardized JSON HTTP error responses.
+   *
+   * @param error - Thrown error instance or unknown failure value.
+   * @param res - Express response object.
+   * @param operacao - Human-readable operation description used in error logging and fallback messages.
+   */
   private static tratarErro(error: unknown, res: Response, operacao: string): void {
     if (error instanceof AdminServiceError) {
       res.status(error.statusCode).json({

@@ -1,7 +1,6 @@
 // ==============================================================================
-// InTEA: Testes Automatizados de Contexto Clínico Pré-Sessão DDA e RN03
+// InTEA: Testes Automatizados de Contexto Clínico Pré-Sessão DDA
 // ==============================================================================
-// Conformidade: RF12, RF17, RF21, RN01, RN03, RN04, RNF02
 // Contrato 2: docs/ModelosDeContratos/contextoPreSessao.json
 // ==============================================================================
 

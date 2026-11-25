@@ -32,6 +32,13 @@ export interface ModalCompararSessoesProps {
   pacienteNome?: string;
 }
 
+/**
+ * Side-by-side comparison modal between two clinical sessions (baseline vs. recent),
+ * displaying deltas across duration, completion rate, and shared game metrics.
+ *
+ * @param props - Modal open state, close callback, compared session objects, and loading flag.
+ * @returns Rendered two-session comparison dialog.
+ */
 export function ModalCompararSessoes({
   isOpen,
   onClose,

@@ -20,13 +20,12 @@ export interface TelemetriaCardsProps {
 /**
  * ============================================================================
  * COMPONENTE: TelemetriaCards (Front-end 2 — Luma Maiara / Card 4.1)
- * Requisitos: RF12, RF17, RN02
  * Exibe métricas em tempo real recebidas do dispositivo remoto
  * ============================================================================
  */
 
 /**
- * Grid of cards with real-time clinical indicators and telemetry metrics (RF12, RF17, RN02).
+ * Grid of cards with real-time clinical indicators and telemetry metrics.
  * Displays hits/errors, accuracy percentage, mean reaction time, and attention/stress levels.
  */
 export const TelemetriaCards = React.memo(function TelemetriaCards({ metricas, isLoading = false }: TelemetriaCardsProps) {

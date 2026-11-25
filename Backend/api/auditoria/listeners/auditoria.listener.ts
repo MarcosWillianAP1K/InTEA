@@ -13,7 +13,7 @@ let ouvintesRegistrados = false;
 
 /**
  * Initializes domain event listeners for the entire ecosystem lifecycle,
- * recording immutable audit logs without blocking callers (RF07, RF08, RF13, RNF06, RN05).
+ * recording immutable audit logs without blocking callers.
  */
 export function inicializarAuditoriaListeners(): void {
   if (ouvintesRegistrados) {
@@ -98,7 +98,7 @@ export function inicializarAuditoriaListeners(): void {
     }
   });
 
-  // 4. Escuta criação de vínculo de equipe multidisciplinar (RF08)
+  // 4. Escuta criação de vínculo de equipe multidisciplinar
   eventBus.ouvir('vinculo:criado', async (dados) => {
     try {
       await AuditoriaService.registrarVinculoSilencioso({
@@ -114,7 +114,7 @@ export function inicializarAuditoriaListeners(): void {
     }
   });
 
-  // 5. Escuta remoção de vínculo de equipe multidisciplinar (RF08)
+  // 5. Escuta remoção de vínculo de equipe multidisciplinar
   eventBus.ouvir('vinculo:removido', async (dados) => {
     try {
       await AuditoriaService.registrarVinculoSilencioso({

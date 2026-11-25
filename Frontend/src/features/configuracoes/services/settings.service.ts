@@ -1,6 +1,4 @@
-/**
- * Arquivo de compatibilidade com a nomenclatura legada em inglês (settings.service.ts).
- * Redireciona para services/configuracoes.service.ts.
- */
+// Compatibility shim for legacy English naming (`settings.service.ts`).
+// Re-exports `services/configuracoes.service.ts`.
 export * from "./configuracoes.service";
 export { default } from "./configuracoes.service";

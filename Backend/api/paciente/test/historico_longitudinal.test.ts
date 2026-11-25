@@ -1,13 +1,12 @@
 // ==============================================================================
-// InTEA: Suíte de Testes de Integração e Unidade - Histórico Longitudinal (RNF05)
+// InTEA: Suíte de Testes de Integração e Unidade - Histórico Longitudinal
 // ==============================================================================
-// REQUISITOS ATENDIDOS:
-// - RF15: Prontuário Longitudinal de Alta Volumetria
-// - RNF05: SLA de Performance Sub-50ms (< 50ms) para 50+ Sessões
-// - RNF06: Segurança e Blindagem de Permissões (service_role exclusivo na View)
-// - RN01: Expurgo Estrito de Modo Livre (s.paciente_id IS NOT NULL)
-// - RN04: Isolamento Institucional por Vínculo (200 OK vinculado vs 403 Forbidden não vinculado)
-// - RN05: Inalterabilidade e Expurgo de Soft Delete (soft_delete = false)
+// - Prontuário Longitudinal de Alta Volumetria
+// - SLA de Performance Sub-50ms (< 50ms) para 50+ Sessões
+// - Segurança e Blindagem de Permissões (service_role exclusivo na View)
+// - Expurgo Estrito de Modo Livre (s.paciente_id IS NOT NULL)
+// - Isolamento Institucional por Vínculo (200 OK vinculado vs 403 Forbidden não vinculado)
+// - Inalterabilidade e Expurgo de Soft Delete (soft_delete = false)
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -145,7 +144,7 @@ describe('Histórico Longitudinal: View Materializada, Cache e SLA sub-50ms', ()
   });
 
   // ============================================================================
-  // 1. Auditoria DDL: Migração 014 e Índices de Banco (RN01, RN05, RNF05, RNF06)
+  // 1. Auditoria DDL: Migração 014 e Índices de Banco
   // ============================================================================
   describe('Auditoria DDL e Conformidade da Migração 014', () => {
     const migrationPath = path.resolve(
@@ -259,7 +258,7 @@ describe('Histórico Longitudinal: View Materializada, Cache e SLA sub-50ms', ()
   });
 
   // ============================================================================
-  // 3. Integração REST: GET /api/paciente/:id/historico (SLA sub-50ms, RN04, 404)
+  // 3. Integração REST: GET /api/paciente/:id/historico (SLA sub, 50ms, 404)
   // ============================================================================
   describe('Endpoint REST: GET /api/paciente/:id/historico', () => {
     const handlers = obterHandlers(
@@ -441,7 +440,7 @@ describe('Histórico Longitudinal: View Materializada, Cache e SLA sub-50ms', ()
       const duracaoMs = fim - inicio;
 
       expect(getStatus()).toBe(200);
-      // RNF05: SLA sub-50ms estrito
+      // SLA sub-50ms estrito
       expect(duracaoMs).toBeLessThan(50);
     });
 

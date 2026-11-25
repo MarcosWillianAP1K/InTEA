@@ -95,7 +95,7 @@ authRoutes.post('/recuperar-senha', AuthController.recuperarSenha);
  * @swagger
  * /api/auth/redefinir-senha:
  *   post:
- *     summary: Redefine a senha de acesso utilizando token efêmero de recuperação (RF01, RNF03)
+ * summary: Redefine a senha de acesso utilizando token efêmero de recuperação
  *     tags: [Autenticação]
  *     requestBody:
  *       required: true
@@ -247,7 +247,7 @@ authRoutes.post('/refresh', AuthController.refresh);
 authRoutes.post('/logout', AuthController.logout);
 
 // ------------------------------------------------------------------------------
-// Gestão de Sessões Ativas e Logout Remoto (RF02)
+// Gestão de Sessões Ativas e Logout Remoto
 // ------------------------------------------------------------------------------
 authRoutes.get('/sessoes', authMiddleware, AuthController.listarSessoes);
 authRoutes.post('/logout-all', authMiddleware, AuthController.logoutAll);

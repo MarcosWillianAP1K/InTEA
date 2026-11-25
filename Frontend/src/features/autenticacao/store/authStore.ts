@@ -2,7 +2,6 @@
  * ============================================================================
  * STORE REATIVA DE AUTENTICAÇÃO (Zustand) — InTEA
  * Gerenciamento centralizado de sessão, tokens JWT e perfil do usuário ativo.
- * Conformidade com RF21 (Autenticação/Autoria) e RN04 (Vínculo com Clínica).
  * TypeScript estrito sem o uso de `any`.
  * ============================================================================
  */

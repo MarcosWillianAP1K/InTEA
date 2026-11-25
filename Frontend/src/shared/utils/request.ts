@@ -72,10 +72,10 @@ export interface AuthAdapter {
  * @param setToken - a function that sets the current CSRF token.
  * @param headerName - an optional string that specifies the name of the header to use for the CSRF token. Defaults to "X-CSRF-Token".
  *
- * ATENÇÃO: a implementação padrão (in-memory) exige que o backend exponha
- * o header via `Access-Control-Expose-Headers` — sem isso, o browser esconde
- * o header do JS e o token nunca é capturado. Isso é uma dependência externa,
- * não uma garantia do client: valide no backend antes de confiar nisso.
+ * NOTE: the default in-memory implementation requires the backend to expose the header
+ * via `Access-Control-Expose-Headers` — otherwise the browser hides the header from JS
+ * and the token is never captured. This is an external dependency, not a client guarantee;
+ * validate it on the backend before relying on it.
  */
 export interface CsrfAdapter {
   getToken: () => string | undefined;
@@ -402,7 +402,7 @@ function defaultShouldRetry(error: HttpError, method: HttpMethod): boolean {
  * It also handles automatic token refresh on 401 responses and can be extended with custom behavior through callbacks.
  * @param config - an optional HttpClientConfig object for configuring the HttpClient instance.
  * @param csrf - an optional CsrfAdapter for handling CSRF tokens. If not provided, an in-memory CSRF adapter is used by default.
- * @param refreshInFlight - a private property that tracks whether a token refresh is currently in progress, ensuring that multiple simultaneous 401 responses trigger only one refresh operation. NÃO cobre sozinho o retardatário que chega depois do refresh já ter resolvido — esse caso é tratado em handleUnauthorized comparando o token usado na request original contra o token atual.
+ * @param refreshInFlight - a private property that tracks whether a token refresh is currently in progress, ensuring that multiple simultaneous 401 responses trigger only one refresh operation. It does not by itself cover late arrivals after the refresh already resolved — that case is handled in `handleUnauthorized` by comparing the token used in the original request against the current token.
  */
 export class HttpClient {
   private readonly config: HttpClientConfig;

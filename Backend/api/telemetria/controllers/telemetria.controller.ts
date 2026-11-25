@@ -14,7 +14,7 @@ import { supabase } from '../../../core/supabase/supabase.client.js';
 export class TelemetriaController {
   /**
    * Handles POST /api/telemetria to ingest an individual clinical telemetry event.
-   * Adheres to Envelope Pattern and RN01/RN02 invariant clinical rules.
+   * Adheres to Envelope Pattern and invariant clinical telemetry rules.
    *
    * @param req - Express request containing session ID or token, event type, and telemetry data.
    * @param res - Express response returning the recorded telemetry event in categorized envelope.
@@ -89,7 +89,7 @@ export class TelemetriaController {
 
   /**
    * Handles POST /api/telemetria/lote to batch ingest multiple telemetry events.
-   * Adheres to Envelope Pattern and RN01/RN02 invariant clinical rules.
+   * Adheres to Envelope Pattern and invariant clinical telemetry rules.
    *
    * @param req - Express request containing session ID or token and an array of telemetry events.
    * @param res - Express response returning batch processing status in categorized envelope.
@@ -186,7 +186,7 @@ export class TelemetriaController {
 
   /**
    * Handles GET /api/telemetria/sessao/:sessaoId to list telemetry events for a session.
-   * Adheres to Envelope Pattern and RN04 (Visibilidade Institucional).
+   * Adheres to Envelope Pattern and institutional visibility rules.
    *
    * @param req - Express request containing session UUID in `:sessaoId` and optional filters/pagination.
    * @param res - Express response returning categorized array of telemetry events.
@@ -204,7 +204,7 @@ export class TelemetriaController {
         return;
       }
 
-      // Validação de existência da sessão e regra RN04 (Visibilidade Institucional)
+      // Validação de existência da sessão e vínculo institucional (Visibilidade Institucional)
       const sessao = await SessaoModel.buscarPorId(sessaoId);
       if (!sessao) {
         res.status(404).json({ error: 'Sessão não encontrada' });
@@ -250,7 +250,7 @@ export class TelemetriaController {
 
   /**
    * Handles GET /api/telemetria/sessao/:sessaoId/agregada to retrieve aggregated telemetry metrics.
-   * Adheres to Envelope Pattern and RN04 (Visibilidade Institucional).
+   * Adheres to Envelope Pattern and institutional visibility rules.
    *
    * @param req - Express request containing session UUID in URL parameter `:sessaoId`.
    * @param res - Express response returning categorized aggregated session statistics.
@@ -265,7 +265,7 @@ export class TelemetriaController {
         return;
       }
 
-      // Validação de existência da sessão e regra RN04 (Visibilidade Institucional)
+      // Validação de existência da sessão e vínculo institucional (Visibilidade Institucional)
       const sessao = await SessaoModel.buscarPorId(sessaoId);
       if (!sessao) {
         res.status(404).json({ error: 'Sessão não encontrada' });
@@ -314,7 +314,7 @@ export class TelemetriaController {
   }
 
   /**
-   * Validates that therapist belongs to clinic and holds active association with patient (RN04)
+   * Validates that therapist belongs to clinic and holds active association with patient
    */
   static async verificarVinculoInstitucionalRN04(
     terapeutaId?: string,

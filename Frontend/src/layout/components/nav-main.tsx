@@ -16,6 +16,12 @@ import {
   SidebarMenuSubItem,
 } from "@/shared/components/ui/sidebar";
 
+/**
+ * Collapsible nested navigation menu group for sidebar platform sections.
+ *
+ * @param props - Array of top-level navigation items with optional nested sub-items.
+ * @returns Rendered collapsible sidebar menu group.
+ */
 export function NavMain({
   items,
 }: {

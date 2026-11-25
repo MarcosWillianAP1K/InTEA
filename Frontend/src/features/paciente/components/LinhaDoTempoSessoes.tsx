@@ -20,42 +20,36 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import type { SessaoHistoricoItem, EspecialistaHistorico } from "../types/historico.types";
 
-/**
- * ============================================================================
- * COMPONENTE: LinhaDoTempoSessoes (Linha do Tempo Cronológica de Intervenções)
- * Conformidade: RF15 (Prontuário Longitudinal), RN04, RN05, RNF07 (Ergonomia)
- * Pure & Props-Driven: Componente determinístico orientado a props
- * ============================================================================
- */
+// ============================================================================
+// COMPONENTE: LinhaDoTempoSessoes (Linha do Tempo Cronológica de Intervenções)
+// Pure & Props-Driven: Componente determinístico orientado a props
+// ============================================================================
 
 export interface LinhaDoTempoSessoesProps {
-  /** Lista cronológica de sessões registradas para o paciente ou jogo */
+  /** Chronological list of sessions recorded for the patient or selected game. */
   sessoes: SessaoHistoricoItem[];
-  /** Indicador de estado de carregamento de dados (Skeleton State) */
+  /** Loading state indicator rendering skeleton placeholders. */
   isLoading?: boolean;
-  /** Nome do jogo selecionado para contexto visual ou undefined para visão geral */
+  /** Selected game name for visual context, or `undefined` for overview mode. */
   nomeJogoFiltro?: string;
-  /** ID do especialista selecionado para filtrar localmente a linha do tempo (Issue #187) */
+  /** Selected specialist ID used to filter the timeline locally. */
   especialistaFiltroId?: string;
-  /** Lista explícita de especialistas da equipe multidisciplinar (fallback: extraído de sessoes) */
+  /** Explicit list of multidisciplinary team specialists (falls back to extracting from sessions). */
   especialistas?: EspecialistaHistorico[];
-  /** Callback disparado quando o especialista selecionado mudar internamente no componente */
+  /** Callback invoked when the selected specialist filter changes inside the component. */
   onFiltrarEspecialista?: (terapeutaId?: string) => void;
-  /** Callback opcional customizado para navegar até o resultado da sessão */
+  /** Optional custom navigation callback for opening a session report. */
   onNavegarResultado?: (sessaoId: string) => void;
-  /** Classes CSS adicionais */
+  /** Additional CSS class names. */
   className?: string;
 }
 
 /**
- * Formata segundos em texto amigável de duração (ex: "18m 45s" ou "12m").
- */
-/**
  * Formats duration in seconds into localized human-readable time representation.
- * Duration Formatting: Displays minutes and seconds ("X min Y s") or "0 s" for zero/empty durations.
+ * Duration Formatting: Displays minutes and seconds ("Xm Ys") or "< 1 min" for zero/empty durations.
  *
- * @param segundos - Total duration in seconds
- * @returns Formatted duration string
+ * @param segundos - Total duration in seconds.
+ * @returns Formatted duration string.
  */
 function formatarDuracao(segundos?: number): string {
   if (!segundos || segundos <= 0) return "< 1 min";
@@ -67,14 +61,11 @@ function formatarDuracao(segundos?: number): string {
 }
 
 /**
- * Formata data e hora ISO para o padrão pt-BR.
- */
-/**
  * Formats an ISO date string into separated date and time string parts.
  * Date Formatting: Produces localized date (DD/MM/YYYY) and 24-hour time (HH:mm).
  *
- * @param dataIso - ISO 8601 formatted date string
- * @returns Object containing formatted date and time strings
+ * @param dataIso - ISO 8601 formatted date string.
+ * @returns Object containing formatted date and time strings.
  */
 function formatarDataHora(dataIso?: string): { data: string; hora: string } {
   if (!dataIso) return { data: "Data não registrada", hora: "" };
@@ -97,8 +88,8 @@ function formatarDataHora(dataIso?: string): { data: string; hora: string } {
 }
 
 /**
- * Renders chronological session timeline with clinical status badges and comparison selectors (RF15).
- * Session History (RF15, RF19): Visualizes sequential interventions and enables pairwise session comparison.
+ * Renders chronological session timeline with clinical status badges and comparison selectors.
+ * Session History: Visualizes sequential interventions and enables pairwise session comparison.
  *
  * @param props - Component properties containing session history items and selection callbacks
  * @returns Interactive chronological timeline component
@@ -167,7 +158,7 @@ export const LinhaDoTempoSessoes: React.FC<LinhaDoTempoSessoesProps> = ({
     }
   };
 
-  // Estado de Carregamento (Skeleton Loader proporcional - RNF07 / Zero CLS)
+  // Estado de Carregamento (Skeleton Loader proporcional / Zero CLS)
   if (isLoading) {
     return (
       <div

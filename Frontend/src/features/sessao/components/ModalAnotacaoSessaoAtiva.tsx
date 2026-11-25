@@ -32,9 +32,6 @@ import { useAuthStore } from "@/features/autenticacao/store/authStore";
 /**
  * ============================================================================
  * COMPONENTE: ModalAnotacaoSessaoAtiva (Cockpit de Sessão em Tempo Real)
- * Conformidade: RF16 (Prontuário e Anotações), RF21 (Autoria do Terapeuta),
- *              RN01 (Modo Livre Sem Prontuário), RN04 (Vínculo Clínico / 403),
- *              RN05 (Inalterabilidade do Histórico), RNF05 (Feedback Não-Intrusivo)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
@@ -54,7 +51,7 @@ const MINIMO_CARACTERES = 3;
 
 /**
  * Renders real-time clinical note capture modal during active session without interrupting gameplay.
- * Real-Time Documentation (RF13, RF16, RN01): Links observations directly to session UUID and author JWT.
+ * Real-Time Documentation: Links observations directly to session UUID and author JWT.
  *
  * @param props - Modal properties including visibility state, session UUID, and submission handler
  * @returns Clinical observation modal component
@@ -159,7 +156,7 @@ export function ModalAnotacaoSessaoAtiva({
   const handleSalvarAnotacao = async () => {
     const textoLimpo = conteudo.trim();
 
-    // Validações de guarda (RN01, tamanho mínimo e concorrência)
+    // Validações de guarda (tamanho mínimo e concorrência)
     if (isModoLivre || !pacienteId) {
       toast.info("Partidas em Modo Livre não registram anotações no prontuário.");
       return;
@@ -195,14 +192,14 @@ export function ModalAnotacaoSessaoAtiva({
         // sessionStorage
       }
 
-      // Feedback sutil e não-intrusivo (RNF05)
+      // Feedback sutil e não-intrusivo
       toast.success("Anotação clínica registrada com sucesso no prontuário.");
 
       if (onAnotacaoSalva) {
         onAnotacaoSalva(novaAnotacao);
       }
     } catch (err: unknown) {
-      // Resiliência contra 403 Forbidden (RN04) ou outros erros sem derrubar o Cockpit
+      // Resiliência contra 403 Forbidden ou outros erros sem derrubar o Cockpit
       const msgErro =
         err instanceof Error ? err.message : "Erro desconhecido ao registrar anotação.";
 
