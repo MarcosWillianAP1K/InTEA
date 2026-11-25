@@ -34,19 +34,14 @@ import { FiltrosHistoricoAvancado } from "../components/FiltrosHistoricoAvancado
 import { GraficoEvolucaoJogo } from "../components/GraficoEvolucaoJogo";
 import { LinhaDoTempoSessoes } from "../components/LinhaDoTempoSessoes";
 
-/**
- * ============================================================================
- * PÁGINA MESTRE: HistoricoPacientePage (Histórico Longitudinal e Engajamento)
- * Rota: /pacientes/:id/historico
- * Conformidade: RF15 (Prontuário Longitudinal), RF19 (Filtros Avançados),
- * RN01 (Expurgo de Modo Livre), RN02 (Tipagem Estrita), RN04 (Vínculo Clínico),
- * RN05 (Inalterabilidade / Soft Delete), RNF07 (Ergonomia e Alvos de Toque)
- * ============================================================================
- */
+// ============================================================================
+// PÁGINA MESTRE: HistoricoPacientePage (Histórico Longitudinal e Engajamento)
+// Rota: /pacientes/:id/historico
+// ============================================================================
 
 /**
- * Maps raw backend session models to formatted timeline items with clinical status filters (RF15).
- * Free-Mode Exclusion (RN01): Strips out ad-hoc free mode sessions from clinical longitudinal timeline.
+ * Maps raw backend session models to formatted timeline items with clinical status filters.
+ * Free-Mode Exclusion: Strips out ad-hoc free mode sessions from clinical longitudinal timeline.
  *
  * @param listaSessoes - Array of session entities from API
  * @param filtrosAtivos - Currently applied clinical history filters
@@ -59,7 +54,7 @@ function mapearSessoesParaLinhaDoTempo(
   jogoIdFiltro?: string | null,
 ): SessaoHistoricoItem[] {
   const filtradas = listaSessoes.filter((s) => {
-    // RN01: Exclui modo livre
+    // Exclui modo livre
     if (s.modo_sessao === "modo_livre" || s.status_sessao === "aguardando_pareamento") {
       return false;
     }
@@ -122,6 +117,12 @@ function mapearSessoesParaLinhaDoTempo(
     });
 }
 
+/**
+ * Merges multiple session timeline arrays without duplicates, sorted descending by session timestamp.
+ *
+ * @param listas - One or more arrays of session timeline items.
+ * @returns Deduplicated and reverse-chronologically sorted session list.
+ */
 function mesclarSessoesSemDuplicatas(
   ...listas: SessaoHistoricoItem[][]
 ): SessaoHistoricoItem[] {
@@ -141,8 +142,8 @@ function mesclarSessoesSemDuplicatas(
 }
 
 /**
- * Longitudinal clinical medical record view presenting patient evolution, metric trends, and notes (RF15).
- * Medical Record Evolution (RF15, RF16, RF19): Coordinates timeline, polymorphic charts, and notes tabs.
+ * Longitudinal clinical medical record view presenting patient evolution, metric trends, and notes.
+ * Medical Record Evolution: Coordinates timeline, polymorphic charts, and notes tabs.
  *
  * @returns Patient medical record and history page component
  */
@@ -163,7 +164,7 @@ export function HistoricoPacientePage() {
   const [historicoDetalhado, setHistoricoDetalhado] = useState<HistoricoJogoDetalhado | null>(null);
   const [sessoesLinhaDoTempo, setSessoesLinhaDoTempo] = useState<SessaoHistoricoItem[]>([]);
 
-  // Estados de filtros temporais (RF19: inicia com Todo o Histórico para exibir todas as sessões do paciente)
+  // Estados de filtros temporais (inicia com Todo o Histórico para exibir todas as sessões do paciente)
   const [filtros, setFiltros] = useState<FiltrosHistorico>({
     periodo: "todos",
   });
@@ -174,7 +175,9 @@ export function HistoricoPacientePage() {
   const [erroHttp, setErroHttp] = useState<{ status?: number; mensagem: string } | null>(null);
 
   /**
-   * Carrega os dados cadastrais do paciente e os especialistas vinculados à Equipe Multidisciplinar (RF18, RN04).
+   * Loads patient registration details and specialists linked to their multidisciplinary team.
+   *
+   * @param id - UUID of the patient.
    */
   const carregarDadosPaciente = useCallback(async (id: string) => {
     try {
@@ -218,7 +221,11 @@ export function HistoricoPacientePage() {
   }, []);
 
   /**
-   * Carrega o histórico clínico longitudinal de acordo com o jogo selecionado e filtros.
+   * Loads longitudinal clinical history according to the selected game and active filters.
+   *
+   * @param id - UUID of the patient.
+   * @param jogoId - Selected therapeutic game UUID, or `null` for general overview.
+   * @param filtrosAtivos - Currently applied date and specialist filters.
    */
   const carregarHistorico = useCallback(
     async (id: string, jogoId: string | null, filtrosAtivos: FiltrosHistorico) => {
@@ -362,7 +369,7 @@ export function HistoricoPacientePage() {
   const jogoAtual = jogos.find((j) => (j.jogo_id ? j.jogo_id === jogoSelecionadoId : String(j.id) === String(jogoSelecionadoId)));
 
   // ============================================================================
-  // ESTADO 1: ERRO 403 FORBIDDEN (RN04 - Isolamento Institucional e Vínculo)
+  // ESTADO 1: ERRO 403 FORBIDDEN (Isolamento Institucional e Vínculo)
   // ============================================================================
   if (erroHttp?.status === 403) {
     return (

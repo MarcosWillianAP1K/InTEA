@@ -16,6 +16,12 @@ export interface ConteudoPacientesProps {
 }
 export type PatientsContentProps = ConteudoPacientesProps;
 
+/**
+ * Main patients listing view displaying patients linked to the authenticated therapist.
+ *
+ * @param props - Selection callbacks, initial view mode, and optional CSS class names.
+ * @returns Rendered linked-patients management view.
+ */
 export function ConteudoPacientes({
   onSelectPatient,
   selectedPatientId,

@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Serviço de Validação, Injeção e Sugestão de Contexto Clínico Pré-Sessão DDA
 // ==============================================================================
-// Conformidade: RF12, RF14, RF17, RF21, RN01, RN03, RN04, RNF02
 // Contrato 2: docs/ModelosDeContratos/contextoPreSessao.json
 // Padrão Arquitetural: TypeScript Estrito (sem 'any'), Métodos em camelCase
 // ==============================================================================
@@ -107,7 +106,7 @@ export class SessaoContextoDdaService {
 
   /**
    * Converts and deterministically normalizes input stress scale values to canonical Contract 2 strings.
-   * Mapping Scale (RN03): Maps 1-2 to 'baixo', 3 to 'medio', and 4-5 to 'alto', also accepting canonical string literals.
+   * Mapping Scale: Maps 1-2 to 'baixo', 3 to 'medio', and 4-5 to 'alto', also accepting canonical string literals.
    */
   static validarENormalizarEstresse(valor: unknown): NivelEstresseCanonico {
     if (valor === undefined || valor === null || valor === '') {
@@ -265,7 +264,7 @@ export class SessaoContextoDdaService {
   }
 
   /**
-   * Validates, normalizes, and injects pre-session DDA clinical context in strict compliance with Contract 2 and RN01/RN03.
+   * Validates, normalizes, and injects pre-session DDA clinical context in strict compliance with Contract 2.
    */
   static async validarEFormatarContexto(
     entrada: EntradaContextoDDA | undefined,
@@ -350,7 +349,10 @@ export class SessaoContextoDdaService {
   }
 
   /**
-   * Busca dados de anamnese estática cadastrados no prontuário.
+   * Fetches static anamnesis data registered in the patient's health record.
+   *
+   * @param pacienteId - UUID of the patient.
+   * @returns Anamnesis diagnosis, static sensory triggers, and general notes.
    */
   private static async buscarDadosAnamnese(pacienteId: string): Promise<DadosAnamneseContexto> {
     try {
@@ -391,6 +393,12 @@ export class SessaoContextoDdaService {
     }
   }
 
+  /**
+   * Retrieves the latest active completed session report for a patient to inform DDA calibration.
+   *
+   * @param pacienteId - UUID of the patient.
+   * @returns Latest session summary with AI report payload, or `null` when unavailable.
+   */
   private static async buscarUltimoRelatorioAtivo(
     pacienteId: string
   ): Promise<(ResumoUltimaSessaoContexto & { dados_ia_json: RelatorioIAContrato }) | null> {
@@ -459,6 +467,13 @@ export class SessaoContextoDdaService {
     }
   }
 
+  /**
+   * Generates AI-assisted pre-session DDA suggestions based on static anamnesis and the previous session report.
+   *
+   * @param anamnese - Static clinical anamnesis data for the patient.
+   * @param ultimaSessao - Summary and AI report of the most recent completed session, if any.
+   * @returns Suggested stress level, recommended triggers, and clinical justification.
+   */
   private static gerarSugestaoIA(
     anamnese: DadosAnamneseContexto,
     ultimaSessao: (ResumoUltimaSessaoContexto & { dados_ia_json: RelatorioIAContrato }) | null

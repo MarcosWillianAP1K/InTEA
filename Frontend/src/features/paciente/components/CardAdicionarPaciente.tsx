@@ -1,19 +1,24 @@
 import { UserPlus } from "lucide-react";
 
-/**
- * ============================================================================
- * COMPONENTE CARD ADICIONAR PACIENTE (InTEA)
- * Figma: 'Card add paciente' (Node ID: '67:1617')
- * Conformidade: RF06 (Cadastro de Paciente), Acessibilidade WCAG 2.1
- * TypeScript Estrito: Sem uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// COMPONENTE CARD ADICIONAR PACIENTE (InTEA)
+// Figma: 'Card add paciente' (Node ID: '67:1617')
+// Conformidade: Acessibilidade WCAG 2.1
+// TypeScript Estrito: Sem uso de `any`
+// ============================================================================
 
 export interface CardAdicionarPacienteProps {
   onClick: () => void;
   className?: string;
 }
 
+/**
+ * Interactive placeholder card prompting therapists to register a new patient.
+ * Supports keyboard activation via Enter and Space for WCAG 2.1 accessibility.
+ *
+ * @param props - Click callback and optional CSS classes.
+ * @returns Rendered add-patient card component.
+ */
 export function CardAdicionarPaciente({
   onClick,
   className = "",

@@ -10,7 +10,6 @@
 // 5. Bloqueio anti-enumeração contra IDOR: se o requisitante tentar acessar
 //    o perfil de outro terapeuta, responder imediatamente com 403 Forbidden
 //    SEM consultar o identificador alvo no banco de dados.
-// Conformidade: RF21 (Autoria JWT), RN04, OWASP API1:2023 (BOLA/IDOR)
 // TypeScript Estrito: Sem 'any'
 // ==============================================================================
 

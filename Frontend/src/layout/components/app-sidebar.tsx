@@ -33,6 +33,13 @@ export interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   isCreatingSession?: boolean;
 }
 
+/**
+ * Main collapsible application sidebar rendering navigation links and the new-session action button.
+ * Dynamically displays SuperAdmin routes (all patients, clinical audit) based on user privileges.
+ *
+ * @param props - Sidebar configuration and optional session callbacks.
+ * @returns Rendered sidebar navigation component.
+ */
 export function AppSidebar({
   activeSessionId,
   onCreateNewChat,

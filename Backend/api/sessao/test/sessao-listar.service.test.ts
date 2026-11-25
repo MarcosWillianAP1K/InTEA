@@ -1,8 +1,7 @@
 // ==============================================================================
 // InTEA: Testes Unitários — SessaoListarService e SessaoController.listar
 // ==============================================================================
-// Cobertura: RF18 (Visibilidade Compartilhada de Equipe), RN01 (Modo Livre),
-//            RN04 (Vínculo Institucional e Isolamento por Clínica)
+// Cobertura:
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -280,7 +279,7 @@ describe('SessaoListarService.listar e SessaoController.listar — Visibilidade 
   });
 
   // ============================================================================
-  // Ramo 4: Com pacienteId válido + vínculo ativo na mesma clínica -> 200 OK (RF18)
+  // Ramo 4: Com pacienteId válido + vínculo ativo na mesma clínica -> 200 OK
   // ============================================================================
   describe('4. Visibilidade compartilhada da equipe multidisciplinar (RF18)', () => {
     it('não deve definir filtros.terapeutaId quando terapeuta possuir vínculo ativo na mesma clínica', async () => {

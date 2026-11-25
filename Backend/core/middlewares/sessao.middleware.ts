@@ -6,10 +6,9 @@
 // 2. Exigir autenticação prévia (req.user preenchido por authMiddleware).
 // 3. Localizar a sessão no Supabase (buscarPorId ou buscarPorToken).
 // 4. Conceder bypass imediato para SuperAdmin e para o terapeuta autor (zero queries extras).
-// 5. Restringir Modo Livre (RN01) estritamente ao autor ou SuperAdmin (403 Forbidden).
-// 6. Validar Sessão Clínica (RN04): terapeuta ativo, mesma clínica do paciente e vínculo ativo.
+// 5. Restringir Modo Livre estritamente ao autor ou SuperAdmin (403 Forbidden).
+// 6. Validar Sessão Clínica: terapeuta ativo, mesma clínica do paciente e vínculo ativo.
 // 7. Injetar req.contextoSessao e req.pacienteAlvoId para otimização de I/O nos controllers.
-// Conformidade: RF10 (Ciclo de Vida), RF21 (Autoria), RN01, RN04, OWASP API1:2023
 // TypeScript Estrito: Sem 'any'
 // ==============================================================================
 
@@ -25,7 +24,7 @@ export const REGEX_PIN_PAREAMENTO = /^[A-Z0-9]{3,5}-?[A-Z0-9]{3,5}$/i;
 
 /**
  * Middleware that validates access permissions to clinical game sessions.
- * Enforces RN01 (free mode restriction to creator) and RN04 (institutional multi-therapist bond).
+ * Enforces free-mode restriction to creator and institutional multi-therapist bond.
  *
  * @param req - Authenticated Express request.
  * @param res - Express response.
@@ -83,13 +82,13 @@ export async function verificarSessaoMiddleware(
       return next();
     }
 
-    // Modo Livre (RN01) restrito ao autor
+    // Modo Livre restrito ao autor
     if (sessao.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessao.paciente_id) {
       res.status(403).json({ error: 'Acesso negado: sessões em modo livre só podem ser acessadas pelo terapeuta autor ou administrador.' });
       return;
     }
 
-    // Sessão Clínica: Validação Institucional Completa (RN04)
+    // Sessão Clínica: Validação Institucional Completa
     const { data: terapeuta } = await supabase
       .from('terapeuta')
       .select('id, clinica_id, is_super_admin, status_ativo')
@@ -145,9 +144,13 @@ export async function verificarSessaoMiddleware(
 }
 
 /**
- * Middleware de guarda para mutações críticas na sessão (RF21).
- * Exige que o usuário autenticado seja o terapeuta condutor (autor) da sessão ou SuperAdmin.
- * Pressupõe execução posterior a verificarSessaoMiddleware (onde req.contextoSessao foi injetado).
+ * Guard middleware for critical session state mutations.
+ * Requires the authenticated user to be the session conductor (authoring therapist) or a SuperAdmin.
+ * Assumes prior execution of `verificarSessaoMiddleware` (which populates `req.contextoSessao`).
+ *
+ * @param req - Authenticated Express request containing the loaded session context.
+ * @param res - Express response.
+ * @param next - Express next middleware function.
  */
 export function validarCondutorSessaoMiddleware(
   req: AuthenticatedRequest,

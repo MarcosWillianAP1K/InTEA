@@ -1,7 +1,6 @@
 /**
  * ============================================================================
  * REST SERVICE FOR AUTHENTICATION DOMAIN
- * Compliance: RF21, RN04
  * ============================================================================
  */
 
@@ -63,7 +62,7 @@ function removerTokens(): void {
 
 export const authService = {
   /**
-   * Performs login authenticating therapist or super admin credentials (RF21).
+   * Performs login authenticating therapist or super admin credentials.
    * Persists tokens in local storage automatically.
    */
   login: async (payload: LoginPayload): Promise<LoginResponse> => {
@@ -162,7 +161,7 @@ export const authService = {
   },
 
   /**
-   * Retrieves profile and clinical metadata of currently authenticated user (RF21, RN04).
+   * Retrieves profile and clinical metadata of currently authenticated user.
    */
   obterUsuarioAtual: async (): Promise<UsuarioAutenticado> => {
     return await withFallback(
@@ -274,7 +273,7 @@ export const authService = {
   },
 
   /**
-   * Dispatches password recovery instructions via email (RF01, RNF03).
+   * Dispatches password recovery instructions via email.
    */
   solicitarRecuperacaoSenha: async (
     email: string,
@@ -293,7 +292,7 @@ export const authService = {
   },
 
   /**
-   * Resets password using ephemeral magic link token (RF01, RNF03).
+   * Resets password using ephemeral magic link token.
    */
   redefinirSenha: async (
     payload: RedefinirSenhaPayload,

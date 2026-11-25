@@ -1,10 +1,7 @@
-/**
- * ============================================================================
- * COMPONENTE: MODAL DE VINCULAÇÃO DE ESPECIALISTA DA CLÍNICA AO PACIENTE
- * Conformidade: RF18, RF19, RN04, RNF07 (Alvos de toque >= 44px)
- * Nomenclatura clínica obrigatória: "Equipe Multidisciplinar" / "Especialistas Vinculados"
- * ============================================================================
- */
+// ============================================================================
+// COMPONENTE: MODAL DE VINCULAÇÃO DE ESPECIALISTA DA CLÍNICA AO PACIENTE
+// Nomenclatura clínica obrigatória: "Equipe Multidisciplinar" / "Especialistas Vinculados"
+// ============================================================================
 
 import React, { useState, useMemo, useEffect } from "react";
 import {
@@ -40,28 +37,34 @@ export interface EspecialistaClinicaItem {
 }
 
 export interface ModalVincularEspecialistaProps {
-  /** Controla se o modal está aberto */
+  /** Controls whether the modal dialog is open. */
   isOpen: boolean;
-  /** Callback para fechar o modal */
+  /** Callback invoked to close the modal. */
   onClose: () => void;
-  /** Lista de terapeutas/especialistas ativos na mesma clínica (RN04) */
+  /** Active therapists/specialists belonging to the same clinic. */
   terapeutasDisponiveis?: EspecialistaClinicaItem[];
-  /** Alias alternativo para a lista de terapeutas da clínica (compatibilidade com testes unitários) */
+  /** Alternative prop alias for clinic therapists list (unit test compatibility). */
   terapeutasClinica?: EspecialistaClinicaItem[];
-  /** Lista de IDs de especialistas que já pertencem à equipe multidisciplinar do paciente */
+  /** IDs of specialists already linked to the patient's multidisciplinary team. */
   idsJaVinculados: string[];
-  /** Callback disparada ao confirmar o vínculo do especialista selecionado */
+  /** Callback triggered when confirming linkage of the selected specialist. */
   onConfirmarVinculo: (terapeutaId: string) => void | Promise<void>;
-  /** Estado de submissão em andamento (trava de clique duplo) */
+  /** Submission in-progress flag preventing double clicks. */
   isSubmitting?: boolean;
-  /** Mensagem de erro semântico (ex: 403 clínica divergente ou 409 vínculo duplicado) */
+  /** Semantic error message (e.g., 403 clinic mismatch or 409 duplicate link). */
   erro?: string | null;
-  /** Alias alternativo para mensagem de erro no modal */
+  /** Alternative prop alias for modal error message. */
   erroModal?: string | null;
-  /** Nome opcional do paciente para contextualização no cabeçalho */
+  /** Optional patient name displayed in the modal header for context. */
   pacienteNome?: string;
 }
 
+/**
+ * Resolves the professional council registration label for a clinic specialist.
+ *
+ * @param especialista - Clinic specialist record.
+ * @returns Registration identifier or fallback `"Registro ativo"`.
+ */
 function resolverRegistroProfissional(
   especialista: EspecialistaClinicaItem,
 ): string {
@@ -74,6 +77,13 @@ function resolverRegistroProfissional(
   );
 }
 
+/**
+ * Modal dialog allowing therapists or admins to search and link clinic specialists
+ * to a patient's multidisciplinary team.
+ *
+ * @param props - Modal visibility, available clinic specialists, linked IDs, and confirmation handler.
+ * @returns Rendered specialist linkage dialog.
+ */
 export const ModalVincularEspecialista: React.FC<
   ModalVincularEspecialistaProps
 > = ({

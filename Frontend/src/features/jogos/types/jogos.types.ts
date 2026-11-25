@@ -1,7 +1,6 @@
 /**
  * ============================================================================
  * TIPAGENS CANÔNICAS DO DOMÍNIO JOGOS (InTEA)
- * Conformidade: RF04, RF07, RN02 (Tipagem Estrita / Proibido Fallback Automático)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */

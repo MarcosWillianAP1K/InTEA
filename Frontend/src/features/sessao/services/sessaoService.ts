@@ -1,7 +1,4 @@
-/**
- * Re-exporta sessaoService e seus contratos a partir de sessao.service.ts,
- * preservando total retrocompatibilidade com componentes e testes existentes.
- */
+// Re-exports `sessaoService` and its contracts from `sessao.service.ts` for backward compatibility.
 
 export * from "../types/sessao.types";
 export * from "./sessao.service";

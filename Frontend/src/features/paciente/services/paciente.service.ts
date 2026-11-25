@@ -1,7 +1,6 @@
 /**
  * ============================================================================
  * REST SERVICE FOR PATIENT DOMAIN
- * Compliance: RF06, RF10, RF18, RF19, RN04, RN05
  * ============================================================================
  */
 
@@ -113,7 +112,7 @@ function resolverPeriodoParaDatas(periodo: string): { dataInicio?: string; dataF
 }
 
 /**
- * Converts clinical history filter DTO into HTTP query parameter record (RF19).
+ * Converts clinical history filter DTO into HTTP query parameter record.
  */
 function serializarFiltrosHistorico(
   filtros?: FiltrosHistorico,
@@ -265,7 +264,7 @@ function normalizarEspecialistaVinculado(
 
 export const pacienteService = {
   /**
-   * Lists registered patients applying search, age, and pagination filters (RF19, RN05).
+   * Lists registered patients applying search, age, and pagination filters.
    */
   listar: async (filtros?: FiltroPacienteDTO): Promise<Paciente[]> => {
     return await withFallback(
@@ -293,7 +292,7 @@ export const pacienteService = {
   },
 
   /**
-   * Retrieves full record and patient profile by UUID (RF06, RN04).
+   * Retrieves full record and patient profile by UUID.
    */
   buscarPorId: async (id: string): Promise<Paciente | null> => {
     if (!id || !id.trim()) return null;
@@ -310,7 +309,7 @@ export const pacienteService = {
   },
 
   /**
-   * Registers a new patient along with primary guardian (RF06, RF18).
+   * Registers a new patient along with primary guardian.
    */
   criar: async (dto: CriarPacienteDTO): Promise<Paciente> => {
     return await withFallback(
@@ -330,7 +329,7 @@ export const pacienteService = {
   },
 
   /**
-   * Updates demographic and clinical profile data of patient (RF06, RN04).
+   * Updates demographic and clinical profile data of patient.
    */
   atualizar: async (
     id: string,
@@ -351,7 +350,7 @@ export const pacienteService = {
   },
 
   /**
-   * Deactivates patient preserving clinical medical record (Soft Delete - RN05).
+   * Deactivates patient preserving clinical medical record (Soft Delete).
    */
   inativar: async (id: string): Promise<Paciente | null> => {
     if (!id || !id.trim()) return null;
@@ -368,7 +367,7 @@ export const pacienteService = {
   },
 
   /**
-   * Reactivates a previously deactivated patient (RN05).
+   * Reactivates a previously deactivated patient.
    */
   reativar: async (id: string): Promise<Paciente | null> => {
     if (!id || !id.trim()) return null;
@@ -385,7 +384,7 @@ export const pacienteService = {
   },
 
   /**
-   * Lists multidisciplinary team therapists associated with patient (RF18, RN04).
+   * Lists multidisciplinary team therapists associated with patient.
    */
   listarTerapeutas: async (id: string): Promise<TerapeutaPaciente[]> => {
     if (!id || !id.trim()) return [];
@@ -415,7 +414,7 @@ export const pacienteService = {
   },
 
   /**
-   * Lists normalized multidisciplinary specialists linked to patient (RF18, RN04).
+   * Lists normalized multidisciplinary specialists linked to patient.
    */
   listarTerapeutasVinculados: async (
     pacienteId: string,
@@ -474,7 +473,7 @@ export const pacienteService = {
   },
 
   /**
-   * Associates a therapist from same clinic with patient (RF18, RF21, RN04).
+   * Associates a therapist from same clinic with patient.
    */
   vincularTerapeuta: async (
     pacienteId: string,
@@ -523,7 +522,7 @@ export const pacienteService = {
   },
 
   /**
-   * Unlinks a therapist from patient (RF18).
+   * Unlinks a therapist from patient.
    */
   buscarHistorico: async (
     pacienteId: string,
@@ -557,8 +556,8 @@ export const pacienteService = {
   },
 
   /**
-   * Queries general patient engagement history and game catalog metrics (RF15, RF19).
-   * Longitudinal Record (RF15): Supports temporal range filters, metric aggregates, and fallback to mock data.
+   * Queries general patient engagement history and game catalog metrics.
+   * Longitudinal Record: Supports temporal range filters, metric aggregates, and fallback to mock data.
    *
    * @param pacienteId - UUID of the target patient
    * @param filtros - Optional date range query filters
@@ -604,8 +603,8 @@ export const pacienteService = {
   },
 
   /**
-   * Queries metric time series and session history for a specific game played by the patient (RF15, RN02).
-   * Metric Evolution (RF15): Retrieves typed metrics from game manifest and maps trend series over time.
+   * Queries metric time series and session history for a specific game played by the patient.
+   * Metric Evolution: Retrieves typed metrics from game manifest and maps trend series over time.
    *
    * @param pacienteId - UUID of the target patient
    * @param jogoId - UUID of the selected therapeutic game

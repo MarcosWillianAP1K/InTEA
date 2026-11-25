@@ -22,13 +22,11 @@ export interface ControlesClinicosProps {
 /**
  * ============================================================================
  * COMPONENTE: ControlesClinicos (Front-end 1 — Hermeson Alves / Card 3.2)
- * Requisitos: RF13 (Ciclo da Sessão), RF16 (Anotações Clínicas),
- *              RF21 (Intervenção Manual do Terapeuta), RN01 (Modo Livre)
  * ============================================================================
  */
 
 /**
- * Immediate clinical intervention panel for the active session (RF21).
+ * Immediate clinical intervention panel for the active session.
  * Provides controls to pause/resume remote execution, tune DDA level (1 to 5),
  * access real-time clinical notes modal, and initiate formal conclusion flow.
  */

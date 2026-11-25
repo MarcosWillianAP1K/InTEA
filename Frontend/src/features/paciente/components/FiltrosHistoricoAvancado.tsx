@@ -6,24 +6,21 @@ import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import type { FiltrosHistorico, EspecialistaHistorico } from "../types/historico.types";
 
-/**
- * ============================================================================
- * COMPONENTE: FiltrosHistoricoAvancado (Barra de Filtros Temporais Longitudinais)
- * Conformidade: RF15 (Prontuário Longitudinal), RF19 (Filtros), RNF07 (Ergonomia)
- * Pure & Props-Driven: Componente determinístico orientado a props
- * ============================================================================
- */
+// ============================================================================
+// COMPONENTE: FiltrosHistoricoAvancado (Barra de Filtros Temporais Longitudinais)
+// Pure & Props-Driven: Componente determinístico orientado a props
+// ============================================================================
 
 export interface FiltrosHistoricoAvancadoProps {
-  /** Filtros atualmente ativos */
+  /** Currently active history filters. */
   filtros: FiltrosHistorico;
-  /** Callback disparado ao alterar o período ou as datas personalizadas */
+  /** Callback triggered when the period, date range, or specialist filter changes. */
   onAlterarFiltros: (novosFiltros: FiltrosHistorico) => void;
-  /** Lista opcional de especialistas vinculados para filtragem da equipe multidisciplinar (Issue #187) */
+  /** Optional list of linked specialists for filtering by multidisciplinary team member. */
   especialistas?: EspecialistaHistorico[];
-  /** Indicador de carregamento para desativar controles durante fetch */
+  /** Loading indicator used to disable controls while fetching data. */
   isLoading?: boolean;
-  /** Classes CSS adicionais */
+  /** Additional CSS class names. */
   className?: string;
 }
 
@@ -46,7 +43,7 @@ const OPCOES_PERIODO: OpcaoConfig[] = [
 
 /**
  * Computes a retroactive ISO start date based on the selected quick-filter time range.
- * Time Window Calculation (RF15): Supports 7 days, 30 days, 90 days, 6 months, and 1 year windows.
+ * Time Window Calculation: Supports 7 days, 30 days, 90 days, 6 months, and 1 year windows.
  *
  * @param opcao - Selected range option key ('7d' | '30d' | '90d' | '6m' | '1a')
  * @returns ISO 8601 formatted start date string
@@ -66,7 +63,7 @@ function calcularDataInicio(opcao: OpcaoConfig, dataReferencia: Date = new Date(
 }
 
 /**
- * Renders advanced filter controls for longitudinal patient history (RF15, RF19).
+ * Renders advanced filter controls for longitudinal patient history.
  * Query Filtering: Allows selecting target game, date range, and quick temporal intervals.
  *
  * @param props - Component properties including current filters, available games, and change callback

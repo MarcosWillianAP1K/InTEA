@@ -189,7 +189,6 @@ interface GraficoMetricaConstruido {
  * ============================================================================
  * MASTER PAGE: ResultadoSessaoPage
  * Route: /sessao/:id/resultado
- * Compliance: RF14 (Session Results), RF16 (Notes), RF21 (Authorship), RN01, RN04, RNF07
  * ============================================================================
  */
 export function ResultadoSessaoPage({
@@ -206,7 +205,7 @@ export function ResultadoSessaoPage({
 
   const identificadorSessao = propSessaoId || paramSessaoId;
 
-  // Terapeuta logado e perfil de autoria clínica (RF21)
+  // Terapeuta logado e perfil de autoria clínica
   const user = useAuthStore((state) => state.user);
 
   // Estado do Store local (caso tenha acabado de vir do Cockpit)

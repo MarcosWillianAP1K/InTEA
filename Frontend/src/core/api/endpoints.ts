@@ -1,10 +1,8 @@
-/**
- * ============================================================================
- * ENDPOINTS DA API REST DO InTEA
- * Especificação canônica dos caminhos da API para os módulos clínicos e de jogos.
- * Referência: docs/api-pacientes-jogos.md & docs/architecture.md
- * ============================================================================
- */
+// ============================================================================
+// ENDPOINTS DA API REST DO InTEA
+// Especificação canônica dos caminhos da API para os módulos clínicos e de jogos.
+// Referência: docs/api-pacientes-jogos.md & docs/architecture.md
+// ============================================================================
 
 export const ENDPOINTS = {
   AUTH: {
@@ -30,9 +28,9 @@ export const ENDPOINTS = {
     TERAPEUTAS: (id: string) => `/paciente/${id}/terapeutas`,
     TERAPEUTA_BY_ID: (id: string, terapeutaId: string) =>
       `/paciente/${id}/terapeutas/${terapeutaId}`,
-    /** RF15, RF19 - General patient engagement history + game catalog */
+    /** General patient engagement history + game catalog */
     HISTORICO: (id: string) => `/paciente/${id}/historico`,
-    /** RF15 - Detailed history with time series per specific game */
+    /** Detailed history with time series per specific game */
     HISTORICO_JOGO: (id: string, jogoId: string) =>
       `/paciente/${id}/historico/jogo/${jogoId}`,
   },

@@ -18,12 +18,10 @@ export interface DadosPersistenciaSessao {
   salvoEm: string;
 }
 
-/**
- * ============================================================================
- * HOOK: useSessionPersistence (Front-end 2 — Luma Maiara)
- * Requisitos: RNF04 (Resiliência), Usabilidade (Proteção contra Refresh F5)
- * ============================================================================
- */
+// ============================================================================
+// HOOK: useSessionPersistence (Front-end 2 — Luma Maiara)
+// Requisitos: Usabilidade (Proteção contra Refresh F5)
+// ============================================================================
 
 /**
  * Resilience and persistence hook for active session against accidental page reload (F5).

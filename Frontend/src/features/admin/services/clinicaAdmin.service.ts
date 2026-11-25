@@ -22,7 +22,16 @@ interface RespostaListarClinicasApi {
   message?: string;
 }
 
+/**
+ * Administrative service for listing clinics via `/api/admin/clinicas` with mock fallback.
+ */
 export const clinicaAdminService = {
+  /**
+   * Lists registered clinics with optional search, active-status filtering, and pagination.
+   *
+   * @param filtros - Optional query filters (`busca`, `status_ativo`, `page`, `limit`).
+   * @returns Array of clinic items for administrative views.
+   */
   listar: async (filtros?: {
     busca?: string;
     status_ativo?: boolean;

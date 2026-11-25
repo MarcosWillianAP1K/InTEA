@@ -19,6 +19,12 @@ interface JogosFiltrosProps {
   objetivosDisponiveis: string[];
 }
 
+/**
+ * Filter bar component for the therapeutic games catalog supporting debounced search and objective selection.
+ *
+ * @param props - Current filter state, change handlers, and available clinical objectives.
+ * @returns Rendered filter toolbar component.
+ */
 export function JogosFiltros({
   filtros,
   onFiltroBusca,

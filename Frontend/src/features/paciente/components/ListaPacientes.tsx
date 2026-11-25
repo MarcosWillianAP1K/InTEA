@@ -117,6 +117,13 @@ export interface ListaPacientesProps {
 }
 export type PatientsListProps = ListaPacientesProps;
 
+/**
+ * Interactive patient directory component supporting grid/table toggle, search,
+ * detail modal inspection, and SuperAdmin patient registration entry points.
+ *
+ * @param props - Selection callbacks, initial view mode, registration flag, and optional CSS classes.
+ * @returns Rendered patient list container.
+ */
 export function ListaPacientes({
   onSelectPatient,
   onOpenCreate,

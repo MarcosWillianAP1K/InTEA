@@ -7,8 +7,6 @@ import { useSessionStore } from "../store/sessionStore";
 /**
  * ============================================================================
  * COMPONENTE: CardSessaoAtiva (Sessão Ativa com Botão de Anotação Rápida e Timer Sincronizado)
- * Conformidade: RF12 (Cockpit da Sessão), RF16 (Anotações Clínicas),
- *              RF21 (Pausa e Retomada), RN01 (Modo Livre Sem Prontuário)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
@@ -31,7 +29,7 @@ export interface CardSessaoAtivaProps {
 
 /**
  * Renders the active clinical session monitoring card with synchronized timer and quick note triggers.
- * Active Session Cockpit (RF12, RF13, RF16): Synchronizes state with WebSocket and sessionStore.
+ * Active Session Cockpit: Synchronizes state with WebSocket and sessionStore.
  *
  * @param props - Component properties containing active session configuration and event handlers
  * @returns Active session card component

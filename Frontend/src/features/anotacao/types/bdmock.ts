@@ -1,7 +1,6 @@
 /**
  * ============================================================================
  * CLINICAL NOTES DOMAIN IN-MEMORY FIXTURES AND MOCKS
- * Compliance: RF16, RF21, RN04, RN05.
  * ============================================================================
  */
 
@@ -108,12 +107,15 @@ let anotacoesMockState: AnotacaoClinica[] = JSON.parse(
   JSON.stringify(FIXTURES_ANOTACOES),
 );
 
+/**
+ * Resets the in-memory mock clinical notes state back to the baseline fixtures.
+ */
 export function resetarAnotacoesMock(): void {
   anotacoesMockState = JSON.parse(JSON.stringify(FIXTURES_ANOTACOES));
 }
 
 /**
- * Lists clinical annotations supporting filtering by patient, session, and status (RN05).
+ * Lists clinical annotations supporting filtering by patient, session, and status.
  */
 export async function listarAnotacoesMock(
   filtroOuPacienteId?: string | FiltroAnotacaoDTO,
@@ -186,7 +188,7 @@ export async function buscarAnotacaoMockPorId(
 }
 
 /**
- * Creates new clinical note respecting therapist authorship (RF21).
+ * Creates new clinical note respecting therapist authorship.
  */
 export async function criarAnotacaoMock(
   dto: CriarAnotacaoDTO,
@@ -246,7 +248,7 @@ export async function atualizarAnotacaoMock(
 }
 
 /**
- * Applies soft delete preserving clinical history (RN05).
+ * Applies soft delete preserving clinical history.
  */
 export async function softDeleteAnotacaoMock(
   id: string,
@@ -255,7 +257,7 @@ export async function softDeleteAnotacaoMock(
 }
 
 /**
- * Reactivates inactive clinical note (RN05).
+ * Reactivates inactive clinical note.
  */
 export async function reativarAnotacaoMock(
   id: string,

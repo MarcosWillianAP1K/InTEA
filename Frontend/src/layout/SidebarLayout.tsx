@@ -19,6 +19,12 @@ export interface SidebarLayoutProps {
   terapeutaNome?: string;
 }
 
+/**
+ * Primary authenticated application shell providing navigation sidebar, header, notifications, and pre-session modal.
+ *
+ * @param props - Layout properties including optional children and fallback therapist display name.
+ * @returns Sidebar layout shell wrapping the main page outlet.
+ */
 export function SidebarLayout({
   children,
   terapeutaNome,

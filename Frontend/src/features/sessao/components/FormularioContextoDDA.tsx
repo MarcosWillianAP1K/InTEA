@@ -41,18 +41,14 @@ export const OBJETIVOS_CLINICOS = [
   { valor: "Comunicação e Linguagem", rotulo: "Comunicação e Linguagem", descricao: "Reconhecimento léxico e intenção comunicativa" },
 ] as const;
 
-/**
- * ============================================================================
- * COMPONENTE: FormularioContextoDDA
- * Conformidade: RF12 (Ciclo da Sessão), RF17 (Injeção de Contexto DDA),
- *              RN03 (Injeção Pré-Sessão Obrigatória), Figura 5 e Figura 11
- *              RNF07 (Acessibilidade e Alvos de Toque >= 44x44px)
- * TypeScript Estrito: Sem uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// COMPONENTE: FormularioContextoDDA
+// Referência visual: Figura 5 e Figura 11
+// TypeScript Estrito: Sem uso de `any`
+// ============================================================================
 /**
  * Renders Dynamic Difficulty Adjustment (DDA) calibration form for pre-session configuration.
- * Clinical Calibration (RF12, RF17, RN03): Binds initial stress scale (1-5), sensory triggers, and clinical objectives.
+ * Clinical Calibration: Binds initial stress scale (1-5), sensory triggers, and clinical objectives.
  *
  * @param props - Form properties containing current calibration parameters and update callbacks
  * @returns DDA context configuration form component

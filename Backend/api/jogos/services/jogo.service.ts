@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Serviço de Jogos Terapêuticos (Camada de Domínio / Fat Service)
 // ==============================================================================
-// Conformidade: RF09, RF19 (Catálogo), RNF02 (Manifesto), RN02 (Tipagem Estrita)
 // ==============================================================================
 
 import {
@@ -318,7 +317,7 @@ export class JogoService {
   }
 
   /**
-   * Validates an arbitrary game manifest against Contract 1 (RNF02) and Clinical Non-Competitiveness Guideline.
+   * Validates an arbitrary game manifest against Contract 1 and Clinical Non-Competitiveness Guideline.
    *
    * @param manifesto - Manifest object to validate.
    * @returns Validation outcome and normalized valid manifest.
@@ -359,7 +358,7 @@ export class JogoService {
   }
 
   /**
-   * Validates a telemetry event against game manifest per RN02.
+   * Validates a telemetry event against game manifest against the game clinical manifest.
    *
    * @param identificador - Game UUID or slug.
    * @param evento - Telemetry event payload.

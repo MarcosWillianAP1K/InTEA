@@ -157,7 +157,7 @@ export function resetarTerapeutasMock(): void {
 // ============================================================================
 
 /**
- * Lists in-memory therapists (filters inactive accounts by default, RN05).
+ * Lists in-memory therapists (filters inactive accounts by default).
  */
 export async function listarTerapeutasMock(
   incluirInativos = false,
@@ -259,7 +259,7 @@ export async function atualizarTerapeutaMock(
 }
 
 /**
- * Deactivates therapist in memory applying soft delete (RN05).
+ * Deactivates therapist in memory applying soft delete.
  */
 export async function inativarTerapeutaMock(
   id: string,
@@ -268,7 +268,7 @@ export async function inativarTerapeutaMock(
 }
 
 /**
- * Reactivates deactivated therapist in memory (RN05).
+ * Reactivates deactivated therapist in memory.
  */
 export async function reativarTerapeutaMock(
   id: string,

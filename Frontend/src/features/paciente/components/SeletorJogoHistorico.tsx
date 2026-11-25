@@ -7,29 +7,26 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import type { ResumoJogoPaciente } from "../types/historico.types";
 
-/**
- * ============================================================================
- * COMPONENTE: SeletorJogoHistorico (Seletor de Jogos para Análise Longitudinal)
- * Conformidade: RF15 (Prontuário Longitudinal), RF19 (Filtros), RNF07 (Ergonomia)
- * Pure & Props-Driven: 100% determinístico, sem efeitos colaterais internos
- * ============================================================================
- */
+// ============================================================================
+// COMPONENTE: SeletorJogoHistorico (Seletor de Jogos para Análise Longitudinal)
+// Pure & Props-Driven: 100% determinístico, sem efeitos colaterais internos
+// ============================================================================
 
 export interface SeletorJogoHistoricoProps {
-  /** Catálogo de jogos já experimentados pelo paciente com totais de sessões */
+  /** Catalog of games previously played by the patient along with session counts. */
   jogos: ResumoJogoPaciente[];
-  /** ID do jogo selecionado para filtragem de métricas, ou null para visão geral */
+  /** Selected game ID for metric filtering, or `null` for universal overview mode. */
   jogoSelecionadoId: string | null;
-  /** Callback disparado ao selecionar um jogo ou voltar para a visão geral */
+  /** Callback triggered when selecting a game or returning to overview mode. */
   onSelecionarJogo: (jogoId: string | null) => void;
-  /** Indicador de estado de carregamento de dados (Skeleton State) */
+  /** Loading state indicator rendering skeleton placeholders. */
   isLoading?: boolean;
-  /** Classes CSS adicionais */
+  /** Additional CSS class names. */
   className?: string;
 }
 
 /**
- * Interactive game selector bar for filtering longitudinal patient metrics by therapeutic game (RF15).
+ * Interactive game selector bar for filtering longitudinal patient metrics by therapeutic game.
  * Game Catalog Navigation: Displays game badges and triggers session series filtering.
  *
  * @param props - Component properties including available games list and onSelect callback
@@ -42,7 +39,7 @@ export const SeletorJogoHistorico: React.FC<SeletorJogoHistoricoProps> = ({
   isLoading = false,
   className,
 }) => {
-  // Estado de Carregamento (Skeleton Loader proporcional - RNF07 / Zero CLS)
+  // Estado de Carregamento (Skeleton Loader proporcional / Zero CLS)
   if (isLoading) {
     return (
       <div

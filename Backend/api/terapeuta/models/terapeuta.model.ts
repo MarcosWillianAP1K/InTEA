@@ -33,8 +33,8 @@ export interface Terapeuta {
 }
 
 /**
- * DTO para cadastro de novo terapeuta.
- * Exige nome, email e senha de acesso.
+ * DTO for registering a new therapist.
+ * Requires `nome`, `email`, and `password`.
  */
 export interface CriarTerapeutaDTO {
   nome: string;
@@ -79,7 +79,7 @@ export interface LoginDTO {
 
 export class TerapeutaModel {
   /**
-   * Lists therapists from the database, filtering active ones by default (RN05) and clinic if provided.
+   * Lists therapists from the database, filtering active ones by default and clinic if provided.
    *
    * @param incluirInativos - If true, deactivated therapists are included in the results.
    * @param clinicaId - Optional clinic UUID to filter therapists by institution.
@@ -317,7 +317,7 @@ export class TerapeutaModel {
   }
 
   /**
-   * Deactivates a therapist account using soft deletion (RN05).
+   * Deactivates a therapist account using soft deletion.
    *
    * @param id - The UUID identifier of the therapist to deactivate.
    * @returns The updated therapist entity with `status_ativo = false`.

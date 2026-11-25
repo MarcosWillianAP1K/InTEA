@@ -1,14 +1,13 @@
 // ==============================================================================
 // InTEA: Serviço de Histórico Clínico e Séries por Jogo (Sprint 11)
 // ==============================================================================
-// REQUISITOS ATENDIDOS:
-// - RF15: Prontuário Longitudinal (Separação: Histórico Geral vs Séries por Jogo)
-// - RF19: Filtros e Paginação (sessaoId, dataInicio, dataFim, page, limit)
-// - RF21: Segurança e Identidade Clínica
-// - RN01: Expurgo de Sessões em Modo Livre (paciente_id = NULL)
-// - RN02: Tipagem Estrita no Manifesto do Jogo (Rejeição 422 para métrica sem tipo)
-// - RN04: Isolamento Institucional por Vínculo
-// - RN05: Inalterabilidade do Histórico Clínico (Soft Delete de Relatórios)
+// - Prontuário Longitudinal (Separação: Histórico Geral vs Séries por Jogo)
+// - Filtros e Paginação (sessaoId, dataInicio, dataFim, page, limit)
+// - Segurança e Identidade Clínica
+// - Expurgo de Sessões em Modo Livre (paciente_id = NULL)
+// - Tipagem Estrita no Manifesto do Jogo (Rejeição 422 para métrica sem tipo)
+// - Isolamento Institucional por Vínculo
+// - Inalterabilidade do Histórico Clínico (Soft Delete de Relatórios)
 // ==============================================================================
 
 import {
@@ -44,6 +43,13 @@ const MAPA_NOMES_METRICAS: Record<string, string> = {
   concluiu_sem_ajuda: 'Conclusão sem Ajuda',
 };
 
+/**
+ * Resolves a human-readable display label for a game telemetry metric identifier.
+ *
+ * @param idMetrica - Canonical metric identifier from telemetry or game manifest.
+ * @param nomeDeclarado - Optional explicit display label declared in the game manifest.
+ * @returns Human-readable metric title in Brazilian Portuguese.
+ */
 function obterNomeLegivelMetrica(idMetrica: string, nomeDeclarado?: string): string {
   if (nomeDeclarado && nomeDeclarado.trim().length > 0) {
     return nomeDeclarado.trim();
@@ -93,7 +99,7 @@ export interface SerieMetricaJogo {
 
 /**
  * Formatted response for General Patient Engagement History.
- * Clean and simplified data for profile cards (RF15).
+ * Clean and simplified data for profile cards.
  */
 export interface RespostaHistoricoGeral {
   engajamento: MetricasEngajamentoGeral;
@@ -106,7 +112,7 @@ export interface RespostaHistoricoGeral {
 
 /**
  * Formatted response for Specific Game History.
- * Time series of approved metrics from game manifest (RN02).
+ * Time series of approved metrics from game manifest.
  */
 export interface RespostaHistoricoJogo {
   jogo: {
@@ -157,7 +163,7 @@ export interface RespostaHistoricoPaciente {
 
 export class PacienteHistoricoService {
   /**
-   * Validates filter parameters and dates to guarantee temporal consistency (RF19).
+   * Validates filter parameters and dates to guarantee temporal consistency.
    */
   static validarFiltros(filtros: FiltrosHistoricoInput): void {
     if (filtros.dataInicio && filtros.dataFim) {
@@ -196,6 +202,11 @@ export class PacienteHistoricoService {
     }
   }
 
+  /**
+   * Checks whether the longitudinal materialized view can be queried in the current environment.
+   *
+   * @returns `true` if Supabase is configured or mocked for view queries, `false` otherwise.
+   */
   private static podeConsultarViewMaterializada(): boolean {
     const url = process.env.SUPABASE_URL;
     const urlValida = typeof url === 'string' && url.trim().length > 0 && !url.includes('placeholder');
@@ -216,7 +227,7 @@ export class PacienteHistoricoService {
    * Route 1: General Patient History (universal engagement metrics and game catalog).
    * Returns clean, streamlined data for patient profile cards.
    * Leverages in-memory HistoricoCache (300s TTL) and PostgreSQL Materialized View
-   * `vw_resumo_longitudinal_paciente` to ensure sub-50ms SLA (RNF05).
+   * `vw_resumo_longitudinal_paciente` to ensure sub-50ms SLA.
    *
    * @param pacienteId - UUID of the patient.
    * @param filtros - Optional time range filters.
@@ -233,7 +244,7 @@ export class PacienteHistoricoService {
 
     const temFiltroTemporal = Boolean(filtros.dataInicio || filtros.dataFim);
 
-    // 1. Consulta via Cache em Memória quando não há filtros temporais específicos (RNF05 sub-50ms)
+    // 1. Consulta via Cache em Memória quando não há filtros temporais específicos (sub, 50ms)
     if (!temFiltroTemporal) {
       const emCache = historicoCache.get<RespostaHistoricoGeral>(pacienteId);
       if (emCache) {
@@ -317,7 +328,9 @@ export class PacienteHistoricoService {
   }
 
   /**
-   * Invalida o cache de métricas consolidadas do paciente (orientado a eventos pós-fechamento de sessão).
+   * Invalidates the in-memory cache of consolidated patient metrics (triggered after session closure).
+   *
+   * @param pacienteId - UUID of the patient whose history cache should be cleared.
    */
   static async invalidarCache(pacienteId: string): Promise<void> {
     await historicoCache.invalidarAssincrono(pacienteId);
@@ -325,10 +338,10 @@ export class PacienteHistoricoService {
 
   /**
    * Route 2: Specific Game History.
-   * Retrieves typed metrics from game manifest (RN02) and plots evolutionary time series.
+   * Retrieves typed metrics from game manifest and plots evolutionary time series.
    * When `sessaoId` is provided, history is strictly bounded up to that session date.
    *
-   * @param pacienteId UUID do paciente
+   * @param pacienteId - UUID of the patient.
    * @param jogoId - UUID of the therapeutic game.
    * @param filtros - Optional filters for reference session, dates, and pagination.
    */
@@ -376,7 +389,7 @@ export class PacienteHistoricoService {
       throw new PacienteServiceError('Jogo terapêutico não encontrado no catálogo.', 404);
     }
 
-    // Validação Estrita de Tipagem no Manifesto (RN02 - Fallback de Métrica Proibido)
+    // Validação Estrita de Tipagem no Manifesto (Fallback de Métrica Proibido)
     const manifesto = jogo.manifesto_json;
     const metricasSuportadas = manifesto?.metricas_suportadas;
 
@@ -408,7 +421,7 @@ export class PacienteHistoricoService {
       }
     }
 
-    // Paginação e busca de sessões finalizadas com relatórios clínicos ativos (RN05)
+    // Paginação e busca de sessões finalizadas com relatórios clínicos ativos
     const page = filtros.page || 1;
     const limit = filtros.limit || 20;
     const offset = (page - 1) * limit;

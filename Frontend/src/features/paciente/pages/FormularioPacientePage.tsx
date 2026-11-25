@@ -17,6 +17,11 @@ import {
   type Paciente,
 } from "../types/paciente.types";
 
+/**
+ * Route page wrapper for creating or editing a patient record, loading clinics and existing patient data.
+ *
+ * @returns Rendered patient form page with loading and error states.
+ */
 export function FormularioPacientePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

@@ -9,7 +9,6 @@ import type { SessaoHistoricoItem, EspecialistaHistorico, FiltrosHistorico } fro
  * ============================================================================
  * TESTES UNITÁRIOS — Task #187 (Sprint 13)
  * Filtro por Especialista da Equipe na Linha do Tempo Longitudinal de Sessões
- * Conformidade: RF15, RF18 (Multi-terapeuta), RF19 (Filtros), RNF07 (Ergonomia)
  * ============================================================================
  */
 

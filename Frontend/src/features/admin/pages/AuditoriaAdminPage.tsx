@@ -25,12 +25,10 @@ import { toast } from "sonner";
  * Rota: /admin/auditoria
  * Padrão Visual: Alinhado a PainelPage, TodosPacientesPage e HistoricoSessoesPage
  * Atores: SuperAdmin da clínica / instituição
- * Conformidade: RF07 (Gestão SuperAdmin), RF08 (Auditoria de Vínculos e Acessos),
- *               RN04 (Isolamento Institucional), RN05 (Imutabilidade Forense).
  * ============================================================================
  */
 /**
- * Administrative page view providing institutional compliance auditing (RF07, RF08).
+ * Administrative page view providing institutional compliance auditing.
  * SuperAdmin Dashboard: Features metric counters, audit log table, CSV/JSON export, and drawer inspection.
  *
  * @returns Administrative audit dashboard page component

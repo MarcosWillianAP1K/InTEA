@@ -163,7 +163,7 @@ describe("Card 4.1 — MetricasConsolidadasCards (Front-end 2 — Luma Maiara)",
       // Card de Tempo indica Treino Livre
       expect(screen.getByText("Treino Livre")).toBeDefined();
 
-      // Card de DDA exibe traço e badge de Inativo conforme RN01
+      // Card de DDA exibe traço e badge de Inativo em Modo Livre
       expect(screen.getByTestId("card-intervencoes-dda-valor").textContent).toBe(
         "--"
       );

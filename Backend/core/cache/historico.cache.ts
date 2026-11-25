@@ -1,9 +1,8 @@
 // ==============================================================================
-// InTEA: Camada de Cache em Memória para Histórico Longitudinal (RNF05)
+// InTEA: Camada de Cache em Memória para Histórico Longitudinal
 // ==============================================================================
-// REQUISITOS ATENDIDOS:
-// - RNF05: SLA sub-50ms para consultas de prontuários com dezenas de sessões
-// - RN04: Isolamento e integridade - cache validado após verificação institucional
+// - SLA sub-50ms para consultas de prontuários com dezenas de sessões
+// - Isolamento e integridade - cache validado após verificação institucional
 // - TTL Padrão: 300 segundos (5 minutos) com expiração determinística
 // - Invalidação Orientada a Eventos: Método `invalidar(pacienteId)` desacoplado
 // ==============================================================================
@@ -26,7 +25,7 @@ export interface EstatisticasCache {
 /**
  * In-memory LRU/TTL cache layer for longitudinal clinical records.
  * Provides high-speed access (< 5ms) to pre-computed aggregate metrics,
- * reducing load on PostgreSQL materialized views and satisfying RNF05.
+ * reducing load on PostgreSQL materialized views and satisfying low-latency SLA.
  */
 export class HistoricoCache {
   private readonly mapa: Map<string, ItemCacheHistorico<unknown>> = new Map();

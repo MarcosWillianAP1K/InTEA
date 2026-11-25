@@ -10,6 +10,13 @@ interface JogoCardProps {
   onModoLivre: (jogo: Jogo) => void;
 }
 
+/**
+ * Card component displaying a therapeutic game's banner, version, clinical objective badge,
+ * and actions to launch either a free-play session or a clinical session.
+ *
+ * @param props - Game record and action callbacks (`onIniciarSessao`, `onModoLivre`).
+ * @returns Rendered therapeutic game card.
+ */
 export function JogoCard({
   jogo,
   onIniciarSessao,

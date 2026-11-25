@@ -55,6 +55,12 @@ export interface DialogDetalhesPacienteProps {
 }
 export type PatientDetailsDialogProps = DialogDetalhesPacienteProps;
 
+/**
+ * Modal dialog displaying a patient's clinical profile, sensory sensitivities, guardian contacts, and clinical notes.
+ *
+ * @param props - Target patient record, open state, and selection/close callbacks.
+ * @returns Rendered patient details dialog, or `null` when no patient is provided.
+ */
 export function DialogDetalhesPaciente({
   patient,
   open,

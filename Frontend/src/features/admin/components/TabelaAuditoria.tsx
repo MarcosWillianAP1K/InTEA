@@ -67,7 +67,7 @@ const LABELS_ENTIDADES: Record<string, string> = {
 const ENTIDADES_PADRAO = Object.keys(LABELS_ENTIDADES);
 
 /**
- * Renders the administrative audit log table with column filtering and details dialog (RF07, RF08).
+ * Renders the administrative audit log table with column filtering and details dialog.
  */
 export function TabelaAuditoria({
   eventos,

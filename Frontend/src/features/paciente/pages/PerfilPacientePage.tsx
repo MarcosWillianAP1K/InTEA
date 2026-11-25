@@ -61,7 +61,6 @@ import { toast } from "sonner";
  * ============================================================================
  * PAGE: PATIENT PROFILE (InTEA)
  * Integration: pacienteService, anotacaoService, sessaoService
- * Compliance: RF06, RF10, RF15, RF18, RF21, RN04, RN05, RNF07
  * ============================================================================
  */
 export function PerfilPacientePage() {
@@ -76,7 +75,7 @@ export function PerfilPacientePage() {
   const [loading, setLoading] = useState(true);
   const [erroProntuario, setErroProntuario] = useState<string | null>(null);
 
-  // Estados da Equipe Multidisciplinar (RF18, RN04)
+  // Estados da Equipe Multidisciplinar
   const [especialistas, setEspecialistas] = useState<EspecialistaVinculado[]>([]);
   const [terapeutasClinica, setTerapeutasClinica] = useState<Terapeuta[]>([]);
   const [loadingEquipe, setLoadingEquipe] = useState<boolean>(false);

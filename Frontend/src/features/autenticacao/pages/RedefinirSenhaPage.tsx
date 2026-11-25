@@ -1,10 +1,8 @@
-/**
- * ============================================================================
- * TELA DE REDEFINIÇÃO DE SENHA — InTEA
- * Fluxo de Redefinição via Link Mágico Expirável (RF01, RNF03).
- * Captura o token efêmero e atualiza as credenciais do terapeuta no Supabase.
- * ============================================================================
- */
+// ============================================================================
+// TELA DE REDEFINIÇÃO DE SENHA — InTEA
+// Fluxo de Redefinição via Link Mágico Expirável.
+// Captura o token efêmero e atualiza as credenciais do terapeuta no Supabase.
+// ============================================================================
 
 import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
@@ -21,6 +19,11 @@ import {
 } from "lucide-react";
 import { authService } from "../services/auth.service";
 
+/**
+ * Password reset page that extracts the ephemeral Supabase recovery token and submits the new therapist password.
+ *
+ * @returns Rendered password reset form component.
+ */
 export function RedefinirSenhaPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

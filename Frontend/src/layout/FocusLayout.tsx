@@ -12,6 +12,12 @@ export interface FocusLayoutProps {
   showTopbar?: boolean;
 }
 
+/**
+ * Distraction-free layout component for clinical focus mode views such as live session cockpit and reports.
+ *
+ * @param props - Component properties including optional title, subtitle, back handler, and topbar toggle.
+ * @returns Focus layout wrapper containing an error boundary and routed content.
+ */
 export function FocusLayout({
   children,
   titulo,

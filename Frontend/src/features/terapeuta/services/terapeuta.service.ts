@@ -2,7 +2,6 @@
  * ============================================================================
  * REST SERVICE FOR THERAPIST DOMAIN
  * Consumes therapist endpoints with resilient fallback.
- * Compliance: RF21, RN04, RN05
  * ============================================================================
  */
 
@@ -25,7 +24,7 @@ import {
 
 export const terapeutaService = {
   /**
-   * Lists therapists registered in the clinic (RF21, RN04, RN05).
+   * Lists therapists registered in the clinic.
    *
    * @param incluirInativos - If true, includes deactivated accounts.
    */
@@ -100,7 +99,7 @@ export const terapeutaService = {
   },
 
   /**
-   * Deactivates therapist in the system (Soft Delete - RN05).
+   * Deactivates therapist in the system (Soft Delete).
    */
   inativar: async (id: string): Promise<Terapeuta | null> => {
     if (!id || !id.trim()) return null;
@@ -117,7 +116,7 @@ export const terapeutaService = {
   },
 
   /**
-   * Reactivates account of previously deactivated therapist (RN05).
+   * Reactivates account of previously deactivated therapist.
    */
   reativar: async (id: string): Promise<Terapeuta | null> => {
     if (!id || !id.trim()) return null;

@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Controller de Terapeutas (Camada HTTP / Thin Controller)
 // ==============================================================================
-// Conformidade: RF04 (Perfil), RF21 (Autoria), RN04 (Vínculo), RN05 (Soft Delete)
 // Envelope Pattern: { data: { <categoria>: ... }, message: "..." }
 // ==============================================================================
 
@@ -270,7 +269,7 @@ export class TerapeutaController {
   }
 
   /**
-   * Handles DELETE /api/terapeuta/:id applying soft deletion (RN05).
+   * Handles DELETE /api/terapeuta/:id applying soft deletion.
    *
    * @param req - Express request containing therapist UUID in `:id`.
    * @param res - Express response returning status 200 with deactivated therapist in envelope pattern.

@@ -1,5 +1,5 @@
 // ==============================================================================
-// InTEA: Suíte de Testes para Gestão e Encerramento de Sessões Ativas (RF02)
+// InTEA: Suíte de Testes para Gestão e Encerramento de Sessões Ativas
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';

@@ -91,7 +91,7 @@ export class AuthModel {
   }
 
   /**
-   * Initiates a password recovery request for the given email address (RF01, RNF03).
+   * Initiates a password recovery request for the given email address.
    * Uses RecuperacaoService with Anti-User Enumeration protection.
    *
    * @param email - Target email address for the password reset instructions.
@@ -102,7 +102,7 @@ export class AuthModel {
   }
 
   /**
-   * Validates ephemeral recovery token and applies new password (RF01, RNF03).
+   * Validates ephemeral recovery token and applies new password.
    *
    * @param token - Recovery token (magic link token or access token).
    * @param novaSenha - New password (minimum 6 characters).

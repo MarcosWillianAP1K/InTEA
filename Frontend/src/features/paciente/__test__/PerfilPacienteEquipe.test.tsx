@@ -2,7 +2,7 @@
  * ============================================================================
  * TESTES DE INTEGRAÇÃO: GESTÃO DE EQUIPE MULTIDISCIPLINAR NO PERFIL DO PACIENTE
  * Arquivo: Frontend/src/features/paciente/__test__/PerfilPacienteEquipe.test.tsx
- * Conformidade: RF06, RF18, RF19, RF21, RN04, Seção 7.7 do PDF
+ * Conformidade: Seção 7.7 do PDF
  * ============================================================================
  */
 

@@ -162,7 +162,7 @@ jogosRoutes.get('/', JogoController.listar);
  *       409:
  *         description: Conflito (já existe jogo cadastrado com o mesmo slug)
  *       422:
- *         description: Incompatibilidade de tipo clínico no manifesto (RN02)
+ * description: Incompatibilidade de tipo clínico no manifesto
  *       500:
  *         description: Erro interno ao cadastrar jogo
  */
@@ -255,12 +255,12 @@ jogosRoutes.post('/', authMiddleware, adminMiddleware, JogoController.cadastrar)
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
  *       422:
- *         description: Incompatibilidade de tipo clínico no manifesto (RN02)
+ * description: Incompatibilidade de tipo clínico no manifesto
  *         content:
  *           application/json:
  *             example:
- *               error: "Incompatibilidade de tipo clínico no manifesto (RN02)."
- *               regraViolada: "RN02 - Fallback de Métrica Proibido"
+ * error: "Incompatibilidade de tipo clínico no manifesto."
+ * regraViolada: " - Fallback de Métrica Proibido"
  *       500:
  *         description: Erro interno ao processar validação
  */
@@ -271,7 +271,7 @@ jogosRoutes.post('/validar-manifesto', authMiddleware, JogoController.validarMan
  * /api/jogos/{id}:
  *   get:
  *     summary: Consulta detalhes completos e manifesto clínico de um jogo pelo ID
- *     description: Retorna as informações do jogo unificadas com seu manifesto clínico de métricas e laudo de conformidade (RF09, RNF02). Exige autenticação.
+ * description: Retorna as informações do jogo unificadas com seu manifesto clínico de métricas e laudo de conformidade. Exige autenticação.
  *     tags: [Jogos]
  *     security:
  *       - bearerAuth: []
@@ -392,7 +392,7 @@ jogosRoutes.get('/:id', authMiddleware, JogoController.buscarPorId);
  *       404:
  *         description: Jogo não encontrado
  *       422:
- *         description: Incompatibilidade de tipo clínico no manifesto (RN02)
+ * description: Incompatibilidade de tipo clínico no manifesto
  *       500:
  *         description: Erro interno ao atualizar jogo
  *   put:
@@ -541,7 +541,7 @@ jogosRoutes.delete('/:id', authMiddleware, adminMiddleware, JogoController.exclu
  *           application/json:
  *             example:
  *               error: "Valor da métrica 'tempo_resposta' deve ser numérico"
- *               regraViolada: "RN02 - Fallback de Métrica Proibido"
+ * regraViolada: " - Fallback de Métrica Proibido"
  *       500:
  *         description: Erro interno ao processar validação de telemetria
  */

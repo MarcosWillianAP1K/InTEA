@@ -21,7 +21,7 @@ export class MetricaValidator {
   public static readonly TIPOS_VALIDOS = ['numerica', 'categorica'] as const;
 
   /**
-   * Strictly validates whether a metric definition has an authorized type (RN02).
+   * Strictly validates whether a metric definition has an authorized type.
    * Refuses any automatic fallback to 'categorica' or other types when undefined.
    *
    * @param metrica - Raw metric definition object from a game manifest.
@@ -58,7 +58,7 @@ export class MetricaValidator {
   }
 
   /**
-   * Validates whether a telemetry event can be safely persisted to a patient's clinical medical record (RN02 / RNF04).
+   * Validates whether a telemetry event can be safely persisted to a patient's clinical medical record.
    * Telemetry from untyped or mismatched metrics is strictly rejected to prevent record corruption.
    *
    * @param evento - Telemetry event payload containing session token, metric ID, and value.
@@ -107,7 +107,7 @@ export class MetricaValidator {
       };
     }
 
-    // 2. Validação estrita de tipo (RN02: sem fallback para categórica)
+    // 2. Validação estrita de tipo (sem fallback para categórica)
     const validacaoTipo = this.validarTipagemEstrita(metricaDeclarada);
     if (!validacaoTipo.valido) {
       return {

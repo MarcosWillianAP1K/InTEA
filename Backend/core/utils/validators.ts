@@ -166,10 +166,13 @@ export interface AtualizarPacientePayloadRaw {
 }
 
 /**
- * Validates the complete payload DTO for creating a new patient record (POST /api/paciente).
+ * Validates a guardian block (`responsavel` or `responsavel_extra`) inside a patient payload.
+ * Appends localized validation errors to the provided `erros` array when fields are invalid.
  *
- * @param payload - The request body object containing patient and optional guardian details.
- * @returns Object containing boolean status `valido` and array of validation errors `erros`.
+ * @param respRaw - Raw guardian object from the request payload.
+ * @param label - Human-readable label identifying the guardian role in error messages.
+ * @param erros - Mutable list collecting validation error messages.
+ * @param exigirNomeQuandoObjeto - Whether `nome` is required even when no other guardian fields are populated.
  */
 function validarBlocoResponsavel(
   respRaw: unknown,
@@ -216,6 +219,13 @@ function validarBlocoResponsavel(
   }
 }
 
+/**
+ * Validates the clinical data block (`dados_clinicos`) of a patient payload.
+ * Ensures diagnosis, general notes, and sensory triggers have valid types.
+ *
+ * @param dcRaw - Raw clinical data object from the request payload.
+ * @param erros - Mutable list collecting validation error messages.
+ */
 function validarBlocoDadosClinicos(dcRaw: unknown, erros: string[]): void {
   if (!dcRaw || typeof dcRaw !== 'object') return;
   const dc = dcRaw as Record<string, unknown>;
@@ -247,6 +257,12 @@ function validarBlocoDadosClinicos(dcRaw: unknown, erros: string[]): void {
   }
 }
 
+/**
+ * Validates the complete payload DTO for creating a new patient record (POST /api/paciente).
+ *
+ * @param payload - The request body object containing patient and optional guardian details.
+ * @returns Object containing boolean status `valido` and array of validation errors `erros`.
+ */
 export function validarCriarPacienteDTO(payload: unknown): { valido: boolean; erros: string[] } {
   const p = (payload && typeof payload === 'object') ? (payload as Record<string, unknown>) : null;
   const erros: string[] = [];

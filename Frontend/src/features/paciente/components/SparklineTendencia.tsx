@@ -1,44 +1,45 @@
 import React, { useId } from "react";
 
-/**
- * ============================================================================
- * COMPONENTE: SparklineTendencia (InTEA)
- * Conformidade: WCAG 2.1 AA (a11y), Prevenção de Layout Shift (CLS)
- * Renderização: Puramente SVG nativo (Zero bibliotecas externas adicionais)
- * TypeScript Estrito: Sem uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// COMPONENTE: SparklineTendencia (InTEA)
+// Conformidade: WCAG 2.1 AA (a11y), Prevenção de Layout Shift (CLS)
+// Renderização: Puramente SVG nativo (Zero bibliotecas externas adicionais)
+// TypeScript Estrito: Sem uso de `any`
+// ============================================================================
 
 export interface SparklineTendenciaProps {
   /**
-   * Série histórica de valores numéricos de desempenho/evolução.
-   * Ex: [45, 52, 60, 58, 72]
+   * Historical series of numeric performance or progression values.
+   * Example: `[45, 52, 60, 58, 72]`.
    */
   data?: number[] | null;
 
-  /** Largura do componente SVG (padrão: 60) */
+  /** SVG component width (default: 60). */
   width?: number | string;
 
-  /** Altura do componente SVG (padrão: 20) */
+  /** SVG component height (default: 20). */
   height?: number | string;
 
-  /** Classes utilitárias Tailwind CSS aplicadas ao elemento raiz <svg> */
+  /** Tailwind CSS utility classes applied to the root `<svg>` element. */
   className?: string;
 
-  /** Espessura do traço da linha em pixels (padrão: 2) */
+  /** Stroke thickness of the sparkline polyline in pixels (default: 2). */
   strokeWidth?: number;
 
-  /** Se deve renderizar ponto âncora no último registro (padrão: true) */
+  /** Whether to render an anchor dot on the latest data point (default: `true`). */
   mostrarPontoAncora?: boolean;
 
-  /** Identificador para testes automatizados */
+  /** Identifier attribute for automated tests. */
   "data-testid"?: string;
 }
 
 export type TipoTendencia = "alta" | "queda" | "estavel" | "insuficiente";
 
 /**
- * Calcula a tendência semântica e gera rótulo textual acessível detalhado.
+ * Computes the semantic trend classification and generates an accessible descriptive label.
+ *
+ * @param data - Numeric historical values array.
+ * @returns Trend classification and accessible ARIA description.
  */
 function calcularDescricaoAcessivel(data: number[] | null | undefined): {
   tipo: TipoTendencia;
@@ -76,7 +77,10 @@ function calcularDescricaoAcessivel(data: number[] | null | undefined): {
 }
 
 /**
- * Componente SVG Puro para visualização de micro-tendências temporais (Sparkline).
+ * Pure native SVG component for rendering micro temporal trend sparklines with WCAG 2.1 AA labels.
+ *
+ * @param props - Series values, dimensions, stroke width, and optional anchor dot toggle.
+ * @returns Rendered inline SVG sparkline element.
  */
 export const SparklineTendencia: React.FC<SparklineTendenciaProps> = ({
   data,

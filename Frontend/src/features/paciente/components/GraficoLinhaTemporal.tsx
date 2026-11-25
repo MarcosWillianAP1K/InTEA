@@ -49,6 +49,12 @@ function formatarDataPonto(iso?: string): string {
   });
 }
 
+/**
+ * Renders an SVG temporal line chart for numeric therapeutic game metrics.
+ *
+ * @param props - Metric time series, optional title, loading flag, and CSS classes.
+ * @returns Rendered line chart card.
+ */
 export function GraficoLinhaTemporal({
   serie,
   titulo,

@@ -107,7 +107,7 @@ export class SessaoController {
    */
   static async iniciar(req: Request, res: Response): Promise<void> {
     try {
-      // 1. Extração segura da identidade do terapeuta a partir do token JWT verificado (RF21, CA-1)
+      // 1. Extração segura da identidade do terapeuta a partir do token JWT verificado (CA, 1)
       const authReq = req as AuthenticatedRequest;
       const usuarioLogadoId = authReq.user?.id;
 
@@ -161,7 +161,7 @@ export class SessaoController {
         return;
       }
 
-      // Validação da regra RN01 (Modo Livre sem paciente / Sessão Clínica com paciente)
+      // Validação de modo livre / sessão clínica (Modo Livre sem paciente / Sessão Clínica com paciente)
       if (modo_sessao === MODO_SESSAO.SESSAO_CLINICA && !paciente_id) {
         res.status(400).json({ error: 'O paciente_id é obrigatório para sessões clínicas (RN01)' });
         return;
@@ -177,7 +177,7 @@ export class SessaoController {
         return;
       }
 
-      // 4. Validação e formatação do Contexto DDA Pré-Sessão (Contrato 2 / RN01 / RN03)
+      // 4. Validação e formatação do Contexto DDA Pré-Sessão (Contrato 2)
       let contextoFormatado: ContextoPacienteContrato2 | null = null;
       try {
         const entradaContexto = (contexto_dda_json || contexto_pre_sessao || {
@@ -199,7 +199,7 @@ export class SessaoController {
         return;
       }
 
-      // Verificação de concorrência de sessão clínica simultânea (Sprint 13 — RF13, RF18, RN01, RN04)
+      // Verificação de concorrência de sessão clínica simultânea
       if (modo_sessao === MODO_SESSAO.SESSAO_CLINICA && paciente_id) {
         const resultadoConcorrencia = await SessaoConcorrenciaService.verificarSessaoAtivaConcorrente(
           paciente_id,
@@ -391,7 +391,7 @@ export class SessaoController {
         return;
       }
 
-      // Validação de autoria e permissão de mutação do condutor (Sprint 13 — RF21)
+      // Validação de autoria e permissão de mutação do condutor
       const isSuperAdminFinalizar =
         authReq.user?.is_super_admin === true ||
         hasSuperAdminClaim(authReq.user);
@@ -463,7 +463,7 @@ export class SessaoController {
         temAnotacoes: Boolean(anotacoesRecebidas),
       });
 
-      // 3. Conformidade com RN01 (Modo Livre sem Persistência Clínica / Sem IA)
+      // 3. Tratamento de Modo Livre (Modo Livre sem Persistência Clínica / Sem IA)
       // Partidas em modo livre não gravam telemetria em prontuário, não acionam IA e paciente_id = NULL
       if (sessaoAtualizada.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessaoAtualizada.paciente_id) {
         res.status(200).json({
@@ -532,7 +532,7 @@ export class SessaoController {
         return;
       }
 
-      // Validação de autoria e permissão de mutação do condutor (Sprint 13 — RF21)
+      // Validação de autoria e permissão de mutação do condutor
       const isSuperAdminCancelar =
         authReq.user?.is_super_admin === true ||
         hasSuperAdminClaim(authReq.user);
@@ -1035,7 +1035,7 @@ export class SessaoController {
   }
 
   /**
-   * Handles GET /api/sessao/:id/exportar to generate structured clinical reports (RF20).
+   * Handles GET /api/sessao/:id/exportar to generate structured clinical reports.
    *
    * @param req - Authenticated Express request.
    * @param res - Express response returning clinical report JSON or error status.
@@ -1046,7 +1046,7 @@ export class SessaoController {
 
   /**
    * Handles GET /api/sessao/contexto-sugerido/:pacienteId to retrieve suggested DDA context
-   * based on the patient's registered sensory triggers and previous session calibration (RF12, RF17).
+   * based on the patient's registered sensory triggers and previous session calibration.
    *
    * @param req - Authenticated Express request with :pacienteId parameter.
    * @param res - Express response returning the suggested context.

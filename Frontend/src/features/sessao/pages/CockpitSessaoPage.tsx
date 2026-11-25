@@ -26,14 +26,16 @@ import {
   Users,
 } from "lucide-react";
 
+// ============================================================================
+// PAGE: CockpitSessaoPage (Clinical Session Monitoring)
+// Route: /sessao/:id/monitoramento
+// ============================================================================
+
 /**
- * ============================================================================
- * PAGE: CockpitSessaoPage (Clinical Session Monitoring)
- * Route: /sessao/:id/monitoramento
- * Compliance: RF12 (Session Management), RF13 (Lifecycle), RF16 (Anotações Clínicas),
- *             RF17 (DDA Context), RF18 (Equipe Multidisciplinar), RF21 (Intervenção Manual),
- *             RN01 (Modo Livre), RN04 (Vínculo Clínico)
- * ============================================================================
+ * Live clinical session monitoring cockpit supporting real-time telemetry charts,
+ * DDA difficulty adjustments, session notes, pause/finish controls, and observer mode.
+ *
+ * @returns Rendered clinical session cockpit page.
  */
 export function CockpitSessaoPage() {
   const { id: paramSessaoId } = useParams<{ id: string }>();
@@ -56,12 +58,12 @@ export function CockpitSessaoPage() {
   const finalizarSessao = useSessionStore((state) => state.finalizarSessao);
   const restaurarSessao = useSessionStore((state) => state.restaurarSessao);
 
-  // Estado de condução e Modo Observador da Equipe Multidisciplinar (RF13, RF21, RN04)
+  // Estado de condução e Modo Observador da Equipe Multidisciplinar
   const [terapeutaCondutorId, setTerapeutaCondutorId] = useState<string | null>(null);
   const [terapeutaCondutorNome, setTerapeutaCondutorNome] = useState<string | null>(null);
 
   // Sincronização do Cockpit com a Sessão Clínica (Backend / API / BD)
-  // REGRA CLÍNICA: O Cockpit DEVE aparecer SOMENTE quando a sessão está em andamento (RN01, RF12, RF13)
+  // REGRA CLÍNICA: O Cockpit DEVE aparecer SOMENTE quando a sessão está em andamento
   useEffect(() => {
     let ativo = true;
 
@@ -240,7 +242,7 @@ export function CockpitSessaoPage() {
   const [isSubmittingFinalizar, setIsSubmittingFinalizar] = useState(false);
   const [modalAnotacaoAberto, setModalAnotacaoAberto] = useState(false);
 
-  // 5. Cronômetro clínico de alta precisão sincronizado com Dashboard e resiliente (Card 5 - Fix, RF12, RF21)
+  // 5. Cronômetro clínico de alta precisão sincronizado com Dashboard e resiliente (Card 5, Fix)
   const idSessaoEfetivo = paramSessaoId || pareamento?.sessionToken || "sessao-ativa";
   const tokenSessao = pareamento?.sessionToken || paramSessaoId || "sessao-ativa";
   const { tempoFormatado } = useClinicalTimer({
@@ -249,10 +251,10 @@ export function CockpitSessaoPage() {
     isPausado,
   });
 
-  // Determina se a sessão ativa está em Modo Livre (sem paciente associado - RN01)
+  // Determina se a sessão ativa está em Modo Livre (sem paciente associado)
   const isModoLivre = !config?.pacienteId;
 
-  // Determina se o especialista logado está em Modo Observador da Equipe Multidisciplinar (RF13, RF21, RN04)
+  // Determina se o especialista logado está em Modo Observador da Equipe Multidisciplinar
   const isModoObservador =
     !isModoLivre &&
     Boolean(user?.id) &&
@@ -261,7 +263,7 @@ export function CockpitSessaoPage() {
 
   // Handlers de intervenção clínica imediata
 
-  /** Dispatches pause command to store, remote game via WebSocket, and backend REST (RF21 — Manual Intervention). */
+  /** Dispatches pause command to store, remote game via WebSocket, and backend REST (Manual Intervention). */
   const handlePausar = () => {
     if (isModoObservador) return;
     pausarSessao();
@@ -280,7 +282,7 @@ export function CockpitSessaoPage() {
 
   /**
    * Resumes session playback across application store and WebSocket runtime.
-   * Session Control (RF13, RF21): Unpauses clinical timer and signals game client to resume rendering.
+   * Session Control: Unpauses clinical timer and signals game client to resume rendering.
    */
   const handleRetomar = () => {
     if (isModoObservador) return;
@@ -298,7 +300,7 @@ export function CockpitSessaoPage() {
     });
   };
 
-  /** Adjusts DDA level in store and broadcasts command to remote device (RF17, RN03). */
+  /** Adjusts DDA level in store and broadcasts command to remote device. */
   const handleAjustarDda = (nivel: number) => {
     if (isModoObservador) return;
     ajustarDda(nivel);
@@ -309,7 +311,7 @@ export function CockpitSessaoPage() {
     });
   };
 
-  /** Submits session conclusion, updates state, and routes to results page (RF13, RF20). */
+  /** Submits session conclusion, updates state, and routes to results page. */
   const handleConfirmarFinalizacao = async (anotacoes: string) => {
     if (isModoObservador) return;
     setIsSubmittingFinalizar(true);

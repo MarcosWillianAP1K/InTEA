@@ -1,11 +1,9 @@
 import { supabase } from '../supabase/supabase.client.js';
 
-/**
- * ==============================================================================
- * InTEA: Serviço Especializado de Recuperação de Senha (RF01, RNF03)
- * Responsável pelo fluxo seguro com token efêmero/Magic Link via Supabase Auth.
- * ==============================================================================
- */
+// ==============================================================================
+// InTEA: Serviço Especializado de Recuperação de Senha
+// Responsável pelo fluxo seguro com token efêmero/Magic Link via Supabase Auth.
+// ==============================================================================
 
 export interface RecuperacaoSolicitacaoResultado {
   message: string;
@@ -18,7 +16,7 @@ export interface RedefinicaoSenhaResultado {
 export class RecuperacaoService {
   /**
    * Triggers the delivery of a password recovery email with a magic link signed by Supabase Auth.
-   * Anti-Enumeration Rule (RNF03): Always returns success confirmation to prevent account enumeration attacks.
+   * Anti-Enumeration Rule: Always returns success confirmation to prevent account enumeration attacks.
    *
    * @param email - Institutional email address of the therapist
    * @returns Operation confirmation payload
@@ -45,7 +43,7 @@ export class RecuperacaoService {
 
   /**
    * Validates the single-use ephemeral token and applies the new encrypted password in Supabase Auth.
-   * Expiration Rule (RNF03): Throws 410 (Gone) if the token is invalid or has expired (TTL 30 minutes).
+   * Expiration Rule: Throws 410 (Gone) if the token is invalid or has expired (TTL 30 minutes).
    *
    * @param token - Ephemeral recovery token or recovery session JWT
    * @param novaSenha - New plaintext password (minimum 6 characters)

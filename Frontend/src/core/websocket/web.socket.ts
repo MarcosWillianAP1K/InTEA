@@ -1,4 +1,2 @@
-/**
- * Re-export de SessionSocketManager com handshake JWT (useAuthStore.getState().tokens?.access_token / auth: { token }).
- */
+// Re-export of SessionSocketManager with JWT handshake (`useAuthStore.getState().tokens?.access_token`).
 export * from "../web.socket";

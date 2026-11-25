@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Controller de Pacientes (Camada HTTP / Thin Controller)
 // ==============================================================================
-// Conformidade: RF10, RN04 (Visibilidade), RN05 (Soft Delete)
 // Padrão Arquitetural: Envelope Pattern Categorizado e Sanitização Estrita
 // ==============================================================================
 
@@ -511,7 +510,7 @@ export class PacienteController {
   }
 
   /**
-   * Handles DELETE /api/paciente/:id applying soft deletion (RN05).
+   * Handles DELETE /api/paciente/:id applying soft deletion.
    *
    * Canonical Format:
    * {
@@ -873,7 +872,7 @@ export class PacienteController {
 
   /**
    * Handles GET /api/paciente/:id/historico to retrieve longitudinal patient history
-   * with universal engagement metrics and game-specific metric series (RF15, RF19, RN01, RN02, RN04, RN05).
+   * with universal engagement metrics and game-specific metric series.
    *
    * Canonical Format:
    * {
@@ -935,7 +934,7 @@ export class PacienteController {
   }
 
   /**
-   * Handles GET /api/paciente/:id/historico/jogo/:jogoId to retrieve specific game metric series (RF15, RN02).
+   * Handles GET /api/paciente/:id/historico/jogo/:jogoId to retrieve specific game metric series.
    *
    * Canonical Format:
    * {

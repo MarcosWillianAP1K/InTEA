@@ -1,10 +1,7 @@
 // ==============================================================================
 // InTEA: Serviço de Consolidação dos Resultados da Sessão (Sprint 10 - Card 1.2)
 // ==============================================================================
-// Conformidade: RF14 (Tela de Resultados), RF16 (Anotações Clínicas),
-// RF17 (Síntese de IA), RN01 (Modo Livre), RN04 (Vínculo/Clínica),
-// RN05 (Imutabilidade Clínica), Contrato 4 e RNF02 (Desempenho)
-// TypeScript Estrito: Sem 'any'
+// Contrato 4 e TypeScript Estrito: Sem 'any'
 // ==============================================================================
 
 import { supabase } from '../../../core/supabase/supabase.client.js';
@@ -142,7 +139,7 @@ export interface SessaoResultadoConsolidado {
   } | null;
   anotacoes: SessaoResultadoAnotacaoItem[];
 
-  // 3. Blocos consolidados ricos (RF14, Contrato 4 e Laudo pós-sessão)
+  // 3. Blocos consolidados ricos (Contrato 4 e Laudo pós, sessão)
   cabecalho: CabecalhoResultadoConsolidado;
   metricas_consolidadas: MetricasCardsResultado;
   insights_ia: RelatorioIAContrato | null;
@@ -345,7 +342,7 @@ function extrairTentativasGrafico(
 export class SessaoResultadoService {
   /**
    * Consolidates clinical and analytical result data for a finalized session.
-   * Validates institutional permissions (RN04) and suppresses clinical data for free-mode sessions (RN01).
+   * Validates institutional permissions and suppresses clinical data for free-mode sessions.
    *
    * @param sessaoId - UUID of the session to retrieve.
    * @param terapeutaId - UUID of the requesting therapist.
@@ -378,7 +375,7 @@ export class SessaoResultadoService {
       }
 
       // 3. Validação da Máquina de Estados (FSM)
-      // Apenas sessões finalizadas possuem consolidação de resultados (RF14)
+      // Apenas sessões finalizadas possuem consolidação de resultados
       if (sessao.status_sessao !== STATUS_SESSAO.FINALIZADA) {
         return {
           sucesso: false,
@@ -387,7 +384,7 @@ export class SessaoResultadoService {
         };
       }
 
-      // 4. Verificação de Visibilidade e Vínculo Institucional (RN04)
+      // 4. Verificação de Visibilidade e Vínculo Institucional
       if (sessao.modo_sessao === MODO_SESSAO.SESSAO_CLINICA && sessao.paciente_id) {
         if (!isSuperAdmin) {
           // Consulta o perfil do terapeuta requisitante
@@ -429,7 +426,7 @@ export class SessaoResultadoService {
               };
             }
 
-            // Bloqueio institucional entre clínicas distintas (RN04)
+            // Bloqueio institucional entre clínicas distintas
             if (paciente.clinica_id && terapeutaReq.clinica_id && paciente.clinica_id !== terapeutaReq.clinica_id) {
               return {
                 sucesso: false,
@@ -438,7 +435,7 @@ export class SessaoResultadoService {
               };
             }
 
-            // Verificação de vínculo ativo na tabela terapeuta_paciente (RN04)
+            // Verificação de vínculo ativo na tabela terapeuta_paciente
             const { data: vinculo, error: errVinculo } = await supabase
               .from('terapeuta_paciente')
               .select('paciente_id')
@@ -467,7 +464,7 @@ export class SessaoResultadoService {
 
       const duracaoFormatada = formatarDuracao(duracaoSegundos);
 
-      // 6. Tratamento de Sessão em Modo Livre (RN01: Sem Persistência em Prontuário / Sem Dados Clínicos)
+      // 6. Tratamento de Sessão em Modo Livre (Sem Persistência em Prontuário / Sem Dados Clínicos)
       if (sessao.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessao.paciente_id) {
         const [jogoRes, terapeutaRes, eventosLivre] = await Promise.all([
           supabase.from('jogo').select('id, nome, versao, descricao, manifesto_json').eq('id', sessao.jogo_id).maybeSingle(),
@@ -503,11 +500,11 @@ export class SessaoResultadoService {
             },
             jogo: jogoLivre ? { ...jogoLivre, titulo: jogoLivre.nome } : null,
             terapeuta: terapeutaLivre,
-            paciente: null, // Conforme RN01
-            relatorio: null, // Conforme RN01
-            anotacoes: [], // Conforme RN01
+            paciente: null, // Modo Livre: sem dados clínicos
+            relatorio: null, // Modo Livre: sem dados clínicos
+            anotacoes: [], // Modo Livre: sem dados clínicos
             cabecalho: {
-              paciente: null, // Conforme RN01
+              paciente: null, // Modo Livre: sem dados clínicos
               terapeuta: terapeutaLivre ? {
                 id: terapeutaLivre.id,
                 nome: terapeutaLivre.nome,
@@ -525,7 +522,7 @@ export class SessaoResultadoService {
             },
             metricas_consolidadas: metricasLivre,
             metricas_cards: metricasLivre,
-            insights_ia: null, // Conforme RN01
+            insights_ia: null, // Modo Livre: sem dados clínicos
             historico_evolutivo: {
               tipo: 'intra_sessao',
               tempo_medio_referencia: telemetriaLivre.tempo_resposta.media,
@@ -603,7 +600,7 @@ export class SessaoResultadoService {
         created_at: a.created_at,
       }));
 
-      // Extração de Diagnóstico e Gatilhos (RN03 e 3FN)
+      // Extração de Diagnóstico e Gatilhos (e 3FN)
       const diagnosticoBase =
         dadosClinicosRes?.diagnostico_base || 'Não informado';
       const gatilhosDda: string[] = Array.isArray(sessao.contexto_dda_json?.gatilhos_a_evitar)

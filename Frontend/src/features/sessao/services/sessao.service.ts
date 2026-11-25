@@ -1,12 +1,9 @@
-/**
- * ============================================================================
- * SERVIÇO REST DO DOMÍNIO SESSÃO (sessao.service.ts)
- * Consome os endpoints centralizados ENDPOINTS.SESSAO via http-client
- * com fallback resiliente para bdmock.ts em caso de indisponibilidade.
- * Conformidade: RF10, RF11 (RN01), RF12, RF13, RF14, RF16, RF17, RF20
- * TypeScript Estrito: Sem uso de `any`
- * ============================================================================
- */
+// ============================================================================
+// SERVIÇO REST DO DOMÍNIO SESSÃO (sessao.service.ts)
+// Consome os endpoints centralizados ENDPOINTS.SESSAO via http-client
+// com fallback resiliente para bdmock.ts em caso de indisponibilidade.
+// TypeScript Estrito: Sem uso de `any`
+// ============================================================================
 
 import { http, withFallback, ENDPOINTS } from "@/core/api";
 import { USE_MOCK_DATA } from "@/core/api/http-client";
@@ -290,7 +287,7 @@ export const sessaoService = {
     );
   },
   /**
-   * Starts a new clinical session or free play session (RN01, RF10).
+   * Starts a new clinical session or free play session.
    */
   iniciarSessao: async (dto: IniciarSessaoDTO): Promise<Sessao> => {
     return await withFallback(
@@ -396,7 +393,7 @@ export const sessaoService = {
   },
 
   /**
-   * Retrieves suggested clinical pre-session DDA context (RF12, RF17, RN04).
+   * Retrieves suggested clinical pre-session DDA context.
    */
   obterContextoSugerido: async (
     pacienteId: string,
@@ -537,7 +534,7 @@ export const sessaoService = {
   },
 
   /**
-   * Finalizes clinical session and synthesizes AI outcome report (RF13, RF14, RF17).
+   * Finalizes clinical session and synthesizes AI outcome report.
    */
   finalizarSessao: async (
     id: string,
@@ -587,7 +584,7 @@ export const sessaoService = {
   },
 
   /**
-   * Retrieves consolidated post-intervention session outcomes (RF14).
+   * Retrieves consolidated post-intervention session outcomes.
    */
   obterResultado: async (id: string): Promise<ResultadoSessao | null> => {
     if (!id || !id.trim()) return null;
@@ -608,7 +605,7 @@ export const sessaoService = {
   },
 
   /**
-   * Exports structured clinical session data (RF20).
+   * Exports structured clinical session data.
    */
   exportarRelatorio: async (
     id: string,
@@ -721,7 +718,7 @@ export const sessaoService = {
 
   /**
    * Fetches consolidated session outcome formatted as `BuscarResultadoResposta`.
-   * Result Visualization (RF14): Combines session metadata, telemetry summaries, AI analysis, and clinical notes.
+   * Result Visualization: Combines session metadata, telemetry summaries, AI analysis, and clinical notes.
    *
    * @param id - UUID of the completed session
    * @returns Consolidated session outcome payload

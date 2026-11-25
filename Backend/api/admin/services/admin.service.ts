@@ -1,14 +1,11 @@
 import { supabase } from '../../../core/supabase/supabase.client.js';
 import { validarUUID } from '../../../core/utils/validators.js';
 
-/**
- * ==============================================================================
- * InTEA: Serviço Administrativo Global (SuperAdmin)
- * ==============================================================================
- * Conformidade: RF07 (Gestão SuperAdmin), RF08 (Auditoria Institucional)
- * Padrões: Clean Architecture, TypeScript estrito sem o uso de `any`
- * ==============================================================================
- */
+// ==============================================================================
+// InTEA: Serviço Administrativo Global (SuperAdmin)
+// ==============================================================================
+// Padrões: Clean Architecture, TypeScript estrito sem o uso de `any`
+// ==============================================================================
 
 export interface Clinica {
   id: string;
@@ -154,12 +151,12 @@ export class AdminServiceError extends Error {
 
 export class AdminService {
   // ============================================================================
-  // 1. MÓDULO DE CLÍNICAS (RF07)
+  // 1. MÓDULO DE CLÍNICAS
   // ============================================================================
 
   /**
    * Lists all partner clinic institutions with pagination, search, and status filters.
-   * Institutional Management (RF07): Supports case-insensitive searching on name and CNPJ.
+   * Institutional Management: Supports case-insensitive searching on name and CNPJ.
    *
    * @param filtros - Query filters including search term, active status, page, and limit
    * @returns Paginated list of clinics and pagination metadata
@@ -237,7 +234,7 @@ export class AdminService {
 
   /**
    * Registers a new partner clinic institution in the InTEA ecosystem.
-   * Uniqueness Constraint (RN04): Enforces unique CNPJ registration when provided and validates name length.
+   * Uniqueness Constraint: Enforces unique CNPJ registration when provided and validates name length.
    *
    * @param dto - Clinic registration payload containing name and optional CNPJ
    * @returns Newly created clinic entity
@@ -352,7 +349,7 @@ export class AdminService {
 
   /**
    * Deactivates a partner clinic institution through soft institutional blocking.
-   * Soft Suspension (RN05): Retains all associated data while setting status_ativo = false.
+   * Soft Suspension: Retains all associated data while setting status_ativo = false.
    *
    * @param id - UUID of the clinic to deactivate
    * @returns Deactivated clinic entity
@@ -362,12 +359,12 @@ export class AdminService {
   }
 
   // ============================================================================
-  // 2. MÓDULO DE TERAPEUTAS (RF07, RN04)
+  // 2. MÓDULO DE TERAPEUTAS
   // ============================================================================
 
   /**
    * Lists registered therapist accounts across clinics with institutional filters and pagination.
-   * Multi-Tenant Administration (RF07): Joins clinic names and filters by clinic ID, active status, or SuperAdmin role.
+   * Multi-Tenant Administration: Joins clinic names and filters by clinic ID, active status, or SuperAdmin role.
    *
    * @param filtros - Query filters including search term, clinic UUID, active flag, and pagination
    * @returns Paginated list of therapist profiles with joined clinic details
@@ -547,12 +544,12 @@ export class AdminService {
   }
 
   // ============================================================================
-  // 3. CONSULTA CONSOLIDADA DE AUDITORIA POR INSTITUIÇÃO (RF08, RNF06)
+  // 3. CONSULTA CONSOLIDADA DE AUDITORIA POR INSTITUIÇÃO
   // ============================================================================
 
   /**
    * Queries consolidated clinical and session audit logs globally or scoped by clinic.
-   * Institutional Audit Trail (RF08, RNF06): Aggregates actions and active therapist count across the selected window.
+   * Institutional Audit Trail: Aggregates actions and active therapist count across the selected window.
    *
    * @param filtros - Consolidated audit filters including clinic ID, therapist ID, date range, action, and pagination
    * @returns Structured audit report with log events, aggregate statistics, and metadata

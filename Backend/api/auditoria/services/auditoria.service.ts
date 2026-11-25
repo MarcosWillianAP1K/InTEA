@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Service da Trilha Unificada de Auditoria do Ecossistema (Item 3)
 // ==============================================================================
-// Conformidade: RF07, RF08, RF13, RNF06 (LGPD), RN04 (Vínculo), RN05
 // ==============================================================================
 
 import {
@@ -121,7 +120,7 @@ export class AuditoriaService {
   }
 
   /**
-   * Formally records an immutable team link audit event in `public.auditoria_evento` (RF08, RN05).
+   * Formally records an immutable team link audit event in `public.auditoria_evento`.
    */
   static async registrarVinculo(dto: CriarAuditoriaVinculoDTO): Promise<AuditoriaVinculoRegistro | null> {
     if (
@@ -145,7 +144,7 @@ export class AuditoriaService {
   }
 
   /**
-   * Silently and asynchronously records a team link audit event without throwing errors to the caller (RF08).
+   * Silently and asynchronously records a team link audit event without throwing errors to the caller.
    */
   static async registrarVinculoSilencioso(dto: CriarAuditoriaVinculoDTO): Promise<void> {
     try {
@@ -184,7 +183,7 @@ export class AuditoriaService {
   }
 
   /**
-   * Validates permission for recording a clinical session audit event via POST /api/auditoria (RF13, RN04).
+   * Validates permission for recording a clinical session audit event via POST /api/auditoria.
    */
   static async validarAcessoRegistroEvento(
     sessaoId: string,

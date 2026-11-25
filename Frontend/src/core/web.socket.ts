@@ -5,7 +5,6 @@ import { useAuthStore } from "@/features/autenticacao/store/authStore";
 /**
  * ============================================================================
  * STRICT WEBSOCKET (SOCKET.IO) CONTRACTS AND TYPES — InTEA
- * Compliance: RF10 (Remote Pairing), RNF04 (Real-Time Communication)
  * ============================================================================
  */
 
@@ -160,7 +159,10 @@ export class SessionSocketManager {
   }
 
   /**
-   * Assinatura para useSyncExternalStore do React 19
+   * Subscription callback compatible with React 19 `useSyncExternalStore`.
+   *
+   * @param listener - Store listener invoked when connection status changes.
+   * @returns Unsubscribe cleanup function.
    */
   public subscribe = (listener: () => void): () => void => {
     this.storeListeners.add(listener);
@@ -238,6 +240,9 @@ export class SessionSocketManager {
     return this.socket;
   }
 
+  /**
+   * Registers internal Socket.IO event listeners for connection lifecycle, device pairing, telemetry, and session state updates.
+   */
   private configurarEventosInternos(): void {
     if (!this.socket) return;
 

@@ -34,15 +34,12 @@ export interface GerenciadorAnotacoesProntuarioProps {
 /**
  * ============================================================================
  * COMPONENTE: GerenciadorAnotacoesProntuario
- * Conformidade: RF16 (Prontuário e Anotações), RF19 (Filtros Longitudinais),
- *              RF21 (Autoria Indelével), RN04 (Vínculo e Clínica),
- *              RN05 (Inalterabilidade / Soft Delete), RNF07 (Acessibilidade)
  * TypeScript Estrito: Sem uso de `any`
  * ============================================================================
  */
 /**
- * Longitudinal clinical notes manager for patient medical records with chronological timeline (RF16).
- * Medical Record Management (RF16, RF19, RN04, RN05): Provides search, author filtering, and soft-delete/reactivation.
+ * Longitudinal clinical notes manager for patient medical records with chronological timeline.
+ * Medical Record Management: Provides search, author filtering, and soft-delete/reactivation.
  *
  * @param props - Component properties with patient UUID and authorization context
  * @returns Medical record notes management dashboard component
@@ -84,7 +81,7 @@ export function GerenciadorAnotacoesProntuario({
     incluirInativos: false,
   });
 
-  // Auto-Save Local de Rascunho com debounce de 500ms (RF16, RNF07, Issue #164)
+  // Auto-Save Local de Rascunho com debounce de 500ms (Issue #164)
   const {
     draft: novoTexto,
     setDraft: setNovoTexto,
@@ -145,11 +142,11 @@ export function GerenciadorAnotacoesProntuario({
   // Filtragem defensiva no client-side para assegurar precisão em modo mock/offline
   const anotacoesFiltradas = useMemo(() => {
     return anotacoes.filter((a) => {
-      // Filtro de inativos (RN05)
+      // Filtro de inativos
       const isDeletada = a.soft_delete === true || a.status_ativo === false;
       if (!filtros.incluirInativos && isDeletada) return false;
 
-      // Filtro por termo de busca (RF19)
+      // Filtro por termo de busca
       if (filtros.busca && filtros.busca.trim()) {
         const termo = filtros.busca.toLowerCase().trim();
         const noConteudo = a.conteudo.toLowerCase().includes(termo);
@@ -172,7 +169,7 @@ export function GerenciadorAnotacoesProntuario({
         return false;
       }
 
-      // Filtro por intervalo de datas (RF19)
+      // Filtro por intervalo de datas
       if (filtros.dataInicio && a.created_at) {
         const tInicio = new Date(filtros.dataInicio).getTime();
         if (new Date(a.created_at).getTime() < tInicio) return false;
@@ -203,7 +200,7 @@ export function GerenciadorAnotacoesProntuario({
     }
   }, [paginaAtual, totalPaginas]);
 
-  // Submissão de nova anotação clínica (RF16, RF21)
+  // Submissão de nova anotação clínica
   async function handleCriarAnotacao(e: FormEvent) {
     e.preventDefault();
     if (isSubmitting || somenteLeitura || !novoTexto.trim() || !pacienteId) return;
@@ -256,7 +253,7 @@ export function GerenciadorAnotacoesProntuario({
     }
   }
 
-  // Inativação lógica (soft delete — RN05)
+  // Inativação lógica (soft delete)
   async function handleInativarAnotacao(id: string) {
     setIsSubmitting(true);
     try {

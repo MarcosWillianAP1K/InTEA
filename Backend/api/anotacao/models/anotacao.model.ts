@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Modelo da Tabela anotacao_clinica (Prontuário com Sessão Opcional)
 // ==============================================================================
-// Conformidade: RF16 (Anotações Clínicas), RF21 (Autoria JWT), RN04, RN05
 // TypeScript Estrito: Sem 'any'
 // ==============================================================================
 
@@ -57,6 +56,12 @@ export interface FiltrosAnotacaoDTO {
   limit?: number;
 }
 
+/**
+ * Maps a raw Supabase note record with optional joined therapist metadata into a normalized `AnotacaoClinica` object.
+ *
+ * @param raw - Raw database row returned by PostgREST.
+ * @returns Normalized clinical note object including resolved `autor` and active flags.
+ */
 function mapearAnotacaoComAutor(raw: Record<string, unknown>): AnotacaoClinica {
   const { terapeuta, ...resto } = raw;
   let autor: AnotacaoAutorInfo | undefined = undefined;
@@ -301,7 +306,7 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Executes logical deletion (soft delete) of a clinical note (`soft_delete = true`, RN05).
+   * Executes logical deletion (soft delete) of a clinical note (`soft_delete = true`).
    *
    * @param id - UUID of the clinical note.
    * @returns True if successfully marked as deleted, false otherwise.
@@ -329,7 +334,7 @@ export class AnotacaoClinicaModel {
   }
 
   /**
-   * Reactivates a soft-deleted clinical note (`soft_delete = false`, RN05).
+   * Reactivates a soft-deleted clinical note (`soft_delete = false`).
    *
    * @param id - UUID of the clinical note.
    * @returns Reactivated clinical note record or null on failure.

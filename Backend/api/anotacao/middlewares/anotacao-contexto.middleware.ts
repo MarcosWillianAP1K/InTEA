@@ -4,9 +4,9 @@
 // Responsabilidade:
 // 1. Extrair e validar parâmetros e escopos (paciente vs sessão).
 // 2. Localizar a entidade alvo (paciente, sessão ou anotação) e preencher req.pacienteAlvoId
-//    para consumo transparente e estrito pelo verificarVisibilidadePaciente (RN04).
+//    para consumo transparente e estrito pelo verificarVisibilidadePaciente.
 // 3. Garantir que anotações de sessão não sejam acessadas via rotas de paciente e vice-versa.
-// 4. Bloquear registro de anotação para sessão cancelada ou modo livre (RN01).
+// 4. Bloquear registro de anotação para sessão cancelada ou modo livre.
 // ==============================================================================
 
 import { Response, NextFunction } from 'express';
@@ -137,7 +137,7 @@ export async function resolverContextoSessao(
         return;
       }
 
-      // Regra RN01: modo livre não possui paciente vinculado e não admite anotação clínica
+      // modo livre não possui paciente vinculado e não admite anotação clínica
       if (!sessao.paciente_id || sessao.modo_sessao === 'modo_livre') {
         res.status(400).json({ error: 'Sessões em modo livre ou sem paciente não admitem anotações clínicas (RN01).' });
         return;
@@ -255,7 +255,7 @@ export async function resolverContextoAnotacaoPorId(
 
 /**
  * Middleware that resolves clinical note context specifically for reactivation routes,
- * allowing loading notes with `soft_delete: true` so institutional visibility (RN04) can be verified.
+ * allowing loading notes with `soft_delete: true` so institutional visibility can be verified.
  * Injects req.pacienteAlvoId = anotacao.paciente_id and req.contextoAnotacao = anotacao.
  *
  * @param req - Authenticated Express request.

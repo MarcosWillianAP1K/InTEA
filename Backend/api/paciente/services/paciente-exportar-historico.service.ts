@@ -1,14 +1,14 @@
 // ==============================================================================
-// InTEA: Serviço de Exportação de Prontuário Longitudinal em PDF (RF20, RNF06)
+// InTEA: Serviço de Exportação de Prontuário Longitudinal em PDF
 // ==============================================================================
 // Regras Atendidas:
-// - RF20: Exportação de Relatórios e Prontuários Estruturados
-// - RF06: Gestão de Pacientes e Prontuários
-// - RF21: Autoria e Autenticidade do Terapeuta
-// - RN01: Expurgo Estrito de Modo Livre (paciente_id = NULL)
-// - RN04: Controle de Acesso por Vínculo Institucional e Mesma Clínica
-// - RN05: Inalterabilidade e Descarte de Registros com Soft Delete
-// - RNF06: Privacidade e Mascaramento de CPF (LGPD)
+// - Exportação de Relatórios e Prontuários Estruturados
+// - Gestão de Pacientes e Prontuários
+// - Autoria e Autenticidade do Terapeuta
+// - Expurgo Estrito de Modo Livre (paciente_id = NULL)
+// - Controle de Acesso por Vínculo Institucional e Mesma Clínica
+// - Inalterabilidade e Descarte de Registros com Soft Delete
+// - Privacidade e Mascaramento de CPF (LGPD)
 // ==============================================================================
 
 import crypto from 'node:crypto';
@@ -28,7 +28,7 @@ export interface RespostaExportacaoProntuario {
 }
 
 /**
- * Masks a CPF number in compliance with LGPD data protection guidelines (RNF06).
+ * Masks a CPF number in compliance with LGPD data protection guidelines.
  * Anonymization Rule: Preserves partial digits while redacting the majority as ***.XXX.***-XX.
  *
  * @param cpf - Raw CPF string
@@ -168,7 +168,7 @@ function compilarPdfBinario(linhas: string[]): Buffer {
 export class PacienteExportarHistoricoService {
   /**
    * Exports the patient's consolidated longitudinal medical record in PDF format.
-   * Clinical Record Export (RF20, RN04): Enforces institutional therapist-patient link before generating PDF.
+   * Clinical Record Export: Enforces institutional therapist-patient link before generating PDF.
    *
    * @param pacienteId - UUID of the target patient
    * @param usuarioAutenticado - Authenticated therapist claims extracted from JWT
@@ -212,7 +212,7 @@ export class PacienteExportarHistoricoService {
       };
     }
 
-    // 4. Verificação Institucional de Acesso (RN04)
+    // 4. Verificação Institucional de Acesso
     const isSuperAdmin =
       usuarioAutenticado.is_super_admin === true ||
       hasSuperAdminClaim(usuarioAutenticado);
@@ -235,7 +235,7 @@ export class PacienteExportarHistoricoService {
     const clinicaId = terapeutaInfo.clinica_id || paciente.clinica_id;
     const clinicaInfo = await this.buscarDadosClinica(clinicaId);
 
-    // 7. Compila histórico e métricas transversais de engajamento (RN01, RN05)
+    // 7. Compila histórico e métricas transversais de engajamento
     let engajamento = await HistoricoSessaoModel.buscarMetricasEngajamentoGeral(pacienteId);
     if (!engajamento) {
       engajamento = {
@@ -253,10 +253,10 @@ export class PacienteExportarHistoricoService {
     // 8. Busca catálogo de jogos experimentados pelo paciente
     const jogosPaciente = (await HistoricoSessaoModel.listarJogosDoPaciente(pacienteId)) || [];
 
-    // 9. Busca anotações clínicas autorizadas (excluindo soft-deleted - RN05)
+    // 9. Busca anotações clínicas autorizadas (excluindo soft, deleted)
     const anotacoes = await this.buscarAnotacoesClinicas(pacienteId);
 
-    // 10. Emissão do Hash de Autenticidade (RF21)
+    // 10. Emissão do Hash de Autenticidade
     const emissaoEm = new Date().toISOString();
     const codigoAutenticidade = crypto
       .createHash('sha256')
@@ -281,7 +281,7 @@ export class PacienteExportarHistoricoService {
     const hasIntervencoes = engajamento.total_sessoes > 0 && engajamento.sessoes_finalizadas > 0;
 
     if (!hasIntervencoes) {
-      // Suporte a Empty State gracioso (RF20)
+      // Suporte a Empty State gracioso
       linhas.push('Nenhuma intervencao clinica realizada ate o momento.');
       linhas.push('O paciente ainda nao possui sessoes terapeuticas finalizadas registradas no prontuario.');
     } else {
@@ -313,7 +313,7 @@ export class PacienteExportarHistoricoService {
       }
     }
 
-    // Bloco de Assinatura Formal e Responsabilidade Técnica (RF21)
+    // Bloco de Assinatura Formal e Responsabilidade Técnica
     linhas.push('---');
     linhas.push('## 5. ASSINATURA FORMAL DO PROFISSIONAL RESPONSAVEL');
     linhas.push('Documento emitido digitalmente pela plataforma InTEA. Valido para prontuario multiprofissional.');
@@ -336,7 +336,7 @@ export class PacienteExportarHistoricoService {
 
   /**
    * Verifies the institutional association between the requesting therapist and the target patient.
-   * Authorization Guard (RN04): Allows SuperAdmins or linked clinic therapists while blocking unauthorized access.
+   * Authorization Guard: Allows SuperAdmins or linked clinic therapists while blocking unauthorized access.
    *
    * @param pacienteId - UUID of the target patient
    * @param usuario - Authenticated therapist profile
@@ -449,7 +449,7 @@ export class PacienteExportarHistoricoService {
 
   /**
    * Queries the latest active clinical notes for the patient, excluding soft-deleted records.
-   * History Integrity (RN05): Orders notes chronologically with author details.
+   * History Integrity: Orders notes chronologically with author details.
    *
    * @param pacienteId - UUID of the patient
    * @param limite - Maximum number of notes to retrieve

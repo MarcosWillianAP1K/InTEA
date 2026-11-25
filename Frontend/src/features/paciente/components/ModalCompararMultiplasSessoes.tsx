@@ -71,11 +71,11 @@ type SessaoComMetricas = Sessao & {
 };
 
 /**
- * ============================================================================
- * COMPONENTE: ModalCompararMultiplasSessoes (InTEA)
- * Comparação Longitudinal e Analítica Escalável para mais de 2 sessões clínicas.
- * Conformidade: RF15, RF19, RN02, RNF07 (área mínima de toque 44x44px), WCAG 2.1 AA.
- * ============================================================================
+ * Scalable multi-session longitudinal comparison modal supporting comparison of 2 or more
+ * clinical sessions against a configurable baseline session (WCAG 2.1 AA).
+ *
+ * @param props - Modal visibility state, close handler, session list, and optional patient name.
+ * @returns Rendered multi-session comparison dialog.
  */
 export function ModalCompararMultiplasSessoes({
   isOpen,
@@ -96,7 +96,7 @@ export function ModalCompararMultiplasSessoes({
   // Índice da sessão de referência inicial (Baseline) - padrão: 0 (a mais antiga)
   const [indiceBaseline, setIndiceBaseline] = useState<number>(0);
 
-  // Verificação de Homogeneidade dos Jogos (RN02 / Arquitetura Dual de Histórico)
+  // Verificação de Homogeneidade dos Jogos (Arquitetura Dual de Histórico)
   const jogosDistintos = useMemo(() => {
     const mapa = new Map<string, string>();
     sessoesOrdenadas.forEach((s) => {

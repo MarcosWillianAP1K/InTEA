@@ -178,6 +178,13 @@ function NavUserWithRouter(props: NavUserProps) {
   );
 }
 
+/**
+ * Safe user profile menu wrapper that integrates with React Router when available
+ * and falls back to `window.location` navigation otherwise.
+ *
+ * @param props - Optional display overrides for therapist name, email, avatar, role, and registration.
+ * @returns Rendered therapist profile dropdown menu.
+ */
 export function NavUser(props: NavUserProps = {}) {
   const inRouter = useInRouterContext();
   if (inRouter) {

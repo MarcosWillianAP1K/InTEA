@@ -53,13 +53,12 @@ function SafeNavigateHandler({ to }: { to: string | null }) {
 /**
  * ============================================================================
  * PRE-SESSION AND REMOTE PAIRING MODAL (InTEA)
- * Compliance: RF09 (Game Catalog), RF10 (Remote Pairing), RF12 (Lifecycle), RN01 (Patient Required)
  * ============================================================================
  */
 
 /**
  * Modal dialog for session initialization, pairing code generation, and DDA context injection.
- * Pre-Session Handshake (RF10, RF12, RF17, RN01): Orchestrates patient selection, game pairing, and Contract 2 setup.
+ * Pre-Session Handshake: Orchestrates patient selection, game pairing, and Contract 2 setup.
  *
  * @returns Pre-session orchestrator modal component
  */
@@ -167,7 +166,7 @@ export function ModalPreSessao() {
     };
   }, [isModalAberto, config, pareamento, iniciarPareamento]);
 
-  // Carrega automaticamente gatilhos e contexto sugerido do paciente (RF12, RF17, RN03)
+  // Carrega automaticamente gatilhos e contexto sugerido do paciente
   useEffect(() => {
     const pacienteId = config?.pacienteId;
     if (!isModalAberto || !pacienteId || pacienteId === "modo-livre") return;
@@ -249,7 +248,7 @@ export function ModalPreSessao() {
     toast.success("Dispositivo pareado com sucesso (Simulação)!");
   }
 
-  /** Initiates clinical intervention after confirmed remote device handshake (RF12) */
+  /** Initiates clinical intervention after confirmed remote device handshake */
   async function handleIniciarJogo() {
     if (iniciando) return;
 
@@ -279,7 +278,7 @@ export function ModalPreSessao() {
 
     setIniciando(true);
     try {
-      // Persistência no banco de dados com injeção estruturada do Contrato 2 (RN03)
+      // Persistência no banco de dados com injeção estruturada do Contrato 2
       const isModoLivre = !pacienteId || pacienteId === "modo-livre";
       const sessaoCriada = await sessaoService.iniciarSessao({
         jogo_id: config?.jogoId || "jogo-1",

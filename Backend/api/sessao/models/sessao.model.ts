@@ -250,7 +250,7 @@ export class SessaoModel {
         .from('sessao')
         .select('*, paciente:paciente_id(id, nome, data_nascimento), jogo:jogo_id(id, nome, versao), terapeuta:terapeuta_id(id, nome, especialidade, crefito, registro_profissional)', { count: 'exact' });
 
-      // Filtro de visibilidade institucional (RN04)
+      // Filtro de visibilidade institucional
       if (filtros.terapeutaId) {
         query = query.eq('terapeuta_id', filtros.terapeutaId);
       }

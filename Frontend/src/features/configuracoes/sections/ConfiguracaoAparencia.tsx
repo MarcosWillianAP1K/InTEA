@@ -15,6 +15,12 @@ import { useTheme } from "@/shared/providers/theme-provider";
 import { useConfiguracoesStore } from "../store/configuracoesStore";
 import { Monitor, Moon, Sun } from "lucide-react";
 
+/**
+ * Layout row container for grouping a setting label and its input control.
+ *
+ * @param props - Row children elements.
+ * @returns Flex row wrapper.
+ */
 function SettingRow({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -23,6 +29,11 @@ function SettingRow({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Appearance settings section allowing therapists to switch between light, dark, and system themes.
+ *
+ * @returns Rendered appearance configuration card.
+ */
 export function ConfiguracaoAparencia() {
   const { settings, updateSetting } = useConfiguracoesStore();
   const { setTheme } = useTheme();

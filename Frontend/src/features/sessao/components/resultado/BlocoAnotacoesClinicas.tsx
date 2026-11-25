@@ -38,12 +38,11 @@ export interface BlocoAnotacoesClinicasProps {
 /**
  * ============================================================================
  * COMPONENT: BlocoAnotacoesClinicas (Clinical Notes)
- * Compliance: RF16 (Notes Block), RF21 (Mandatory Authorship), RN05 (Medical Record Immutability)
  * ============================================================================
  */
 /**
  * Renders clinical notes section in session outcome review page with quick note creation.
- * Post-Session Documentation (RF16, RF21): Displays notes captured during session and allows final remarks.
+ * Post-Session Documentation: Displays notes captured during session and allows final remarks.
  *
  * @param props - Component properties including session ID, patient ID, and note list
  * @returns Post-session clinical notes block component

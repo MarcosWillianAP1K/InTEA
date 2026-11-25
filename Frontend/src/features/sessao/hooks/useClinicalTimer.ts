@@ -52,7 +52,7 @@ export function formatarTempoClinico(totalSegundos: number): string {
 
 /**
  * High-precision clinical session timer hook with persistence, synchronicity, and pause handling.
- * Protects against background tab throttling and page reloads via sessionStorage and cross-component sync (RF12, RNF04).
+ * Protects against background tab throttling and page reloads via sessionStorage and cross-component sync.
  *
  * @param options - Configuration options for session timer.
  * @returns Timer state, formatted elapsed time, and control methods.

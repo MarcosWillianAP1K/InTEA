@@ -1,5 +1,5 @@
 // ==============================================================================
-// InTEA: Serviço de Gestão e Revogação de Sessões Ativas (RF02 / Sprint 8 / Backlog)
+// InTEA: Serviço de Gestão e Revogação de Sessões Ativas (Backlog)
 // ==============================================================================
 
 import crypto from 'node:crypto';
@@ -74,8 +74,8 @@ export class SessoesAtivasService {
   }
 
   /**
-   * Generates a secure SHA-256 hash of the JWT token to avoid storing plaintext tokens (LGPD / RNF06).
-   * Token Security (RNF06): Hashes bearer tokens deterministically before database lookup and storage.
+   * Generates a secure SHA-256 hash of the JWT token to avoid storing plaintext tokens (LGPD).
+   * Token Security: Hashes bearer tokens deterministically before database lookup and storage.
    *
    * @param token - Raw JWT access token
    * @returns 64-character hexadecimal SHA-256 digest string
@@ -87,7 +87,7 @@ export class SessoesAtivasService {
 
   /**
    * Parses the User-Agent header to generate a human-readable device and browser description.
-   * Audit Transparency (RNF06): Categorizes operating system and browser families (e.g. 'Chrome on Windows').
+   * Audit Transparency: Categorizes operating system and browser families (e.g. 'Chrome on Windows').
    *
    * @param userAgent - Client User-Agent header string
    * @returns Friendly description of device and browser platform
@@ -121,7 +121,7 @@ export class SessoesAtivasService {
 
   /**
    * Registers a newly authenticated user session for multi-device session management and auditing.
-   * Active Sessions (RF01, RNF06): Stores hashed token, client IP, user agent, and expiration timestamp.
+   * Active Sessions: Stores hashed token, client IP, user agent, and expiration timestamp.
    *
    * @param usuarioId - UUID of the authenticated user
    * @param token - Bearer JWT access token
@@ -191,7 +191,7 @@ export class SessoesAtivasService {
 
   /**
    * Lists all active concurrent sessions for a therapist, identifying the current session.
-   * Session Management (RF01): Compares hashed token with active sessions to mark `atual = true`.
+   * Session Management: Compares hashed token with active sessions to mark `atual = true`.
    *
    * @param usuarioId - UUID of the therapist
    * @param tokenAtual - Current request JWT to flag the active session

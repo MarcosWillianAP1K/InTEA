@@ -1,9 +1,7 @@
-/**
- * ============================================================================
- * FIXTURES E MOCKS COMPARTILHADOS (InTEA Core Mocks)
- * Modelos de dados e fixtures globais de Clínica, Terapeuta e SuperAdmin.
- * ============================================================================
- */
+// ============================================================================
+// FIXTURES E MOCKS COMPARTILHADOS (InTEA Core Mocks)
+// Modelos de dados e fixtures globais de Clínica, Terapeuta e SuperAdmin.
+// ============================================================================
 
 export interface Clinica {
   id: string;

@@ -458,7 +458,7 @@ export const MOCK_PACIENTE_INATIVO: Paciente = {
   endereco: "Rua das Flores",
   bairro: "Centro",
   numero: "100",
-  status_ativo: false, // Inativado por soft delete (RN05)
+  status_ativo: false, // Inativado por soft delete
   created_at: "2025-10-01T08:00:00.000Z",
   updated_at: "2026-01-05T12:00:00.000Z",
   responsaveis: [],
@@ -666,21 +666,21 @@ export async function atualizarPacienteMock(
 }
 
 /**
- * Deactivates patient in memory applying soft delete (RN05).
+ * Deactivates patient in memory applying soft delete.
  */
 export async function inativarPacienteMock(id: string): Promise<Paciente | null> {
   return atualizarPacienteMock(id, { status_ativo: false });
 }
 
 /**
- * Reactivates inactive patient in mock storage (RN05).
+ * Reactivates inactive patient in mock storage.
  */
 export async function reativarPacienteMock(id: string): Promise<Paciente | null> {
   return atualizarPacienteMock(id, { status_ativo: true });
 }
 
 /**
- * Realistic fixtures of multidisciplinary team specialists belonging to the clinic (RF18, RN04).
+ * Realistic fixtures of multidisciplinary team specialists belonging to the clinic.
  */
 export const MOCK_EQUIPE_MULTIDISCIPLINAR: EspecialistaVinculado[] = [
   {
@@ -737,7 +737,7 @@ export async function listarTerapeutasPacienteMock(
 }
 
 /**
- * Lists normalized multidisciplinary specialists linked to patient in mock storage (RF18, RN04).
+ * Lists normalized multidisciplinary specialists linked to patient in mock storage.
  */
 export async function listarEspecialistasVinculadosMock(
   pacienteId: string,
@@ -1053,7 +1053,6 @@ export const PATIENTS_DICTIONARY: Record<string, Patient> = {
 
 // ============================================================================
 // FIXTURES DE HISTÓRICO LONGITUDINAL E ENGAJAMENTO (Sprint 11)
-// RF15, RF19, RN01, RN02, RN04, RN05
 // ============================================================================
 
 export const MOCK_HISTORICO_ENGAJAMENTO_GERAL: MetricasEngajamentoGeral = {
@@ -1249,7 +1248,7 @@ export const MOCK_SERIE_BOOLEANA: SerieMetricaJogo = {
 };
 
 /**
- * Test fixture to validate strict violation of RN02:
+ * Test fixture to validate strict violation of manifest metric typing:
  * Metric lacking a type or declared with a non-homologated metric type in game manifest.
  */
 export const MOCK_SERIE_INVALIDA_RN02: SerieMetricaJogo = {
@@ -1388,7 +1387,7 @@ export const MOCK_RESPOSTA_HISTORICO_PACIENTE: RespostaHistoricoPaciente = MOCK_
 
 
 /**
- * Mock fixture resolver for longitudinal patient history and engagement (RF15, RF19).
+ * Mock fixture resolver for longitudinal patient history and engagement.
  * Testing Fallback: Returns simulated engagement time series and game metrics when backend is offline.
  *
  * @param pacienteId - UUID of the target patient
@@ -1417,6 +1416,13 @@ export function buscarHistoricoPacienteMock(
   };
 }
 
+/**
+ * Returns mock general patient engagement history and game catalog for offline/test mode.
+ *
+ * @param _pacienteId - Patient UUID (ignored in mock fixture mode).
+ * @param _filtros - Optional history query filters.
+ * @returns Mock engagement summary, played games catalog, and metadata.
+ */
 export function buscarHistoricoGeralMock(
   _pacienteId: string,
   _filtros?: FiltrosHistorico,
@@ -1438,6 +1444,14 @@ export function buscarHistoricoGeralMock(
   };
 }
 
+/**
+ * Returns mock detailed longitudinal game history for offline/test mode.
+ *
+ * @param _pacienteId - Patient UUID (ignored in mock fixture mode).
+ * @param _jogoId - Game UUID (ignored in mock fixture mode).
+ * @param _filtros - Optional history query filters.
+ * @returns Mock detailed game history payload.
+ */
 export function buscarHistoricoJogoMock(
   _pacienteId: string,
   _jogoId: string,

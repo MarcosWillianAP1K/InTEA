@@ -1,7 +1,7 @@
 // ==============================================================================
 // InTEA: Suíte de Concorrência e Acompanhamento Multidisciplinar (Sprint 13)
 // Arquivo: Backend/api/sessao/test/sessao_concorrencia_multiterapeuta.test.ts
-// Requisitos: Qualidade de Software, RF13, RF18, RF21, RN01, RN04, RNF01
+// Requisitos: Qualidade de Software
 // TypeScript Estrito: Proibido uso de 'any'
 // ==============================================================================
 
@@ -159,7 +159,7 @@ describe('Suíte Integrada: Concorrência e Equipe Multidisciplinar (Sprint 13)'
   }
 
   // ============================================================================
-  // 1. Concorrência HTTP na Criação de Sessão (RF13, RN01, RN04)
+  // 1. Concorrência HTTP na Criação de Sessão
   // ============================================================================
   describe('1. Trava de Concorrência Pré-Sessão (POST /api/sessao/iniciar — RF13, RN01)', () => {
     it('deve retornar 409 Conflict quando o Terapeuta B tenta iniciar sessão clínica para paciente já em sessão ativa com o Terapeuta A', async () => {
@@ -272,7 +272,7 @@ describe('Suíte Integrada: Concorrência e Equipe Multidisciplinar (Sprint 13)'
   });
 
   // ============================================================================
-  // 2. Isolamento de Autoria e Permissões de Mutação (RF21)
+  // 2. Isolamento de Autoria e Permissões de Mutação
   // ============================================================================
   describe('2. Isolamento do Condutor em Mutações Clínicas (RF21)', () => {
     beforeEach(() => {
@@ -399,7 +399,7 @@ describe('Suíte Integrada: Concorrência e Equipe Multidisciplinar (Sprint 13)'
   });
 
   // ============================================================================
-  // 3. Leitura Compartilhada Multidisciplinar (RF18, RN04)
+  // 3. Leitura Compartilhada Multidisciplinar
   // ============================================================================
   describe('3. Visibilidade Compartilhada de Resultados (GET /api/sessao/:id/resultado — RF18, RN04)', () => {
     it('deve retornar 200 OK para o Terapeuta B consultar resultados da sessão conduzida pelo Terapeuta A', async () => {
@@ -450,7 +450,7 @@ describe('Suíte Integrada: Concorrência e Equipe Multidisciplinar (Sprint 13)'
   });
 
   // ============================================================================
-  // 4. WebSocket: Observador de Equipe e Isolamento de Comandos (RF18, RF21, RNF01)
+  // 4. WebSocket: Observador de Equipe e Isolamento de Comandos
   // ============================================================================
   describe('4. WebSocket SessaoGateway — Acompanhamento Multidisciplinar ao Vivo (RF18, RF21, RNF01)', () => {
     it('deve emitir equipe_presenca_atualizada e contabilizar observador_equipe conectado na sala', async () => {

@@ -22,6 +22,12 @@ export interface BotaoExportarRelatorioProps {
 
 
 
+/**
+ * Action bar component for printing/exporting a clinical session report to PDF or downloading sanitized JSON.
+ *
+ * @param props - Session ID, patient/game metadata, variant (`completo` or `compacto`), and export callbacks.
+ * @returns Rendered report export controls.
+ */
 export function BotaoExportarRelatorio({
   sessaoId,
   pacienteNome,

@@ -3,20 +3,18 @@ import { supabase } from '../supabase/supabase.client.js';
 import { AuthenticatedRequest } from './auth.middleware.js';
 import { hasSuperAdminClaim } from '../auth/privilegios.js';
 
-/**
- * ==============================================================================
- * InTEA: Middleware de Autorização SuperAdmin (RF07, RF08)
- * ==============================================================================
- * Fluxo de verificação de permissões administrativas:
- * 1. Exige autenticação prévia via JWT (req.user populado por authMiddleware).
- * 2. Verifica se a conta do terapeuta está ativa (status_ativo = true).
- * 3. Valida se o usuário possui a flag is_super_admin = true.
- * 4. Retorna HTTP 403 Forbidden caso o usuário não seja superadministrador ou esteja inativo.
- * ==============================================================================
- */
+// ==============================================================================
+// InTEA: Middleware de Autorização SuperAdmin
+// ==============================================================================
+// Fluxo de verificação de permissões administrativas:
+// 1. Exige autenticação prévia via JWT (req.user populado por authMiddleware).
+// 2. Verifica se a conta do terapeuta está ativa (status_ativo = true).
+// 3. Valida se o usuário possui a flag is_super_admin = true.
+// 4. Retorna HTTP 403 Forbidden caso o usuário não seja superadministrador ou esteja inativo.
+// ==============================================================================
 /**
  * Express middleware that enforces SuperAdmin authorization privileges.
- * Access Control (RF07, RF08): Validates active therapist status and requires `is_super_admin = true`.
+ * Access Control: Validates active therapist status and requires `is_super_admin = true`.
  *
  * @param req - Authenticated Express request populated with user claims
  * @param res - Express response
@@ -94,7 +92,7 @@ export async function adminMiddleware(
 
 /**
  * Canonical alias for `adminMiddleware` complying with administrative access control standards.
- * Access Control (RF07): Enforces SuperAdmin privileges for protected administrative routes.
+ * Access Control: Enforces SuperAdmin privileges for protected administrative routes.
  *
  * @param req - Authenticated Express request with user token claims
  * @param res - Express response

@@ -1,10 +1,7 @@
-/**
- * ============================================================================
- * MODELOS CANÔNICOS DE AUTENTICAÇÃO E PERFIL (auth.types.ts)
- * Especificação tipada de credenciais, tokens JWT, sessões e papéis.
- * Conformidade estrita: RF21 (Autenticação e Autoria), RN04 (Clínica e Vínculo)
- * ============================================================================
- */
+// ============================================================================
+// MODELOS CANÔNICOS DE AUTENTICAÇÃO E PERFIL (auth.types.ts)
+// Especificação tipada de credenciais, tokens JWT, sessões e papéis.
+// ============================================================================
 
 export type RoleUsuario = "terapeuta" | "super_admin";
 
@@ -51,7 +48,7 @@ export interface AuthTokens {
   expires_in: number;
 }
 
-/** POST /auth/login → `{ data: { token }, message }` (user vem de /auth/me; opcional no fallback mock). */
+/** POST /auth/login -> `{ data: { token }, message }` (`user` comes from `/auth/me`; optional in mock fallback). */
 export interface LoginResponse {
   data: {
     token: AuthTokens;
@@ -60,7 +57,7 @@ export interface LoginResponse {
   message: string;
 }
 
-/** POST /auth/refresh → `{ data: { token }, message }` */
+/** POST /auth/refresh -> `{ data: { token }, message }` */
 export interface RefreshRespostaApi {
   data: {
     token: AuthTokens;
@@ -68,13 +65,13 @@ export interface RefreshRespostaApi {
   message: string;
 }
 
-/** Backend devolve em /auth/me um perfil com `is_admin` em vez de `is_super_admin`. */
+/** Backend returns a profile with `is_admin` instead of `is_super_admin` on `/auth/me`. */
 export type UsuarioApi = Omit<UsuarioAutenticado, "is_super_admin"> & {
   is_super_admin?: boolean;
   is_admin?: boolean;
 };
 
-/** GET /auth/me → `{ data: { user }, message }` */
+/** GET /auth/me -> `{ data: { user }, message }` */
 export interface UsuarioAtualRespostaApi {
   data: {
     user: UsuarioApi;
@@ -82,7 +79,7 @@ export interface UsuarioAtualRespostaApi {
   message: string;
 }
 
-/** POST /auth/logout e PATCH /auth/alterar-senha → `{ data: null, message }` */
+/** POST /auth/logout and PATCH /auth/alterar-senha -> `{ data: null, message }` */
 export interface LogoutResponse {
   data: null;
   message: string;
@@ -90,7 +87,7 @@ export interface LogoutResponse {
 
 export type AlterarSenhaRespostaApi = LogoutResponse;
 
-/** POST /auth/recuperar-senha → `{ data: { recuperacao }, message }` */
+/** POST /auth/recuperar-senha -> `{ data: { recuperacao }, message }` */
 export interface RecuperarSenhaPayload {
   email: string;
 }

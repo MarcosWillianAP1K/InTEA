@@ -91,7 +91,7 @@ describe("Sprint 11 — Componentes de Engajamento Global e Gráficos de Métric
       // Deve renderizar média calculada
       expect(screen.getByText(/Média:/i)).toBeDefined();
 
-      // Hitboxes interativas de 44x44px (RNF07)
+      // Hitboxes interativas de 44x44px
       const hitbox0 = screen.getByTestId("hitbox-ponto-0");
       expect(hitbox0).toBeDefined();
       expect(hitbox0.getAttribute("width")).toBe("44");
@@ -194,7 +194,7 @@ describe("Sprint 11 — Componentes de Engajamento Global e Gráficos de Métric
   });
 
   // ==========================================================================
-  // 5. TESTES DE GraficoPolimorficoMetrica & GARANTIA INVIOLÁVEL DA RN02
+  // 5. TESTES DE GraficoPolimorficoMetrica & GARANTIA DE TIPAGEM ESTRITA DE MÉTRICAS
   // ==========================================================================
   describe("GraficoPolimorficoMetrica — Seleção Polimórfica e Bloqueio RN02", () => {
     it("deve selecionar GraficoLinhaTemporal para tipo_metrica === 'numerica'", () => {
@@ -224,7 +224,7 @@ describe("Sprint 11 — Componentes de Engajamento Global e Gráficos de Métric
       expect(screen.queryByTestId("grafico-barras-metrica_sem_tipo_rn02")).toBeNull();
       expect(screen.queryByTestId("grafico-linha-metrica_sem_tipo_rn02")).toBeNull();
 
-      // DEVE renderizar Error State controlado com badge de violação RN02
+      // DEVE renderizar Error State controlado com badge de violação
       expect(screen.getByTestId("error-state-rn02")).toBeDefined();
       expect(screen.getByTestId("badge-alerta-rn02").textContent).toContain("Tipo Incompatível");
       expect(screen.getByText(/Inconsistência de Tipagem Clínica/i)).toBeDefined();

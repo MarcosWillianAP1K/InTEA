@@ -15,9 +15,9 @@ interface State {
 }
 
 /**
- * Global/Layout Error Boundary (RNF07, Resiliência Clínica).
- * Previne a temida tela 100% branca (White Screen of Death) capturando
- * erros inesperados em qualquer componente e fornecendo interface de recuperação amigável.
+ * Global/Layout Error Boundary (Clinical Resilience).
+ * Prevents blank white screen failures by catching unexpected rendering errors
+ * in child components and providing a friendly recovery interface.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
   public state: State = {
@@ -25,10 +25,22 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
     error: null,
   };
 
+  /**
+   * Updates component state when a descendant throws an error during rendering.
+   *
+   * @param error - Thrown error captured by the boundary.
+   * @returns Next error state snapshot.
+   */
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
+  /**
+   * Logs caught component tree errors for diagnostics.
+   *
+   * @param error - Thrown error instance.
+   * @param errorInfo - React component stack trace metadata.
+   */
   public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error("[InTEA ErrorBoundary] Erro capturado na árvore de componentes:", error, errorInfo);
   }
@@ -42,6 +54,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
     window.location.href = "/painel";
   };
 
+  /**
+   * Renders the recovery fallback UI when an error is active, or the wrapped children otherwise.
+   *
+   * @returns Rendered JSX element.
+   */
   public render() {
     if (this.state.hasError) {
       return (

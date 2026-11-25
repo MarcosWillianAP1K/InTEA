@@ -1,14 +1,13 @@
 // ==============================================================================
 // InTEA: Suíte de Testes Automatizados - Contexto DDA Sugerido por IA Pré-Sessão
 // ==============================================================================
-// REQUISITOS ATENDIDOS:
-// - RF14: Sugestão de Contexto DDA Pré-Sessão (Figura 3, Contrato 2)
-// - RF17: Calibração Analítica Baseada no Último Relatório Consolidado (Contrato 4)
-// - RN01: Expurgo de Modo Livre na Calibração Clínica (paciente_id obrigatório e clínico)
-// - RN03: Injeção de Contexto DDA Obrigatória Pré-Sessão
-// - RN04: Isolamento Institucional por Vínculo Ativo (403 Forbidden)
-// - RN05: Inalterabilidade do Histórico e Expurgo de Soft Delete (soft_delete = false)
-// - RNF02: Resiliência e Tratamento Seguro de Empty State
+// - Sugestão de Contexto DDA Pré-Sessão (Figura 3, Contrato 2)
+// - Calibração Analítica Baseada no Último Relatório Consolidado (Contrato 4)
+// - Expurgo de Modo Livre na Calibração Clínica (paciente_id obrigatório e clínico)
+// - Injeção de Contexto DDA Obrigatória Pré-Sessão
+// - Isolamento Institucional por Vínculo Ativo (403 Forbidden)
+// - Inalterabilidade do Histórico e Expurgo de Soft Delete (soft_delete = false)
+// - Resiliência e Tratamento Seguro de Empty State
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -79,7 +78,7 @@ describe('SessaoContextoDdaService — Contexto DDA Sugerido por IA Pré-Sessão
   });
 
   // ============================================================================
-  // 1. VALIDAÇÃO DE ENTRADA E PACIENTE (RNF02)
+  // 1. VALIDAÇÃO DE ENTRADA E PACIENTE
   // ============================================================================
   describe('1. Validação de Parâmetros e Existência do Paciente', () => {
     it('deve lançar erro 400 se o ID do paciente for inválido ou não for UUID', async () => {
@@ -137,7 +136,7 @@ describe('SessaoContextoDdaService — Contexto DDA Sugerido por IA Pré-Sessão
   });
 
   // ============================================================================
-  // 2. EMPTY STATE — PACIENTE NOVO SEM SESSÕES ANTERIORES (RNF02)
+  // 2. EMPTY STATE — PACIENTE NOVO SEM SESSÕES ANTERIORES
   // ============================================================================
   describe('2. Tratamento Seguro de Empty State', () => {
     it('deve retornar sugestão com estresse 1 e gatilhos basais da anamnese para paciente sem sessões finalizadas', async () => {
@@ -265,7 +264,7 @@ describe('SessaoContextoDdaService — Contexto DDA Sugerido por IA Pré-Sessão
   });
 
   // ============================================================================
-  // 3. CALIBRAÇÃO COM BASE NA ÚLTIMA SESSÃO (RF14, RF17, CONTRATO 4)
+  // 3. CALIBRAÇÃO COM BASE NA ÚLTIMA SESSÃO (CONTRATO 4)
   // ============================================================================
   describe('3. Calibração Analítica Baseada na Última Sessão Consolidada', () => {
     it('deve elevar estresse para nível 3 e adicionar gatilhos quando houver alta intervenção DDA e sobrecarga sensorial', async () => {
@@ -621,7 +620,7 @@ describe('SessaoContextoDdaService — Contexto DDA Sugerido por IA Pré-Sessão
   });
 
   // ============================================================================
-  // 4. INVARIANTES CLÍNICOS E EXPURGOS (RN01, RN05)
+  // 4. INVARIANTES CLÍNICOS E EXPURGOS
   // ============================================================================
   describe('4. Invariantes Clínicos (RN01 e RN05)', () => {
     it('deve desconsiderar relatórios marcados com soft_delete = true (RN05)', async () => {
@@ -771,7 +770,7 @@ describe('SessaoContextoDdaService — Contexto DDA Sugerido por IA Pré-Sessão
   });
 
   // ============================================================================
-  // 6. ROTA E AUTORIZAÇÃO POR VÍNCULO (RN04)
+  // 6. ROTA E AUTORIZAÇÃO POR VÍNCULO
   // ============================================================================
   describe('6. Rota Express e Autorização por Vínculo Institucional (RN04)', () => {
     it('deve registrar o endpoint GET /contexto-sugerido/:pacienteId nas rotas de sessão', () => {

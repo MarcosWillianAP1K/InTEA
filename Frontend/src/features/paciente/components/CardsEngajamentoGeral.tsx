@@ -49,13 +49,11 @@ export function formatarTempoSegundos(totalSegundos: number): string {
 /**
  * ============================================================================
  * COMPONENTE CARDS DE ENGAJAMENTO GERAL (InTEA)
- * Conformidade: RF15 (Prontuário Longitudinal), RN01 (Expurgo Modo Livre),
- * RNF04 (Feedback e Ergonomia), RNF07 (Acessibilidade)
  * ============================================================================
  */
 /**
- * Renders patient engagement overview cards with metrics, trends, and clinical indicators (RF15).
- * Dashboard Visualization (RF15, RF19): Displays total sessions, play time, and average stress.
+ * Renders patient engagement overview cards with metrics, trends, and clinical indicators.
+ * Dashboard Visualization: Displays total sessions, play time, and average stress.
  *
  * @param props - Component properties containing engagement metrics and loading state
  * @returns React component rendering engagement indicator cards

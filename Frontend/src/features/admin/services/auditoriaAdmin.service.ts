@@ -1,11 +1,8 @@
-/**
- * ============================================================================
- * SERVIÇO DE AUDITORIA ADMINISTRATIVA (auditoriaAdmin.service.ts)
- * Comunicação com endpoints restritos de auditoria (/api/admin/auditoria)
- * com fallback em memória resiliente para testes e desenvolvimento offline.
- * Conformidade: RF07 (SuperAdmin), RF08 (Auditoria de Acessos), RNF06 (LGPD).
- * ============================================================================
- */
+// ============================================================================
+// SERVIÇO DE AUDITORIA ADMINISTRATIVA (auditoriaAdmin.service.ts)
+// Comunicação com endpoints restritos de auditoria (/api/admin/auditoria)
+// com fallback em memória resiliente para testes e desenvolvimento offline.
+// ============================================================================
 
 import { http, withFallback } from "@/core/api";
 import type {
@@ -15,6 +12,12 @@ import type {
   EstatisticasAuditoria,
 } from "../types/admin.types";
 
+/**
+ * Extracts normalized relational metadata (`id`, `nome`, `email`) from a nested audit relation object.
+ *
+ * @param valor - Unknown relational field from an API audit record.
+ * @returns Normalized relational summary object, or `null` when unavailable.
+ */
 function extrairRegistroRelacional(
   valor: unknown
 ): { id?: string; nome?: string; email?: string } | null {
@@ -27,6 +30,12 @@ function extrairRegistroRelacional(
   };
 }
 
+/**
+ * Normalizes a raw audit event payload from the backend into the canonical `EventoAuditoria` shape.
+ *
+ * @param raw - Raw audit event record containing nested relations and metadata.
+ * @returns Normalized `EventoAuditoria` entry ready for UI rendering and export.
+ */
 export function normalizarEventoAuditoria(
   raw: Partial<EventoAuditoria> & Record<string, unknown>
 ): EventoAuditoria {

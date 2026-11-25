@@ -296,7 +296,7 @@ describe('Card 2.4 - Testes E2E de Pareamento Remoto e Não-Regressão (CT-S01 a
     expect(Array.isArray(listaJogos)).toBe(true);
     expect(listaJogos.length).toBeGreaterThan(0);
 
-    // 2. Validação de manifesto RN02 e detalhes unificados no endpoint canônico GET /api/jogos/:id (com autenticação)
+    // 2. Validação de manifesto e detalhes unificados no endpoint canônico GET /api/jogos/:id (com autenticação)
     vi.spyOn(supabase.auth, 'getUser').mockResolvedValue({
       data: { user: { id: '11111111-1111-1111-1111-111111111111', email: 'terapeuta@intea.com' } as any },
       error: null
@@ -336,7 +336,7 @@ describe('Card 2.4 - Testes E2E de Pareamento Remoto e Não-Regressão (CT-S01 a
     expect(resultado.data).toHaveLength(1);
     expect(resultado.data[0].status_ativo).toBe(true);
 
-    // 2. Preserva regra de soft delete RN05 e conformidade de tipos
+    // 2. Preserva regra de soft delete e conformidade de tipos
     expect(typeof PacienteModel.desativar).toBe('function');
     expect(typeof PacienteModel.reativar).toBe('function');
     expect(typeof PacienteModel.buscarPorId).toBe('function');

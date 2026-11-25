@@ -1,6 +1,5 @@
 // ==============================================================================
 // InTEA: Testes Unitários e Integração — Trilha de Auditoria de Acessos ao Prontuário
-// Conformidade: RF08 (Auditoria de Acessos e Vínculos), RNF06 (LGPD / Segurança Forense)
 // ==============================================================================
 
 import { describe, it, expect, beforeEach } from 'vitest';

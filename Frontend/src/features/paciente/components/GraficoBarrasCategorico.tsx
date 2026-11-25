@@ -59,6 +59,12 @@ function formatarDataPonto(iso?: string): string {
   });
 }
 
+/**
+ * Renders a categorical bar chart for longitudinal ordinal or categorical game metrics.
+ *
+ * @param props - Metric series data, optional title, loading flag, and CSS classes.
+ * @returns Rendered categorical bar chart card.
+ */
 export function GraficoBarrasCategorico({
   serie,
   titulo,

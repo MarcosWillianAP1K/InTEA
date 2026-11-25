@@ -286,7 +286,7 @@ export function HistoricoSessoesPage() {
               </TableRow>
             ) : (
               sessoesFiltradas.map((sessao) => {
-                // Fallback defensivo para evitar TypeError em Modo Livre (RN01)
+                // Fallback defensivo para evitar TypeError em Modo Livre
                 const nomePaciente = sessao.paciente?.nome || "Modo Livre";
                 const nomeJogo = sessao.jogo?.nome || "Jogo Terapêutico";
                 const dataFormatada = sessao.data_hora_inicio

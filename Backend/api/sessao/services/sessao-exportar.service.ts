@@ -111,7 +111,7 @@ export interface RespostaServicoExportar {
   dados?: LaudoClinicoExportavel;
 }
 
-// Funções de formatação e sanitização (RNF06 / LGPD)
+// Funções de formatação e sanitização (LGPD)
 
 /**
  * Applies LGPD-compliant masking to a Brazilian CPF string (format: ***.XXX.***-XX).
@@ -163,7 +163,7 @@ export function formatarDuracao(segundos: number): string {
 
 export class SessaoExportarService {
   /**
-   * Compiles and structures the sanitized clinical report of a session for PDF export and printing (RF20).
+   * Compiles and structures the sanitized clinical report of a session for PDF export and printing.
    *
    * @param sessaoId - UUID of the finalized session.
    * @param usuarioAutenticado - Authenticated therapist credentials from request token.
@@ -201,7 +201,7 @@ export class SessaoExportarService {
       };
     }
 
-    // 4. Validação de RN01 (Modo Livre não gera laudo de paciente)
+    // 4. Validação (Modo Livre não gera laudo de paciente)
     if (sessao.modo_sessao === MODO_SESSAO.MODO_LIVRE || !sessao.paciente_id) {
       return {
         sucesso: false,
@@ -210,7 +210,7 @@ export class SessaoExportarService {
       };
     }
 
-    // 5. Validação institucional de acesso (RN04)
+    // 5. Validação institucional de acesso
     const isSuperAdmin = hasSuperAdminClaim(usuarioAutenticado);
     const isDono = usuarioAutenticado?.id === sessao.terapeuta_id;
 
@@ -339,7 +339,7 @@ export class SessaoExportarService {
       }
     }
 
-    // 16. Montagem final do payload sanitizado do laudo (RF20 / RNF06)
+    // 16. Montagem final do payload sanitizado do laudo
     const laudoEstruturado: LaudoClinicoExportavel = {
       cabecalho: {
         instituicao: clinicaNome,
@@ -551,7 +551,7 @@ export class SessaoExportarService {
   }
 
   /**
-   * Validates whether a therapist has an active institutional clinical link with a patient (RN04).
+   * Validates whether a therapist has an active institutional clinical link with a patient.
    *
    * @param terapeutaId - UUID of the therapist.
    * @param pacienteId - UUID of the patient.

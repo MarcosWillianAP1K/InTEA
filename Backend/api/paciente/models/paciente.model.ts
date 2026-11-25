@@ -148,7 +148,7 @@ export interface AtualizarPacienteDTO {
   numero?: string | null;
   complemento?: string | null;
   status_ativo?: boolean;
-  ultimo_updated_at?: string; // Timestamp ISO 8601 da versão que o cliente carregou (Controle de Concorrência Otimista - RF18)
+  ultimo_updated_at?: string; // Timestamp ISO 8601 da versão que o cliente carregou (Controle de Concorrência Otimista)
   responsavel?: CriarResponsavelDTO | null;
   responsavel_extra?: CriarResponsavelDTO | null;
   dados_clinicos?: DadosClinicosInputDTO | null;
@@ -420,7 +420,7 @@ export class PacienteModel {
   /**
    * Registers a new patient in the database, or reactivates a previously soft-deleted patient.
    * If a patient with this CPF exists and is active, throws a conflict error.
-   * If a patient with this CPF exists but is inactive (soft-deleted), reactivates and updates them (RN05).
+   * If a patient with this CPF exists but is inactive (soft-deleted), reactivates and updates them.
    *
    * @param dto - Patient creation payload containing demographic and contact information.
    * @returns The created or reactivated patient entity with generated ID and timestamps.
@@ -450,7 +450,7 @@ export class PacienteModel {
       }
 
       // Cenário B: Paciente existe mas estava INATIVO (soft delete anterior)
-      // Reativa o cadastro existente, atualiza seus dados com os novos informados e preserva o histórico clínico (RN05)
+      // Reativa o cadastro existente, atualiza seus dados com os novos informados e preserva o histórico clínico
       return await this.reativarEAtualizar(pacienteExistente.id, dto, terapeutaCriadorId);
     }
 
@@ -518,7 +518,7 @@ export class PacienteModel {
       await this.salvarDadosClinicos(novoPaciente.id, dto.dados_clinicos);
     }
 
-    // Auto-vínculo do criador na tabela associativa (RN04) e como Terapeuta Responsável (Líder)
+    // Auto-vínculo do criador na tabela associativa e como Terapeuta Responsável (Líder)
     if (terapeutaCriadorId && validarUUID(terapeutaCriadorId)) {
       const agoraIso = new Date().toISOString();
       try {
@@ -606,7 +606,7 @@ export class PacienteModel {
       await this.salvarDadosClinicos(id, dto.dados_clinicos);
     }
 
-    // Auto-vínculo do criador na tabela associativa (RN04) e como Terapeuta Responsável (Líder)
+    // Auto-vínculo do criador na tabela associativa e como Terapeuta Responsável (Líder)
     if (terapeutaCriadorId && validarUUID(terapeutaCriadorId)) {
       const agoraIso = new Date().toISOString();
       try {
@@ -798,6 +798,12 @@ export class PacienteModel {
     }
   }
 
+  /**
+   * Inserts or updates the clinical data record (`dados_clinicos`) associated with a patient.
+   *
+   * @param pacienteId - UUID of the patient.
+   * @param dadosClinicos - Clinical input payload containing diagnosis, triggers, and general notes.
+   */
   private static async salvarDadosClinicos(
     pacienteId: string,
     dadosClinicos: DadosClinicosInputDTO
@@ -861,7 +867,7 @@ export class PacienteModel {
    * @throws {Error} If updating the database record fails.
    */
   static async atualizar(id: string, dto: AtualizarPacienteDTO): Promise<Paciente> {
-    // 1. Verificação de Concorrência Otimista (RF18) quando ultimo_updated_at for enviado
+    // 1. Verificação de Concorrência Otimista quando ultimo_updated_at for enviado
     if (dto.ultimo_updated_at) {
       try {
         const client = supabase.from('paciente');
@@ -966,7 +972,7 @@ export class PacienteModel {
   }
 
   /**
-   * Performs soft deletion on a patient, marking their status as inactive (RN05).
+   * Performs soft deletion on a patient, marking their status as inactive.
    *
    * @param id - The UUID identifier of the patient to deactivate.
    * @returns The updated patient entity with `status_ativo = false`.
@@ -1340,7 +1346,7 @@ export class PacienteModel {
       throw new Error('Não é possível vincular um terapeuta inativo.');
     }
 
-    // 3. Bloqueio de vínculo entre clínicas distintas (RN04)
+    // 3. Bloqueio de vínculo entre clínicas distintas
     if (paciente.clinica_id && terapeuta.clinica_id && paciente.clinica_id !== terapeuta.clinica_id) {
       throw new Error('Bloqueio de segurança: Não é permitido vincular terapeutas de clínicas diferentes.');
     }

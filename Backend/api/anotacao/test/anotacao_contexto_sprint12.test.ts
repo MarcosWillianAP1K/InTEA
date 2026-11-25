@@ -2,12 +2,9 @@
 // InTEA: Testes de Integração e Unidade - Sprint 12 (Card 1.1)
 // Enriquecimento de Autoria, Reativação e Filtros Avançados de Anotações Clínicas
 // ==============================================================================
-// Conformidade Estrita:
 // - TypeScript Estrito: Sem 'any'
-// - RF16 (Anotações Clínicas no Prontuário)
-// - RF21 (Autoria Indelével via JWT e Enriquecimento sem UUID cru)
-// - RN04 (Visibilidade Institucional por Vínculo e Clínica)
-// - RN05 (Inalterabilidade e Reativação de Histórico Clínico / Soft Delete)
+// -
+// -
 // - Envelope Pattern: { data: { ... }, message: "..." }
 // ==============================================================================
 
@@ -594,7 +591,6 @@ describe('Sprint 12 - Enriquecimento de Autoria, Reativação e Filtros de Anota
 
   // ============================================================================
   // 5. PIPELINE EXPRESS E INTEGRAÇÃO DE ROTAS (PATCH /api/anotacao/:id/reativar)
-  // Conformidade: RF21, RN04 (Vínculo e Clínica) e RN05 (Reativação de Prontuário)
   // ============================================================================
   describe('Pipeline Completo - PATCH /api/anotacao/:id/reativar', () => {
     it('deve reativar com 200 OK quando o autor requisita e possui vínculo institucional ativo (RN04)', async () => {
@@ -609,7 +605,7 @@ describe('Sprint 12 - Enriquecimento de Autoria, Reativação e Filtros de Anota
       vi.spyOn(AnotacaoClinicaModel, 'buscarPorId').mockResolvedValue(mockAnotacaoInativa);
       vi.spyOn(AnotacaoClinicaModel, 'reativar').mockResolvedValue(mockAnotacaoComAutor);
 
-      // Mock de verificação de visibilidade institucional (RN04)
+      // Mock de verificação de visibilidade institucional
       vi.spyOn(supabase, 'from').mockImplementation(((tabela: string) => {
         if (tabela === 'paciente') {
           return {
@@ -856,7 +852,7 @@ describe('Sprint 12 - Enriquecimento de Autoria, Reativação e Filtros de Anota
   });
 
   // ============================================================================
-  // 6. PIPELINES DE CRIAÇÃO, EDIÇÃO E SOFT DELETE (RF21, RN04, RN05)
+  // 6. PIPELINES DE CRIAÇÃO, EDIÇÃO E SOFT DELETE
   // ============================================================================
   describe('Pipeline Completo - POST /api/anotacao (Criação com Autoria JWT e Vínculo Institucional - RF21 e RN04)', () => {
     it('deve criar anotação clínica com 201 Created extraindo autoria diretamente do JWT (RF21)', async () => {

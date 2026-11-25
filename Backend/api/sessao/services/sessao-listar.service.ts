@@ -1,5 +1,5 @@
 // ==============================================================================
-// InTEA: Serviço de Listagem de Sessões com Filtros e Visibilidade Clínica (RN04)
+// InTEA: Serviço de Listagem de Sessões com Filtros e Visibilidade Clínica
 // ==============================================================================
 
 import { FiltrosSessaoDTO, RespostaListagemSessao } from '../dtos/sessao.dto.js';
@@ -40,6 +40,12 @@ interface VinculoTerapeutaPacienteRow {
   terapeuta_id?: string;
 }
 
+/**
+ * Safely invokes `.maybeSingle()` on a Supabase query builder without throwing in partial mock environments.
+ *
+ * @param construirQuery - Factory returning a Supabase query builder candidate.
+ * @returns Normalized result containing `data`, `error`, and whether the query executed.
+ */
 async function executarMaybeSingleSeguro<T>(
   construirQuery: () => unknown
 ): Promise<{ data: T | null; error: unknown; executado: boolean }> {
@@ -69,16 +75,16 @@ async function executarMaybeSingleSeguro<T>(
 
 export class SessaoListarService {
   /**
-   * Lists therapeutic sessions applying clinical filters and institutional visibility controls (RN04, RF18).
+   * Lists therapeutic sessions applying clinical filters and institutional visibility controls.
    *
    * - When `filtros.pacienteId` is provided: validates UUID and checks active bond in `terapeuta_paciente`
    *   and same `clinica_id` (unless SuperAdmin). Once authorized, omits `terapeutaId` restriction so any
-   *   linked specialist in the multidisciplinary team can view all clinical sessions of the patient (RF18).
+   * linked specialist in the multidisciplinary team can view all clinical sessions of the patient.
    * - When `filtros.pacienteId` is not provided: restricts listing to the authenticated therapist's own
    *   sessions unless SuperAdmin requests `verTodasSessoes = true`.
    *
    * @param filtros - Status, date, patient, game, mode, and pagination filters.
-   * @param usuarioLogado - User data extracted from verified JWT token (RF21).
+   * @param usuarioLogado - User data extracted from verified JWT token.
    * @param verTodasSessoes - If true and user is super admin, lists sessions across all therapists.
    * @returns Paginated list of sessions with pagination metadata.
    */
@@ -100,7 +106,7 @@ export class SessaoListarService {
 
       filtros.pacienteId = pacienteId;
 
-      // RN01: Partidas em modo livre nunca possuem paciente vinculado (paciente_id = NULL)
+      // Partidas em modo livre nunca possuem paciente vinculado (paciente_id = NULL)
       if (filtros.modo === MODO_SESSAO.MODO_LIVRE) {
         const page = filtros.page && filtros.page > 0 ? filtros.page : 1;
         const limit = filtros.limit && filtros.limit > 0 ? filtros.limit : 10;
@@ -209,12 +215,12 @@ export class SessaoListarService {
         }
       }
 
-      // RF18 / RN04: Especialista vinculado à equipe (ou SuperAdmin) visualiza todas as sessões
+      // /: Especialista vinculado à equipe (ou SuperAdmin) visualiza todas as sessões
       // clínicas do paciente conduzidas por qualquer integrante da equipe multidisciplinar.
       return await SessaoModel.listar(filtros);
     }
 
-    // Regra RN04 (listagem geral sem pacienteId): Terapeuta comum visualiza somente as sessões das quais participou
+    // Listagem geral sem pacienteid: Terapeuta comum visualiza somente as sessões das quais participou
     if (usuarioLogado && !(isSuperAdmin && verTodasSessoes)) {
       filtros.terapeutaId = usuarioLogado.id;
     }

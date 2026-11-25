@@ -27,7 +27,7 @@ import { toast } from "sonner";
  */
 /**
  * Renders the therapist account self-registration page with form validation and masked inputs.
- * Therapist Registration (RF01): Validates email, password strength, and professional council credentials.
+ * Therapist Registration: Validates email, password strength, and professional council credentials.
  *
  * @returns Therapist registration page view
  */

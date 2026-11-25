@@ -18,16 +18,17 @@ export interface UseRelatorioExportReturn {
   limparErro: () => void;
 }
 
+// ============================================================================
+// HOOK: useRelatorioExport (Front-end 2 — Luma Maiara / Card 4.4)
+// ============================================================================
+
 /**
- * ============================================================================
- * HOOK: useRelatorioExport (Front-end 2 — Luma Maiara / Card 4.4)
- * Requisitos: RF20, RNF06, RNF07
- * 
- * Hook managing clinical report export and PDF printing lifecycle:
- * Handles formatted browser printing with A4 layout.
- * Downloads sanitized clinical JSON report (RF20/RNF06).
- * Protects against concurrent exports and queries export endpoint.
- * ============================================================================
+ * React hook managing clinical report export and PDF printing lifecycle.
+ * Handles formatted browser printing with A4 layout, downloads sanitized clinical JSON reports,
+ * protects against concurrent exports, and fetches structured report payloads from the backend.
+ *
+ * @param options - Optional session ID, default document title, and success/error callbacks.
+ * @returns Export state flags, fetched report payload, and print/download actions.
  */
 export function useRelatorioExport(
   options: UseRelatorioExportOptions = {}
@@ -43,8 +44,11 @@ export function useRelatorioExport(
   }, []);
 
   /**
-   * Dispara a impressão do laudo clínico via window.print(),
-   * ajustando temporariamente o título da janela para nomear o PDF exportado.
+   * Triggers browser printing of the clinical report via `window.print()`,
+   * temporarily updating the document title so the exported PDF receives a descriptive filename.
+   *
+   * @param tituloCustomizado - Optional custom title override for the printed document.
+   * @returns `true` if printing was triggered successfully, `false` otherwise.
    */
   const imprimirRelatorio = React.useCallback(
     async (tituloCustomizado?: string): Promise<boolean> => {
@@ -140,7 +144,10 @@ export function useRelatorioExport(
   );
 
   /**
-   * Consulta os dados estruturados da sessão no backend.
+   * Queries structured clinical report export data for the session from the backend.
+   *
+   * @param id - Optional session UUID override; defaults to `options.sessaoId`.
+   * @returns Exported report data object, or `null` if an error occurred.
    */
   const carregarDadosExportacao = React.useCallback(
     async (id?: string): Promise<unknown | null> => {

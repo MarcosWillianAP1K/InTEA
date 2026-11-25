@@ -21,13 +21,12 @@ export interface ModalFinalizarSessaoProps {
 /**
  * ============================================================================
  * COMPONENTE: ModalFinalizarSessao (Front-end 1 — Hermeson Alves / Card 3.3)
- * Requisitos: RF13, RF17, RN05 (Imutabilidade do Histórico)
  * Confirmação explícita de encerramento e anotação clínica preliminar
  * ============================================================================
  */
 
 /**
- * Confirmation modal for formal clinical session completion (RF13, RN05).
+ * Confirmation modal for formal clinical session completion.
  * Displays total elapsed duration, captures preliminary notes, and triggers persistence with AI report.
  */
 export function ModalFinalizarSessao({

@@ -1,12 +1,11 @@
 // ==============================================================================
 // InTEA: Testes Unitários de HistoricoSessaoModel (Sprint 11 - Task 1)
 // ==============================================================================
-// REQUISITOS COBERTOS:
-// - RF15: Prontuário Longitudinal e Métricas de Engajamento
-// - RNF05: Alta Performance de Consultas
-// - RN01: Expurgo Estrito de Modo Livre (paciente_id = NULL)
-// - RN04: Isolamento por Vínculo Institucional
-// - RN05: Inalterabilidade Clínica (Filtro de Soft Delete em relatórios)
+// - Prontuário Longitudinal e Métricas de Engajamento
+// - Alta Performance de Consultas
+// - Expurgo Estrito de Modo Livre (paciente_id = NULL)
+// - Isolamento por Vínculo Institucional
+// - Inalterabilidade Clínica (Filtro de Soft Delete em relatórios)
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -207,7 +206,7 @@ describe('HistoricoSessaoModel - Modelagem e Índices de Histórico Clínico (RF
             sessao_id: sessaoSoftDeletedId,
             conteudo: 'Relatório descartado',
             dados_ia_json: {},
-            soft_delete: true, // RN05: DEVE SER DESCARTADO
+            soft_delete: true, // DEVE SER DESCARTADO
           },
         },
       ];

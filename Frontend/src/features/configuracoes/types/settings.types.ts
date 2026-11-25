@@ -2,7 +2,6 @@
  * ============================================================================
  * MODELOS CANÔNICOS DE CONFIGURAÇÕES E PREFERÊNCIAS (settings.types.ts)
  * Preferências visuais, notificações clínicas, acessibilidade e retenção de dados.
- * Conformidade com os requisitos de interface e personalização do terapeuta.
  * ============================================================================
  */
 

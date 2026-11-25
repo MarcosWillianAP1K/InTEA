@@ -1,5 +1,5 @@
 // ==============================================================================
-// InTEA: Middleware de Validação e Saneamento de Intervalo e Paginação (RNF03, RNF05)
+// InTEA: Middleware de Validação e Saneamento de Intervalo e Paginação
 // ==============================================================================
 
 import type { Request, Response, NextFunction } from 'express';
@@ -47,8 +47,8 @@ function parsearDataIsoSegura(valor: unknown): Date | null {
 }
 
 /**
- * Verifies whether the temporal range between two dates exceeds the 24-month ceiling (RNF04).
- * Retention & Window Guard (RNF04): Prevents unindexed wide table scans on longitudinal telemetry.
+ * Verifies whether the temporal range between two dates exceeds the 24-month ceiling.
+ * Retention & Window Guard: Prevents unindexed wide table scans on longitudinal telemetry.
  *
  * @param inicio - Start date of the querying window
  * @param fim - End date of the querying window
@@ -120,7 +120,7 @@ export function validarIntervaloHistorico(
     }
   }
 
-  // 5. Clamping e Saneamento de Paginação (RNF05)
+  // 5. Clamping e Saneamento de Paginação
   // Page: mínimo 1, padrão 1
   let page = 1;
   if (query.page !== undefined && query.page !== null && query.page !== '') {

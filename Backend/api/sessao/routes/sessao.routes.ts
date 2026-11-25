@@ -6,7 +6,7 @@ import { Router } from 'express';
 import { SessaoController } from '../controllers/sessao.controller.js';
 import { SessaoExportarService } from '../services/sessao-exportar.service.js';
 
-// Middlewares de autenticação JWT e validação de vínculo clínico (RN04)
+// Middlewares de autenticação JWT e validação de vínculo clínico
 import { authMiddleware } from '../../../core/middlewares/auth.middleware.js';
 import { verificarVisibilidadePaciente } from '../../../core/middlewares/visibilidade.middleware.js';
 import { verificarSessaoMiddleware, validarCondutorSessaoMiddleware } from '../../../core/middlewares/sessao.middleware.js';
@@ -56,7 +56,7 @@ export const sessaoRoutes = Router();
  * /api/sessao:
  *   get:
  *     summary: Lista sessões clínicas e em modo livre com filtros e paginação
- *     description: Lista sessões terapêuticas aplicando filtros clínicos e controle estrito de visibilidade (RN04). Terapeutas comuns visualizam apenas sessões em que atuaram. Super administradores com all=true visualizam todo o ecossistema.
+ * description: Lista sessões terapêuticas aplicando filtros clínicos e controle estrito de visibilidade. Terapeutas comuns visualizam apenas sessões em que atuaram. Super administradores com all=true visualizam todo o ecossistema.
  *     tags: [Sessão]
  *     security:
  *       - bearerAuth: []
@@ -156,7 +156,7 @@ sessaoRoutes.get('/codigo-pareamento', authMiddleware, SessaoController.gerarCod
  * @swagger
  * /api/sessao/contexto-sugerido/{pacienteId}:
  *   get:
- *     summary: Sugere contexto DDA pré-calibrado pela IA para início de sessão (RF14, RF17, RN03)
+ * summary: Sugere contexto DDA pré-calibrado pela IA para início de sessão
  *     description: Consulta dados estáticos da anamnese clínica e o último relatório analítico consolidado (Contrato 4) do paciente. Caso a última sessão tenha registrado alta intervenção de DDA ou recomendação de redução de estímulos sonoros/visuais, o endpoint retorna uma sugestão pré-calibrada de nível de estresse e gatilhos sensoriais a evitar com justificativa clínica para aprovação em 1 clique pelo terapeuta.
  *     tags: [Sessão]
  *     security:
@@ -199,7 +199,7 @@ sessaoRoutes.get('/codigo-pareamento', authMiddleware, SessaoController.gerarCod
  *       401:
  *         description: Token JWT ausente ou inválido
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo ativo com o paciente (RN04)
+ * description: Acesso negado — terapeuta sem vínculo ativo com o paciente
  *       404:
  *         description: Paciente não encontrado
  *       500:
@@ -217,7 +217,7 @@ sessaoRoutes.get(
  * /api/sessao/iniciar:
  *   post:
  *     summary: Inicia uma nova sessão clínica ou em modo livre (emite token de pareamento)
- *     description: Cria uma nova sessão no banco de dados com status 'aguardando_pareamento', associa o código único de pareamento (PIN) com TTL de 15 minutos e vincula o contexto DDA pré-sessão para a IA (RN03).
+ * description: Cria uma nova sessão no banco de dados com status 'aguardando_pareamento', associa o código único de pareamento (PIN) com TTL de 15 minutos e vincula o contexto DDA pré-sessão para a IA.
  *     tags: [Sessão]
  *     security:
  *       - bearerAuth: []
@@ -235,7 +235,7 @@ sessaoRoutes.get(
  *                 type: string
  *                 format: uuid
  *                 example: "11111111-1111-1111-1111-111111111111"
- *                 description: (Opcional) UUID do terapeuta responsável. Derivado primariamente do token JWT verificado (RF21). Se informado no body, deve coincidir com o usuário autenticado; divergências são bloqueadas com 403 Forbidden.
+ * description: (Opcional) UUID do terapeuta responsável. Derivado primariamente do token JWT verificado. Se informado no body, deve coincidir com o usuário autenticado; divergências são bloqueadas com 403 Forbidden.
  *               jogo_id:
  *                 type: string
  *                 format: uuid
@@ -246,7 +246,7 @@ sessaoRoutes.get(
  *                 format: uuid
  *                 nullable: true
  *                 example: "33333333-3333-3333-3333-333333333333"
- *                 description: UUID do paciente (obrigatório para 'sessao_clinica', nulo para 'modo_livre' conforme RN01)
+ * description: UUID do paciente (obrigatório para 'sessao_clinica', nulo para 'modo_livre' em Modo Livre)
  *               modo_sessao:
  *                 type: string
  *                 enum:
@@ -254,14 +254,14 @@ sessaoRoutes.get(
  *                   - modo_livre
  *                 default: sessao_clinica
  *                 example: "sessao_clinica"
- *                 description: Modalidade da sessão (RN01)
+ * description: Modalidade da sessão
  *               codigo_pareamento:
  *                 type: string
  *                 example: "4M5S-8U7B"
  *                 description: Código único de pareamento gerado previamente pela rota /gerarCodigoPareamento (obrigatório)
  *               contexto_dda_json:
  *                 type: object
- *                 description: Parâmetros pré-sessão injetados para o Agente de IA DDA (RN03)
+ * description: Parâmetros pré-sessão injetados para o Agente de IA DDA
  *                 example:
  *                   estresse_inicial: 2
  *                   gatilhos_a_evitar: ["Sons Altos ou Repentinos"]
@@ -318,7 +318,7 @@ sessaoRoutes.get(
  *                           type: string
  *                           format: date-time
  *       400:
- *         description: Dados incompletos ou violação da regra RN01
+ * description: Dados incompletos ou violação de modo livre / sessão clínica
  *         content:
  *           application/json:
  *             schema:
@@ -330,7 +330,7 @@ sessaoRoutes.get(
  *       401:
  *         description: Token JWT ausente, inválido ou identificador do terapeuta não encontrado
  *       403:
- *         description: Acesso negado — terapeuta informado no body divergente do token autenticado (anti-spoofing), sem vínculo ativo com o paciente (RN04) ou de clínica divergente
+ * description: Acesso negado — terapeuta informado no body divergente do token autenticado (anti-spoofing), sem vínculo ativo com o paciente ou de clínica divergente
  *       500:
  *         description: Erro interno ao criar sessão
  */
@@ -340,12 +340,12 @@ sessaoRoutes.post('/iniciar', authMiddleware, verificarVisibilidadePaciente, Ses
  * @swagger
  * /api/sessao/contexto-sugerido/{pacienteId}:
  *   get:
- *     summary: Recupera contexto clínico DDA sugerido para o paciente selecionado (RF12, RF17)
+ * summary: Recupera contexto clínico DDA sugerido para o paciente selecionado
  *     description: |
  *       Consulta os gatilhos sensoriais cadastrados no prontuário do paciente (dados_clinicos e paciente_gatilho)
  *       e o nível de estresse e objetivo clínico da última intervenção finalizada, abastecendo o pré-preenchimento
  *       inteligente do modal pré-sessão no Frontend.
- *       Exige autenticação JWT e vínculo ativo na mesma clínica (RN04).
+ * Exige autenticação JWT e vínculo ativo na mesma clínica.
  *     tags: [Sessão]
  *     security:
  *       - bearerAuth: []
@@ -389,7 +389,7 @@ sessaoRoutes.post('/iniciar', authMiddleware, verificarVisibilidadePaciente, Ses
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo ativo ou clínica divergente (RN04)
+ * description: Acesso negado — terapeuta sem vínculo ativo ou clínica divergente
  *       404:
  *         description: Paciente não encontrado
  */
@@ -468,7 +468,7 @@ sessaoRoutes.get('/contexto-sugerido/:pacienteId', authMiddleware, verificarVisi
  *                           nullable: true
  *                         contexto_dda:
  *                           type: object
- *                           description: Parâmetros DDA para o Agente de IA (RN03)
+ * description: Parâmetros DDA para o Agente de IA
  *                     conexao:
  *                       type: object
  *                       properties:
@@ -578,7 +578,7 @@ sessaoRoutes.post('/parear', parearRateLimiter, SessaoController.parear);
  *       401:
  *         description: Token JWT ausente ou inválido
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo com paciente desta sessão (RN04) ou sessão em modo livre de outro autor (RN01)
+ * description: Acesso negado — terapeuta sem vínculo com paciente desta sessão ou sessão em modo livre de outro autor
  *       404:
  *         description: Sessão não encontrada para o token informado
  *         content:
@@ -598,7 +598,7 @@ sessaoRoutes.get('/token/:token', authMiddleware, verificarSessaoMiddleware, Ses
  * @swagger
  * /api/sessao/{token}/status:
  *   get:
- *     summary: Consulta o status atual de pareamento da sessão (RF10, Card 2.3)
+ * summary: Consulta o status atual de pareamento da sessão (Card 2.3)
  *     description: Permite polling do status da sessão e presença do dispositivo via session_token.
  *     tags: [Sessão]
  *     parameters:
@@ -711,7 +711,7 @@ sessaoRoutes.get('/:token/status', SessaoController.consultarStatus);
  *       401:
  *         description: Token JWT ausente ou inválido
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo com paciente desta sessão (RN04) ou sessão em modo livre de outro autor (RN01)
+ * description: Acesso negado — terapeuta sem vínculo com paciente desta sessão ou sessão em modo livre de outro autor
  *       404:
  *         description: Sessão não encontrada
  *         content:
@@ -731,7 +731,7 @@ sessaoRoutes.get('/:id', authMiddleware, verificarSessaoMiddleware, SessaoContro
  * @swagger
  * /api/sessao/{id}/exportar:
  *   get:
- *     summary: Emite e exporta laudo clínico estruturado da sessão (RF20 / RNF06)
+ * summary: Emite e exporta laudo clínico estruturado da sessão
  *     description: |
  *       Gera payload estruturado e sanitizado para impressão e emissão de laudo médico formal,
  *       reunindo dados da clínica, registro profissional do terapeuta, identificação do paciente
@@ -816,11 +816,11 @@ sessaoRoutes.get('/:id', authMiddleware, verificarSessaoMiddleware, SessaoContro
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado por falta de vínculo institucional ativo (RN04)
+ * description: Acesso negado por falta de vínculo institucional ativo
  *         content:
  *           application/json:
  *             example:
- *               error: "Acesso negado: você não possui vínculo com este paciente (RN04)."
+ * error: "Acesso negado: você não possui vínculo com este paciente."
  *       404:
  *         description: Sessão ou paciente não encontrado
  *         content:
@@ -876,7 +876,7 @@ sessaoRoutes.get('/:id/exportar', authMiddleware, verificarSessaoMiddleware, Ses
  *             example:
  *               error: "Token JWT não fornecido"
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo com paciente desta sessão (RN04) ou sessão em modo livre de outro autor (RN01)
+ * description: Acesso negado — terapeuta sem vínculo com paciente desta sessão ou sessão em modo livre de outro autor
  *       404:
  *         description: Sessão não encontrada para finalização
  *         content:
@@ -933,7 +933,7 @@ sessaoRoutes.patch('/:id/finalizar', authMiddleware, verificarSessaoMiddleware, 
  *       401:
  *         description: Token JWT ausente ou inválido
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo com paciente desta sessão (RN04) ou sessão em modo livre de outro autor (RN01)
+ * description: Acesso negado — terapeuta sem vínculo com paciente desta sessão ou sessão em modo livre de outro autor
  *       404:
  *         description: Sessão não encontrada
  *       500:
@@ -1011,7 +1011,7 @@ sessaoRoutes.delete('/:id/cancelar', authMiddleware, verificarSessaoMiddleware, 
  *       401:
  *         description: Token JWT ausente ou inválido
  *       403:
- *         description: Acesso negado — terapeuta sem vínculo com paciente desta sessão (RN04) ou sessão em modo livre de outro autor (RN01)
+ * description: Acesso negado — terapeuta sem vínculo com paciente desta sessão ou sessão em modo livre de outro autor
  *       404:
  *         description: Sessão não encontrada para atualização de status
  *         content:
@@ -1039,8 +1039,8 @@ sessaoRoutes.patch('/:id/status', authMiddleware, verificarSessaoMiddleware, val
  * @swagger
  * /api/sessao/{id}/resultado:
  *   get:
- *     summary: Consulta consolidada dos resultados clínicos e analíticos da sessão (RF14)
- *     description: Retorna o consolidado completo de uma sessão finalizada, integrando metadados operacionais, dados do jogo, terapeuta, paciente, síntese do Agente de IA (Contrato 4) e anotações clínicas. Valida vínculo ativo e clínica (RN04) e suprime dados clínicos em Modo Livre (RN01).
+ * summary: Consulta consolidada dos resultados clínicos e analíticos da sessão
+ * description: Retorna o consolidado completo de uma sessão finalizada, integrando metadados operacionais, dados do jogo, terapeuta, paciente, síntese do Agente de IA (Contrato 4) e anotações clínicas. Valida vínculo ativo e clínica e suprime dados clínicos em Modo Livre.
  *     tags: [Sessão]
  *     security:
  *       - bearerAuth: []
@@ -1112,7 +1112,7 @@ sessaoRoutes.patch('/:id/status', authMiddleware, verificarSessaoMiddleware, val
  *                     paciente:
  *                       type: object
  *                       nullable: true
- *                       description: Nulo se a sessão for em Modo Livre (RN01)
+ * description: Nulo se a sessão for em Modo Livre
  *                       properties:
  *                         id:
  *                           type: string
@@ -1133,7 +1133,7 @@ sessaoRoutes.patch('/:id/status', authMiddleware, verificarSessaoMiddleware, val
  *                         paciente:
  *                           type: object
  *                           nullable: true
- *                           description: Dados demográficos e clínicos do paciente (nulo em Modo Livre - RN01)
+ * description: Dados demográficos e clínicos do paciente (nulo em Modo Livre)
  *                           properties:
  *                             id:
  *                               type: string
@@ -1250,7 +1250,7 @@ sessaoRoutes.patch('/:id/status', authMiddleware, verificarSessaoMiddleware, val
  *       401:
  *         description: Não autorizado (JWT ausente ou inválido)
  *       403:
- *         description: Acesso negado por falta de vínculo ativo ou clínica divergente (RN04)
+ * description: Acesso negado por falta de vínculo ativo ou clínica divergente
  *       404:
  *         description: Sessão não encontrada
  *       500:

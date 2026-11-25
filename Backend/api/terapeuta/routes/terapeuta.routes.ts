@@ -6,7 +6,6 @@ import { meMiddleware } from '../../../core/middlewares/me.middleware.js';
 
 // ==============================================================================
 // ROTAS: /api/terapeuta
-// Conformidade: RF04 (Perfil), RF21 (Autoria), RN04 (Vínculo), RN05 (Soft Delete)
 // Envelope Pattern: { data: { <categoria>: ... }, message: "..." }
 // ==============================================================================
 
@@ -149,7 +148,7 @@ terapeutaRoutes.get('/pacientes', authMiddleware, TerapeutaController.listarPaci
  * @swagger
  * /api/terapeuta/{id}/pacientes:
  *   get:
- *     summary: Lista pacientes vinculados a um terapeuta específico (RN04)
+ * summary: Lista pacientes vinculados a um terapeuta específico
  *     tags: [Terapeuta]
  *     security:
  *       - bearerAuth: []
@@ -177,7 +176,7 @@ terapeutaRoutes.get('/pacientes', authMiddleware, TerapeutaController.listarPaci
  *       400:
  *         description: UUID inválido
  *       403:
- *         description: Acesso negado (outra clínica - RN04)
+ * description: Acesso negado (outra clínica)
  *       404:
  *         description: Terapeuta não encontrado
  */
@@ -229,7 +228,7 @@ terapeutaRoutes.get('/:id/pacientes', authMiddleware, TerapeutaController.listar
  *       401:
  *         description: Não autorizado (token JWT ausente ou inválido)
  *       403:
- *         description: Acesso negado (o terapeuta pertence a uma instituição clínica diferente - RN04)
+ * description: Acesso negado (o terapeuta pertence a uma instituição clínica diferente)
  *       404:
  *         description: Terapeuta não encontrado
  *       500:
@@ -405,7 +404,7 @@ terapeutaRoutes.delete('/:id/hard', authMiddleware, adminMiddleware, TerapeutaCo
  * @swagger
  * /api/terapeuta/{id}:
  *   delete:
- *     summary: Soft Delete — Inativa o cadastro do terapeuta (auto-inativação ou SuperAdmin - RN05)
+ * summary: Soft Delete — Inativa o cadastro do terapeuta (auto, inativação ou SuperAdmin)
  *     tags: [Terapeuta]
  *     security:
  *       - bearerAuth: []

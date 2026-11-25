@@ -1,5 +1,5 @@
 // ==============================================================================
-// InTEA: Suíte de Testes para Exportação de Prontuário Longitudinal (RF20, RNF06)
+// InTEA: Suíte de Testes para Exportação de Prontuário Longitudinal
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';

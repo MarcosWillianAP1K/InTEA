@@ -1,12 +1,10 @@
 import { useSessionStore } from "../store/sessionStore";
 import { useSessionSocket, type UseSessionSocketReturn } from "@/core/web.socket";
 
-/**
- * ============================================================================
- * HOOK DE SINCRONIZAÇÃO: WebSocket ↔ SessionStore
- * Sincroniza eventos remotos em tempo real com o estado global do Zustand
- * ============================================================================
- */
+// ============================================================================
+// HOOK DE SINCRONIZAÇÃO: WebSocket ↔ SessionStore
+// Sincroniza eventos remotos em tempo real com o estado global do Zustand
+// ============================================================================
 
 /**
  * Connects WebSocket event lifecycle with Zustand SessionStore.

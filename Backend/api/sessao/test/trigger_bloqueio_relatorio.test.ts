@@ -1,6 +1,6 @@
 // ==============================================================================
 // InTEA: Testes Unitários de Banco — Trigger de Bloqueio em relatorio_sessao
-// Validação RN05 (Inalterabilidade do Histórico Clínico) e RNF06 (Integridade)
+// Validação de imutabilidade e bloqueio de alteração
 // ==============================================================================
 
 import { describe, it, expect } from 'vitest';
@@ -25,7 +25,7 @@ function executarTriggerRelatorioSessao(
   oldRow: RelatorioRow | null,
   newRow: RelatorioRow | null
 ): RelatorioRow {
-  // 1. Bloqueio absoluto de DELETE físico (RN05)
+  // 1. Bloqueio absoluto de DELETE físico
   if (operacao === 'DELETE') {
     const erro = new Error(
       'Operacao proibida: Exclusao fisica de relatorio clinico e terminantemente vedada (RN05). O prontuario e inalteravel; utilize soft_delete = true.'
@@ -34,7 +34,7 @@ function executarTriggerRelatorioSessao(
     throw erro;
   }
 
-  // 2. Bloqueio de mutações não autorizadas em UPDATE (RN05 / RNF06)
+  // 2. Bloqueio de mutações não autorizadas em UPDATE
   if (operacao === 'UPDATE') {
     if (!oldRow || !newRow) {
       throw new Error('Trigger UPDATE exige registros OLD e NEW.');

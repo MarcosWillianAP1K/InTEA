@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Controller de Jogos Terapêuticos (Camada HTTP / Thin Controller)
 // ==============================================================================
-// Conformidade: RF09, RF19 (Catálogo), RNF02 (Manifesto), RN02 (Tipagem Estrita)
 // Padrão Arquitetural: Envelope Pattern Categorizado e Sanitização Estrita
 // ==============================================================================
 
@@ -22,7 +21,7 @@ export class JogoController {
   }
 
   /**
-   * Handles GET /api/jogos to list games filtered by clinical objective and/or status with pagination (RF19).
+   * Handles GET /api/jogos to list games filtered by clinical objective and/or status with pagination.
    */
   static async listar(req: Request, res: Response): Promise<void> {
     try {
@@ -68,7 +67,7 @@ export class JogoController {
   }
 
   /**
-   * Handles GET /api/jogos/:id to retrieve unified game details with its clinical manifest and compliance report (RF09, RNF02).
+   * Handles GET /api/jogos/:id to retrieve unified game details with its clinical manifest and compliance report.
    */
   static async buscarPorId(req: Request, res: Response): Promise<void> {
     try {
@@ -318,7 +317,7 @@ export class JogoController {
   }
 
   /**
-   * Handles POST /api/jogos/validar-manifesto to validate an arbitrary game manifest against Contract 1 (RNF02).
+   * Handles POST /api/jogos/validar-manifesto to validate an arbitrary game manifest against Contract 1.
    */
   static async validarManifesto(req: Request, res: Response): Promise<void> {
     try {
@@ -353,7 +352,7 @@ export class JogoController {
   }
 
   /**
-   * Handles POST /api/jogos/:id/validar-telemetria to validate telemetry events against RN02 rules.
+   * Handles POST /api/jogos/:id/validar-telemetria to validate telemetry events against game manifest typing rules.
    */
   static async validarTelemetria(req: Request, res: Response): Promise<void> {
     try {

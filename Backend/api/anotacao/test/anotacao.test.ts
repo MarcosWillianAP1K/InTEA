@@ -1,7 +1,6 @@
 // ==============================================================================
 // InTEA: Testes Unitários de AnotacaoClinicaModel (Sprint 10 - Card 1.1)
 // ==============================================================================
-// Conformidade: RF16, RF21, RN04, RN05
 // TypeScript Estrito
 // ==============================================================================
 
@@ -1209,7 +1208,7 @@ describe('Middlewares de Contexto - resolverContextoPaciente e resolverContextoS
 });
 
 // ==============================================================================
-// TESTES INTEGRADOS DE VISIBILIDADE INSTITUCIONAL (RN04)
+// TESTES INTEGRADOS DE VISIBILIDADE INSTITUCIONAL
 // ==============================================================================
 describe('Segurança Institucional e Vínculo Clínico (RN04) com verificarVisibilidadePaciente', () => {
   const clinicaId = 'cccccccc-cccc-4ccc-accc-cccccccccccc';

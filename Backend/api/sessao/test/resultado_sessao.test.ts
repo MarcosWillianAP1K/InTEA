@@ -1,9 +1,7 @@
 // ==============================================================================
 // InTEA: Testes Automatizados da Tela de Resultados (Sprint 10 - Card 1.2)
 // ==============================================================================
-// Conformidade: RF14 (Tela de Resultados), RN01 (Modo Livre), RN04 (Vínculo/Clínica),
-// RN05 (Imutabilidade), Contrato 4 (Síntese de IA)
-// TypeScript Estrito
+// Contrato 4 (Síntese de IA) e TypeScript Estrito
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -325,9 +323,9 @@ describe('SessaoResultadoService — Endpoint GET /api/sessao/:id/resultado (RF1
 
     const dados = res.dados!;
     expect(dados.sessao.modo_sessao).toBe('modo_livre');
-    expect(dados.paciente).toBeNull(); // Conforme RN01
-    expect(dados.relatorio).toBeNull(); // Conforme RN01
-    expect(dados.anotacoes).toEqual([]); // Conforme RN01
+    expect(dados.paciente).toBeNull(); // Modo Livre: sem dados clínicos
+    expect(dados.relatorio).toBeNull(); // Modo Livre: sem dados clínicos
+    expect(dados.anotacoes).toEqual([]); // Modo Livre: sem dados clínicos
     expect(dados.jogo?.nome).toBe('Ilha dos Sentidos');
   });
 
